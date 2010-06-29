@@ -1,0 +1,63 @@
+#ifndef HW_NAND_H
+#define HW_NAND_H
+
+#include "hardware/s5l8900.h"
+
+// Device
+#define NAND 0x38A00000
+#define NANDECC 0x38F00000
+#define NAND_CLOCK_GATE1 0x8
+#define NAND_CLOCK_GATE2 0xC
+#define NANDECC_INT 0x2B
+#define NAND_INT 0x14
+
+// Registers
+#define FMCTRL0 0x0
+#define FMCTRL1 0x4
+#define NAND_CMD 0x8
+#define FMADDR0 0xC
+#define FMANUM 0x2C
+#define FMADDR1 0x10
+#define FMDNUM 0x30
+#define NAND_REG_44 0x44
+#define FMCSTAT 0x48
+#define FMFIFO 0x80
+#define RSCTRL 0x100
+
+#define NANDECC_DATA 0x4
+#define NANDECC_ECC 0x8
+#define NANDECC_START 0xC
+#define NANDECC_STATUS 0x10
+#define NANDECC_SETUP 0x14
+#define NANDECC_CLEARINT 0x40
+
+// Values
+
+#define FMCTRL_TWH_SHIFT 12
+#define FMCTRL_TWP_SHIFT 16
+#define FMCTRL_TWH_MASK 0x7
+#define FMCTRL_TWP_MASK 0x7
+#define FMCTRL0_DMASETTINGSHIFT 10
+#define FMCTRL0_ON 1
+#define FMCTRL0_WPB 0x800
+
+#define NAND_CMD_RESET 0xFF
+#define NAND_CMD_ID 0x90
+#define NAND_CMD_READSTATUS 0x70
+#define NAND_CMD_READ 0x30
+
+#define FMANUM_TRANSFERSETTING 4
+
+#define FMCTRL1_DOTRANSADDR (1 << 0)
+#define FMCTRL1_CLEARALL (FMCTRL1_FLUSHFIFOS | 0x720)
+#define FMCTRL1_FLUSHFIFOS (FMCTRL1_FLUSHRXFIFO | FMCTRL1_FLUSHTXFIFO)
+#define FMCTRL1_FLUSHTXFIFO 0x40
+#define FMCTRL1_FLUSHRXFIFO 0x80
+#define FMCTRL1_DOREADDATA (1 << 1)
+
+#define FMCSTAT_READY 0x1
+
+#define NAND_NUM_BANKS 8
+
+#endif
+
