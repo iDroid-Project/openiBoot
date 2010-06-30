@@ -29,7 +29,6 @@
 #include "als.h"
 #include "piezo.h"
 #include "vibrator.h"
-#include "ultrasn0w.h"
 
 void cmd_reboot(int argc, char** argv) {
 	Reboot();
@@ -1144,11 +1143,6 @@ void cmd_piezo_play(int argc, char** argv) {
 
 #endif
 
-void cmd_ultrasn0w(int argc, char** argv)
-{
-	ultrasn0w();
-}
-
 void cmd_help(int argc, char** argv) {
 	OPIBCommand* curCommand = CommandList;
 	while(curCommand->name != NULL) {
@@ -1256,7 +1250,6 @@ OPIBCommand CommandList[] =
 		{"play", "play notes using piezo bytes", cmd_piezo_play},
 #endif
 		{"multitouch_setup", "setup the multitouch chip", cmd_multitouch_setup},
-		{"ultrasn0w", "ultrasn0w", cmd_ultrasn0w},
 		{"help", "list the available commands", cmd_help},
 		{NULL, NULL}
 	};

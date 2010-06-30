@@ -15,7 +15,7 @@ ifeq ($(PLATFORM),IPHONE)
 endif
 
 ifeq ($(PLATFORM),3G)
-	SRC_C          += camera.c radio.c alsISL29003.c multitouch-z2.c wm8991.c vibrator.c ultrasn0w.c
+	SRC_C          += camera.c radio.c alsISL29003.c multitouch-z2.c wm8991.c vibrator.c
 endif
 
 ifeq ($(PLATFORM),IPOD)
