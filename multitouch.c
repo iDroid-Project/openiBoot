@@ -6,6 +6,7 @@
 #include "timer.h"
 #include "util.h"
 #include "spi.h"
+#include "framebuffer.h"
 
 static void multitouch_atn(uint32_t token);
 
@@ -32,6 +33,7 @@ static int SensorRegionParamLen;
 
 // This is flipped between 0x64 and 0x65 for every transaction
 static int CurNOP;
+static FingerData * fingerData;
 
 typedef struct MTSPISetting
 {
@@ -80,6 +82,7 @@ void multitouch_on()
 
 		udelay(15000);
 		MultitouchOn = TRUE;
+        fingerData=0;
 	}
 }
 
@@ -207,9 +210,10 @@ int multitouch_setup(const uint8_t* ASpeedFirmware, int ASpeedFirmwareLen, const
 		return -1;
 	}
 
-	SensorWidth = reportBuffer[0] | (reportBuffer[1] >> 8) | (reportBuffer[2] >> 16) | (reportBuffer[3] >> 24);
-	SensorHeight = reportBuffer[4] | (reportBuffer[5] >> 8) | (reportBuffer[6] >> 16) | (reportBuffer[7] >> 24);
-
+	//SensorWidth = reportBuffer[0] | (reportBuffer[1] >> 8) | (reportBuffer[2] >> 16) | (reportBuffer[3] >> 24);
+	//SensorHeight = reportBuffer[4] | (reportBuffer[5] >> 8) | (reportBuffer[6] >> 16) | (reportBuffer[7] >> 24);
+    SensorWidth = (9000 - *((uint32_t*)&reportBuffer[0])) * 84 / 73;//*((u32*)&reportBuffer[0]);
+    SensorHeight = (13850 - *((uint32_t*)&reportBuffer[4])) * 84 / 73;//*((u32*)&reportBuffer[4]);
 	int i;
 
 	bufferPrintf("Family ID                : 0x%x\r\n", FamilyID);
@@ -233,20 +237,6 @@ int multitouch_setup(const uint8_t* ASpeedFirmware, int ASpeedFirmwareLen, const
 
 	GotATN = 0;
 
-	while(TRUE)
-	{
-		EnterCriticalSection();
-		if(!GotATN)
-		{
-			LeaveCriticalSection();
-			continue;
-		}
-		--GotATN;
-		LeaveCriticalSection();
-
-		while(readFrame() == 1);
-	}
-
 	return 0;
 }
 
@@ -261,24 +251,24 @@ static void newPacket(const uint8_t* data, int len)
 	if(header->headerLen < 12)
 		bufferPrintf("multitouch: no finger data in frame\r\n");
 
-	bufferPrintf("------START------\r\n");
+	//bufferPrintf("------START------\r\n");
 
 	int i;
 	for(i = 0; i < header->numFingers; ++i)
 	{
-		bufferPrintf("multitouch: finger %d -- id=%d, event=%d, X(%d/%d, vel: %d), Y(%d/%d, vel: %d), radii(%d, %d, %d, angle: %d), contactDensity: %d\r\n",
+		/*bufferPrintf("multitouch: finger %d -- id=%d, event=%d, X(%d/%d, vel: %d), Y(%d/%d, vel: %d), radii(%d, %d, %d, angle: %d), contactDensity: %d\r\n",
 				i, finger->id, finger->event,
 				finger->x, SensorWidth, finger->velX,
 				finger->y, SensorHeight, finger->velY,
 				finger->radius1, finger->radius2, finger->radius3, finger->angle,
-				finger->contactDensity);
+				finger->contactDensity);*/
 
-		//framebuffer_draw_rect(0xFF0000, (finger->x * framebuffer_width()) / SensorWidth - 2 , ((SensorHeight - finger->y) * framebuffer_height()) / SensorHeight - 2, 4, 4);
+		framebuffer_draw_rect(0xFF0000, (finger->x * framebuffer_width()) / SensorWidth - 2 , ((SensorHeight - finger->y) * framebuffer_height()) / SensorHeight - 2, 4, 4);
 		//hexdump((uint32_t) finger, sizeof(FingerData));
 		finger = (FingerData*) (((uint8_t*) finger) + header->fingerDataLen);
 	}
-
-	bufferPrintf("-------END-------\r\n");
+	fingerData = (FingerData*)(data + (header->headerLen));
+	//bufferPrintf("-------END-------\r\n");
 }
 
 static int readFrame()
@@ -701,4 +691,34 @@ int mt_spi_txrx(const MTSPISetting* setting, const uint8_t* outBuffer, int outLe
 	int ret = spi_txrx(MT_SPI, outBuffer, outLen, inBuffer, inLen, TRUE);
 	gpio_pin_output(MT_SPI_CS, 1);
 	return ret;
+}
+
+void multitouch_run()
+{
+    while(GotATN>0)
+    {
+        EnterCriticalSection();
+        if(!GotATN)
+        {
+            LeaveCriticalSection();
+            continue;
+        }
+        --GotATN;
+        LeaveCriticalSection();
+        
+        readFrame();
+    }
+}
+
+int multitouch_ispoint_inside_region(uint16_t x, uint16_t y, int w, int h)
+{
+    int fingerX,fingerY;
+    fingerX = (fingerData->x * framebuffer_width()) / SensorWidth - 2;
+    fingerY = ((SensorHeight - fingerData->y) * framebuffer_height()) / SensorHeight - 2;
+    
+    if (fingerX>=x && fingerX<= (x + w)  && fingerY>=y && fingerY<= (y + w) ) {
+        return TRUE;
+    }
+    
+    return FALSE;
 }

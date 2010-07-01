@@ -419,12 +419,35 @@ static int setup_openiboot() {
 
 static int load_multitouch_images()
 {
-    Image* image = images_get(fourcc("mtz2"));
-    void* imageData;
-    size_t length = images_read(image, &imageData);
-    
-    multitouch_setup(imageData, length);
-    free(imageData);
-    
+    #ifdef CONFIG_IPHONE
+        Image* image = images_get(fourcc("mtza"));
+        if (image == NULL) {
+            return 0;
+        }
+        void* aspeedData;
+        size_t aspeedLength = images_read(image, &aspeedData);
+        
+        image = images_get(fourcc("mtzm"));
+        if(image == NULL) {
+            return 0;
+        }
+        
+        void* mainData;
+        size_t mainLength = images_read(image, &mainData);
+        
+        multitouch_setup(aspeedData, aspeedLength, mainData,mainLength);
+        free(aspeedData);
+        free(mainData);
+    #else
+        Image* image = images_get(fourcc("mtz2"));
+        if(image == NULL) {
+            return 0;
+        }
+        void* imageData;
+        size_t length = images_read(image, &imageData);
+        
+        multitouch_setup(imageData, length);
+        free(imageData);
+    #endif
     return 0;
 }

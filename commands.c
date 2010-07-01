@@ -968,7 +968,25 @@ void cmd_multitouch_fw_install(int argc, char** argv)
     uint8_t* mainFW = (uint8_t*) parseNumber(argv[3]);
     uint32_t mainFWLen = parseNumber(argv[4]);
     
-    multitouch_setup(aspeedFW, aspeedFWLen, mainFW, mainFWLen);
+    //get latest apple image
+    Image* image = images_get(fourcc("batF"));
+    uint32_t offset = image->offset+image->padded;
+    
+    //write aspeed first
+    if(offset >= 0xfc000 || (offset + aspeedFWLen + mainFWLen) >= 0xfc000) {
+        bufferPrintf("writing image of size %d at 0x%x would overflow NOR!\r\n", aspeedFWLen+mainFWLen, offset);
+        return;
+    }    
+    
+    bufferPrintf("Writing aspeed 0x%x - 0x%x to 0x%x...\r\n", aspeedFW, aspeedFW + aspeedFWLen, offset);
+    nor_write((void*)aspeedFW, offset, aspeedFWLen);
+    
+    offset += aspeedFWLen;
+    
+    bufferPrintf("Writing main 0x%x - 0x%x to 0x%x...\r\n", mainFW, mainFW + mainFWLen, offset);
+    nor_write((void*)mainFW, offset, mainFWLen);
+    
+    bufferPrintf("Done.\r\n");
 }
 #else
 void cmd_multitouch_fw_install(int argc, char** argv)
