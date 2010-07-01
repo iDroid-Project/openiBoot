@@ -954,6 +954,49 @@ void cmd_multitouch_setup(int argc, char** argv)
 }
 #endif
 
+#ifdef CONFIG_IPHONE
+void cmd_multitouch_fw_install(int argc, char** argv)
+{
+    if(argc < 5)
+    {
+        bufferPrintf("%s <a-speed fw> <a-speed fw len> <main fw> <main fw len>\r\n", argv[0]);
+        return;
+    }
+    
+    uint8_t* aspeedFW = (uint8_t*) parseNumber(argv[1]);
+    uint32_t aspeedFWLen = parseNumber(argv[2]);
+    uint8_t* mainFW = (uint8_t*) parseNumber(argv[3]);
+    uint32_t mainFWLen = parseNumber(argv[4]);
+    
+    multitouch_setup(aspeedFW, aspeedFWLen, mainFW, mainFWLen);
+}
+#else
+void cmd_multitouch_fw_install(int argc, char** argv)
+{
+    if(argc < 3)
+    {
+        bufferPrintf("%s <constructed fw> <constructed fw len>\r\n", argv[0]);
+        return;
+    }
+    
+    uint8_t* fwData = (uint8_t*) parseNumber(argv[1]);
+    uint32_t fwLen = parseNumber(argv[2]);
+    
+    //get latest apple image
+    Image* image = images_get(fourcc("batF"));
+    uint32_t offset = image->offset+image->padded;
+    
+    if(offset >= 0xfc000 || (offset + fwLen) >= 0xfc000) {
+        bufferPrintf("writing image of size %d at %x would overflow NOR!\r\n", fwLen, offset);
+        return;
+    }    
+    
+    bufferPrintf("Writing 0x%x - 0x%x to 0x%x...\r\n", fwData, fwData + fwLen, offset);
+    nor_write((void*)fwData, offset, fwLen);
+    bufferPrintf("Done.\r\n");
+}
+#endif
+
 void cmd_wlan_prog_helper(int argc, char** argv) {
 	if(argc < 3) {
 		bufferPrintf("Usage: %s <address> <len>\r\n", argv[0]);
@@ -1250,6 +1293,7 @@ OPIBCommand CommandList[] =
 		{"play", "play notes using piezo bytes", cmd_piezo_play},
 #endif
 		{"multitouch_setup", "setup the multitouch chip", cmd_multitouch_setup},
+		{"multitouch_fw_install", "install the multitouch firmware", cmd_multitouch_fw_install},
 		{"help", "list the available commands", cmd_help},
 		{NULL, NULL}
 	};

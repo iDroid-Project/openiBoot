@@ -41,12 +41,13 @@
 #include "wmcodec.h"
 #include "wdt.h"
 #include "als.h"
+#include "multitouch.h"
 
 int received_file_size;
 
 static int setup_devices();
 static int setup_openiboot();
-
+static int load_multitouch_images();
 extern uint8_t _binary_payload_bin_start;
 extern uint8_t _binary_payload_bin_end;
 extern uint8_t _binary_payload_bin_size;
@@ -75,7 +76,8 @@ void OpenIBootStart() {
 	if(hideMenu && (strcmp(hideMenu, "1") == 0 || strcmp(hideMenu, "true") == 0)) {
 		bufferPrintf("Boot menu hidden. Use 'setenv opib-hide-menu false' and then 'saveenv' to unhide.\r\n");
 	} else {
-		framebuffer_setdisplaytext(FALSE);
+        framebuffer_setdisplaytext(FALSE);
+        load_multitouch_images();
 		const char* sMenuTimeout = nvram_getvar("opib-menu-timeout");
 		int menuTimeout = -1;
 		if(sMenuTimeout)
@@ -415,3 +417,14 @@ static int setup_openiboot() {
 	return 0;
 }
 
+static int load_multitouch_images()
+{
+    Image* image = images_get(fourcc("mtz2"));
+    void* imageData;
+    size_t length = images_read(image, &imageData);
+    
+    multitouch_setup(imageData, length);
+    free(imageData);
+    
+    return 0;
+}

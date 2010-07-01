@@ -5,7 +5,7 @@
 #include "aes.h"
 #include "sha1.h"
 
-static const uint32_t NOREnd = 0xF0000;
+static const uint32_t NOREnd = 0xFC000;
 
 Image* imageList = NULL;
 
@@ -427,15 +427,16 @@ void images_install(void* newData, size_t newDataLen) {
 	ImageDataList* list = NULL;
 	ImageDataList* cur = NULL;
 	ImageDataList* iboot = NULL;
-
+    ImageDataList* verify = NULL;
+    
 	int isUpgrade = FALSE;
 
 	Image* curImage = imageList;
-
+    
 	bufferPrintf("Reading images...\r\n");
 	while(curImage != NULL) {
 		if(cur == NULL) {
-			list = cur = malloc(sizeof(ImageDataList));
+			list = cur = verify = malloc(sizeof(ImageDataList));
 		} else {
 			cur->next = malloc(sizeof(ImageDataList));
 			cur = cur->next;
@@ -477,7 +478,31 @@ void images_install(void* newData, size_t newDataLen) {
 		iboot->data = newIBoot;
 	}
 
-
+    //check for size and availability
+    size_t newPaddedDataLen=0;
+    size_t totalBytes=0;
+    //if somebody can find how to get padded length for new ibot maybe this loop not needed
+    while(verify != NULL) {
+        cur = verify;
+        verify = verify->next;
+        AppleImg3RootHeader* header = (AppleImg3RootHeader*) cur->data;
+        totalBytes += header->base.size;
+        
+        if(cur->type == fourcc("ibot")) {
+            newPaddedDataLen = header->base.size;
+        }
+    }
+    
+    bufferPrintf("Total size to be written %d\r\n",totalBytes);
+    if((ImagesStart + totalBytes) >= 0xfc000) {
+        bufferPrintf("writing for total images size= 0x%x,new ibot size=0x%x at 0x%x would overflow NOR!\r\n", totalBytes, newPaddedDataLen,ImagesStart);
+        bufferPrintf("cancel installation\r\n");
+        images_rewind();
+        images_release();
+        images_setup();
+        return;
+    }
+    
 	bufferPrintf("Flashing...\r\n");
 
 	images_rewind();
@@ -495,7 +520,7 @@ void images_install(void* newData, size_t newDataLen) {
 		free(cur->data);
 		free(cur);
 	}
-
+	bufferPrintf("Free space after flashing %d\r\n",0xfc000-MaxOffset);
 	bufferPrintf("Done with installation!\r\n");
 
 	images_release();

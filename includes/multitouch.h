@@ -51,5 +51,6 @@ int multitouch_setup(const uint8_t* constructedFirmware, int constructedFirmware
 #endif
 
 void multitouch_on();
-
+void multitouch_run();
+int multitouch_ispoint_inside_region(uint16_t x, uint16_t y, int w, int h);
 #endif

@@ -23,6 +23,7 @@
 #include "hfs/fs.h"
 #include "ftl.h"
 #include "scripting.h"
+#include "multitouch.h"
 
 int globalFtlHasBeenRestored = 0; /* global variable to tell wether a ftl_restore has been done*/
 
@@ -96,6 +97,30 @@ static void drawSelectionBox() {
 	}
 
 	lcd_window_address(2, (uint32_t) CurFramebuffer);
+}
+
+static int touch_watcher()
+{
+    uint8_t isFound = 0;
+    multitouch_run();
+    if (multitouch_ispoint_inside_region(imgiPhoneOSX, imgiPhoneOSY, imgiPhoneOSWidth, imgiPhoneOSHeight) == TRUE) {
+        Selection = MenuSelectioniPhoneOS;
+        isFound = 1;
+    }
+    else if (multitouch_ispoint_inside_region(imgConsoleX, imgConsoleY, imgConsoleWidth, imgConsoleHeight) == TRUE) {
+        Selection = MenuSelectionConsole;
+        isFound = 1;
+    }
+    else if (multitouch_ispoint_inside_region(imgAndroidOSX, imgAndroidOSY, imgAndroidOSWidth, imgAndroidOSHeight) == TRUE) {
+        Selection = MenuSelectionAndroidOS;
+        isFound = 1;
+    }
+    
+    if (isFound ==1) {
+        drawSelectionBox();
+        return TRUE;
+    }
+    return FALSE;
 }
 
 static void toggle(int forward) {
@@ -179,6 +204,14 @@ int menu_setup(int timeout) {
 
 	uint64_t startTime = timer_get_system_microtime();
 	while(TRUE) {
+        if(touch_watcher()) {
+            break;
+        }
+        else
+        {
+            startTime = timer_get_system_microtime();
+            udelay(100000);
+        }
 		if(buttons_is_pushed(BUTTONS_HOLD)) {
 			toggle(TRUE);
 			startTime = timer_get_system_microtime();
