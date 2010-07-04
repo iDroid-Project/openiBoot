@@ -77,7 +77,7 @@ void OpenIBootStart() {
 		bufferPrintf("Boot menu hidden. Use 'setenv opib-hide-menu false' and then 'saveenv' to unhide.\r\n");
 	} else {
         framebuffer_setdisplaytext(FALSE);
-        load_multitouch_images();
+        isMultitouchLoaded = load_multitouch_images();
 		const char* sMenuTimeout = nvram_getvar("opib-menu-timeout");
 		int menuTimeout = -1;
 		if(sMenuTimeout)
@@ -413,7 +413,7 @@ static int setup_openiboot() {
 	framebuffer_setup();
 
 	audiohw_init();
-
+    isMultitouchLoaded = 0;
 	return 0;
 }
 
@@ -449,5 +449,5 @@ static int load_multitouch_images()
         multitouch_setup(imageData, length);
         free(imageData);
     #endif
-    return 0;
+    return 1;
 }

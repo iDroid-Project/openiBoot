@@ -109,3 +109,4 @@ void* images_inject_img3(const void* img3Data, const void* newData, size_t newDa
 void images_install(void* newData, size_t newDataLen);
 void images_uninstall();
 void images_change_type(const void* img3Data, uint32_t type);
+Image* images_get_last_apple_image();

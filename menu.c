@@ -204,13 +204,15 @@ int menu_setup(int timeout) {
 
 	uint64_t startTime = timer_get_system_microtime();
 	while(TRUE) {
-        if(touch_watcher()) {
-            break;
-        }
-        else
-        {
-            startTime = timer_get_system_microtime();
-            udelay(100000);
+        if (isMultitouchLoaded) {
+            if(touch_watcher()) {
+                break;
+            }
+            else
+            {
+                startTime = timer_get_system_microtime();
+                udelay(100000);
+            }
         }
 		if(buttons_is_pushed(BUTTONS_HOLD)) {
 			toggle(TRUE);

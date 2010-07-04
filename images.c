@@ -175,6 +175,22 @@ Image* images_get(uint32_t type) {
 	return NULL;
 }
 
+Image* images_get_last_apple_image()
+{
+    Image* curImage = imageList;
+    Image* lastImage=NULL;
+    
+    while(curImage != NULL) {
+        lastImage = curImage;
+        curImage = curImage->next;
+        if(curImage !=NULL && (curImage->type == fourcc("mtz2") || curImage->type == fourcc("mtza"))) {
+            return lastImage;
+        }
+    }
+    
+    return lastImage;
+}
+
 void images_append(void* data, int len) {
 	if(MaxOffset >= 0xfc000 || (MaxOffset + len) >= 0xfc000) {
 		bufferPrintf("writing image of size %d at %x would overflow NOR!\r\n", len, MaxOffset);

@@ -969,7 +969,7 @@ void cmd_multitouch_fw_install(int argc, char** argv)
     uint32_t mainFWLen = parseNumber(argv[4]);
     
     //get latest apple image
-    Image* image = images_get(fourcc("batF"));
+    Image* image = images_get_last_apple_image();
     uint32_t offset = image->offset+image->padded;
     
     //write aspeed first
@@ -1001,7 +1001,11 @@ void cmd_multitouch_fw_install(int argc, char** argv)
     uint32_t fwLen = parseNumber(argv[2]);
     
     //get latest apple image
-    Image* image = images_get(fourcc("batF"));
+    Image* image = images_get_last_apple_image();
+    if (image == NULL) {
+        bufferPrintf("cannot install firmware. last image position cannot be read\r\n");
+        return;
+    }
     uint32_t offset = image->offset+image->padded;
     
     if(offset >= 0xfc000 || (offset + fwLen) >= 0xfc000) {
