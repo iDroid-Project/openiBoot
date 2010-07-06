@@ -36,12 +36,15 @@
 #include "hfs/bdev.h"
 #include "hfs/fs.h"
 #include "scripting.h"
+#include "actions.h"
 
 #include "radio.h"
 #include "wmcodec.h"
 #include "wdt.h"
 #include "als.h"
 #include "multitouch.h"
+
+int globalFtlHasBeenRestored = 0; 
 
 int received_file_size;
 
@@ -72,18 +75,60 @@ void OpenIBootStart() {
 
 #ifndef SMALL
 #ifndef NO_STBIMAGE
+	int defaultOS = 0;
+	int tempOS = 0;
 	const char* hideMenu = nvram_getvar("opib-hide-menu");
-	if(hideMenu && (strcmp(hideMenu, "1") == 0 || strcmp(hideMenu, "true") == 0)) {
+	const char* sDefaultOS = nvram_getvar("opib-default-os");
+	const char* sTempOS = nvram_getvar("opib-temp-os");
+	if(sDefaultOS)
+		defaultOS = parseNumber(sDefaultOS);
+	if(sTempOS)
+		tempOS = parseNumber(sTempOS);
+	if(tempOS!=defaultOS) {
+		framebuffer_setdisplaytext(FALSE);
+		nvram_setvar("opib-temp-os",sDefaultOS);
+		nvram_save();
+		framebuffer_setdisplaytext(TRUE);
+		if(tempOS==0) {
+			Image* image = images_get(fourcc("ibox"));
+			if(image == NULL)
+				image = images_get(fourcc("ibot"));
+			void* imageData;
+			images_read(image, &imageData);
+			chainload((uint32_t)imageData);
+		} else if(tempOS==1) {
+			framebuffer_setdisplaytext(TRUE);
+			framebuffer_clear();
+#ifndef NO_HFS
+#ifndef CONFIG_IPOD
+			radio_setup();
+#endif
+			nand_setup();
+			fs_setup();
+			if(globalFtlHasBeenRestored) {
+				if(ftl_sync()) {
+					bufferPrintf("ftl synced successfully");
+				} else {
+					bufferPrintf("error syncing ftl");
+				}
+			}	
+			pmu_set_iboot_stage(0);
+			startScripting("linux"); //start script mode if there is a script file
+			boot_linux_from_files();
+#endif
+		} else if(tempOS==2) {
+			hideMenu = "1";
+		}
+	} else if(hideMenu && (strcmp(hideMenu, "1") == 0 || strcmp(hideMenu, "true") == 0)) {
 		bufferPrintf("Boot menu hidden. Use 'setenv opib-hide-menu false' and then 'saveenv' to unhide.\r\n");
 	} else {
-        framebuffer_setdisplaytext(FALSE);
-        isMultitouchLoaded = load_multitouch_images();
+        	framebuffer_setdisplaytext(FALSE);
+        	isMultitouchLoaded = load_multitouch_images();
 		const char* sMenuTimeout = nvram_getvar("opib-menu-timeout");
 		int menuTimeout = -1;
 		if(sMenuTimeout)
 			menuTimeout = parseNumber(sMenuTimeout);
-
-		menu_setup(menuTimeout);
+		menu_setup(menuTimeout, defaultOS);
 	}
 #endif
 #endif

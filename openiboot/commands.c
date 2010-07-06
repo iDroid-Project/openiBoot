@@ -413,6 +413,10 @@ void cmd_install(int argc, char** argv) {
 	bufferPrintf("Installing Images...\r\n");
 	images_install(&_start, (uint32_t)&OpenIBootEnd - (uint32_t)&_start);
 	bufferPrintf("Images installed\r\n");
+	bufferPrintf("Setting openiboot version...\r\n");
+	nvram_setvar("opib-version", "0.1.1");
+	nvram_save();
+	bufferPrintf("Openiboot installation complete.\r\n");
 }
 
 void cmd_uninstall(int argc, char** argv) {

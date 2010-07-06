@@ -25,7 +25,7 @@
 #include "scripting.h"
 #include "multitouch.h"
 
-int globalFtlHasBeenRestored = 0; /* global variable to tell wether a ftl_restore has been done*/
+int globalFtlHasBeenRestored; /* global variable to tell wether a ftl_restore has been done*/
 
 static uint32_t FBWidth;
 static uint32_t FBHeight;
@@ -145,7 +145,7 @@ static void toggle(int forward) {
 	drawSelectionBox();
 }
 
-int menu_setup(int timeout) {
+int menu_setup(int timeout, int defaultOS) {
 	FBWidth = currentWindow->framebuffer.width;
 	FBHeight = currentWindow->framebuffer.height;	
 
@@ -191,7 +191,19 @@ int menu_setup(int timeout) {
 	framebuffer_blend_image(imgAndroidOS, imgAndroidOSWidth, imgAndroidOSHeight, imgAndroidOS_unblended, imgAndroidOSWidth, imgAndroidOSHeight, 0, 0);
 	framebuffer_blend_image(imgAndroidOSSelected, imgAndroidOSWidth, imgAndroidOSHeight, imgAndroidOSSelected_unblended, imgAndroidOSWidth, imgAndroidOSHeight, 0, 0);
 
-	Selection = MenuSelectioniPhoneOS;
+	switch(defaultOS){
+		case 0:
+			Selection = MenuSelectioniPhoneOS;
+			break;
+		case 1:
+			Selection = MenuSelectionAndroidOS;
+			break;
+		case 2:
+			Selection = MenuSelectionConsole;
+			break;
+		default:
+			Selection = MenuSelectioniPhoneOS;
+	}
 
 	OtherFramebuffer = CurFramebuffer;
 	CurFramebuffer = (volatile uint32_t*) NextFramebuffer;
@@ -203,35 +215,60 @@ int menu_setup(int timeout) {
 	memcpy((void*)NextFramebuffer, (void*) CurFramebuffer, NextFramebuffer - (uint32_t)CurFramebuffer);
 
 	uint64_t startTime = timer_get_system_microtime();
+	int timeoutLeft = (timeout / 1000);
 	while(TRUE) {
-        if (isMultitouchLoaded) {
-            if(touch_watcher()) {
-                break;
-            }
-            else
-            {
-                startTime = timer_get_system_microtime();
-                udelay(100000);
-            }
-        }
+		char timeoutstr[4] = "";
+		if(timeout >= 0){
+			if(timeoutLeft == 9){
+				sprintf(timeoutstr, "  ");
+				framebuffer_setloc(49, 47);
+				framebuffer_print_force(timeoutstr);
+				framebuffer_setloc(0,0);
+			}
+			sprintf(timeoutstr, "%d", timeoutLeft);
+			if(has_elapsed(startTime, (uint64_t)(timeout - (timeoutLeft * 1000)) * 1000)){
+				timeoutLeft -= 1;
+			}
+			framebuffer_setloc(49, 47);
+			framebuffer_print_force(timeoutstr);
+			framebuffer_setloc(0,0);
+		} else if(timeout == -1) {
+			timeoutLeft = -1;
+			sprintf(timeoutstr, "  ");
+			framebuffer_setloc(49, 47);
+			framebuffer_print_force(timeoutstr);
+			framebuffer_setloc(0,0);
+		}
+        	if (isMultitouchLoaded) {
+            		if(touch_watcher()) {
+                		break;
+            		} else {
+	        	        startTime = timer_get_system_microtime();
+	        	        udelay(100000);
+  	        	}
+        	}
 		if(buttons_is_pushed(BUTTONS_HOLD)) {
 			toggle(TRUE);
 			startTime = timer_get_system_microtime();
+			timeout = -1;
 			udelay(200000);
 		}
 #ifndef CONFIG_IPOD
 		if(!buttons_is_pushed(BUTTONS_VOLUP)) {
 			toggle(FALSE);
 			startTime = timer_get_system_microtime();
+			timeout = -1;
 			udelay(200000);
 		}
 		if(!buttons_is_pushed(BUTTONS_VOLDOWN)) {
 			toggle(TRUE);
 			startTime = timer_get_system_microtime();
+			timeout = -1;
 			udelay(200000);
 		}
 #endif
 		if(buttons_is_pushed(BUTTONS_HOME)) {
+			timeout = -1;
 			break;
 		}
 		if(timeout > 0 && has_elapsed(startTime, (uint64_t)timeout * 1000)) {
