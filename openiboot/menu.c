@@ -232,12 +232,14 @@ int menu_setup(int timeout, int defaultOS) {
 			framebuffer_setloc(49, 47);
 			framebuffer_print_force(timeoutstr);
 			framebuffer_setloc(0,0);
+			drawSelectionBox();
 		} else if(timeout == -1) {
 			timeoutLeft = -1;
 			sprintf(timeoutstr, "  ");
 			framebuffer_setloc(49, 47);
 			framebuffer_print_force(timeoutstr);
 			framebuffer_setloc(0,0);
+			drawSelectionBox();
 		}
         	if (isMultitouchLoaded) {
             		if(touch_watcher()) {

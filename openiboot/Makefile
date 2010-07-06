@@ -36,7 +36,7 @@ LIBRARIES          += -lgcc -nostdlib
 INC                += -Iincludes
 CFLAGS             += -Wall -Werror
 LDFLAGS            += -Ttext=$(LOAD) --nostdlib
-VERSION             = "0.1"
+VERSION             = "0.1.1"
 COMMIT              = $(shell git log | head -n1 | cut -b8-14)
 BUILD               = "$(COMMIT)"
 CFLAGS             += -DOPENIBOOT_VERSION=$(VERSION) -DOPENIBOOT_VERSION_BUILD=$(BUILD)
