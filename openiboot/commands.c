@@ -30,10 +30,112 @@
 #include "piezo.h"
 #include "vibrator.h"
 
+void cmd_help(int argc, char** argv) {
+    OPIBCommand* curCommand = CommandList;
+    while(curCommand->name != NULL) {
+        bufferPrintf("%-20s%s\r\n", curCommand->name, curCommand->description);
+        curCommand++;
+    }
+}
+
+void cmd_install(int argc, char** argv) {
+    bufferPrintf("Installing Images...\r\n");
+    images_install(&_start, (uint32_t)&OpenIBootEnd - (uint32_t)&_start);
+    bufferPrintf("Images installed\r\n");
+    bufferPrintf("Setting openiboot version...\r\n");
+    nvram_setvar("opib-version", "0.1.1");
+    nvram_save();
+    bufferPrintf("Openiboot installation complete.\r\n");
+}
+
+void cmd_uninstall(int argc, char** argv) {
+    images_uninstall();
+}
+
 void cmd_reboot(int argc, char** argv) {
 	Reboot();
 }
 
+void cmd_nor_read(int argc, char** argv) {
+    if(argc < 4) {
+        bufferPrintf("Usage: %s <address> <offset> <len>\r\n", argv[0]);
+        return;
+    }
+    
+    uint32_t address = parseNumber(argv[1]);
+    uint32_t offset = parseNumber(argv[2]);
+    uint32_t len = parseNumber(argv[3]);
+    bufferPrintf("Reading 0x%x - 0x%x to 0x%x...\r\n", offset, offset + len, address);
+    nor_read((void*)address, offset, len);
+    bufferPrintf("Done.\r\n");
+}
+
+#ifdef CONFIG_IPHONE
+void cmd_multitouch_fw_install(int argc, char** argv)
+{
+    if(argc < 5)
+    {
+        bufferPrintf("%s <a-speed fw> <a-speed fw len> <main fw> <main fw len>\r\n", argv[0]);
+        return;
+    }
+    
+    uint8_t* aspeedFW = (uint8_t*) parseNumber(argv[1]);
+    uint32_t aspeedFWLen = parseNumber(argv[2]);
+    uint8_t* mainFW = (uint8_t*) parseNumber(argv[3]);
+    uint32_t mainFWLen = parseNumber(argv[4]);
+    
+    //get latest apple image
+    Image* image = images_get_last_apple_image();
+    uint32_t offset = image->offset+image->padded;
+    
+    //write aspeed first
+    if(offset >= 0xfc000 || (offset + aspeedFWLen + mainFWLen) >= 0xfc000) {
+        bufferPrintf("writing image of size %d at 0x%x would overflow NOR!\r\n", aspeedFWLen+mainFWLen, offset);
+        return;
+    }    
+    
+    bufferPrintf("Writing aspeed 0x%x - 0x%x to 0x%x...\r\n", aspeedFW, aspeedFW + aspeedFWLen, offset);
+    nor_write((void*)aspeedFW, offset, aspeedFWLen);
+    
+    offset += aspeedFWLen;
+    
+    bufferPrintf("Writing main 0x%x - 0x%x to 0x%x...\r\n", mainFW, mainFW + mainFWLen, offset);
+    nor_write((void*)mainFW, offset, mainFWLen);
+    
+    bufferPrintf("Done.\r\n");
+}
+#else
+void cmd_multitouch_fw_install(int argc, char** argv)
+{
+    if(argc < 3)
+    {
+        bufferPrintf("%s <constructed fw> <constructed fw len>\r\n", argv[0]);
+        return;
+    }
+    
+    uint8_t* fwData = (uint8_t*) parseNumber(argv[1]);
+    uint32_t fwLen = parseNumber(argv[2]);
+    
+    //get latest apple image
+    Image* image = images_get_last_apple_image();
+    if (image == NULL) {
+        bufferPrintf("cannot install firmware. last image position cannot be read\r\n");
+        return;
+    }
+    uint32_t offset = image->offset+image->padded;
+    
+    if(offset >= 0xfc000 || (offset + fwLen) >= 0xfc000) {
+        bufferPrintf("writing image of size %d at %x would overflow NOR!\r\n", fwLen, offset);
+        return;
+    }    
+    
+    bufferPrintf("Writing 0x%x - 0x%x to 0x%x...\r\n", fwData, fwData + fwLen, offset);
+    nor_write((void*)fwData, offset, fwLen);
+    bufferPrintf("Done.\r\n");
+}
+#endif
+
+#ifdef ENABLE_EXTRA
 void cmd_poweroff(int argc, char** argv) {
 	pmu_poweroff();
 }
@@ -137,20 +239,6 @@ void cmd_cat(int argc, char** argv) {
 	uint32_t address = parseNumber(argv[1]);
 	uint32_t len = parseNumber(argv[2]);
 	addToBuffer((char*) address, len);
-}
-
-void cmd_nor_read(int argc, char** argv) {
-	if(argc < 4) {
-		bufferPrintf("Usage: %s <address> <offset> <len>\r\n", argv[0]);
-		return;
-	}
-
-	uint32_t address = parseNumber(argv[1]);
-	uint32_t offset = parseNumber(argv[2]);
-	uint32_t len = parseNumber(argv[3]);
-	bufferPrintf("Reading 0x%x - 0x%x to 0x%x...\r\n", offset, offset + len, address);
-	nor_read((void*)address, offset, len);
-	bufferPrintf("Done.\r\n");
 }
 
 void cmd_nor_write(int argc, char** argv) {
@@ -407,20 +495,6 @@ void cmd_saveenv(int argc, char** argv) {
 	bufferPrintf("Saving environment, this may take awhile...\r\n");
 	nvram_save();
 	bufferPrintf("Environment saved\r\n");
-}
-
-void cmd_install(int argc, char** argv) {
-	bufferPrintf("Installing Images...\r\n");
-	images_install(&_start, (uint32_t)&OpenIBootEnd - (uint32_t)&_start);
-	bufferPrintf("Images installed\r\n");
-	bufferPrintf("Setting openiboot version...\r\n");
-	nvram_setvar("opib-version", "0.1.1");
-	nvram_save();
-	bufferPrintf("Openiboot installation complete.\r\n");
-}
-
-void cmd_uninstall(int argc, char** argv) {
-	images_uninstall();
 }
 
 void cmd_pmu_voltage(int argc, char** argv) {
@@ -958,71 +1032,6 @@ void cmd_multitouch_setup(int argc, char** argv)
 }
 #endif
 
-#ifdef CONFIG_IPHONE
-void cmd_multitouch_fw_install(int argc, char** argv)
-{
-    if(argc < 5)
-    {
-        bufferPrintf("%s <a-speed fw> <a-speed fw len> <main fw> <main fw len>\r\n", argv[0]);
-        return;
-    }
-    
-    uint8_t* aspeedFW = (uint8_t*) parseNumber(argv[1]);
-    uint32_t aspeedFWLen = parseNumber(argv[2]);
-    uint8_t* mainFW = (uint8_t*) parseNumber(argv[3]);
-    uint32_t mainFWLen = parseNumber(argv[4]);
-    
-    //get latest apple image
-    Image* image = images_get_last_apple_image();
-    uint32_t offset = image->offset+image->padded;
-    
-    //write aspeed first
-    if(offset >= 0xfc000 || (offset + aspeedFWLen + mainFWLen) >= 0xfc000) {
-        bufferPrintf("writing image of size %d at 0x%x would overflow NOR!\r\n", aspeedFWLen+mainFWLen, offset);
-        return;
-    }    
-    
-    bufferPrintf("Writing aspeed 0x%x - 0x%x to 0x%x...\r\n", aspeedFW, aspeedFW + aspeedFWLen, offset);
-    nor_write((void*)aspeedFW, offset, aspeedFWLen);
-    
-    offset += aspeedFWLen;
-    
-    bufferPrintf("Writing main 0x%x - 0x%x to 0x%x...\r\n", mainFW, mainFW + mainFWLen, offset);
-    nor_write((void*)mainFW, offset, mainFWLen);
-    
-    bufferPrintf("Done.\r\n");
-}
-#else
-void cmd_multitouch_fw_install(int argc, char** argv)
-{
-    if(argc < 3)
-    {
-        bufferPrintf("%s <constructed fw> <constructed fw len>\r\n", argv[0]);
-        return;
-    }
-    
-    uint8_t* fwData = (uint8_t*) parseNumber(argv[1]);
-    uint32_t fwLen = parseNumber(argv[2]);
-    
-    //get latest apple image
-    Image* image = images_get_last_apple_image();
-    if (image == NULL) {
-        bufferPrintf("cannot install firmware. last image position cannot be read\r\n");
-        return;
-    }
-    uint32_t offset = image->offset+image->padded;
-    
-    if(offset >= 0xfc000 || (offset + fwLen) >= 0xfc000) {
-        bufferPrintf("writing image of size %d at %x would overflow NOR!\r\n", fwLen, offset);
-        return;
-    }    
-    
-    bufferPrintf("Writing 0x%x - 0x%x to 0x%x...\r\n", fwData, fwData + fwLen, offset);
-    nor_write((void*)fwData, offset, fwLen);
-    bufferPrintf("Done.\r\n");
-}
-#endif
-
 void cmd_wlan_prog_helper(int argc, char** argv) {
 	if(argc < 3) {
 		bufferPrintf("Usage: %s <address> <len>\r\n", argv[0]);
@@ -1211,20 +1220,16 @@ void cmd_piezo_play(int argc, char** argv) {
 }
 
 #endif
-
-void cmd_help(int argc, char** argv) {
-	OPIBCommand* curCommand = CommandList;
-	while(curCommand->name != NULL) {
-		bufferPrintf("%-20s%s\r\n", curCommand->name, curCommand->description);
-		curCommand++;
-	}
-}
-
+#endif //enable extra
 OPIBCommand CommandList[] = 
 	{
 		{"install", "install openiboot onto the device", cmd_install},
 		{"uninstall", "uninstall openiboot from the device", cmd_uninstall},
 		{"reboot", "reboot the device", cmd_reboot},
+		{"multitouch_fw_install", "install the multitouch firmware", cmd_multitouch_fw_install},
+		{"nor_read", "read a block of NOR into RAM", cmd_nor_read},
+		{"help", "list the available commands", cmd_help},
+#ifdef ENABLE_EXTRA
 		{"poweroff", "power off the device", cmd_poweroff},
 		{"echo", "echo back a line", cmd_echo},
 		{"clear", "clears the screen", cmd_clear},
@@ -1257,7 +1262,6 @@ OPIBCommand CommandList[] =
 		{"fs_extract", "extract a file into memory", fs_cmd_extract},
 		{"fs_add", "store a file from memory", fs_cmd_add},
 #endif
-		{"nor_read", "read a block of NOR into RAM", cmd_nor_read},
 		{"nor_write", "write RAM into NOR", cmd_nor_write},
 		{"nor_erase", "erase a block of NOR", cmd_nor_erase},
 		{"iic_read", "read a IIC register", cmd_iic_read},
@@ -1318,8 +1322,7 @@ OPIBCommand CommandList[] =
 		{"buzz", "use the piezo buzzer", cmd_piezo_buzz},
 		{"play", "play notes using piezo bytes", cmd_piezo_play},
 #endif
-		{"multitouch_setup", "setup the multitouch chip", cmd_multitouch_setup},
-		{"multitouch_fw_install", "install the multitouch firmware", cmd_multitouch_fw_install},
-		{"help", "list the available commands", cmd_help},
+		{"multitouch_setup", "setup the multitouch chip", cmd_multitouch_setup},		
+#endif //enable extra
 		{NULL, NULL}
 	};
