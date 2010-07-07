@@ -16,6 +16,8 @@ typedef struct OpenIBootCmd {
 	uint32_t dataLen;
 }  __attribute__ ((__packed__)) OpenIBootCmd;
 
+static int getFile(char * commandBuffer);
+
 usb_dev_handle* device;
 pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 FILE* outputFile = NULL;
@@ -177,43 +179,21 @@ void* doInput(void* threadid) {
 			InterestWrite = 0;
 			free(fileBuffer);
 		} else if(commandBuffer[0] == '~') {
-			char* sizeLoc = strchr(&commandBuffer[1], ':');
-
-			if(sizeLoc == NULL) {
-				fprintf(stderr, "must specify length to read\n");
-				continue;
-			}
-			
-			*sizeLoc = '\0';
-			sizeLoc++;
-
-			int toRead;
-			sscanf(sizeLoc, "%i", &toRead);
-
-			char* atLoc = strchr(&commandBuffer[1], '@');
-
-			if(atLoc != NULL)
-				*atLoc = '\0';
-
-			FILE* file = fopen(&commandBuffer[1], "wb");
-			if(!file) {
-				fprintf(stderr, "cannot open file: %s\n", &commandBuffer[1]);
-				continue;
-			}
-
-			if(atLoc != NULL) {
-				sprintf(toSendBuffer, "getfile %s %d", atLoc + 1, toRead);
-			} else {
-				sprintf(toSendBuffer, "getfile 0x09000000 %d", toRead);
-			}
-
-			InterestWrite = 1;
-			pthread_mutex_lock(&lock);
-			sendBuffer(toSendBuffer, strlen(toSendBuffer));
-			outputFile = file;
-			readIntoOutput = toRead;
-			pthread_mutex_unlock(&lock);
-			InterestWrite = 0;
+            if (getFile(commandBuffer)==1)
+                continue;
+            
+        } else if (strcmp(commandBuffer,"backup_nor") == 0) {
+            sprintf(toSendBuffer, "nor_read 0x09000000 0x0 1048576");
+            
+            InterestWrite = 1;
+            commandBuffer[len] = '\n';
+            pthread_mutex_lock(&lock);
+            sendBuffer(toSendBuffer, strlen(toSendBuffer));
+            pthread_mutex_unlock(&lock);
+            InterestWrite = 0;
+            
+            sprintf(toSendBuffer,"~norbackup.dump:1048576"); 
+            getFile(toSendBuffer);
 		} else {
 			InterestWrite = 1;
 			commandBuffer[len] = '\n';
@@ -226,6 +206,50 @@ void* doInput(void* threadid) {
 		sched_yield();
 	}
 	pthread_exit(NULL);
+}
+
+int getFile(char * commandBuffer)
+{
+    char toSendBuffer[USB_BYTES_AT_A_TIME];
+    char* sizeLoc = strchr(&commandBuffer[1], ':');
+    
+    if(sizeLoc == NULL) {
+        fprintf(stderr, "must specify length to read\n");
+        return 1;
+    }
+    
+    *sizeLoc = '\0';
+    sizeLoc++;
+    
+    int toRead;
+    sscanf(sizeLoc, "%i", &toRead);
+    
+    char* atLoc = strchr(&commandBuffer[1], '@');
+    
+    if(atLoc != NULL)
+        *atLoc = '\0';
+    
+    FILE* file = fopen(&commandBuffer[1], "wb");
+    if(!file) {
+        fprintf(stderr, "cannot open file: %s\n", &commandBuffer[1]);
+        return 1;
+    }
+    
+    if(atLoc != NULL) {
+        sprintf(toSendBuffer, "getfile %s %d", atLoc + 1, toRead);
+    } else {
+        sprintf(toSendBuffer, "getfile 0x09000000 %d", toRead);
+    }
+    
+    InterestWrite = 1;
+    pthread_mutex_lock(&lock);
+    sendBuffer(toSendBuffer, strlen(toSendBuffer));
+    outputFile = file;
+    readIntoOutput = toRead;
+    pthread_mutex_unlock(&lock);
+    InterestWrite = 0;
+    
+    return 0;
 }
 
 int main(int argc, char* argv[]) {
@@ -281,7 +305,9 @@ done:
 	pthread_t inputThread;
 	pthread_t outputThread;
 
-	printf("Client connected: !<filename>[@<address>] to send a file, ~<filename>[@<address>]:<len> to receive a file\n");
+	printf("Client connected:\n");
+    printf("!<filename>[@<address>] to send a file, ~<filename>[@<address>]:<len> to receive a file\n");
+    printf("!backup_nor to backup your NOR\n");
 	printf("---------------------------------------------------------------------------------------------------------\n");
 
 	pthread_create(&outputThread, NULL, doOutput, NULL);
