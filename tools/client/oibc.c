@@ -307,7 +307,7 @@ done:
 
 	printf("Client connected:\n");
     printf("!<filename>[@<address>] to send a file, ~<filename>[@<address>]:<len> to receive a file\n");
-    printf("!backup_nor to backup your NOR\n");
+    printf("type backup_nor to make a backup of your NOR before installing\n");
 	printf("---------------------------------------------------------------------------------------------------------\n");
 
 	pthread_create(&outputThread, NULL, doOutput, NULL);
