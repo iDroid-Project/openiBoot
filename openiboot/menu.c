@@ -173,9 +173,6 @@ int menu_setup(int timeout, int defaultOS) {
 
 	framebuffer_draw_image(imgHeader, imgHeaderX, imgHeaderY, imgHeaderWidth, imgHeaderHeight);
 
-	framebuffer_draw_rect_hgradient(0, 42, 0, 360, FBWidth, (FBHeight - 12) - 360);
-	framebuffer_draw_rect_hgradient(0x22, 0x22, 0, FBHeight - 12, FBWidth, 12);
-
 	framebuffer_setloc(0, 47);
 	framebuffer_setcolors(COLOR_WHITE, 0x222222);
 	framebuffer_print_force(OPENIBOOT_VERSION_STR);
