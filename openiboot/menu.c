@@ -204,7 +204,7 @@ int menu_setup(int timeout, int defaultOS) {
 	int timeoutLeft = (timeout / 1000);
 	while(TRUE) {
 		char timeoutstr[4] = "";
-		if(timeout >= 0){
+		if(timeout > 0){
 			if(timeoutLeft == 9){
 				sprintf(timeoutstr, "  ");
 				framebuffer_setloc(49, 47);
