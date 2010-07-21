@@ -39,8 +39,13 @@ void cmd_help(int argc, char** argv) {
 }
 
 void cmd_install(int argc, char** argv) {
-    bufferPrintf("Starting Install/Upgrade...\r\n");
-    images_install(&_start, (uint32_t)&OpenIBootEnd - (uint32_t)&_start);  
+    bufferPrintf("Installing Images...\r\n");
+    images_install(&_start, (uint32_t)&OpenIBootEnd - (uint32_t)&_start);
+    bufferPrintf("Images installed\r\n");
+    bufferPrintf("Setting openiboot version...\r\n");
+    nvram_setvar("opib-version", "0.1.1");
+    nvram_save();
+    bufferPrintf("Openiboot installation complete.\r\n");
 }
 
 void cmd_uninstall(int argc, char** argv) {
@@ -65,35 +70,6 @@ void cmd_nor_read(int argc, char** argv) {
     bufferPrintf("Done.\r\n");
 }
 
-void cmd_nor_write(int argc, char** argv) {
-	if(argc < 4) {
-		bufferPrintf("Usage: %s <address> <offset> <len>\r\n", argv[0]);
-		return;
-	}
-
-	uint32_t address = parseNumber(argv[1]);
-	uint32_t offset = parseNumber(argv[2]);
-	uint32_t len = parseNumber(argv[3]);
-	bufferPrintf("Writing 0x%x - 0x%x to 0x%x...\r\n", address, address + len, offset);
-	nor_write((void*)address, offset, len);
-	bufferPrintf("Done.\r\n");
-}
-
-void cmd_nand_erase(int argc, char** argv)
-{
-	if(argc < 3) {
-		bufferPrintf("Usage: %s <bank> <block> -- You probably don't want to do this.\r\n", argv[0]);
-		return;
-	}
-
-	uint32_t bank = parseNumber(argv[1]);
-	uint32_t block = parseNumber(argv[2]);
-
-	bufferPrintf("Erasing bank %d, block %d...\r\n", bank, block);
-	bufferPrintf("nand_erase: %d\r\n", nand_erase(bank, block));
-}
-
-
 #ifdef CONFIG_IPHONE
 void cmd_multitouch_fw_install(int argc, char** argv)
 {
@@ -114,7 +90,7 @@ void cmd_multitouch_fw_install(int argc, char** argv)
     
     //write aspeed first
     if(offset >= 0xfc000 || (offset + aspeedFWLen + mainFWLen) >= 0xfc000) {
-        bufferPrintf("**ABORTED** Image of size %d at 0x%x would overflow NOR!\r\n", aspeedFWLen+mainFWLen, offset);
+        bufferPrintf("writing image of size %d at 0x%x would overflow NOR!\r\n", aspeedFWLen+mainFWLen, offset);
         return;
     }    
     
@@ -126,7 +102,7 @@ void cmd_multitouch_fw_install(int argc, char** argv)
     bufferPrintf("Writing main 0x%x - 0x%x to 0x%x...\r\n", mainFW, mainFW + mainFWLen, offset);
     nor_write((void*)mainFW, offset, mainFWLen);
     
-    bufferPrintf("Zephyr firmware installed.\r\n");
+    bufferPrintf("Done.\r\n");
 }
 #else
 void cmd_multitouch_fw_install(int argc, char** argv)
@@ -143,19 +119,19 @@ void cmd_multitouch_fw_install(int argc, char** argv)
     //get latest apple image
     Image* image = images_get_last_apple_image();
     if (image == NULL) {
-        bufferPrintf("**ABORTED** Last image position cannot be read\r\n");
+        bufferPrintf("cannot install firmware. last image position cannot be read\r\n");
         return;
     }
     uint32_t offset = image->offset+image->padded;
     
     if(offset >= 0xfc000 || (offset + fwLen) >= 0xfc000) {
-        bufferPrintf("**ABORTED** Image of size %d at %x would overflow NOR!\r\n", fwLen, offset);
+        bufferPrintf("writing image of size %d at %x would overflow NOR!\r\n", fwLen, offset);
         return;
     }    
     
     bufferPrintf("Writing 0x%x - 0x%x to 0x%x...\r\n", fwData, fwData + fwLen, offset);
     nor_write((void*)fwData, offset, fwLen);
-    bufferPrintf("Zephyr2 firmware installed.\r\n");
+    bufferPrintf("Done.\r\n");
 }
 #endif
 
@@ -263,6 +239,20 @@ void cmd_cat(int argc, char** argv) {
 	uint32_t address = parseNumber(argv[1]);
 	uint32_t len = parseNumber(argv[2]);
 	addToBuffer((char*) address, len);
+}
+
+void cmd_nor_write(int argc, char** argv) {
+	if(argc < 4) {
+		bufferPrintf("Usage: %s <address> <offset> <len>\r\n", argv[0]);
+		return;
+	}
+
+	uint32_t address = parseNumber(argv[1]);
+	uint32_t offset = parseNumber(argv[2]);
+	uint32_t len = parseNumber(argv[3]);
+	bufferPrintf("Writing 0x%x - 0x%x to 0x%x...\r\n", address, address + len, offset);
+	nor_write((void*)address, offset, len);
+	bufferPrintf("Done.\r\n");
 }
 
 void cmd_nor_erase(int argc, char** argv) {
@@ -590,6 +580,20 @@ void cmd_dma(int argc, char** argv) {
 	bufferPrintf("dma_request: %d\r\n", dma_request(DMA_MEMORY, 4, 8, DMA_MEMORY, 4, 8, &controller, &channel, NULL));
 	bufferPrintf("dma_perform(controller: %d, channel %d): %d\r\n", controller, channel, dma_perform(source, dest, size, FALSE, &controller, &channel));
 	bufferPrintf("dma_finish(controller: %d, channel %d): %d\r\n", controller, channel, dma_finish(controller, channel, 500));
+}
+
+void cmd_nand_erase(int argc, char** argv)
+{
+	if(argc < 3) {
+		bufferPrintf("Usage: %s <bank> <block> -- You probably don't want to do this.\r\n", argv[0]);
+		return;
+	}
+
+	uint32_t bank = parseNumber(argv[1]);
+	uint32_t block = parseNumber(argv[2]);
+
+	bufferPrintf("Erasing bank %d, block %d...\r\n", bank, block);
+	bufferPrintf("nand_erase: %d\r\n", nand_erase(bank, block));
 }
 
 void cmd_nand_read(int argc, char** argv) {
@@ -1223,9 +1227,7 @@ OPIBCommand CommandList[] =
 		{"uninstall", "uninstall openiboot from the device", cmd_uninstall},
 		{"reboot", "reboot the device", cmd_reboot},
 		{"multitouch_fw_install", "install the multitouch firmware", cmd_multitouch_fw_install},
-		{"nand_erase", "erase a NAND block", cmd_nand_erase},
 		{"nor_read", "read a block of NOR into RAM", cmd_nor_read},
-		{"nor_write", "write RAM into NOR", cmd_nor_write},
 		{"help", "list the available commands", cmd_help},
 #ifdef ENABLE_EXTRA
 		{"poweroff", "power off the device", cmd_poweroff},
@@ -1247,6 +1249,7 @@ OPIBCommand CommandList[] =
 		{"nand_read_spare", "read a page of NAND's spare into RAM", cmd_nand_read_spare},
 		{"nand_status", "read NAND status", cmd_nand_status},
 		{"nand_ecc", "hardware ECC a page", cmd_nand_ecc},
+		{"nand_erase", "erase a NAND block", cmd_nand_erase},
 		{"vfl_read", "read a page of VFL into RAM", cmd_vfl_read},
 		{"vfl_erase", "erase a block of VFL", cmd_vfl_erase},
 		{"ftl_read", "read a page of FTL into RAM", cmd_ftl_read},
@@ -1259,6 +1262,7 @@ OPIBCommand CommandList[] =
 		{"fs_extract", "extract a file into memory", fs_cmd_extract},
 		{"fs_add", "store a file from memory", fs_cmd_add},
 #endif
+		{"nor_write", "write RAM into NOR", cmd_nor_write},
 		{"nor_erase", "erase a block of NOR", cmd_nor_erase},
 		{"iic_read", "read a IIC register", cmd_iic_read},
 		{"iic_write", "write a IIC register", cmd_iic_write},
@@ -1318,7 +1322,7 @@ OPIBCommand CommandList[] =
 		{"buzz", "use the piezo buzzer", cmd_piezo_buzz},
 		{"play", "play notes using piezo bytes", cmd_piezo_play},
 #endif
-		{"multitouch_setup", "set up the multitouch chip", cmd_multitouch_setup},		
+		{"multitouch_setup", "setup the multitouch chip", cmd_multitouch_setup},		
 #endif //enable extra
 		{NULL, NULL}
 	};
