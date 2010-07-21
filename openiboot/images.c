@@ -4,6 +4,7 @@
 #include "util.h"
 #include "aes.h"
 #include "sha1.h"
+#include "nvram.h"
 
 static const uint32_t NOREnd = 0xFC000;
 
@@ -111,7 +112,7 @@ int images_setup() {
 		crc32(&checksum, curImg2, 0x64);
 
 		if(checksum != curImg2->header_checksum) {
-			bufferPrintf("mismatch checksum at %x\r\n", curOffset);
+			bufferPrintf("Checksum mismatch at %x\r\n", curOffset);
 			continue;
 		}
 
@@ -193,7 +194,7 @@ Image* images_get_last_apple_image()
 
 void images_append(void* data, int len) {
 	if(MaxOffset >= 0xfc000 || (MaxOffset + len) >= 0xfc000) {
-		bufferPrintf("writing image of size %d at %x would overflow NOR!\r\n", len, MaxOffset);
+		bufferPrintf("**ABORTED** Writing image of size %d at %x would overflow NOR!\r\n", len, MaxOffset);
 	} else {
 		nor_write(data, MaxOffset, len);
 
@@ -349,7 +350,7 @@ void images_write(Image* image, void* data, unsigned int length, int encrypt) {
 	}
 
 	if(image->next != NULL && (image->offset + sizeof(Img2Header) + padded) >= image->next->offset) {
-		bufferPrintf("requested length greater than space available in the hole\r\n");
+		bufferPrintf("**ABORTED** requested length greater than available space.\r\n");
 		return;
 	}
 
@@ -449,7 +450,6 @@ void images_install(void* newData, size_t newDataLen) {
 
 	Image* curImage = imageList;
     
-	bufferPrintf("Reading images...\r\n");
 	while(curImage != NULL) {
 		if(cur == NULL) {
 			list = cur = verify = malloc(sizeof(ImageDataList));
@@ -540,8 +540,6 @@ void images_install(void* newData, size_t newDataLen) {
 	images_release();
 	images_setup();
 
-	bufferPrintf("Refreshed image list\r\n");
-
     bufferPrintf("Setting openiBoot version...\r\n");
     nvram_setvar("opib-version", "0.1.1");
     nvram_save();
@@ -555,7 +553,6 @@ void images_uninstall() {
 
 	Image* curImage = imageList;
 
-	bufferPrintf("Reading images...\r\n");
 	while(curImage != NULL) {
 		if(curImage->type != fourcc("ibot")) {
 			if(cur == NULL) {
@@ -587,7 +584,7 @@ void images_uninstall() {
 	}
 
 	if(iboot == NULL) {
-		bufferPrintf("openiboot does not seem to be installed\n");
+		bufferPrintf("No openiBoot installation was found.\n");
 		while(list != NULL) {
 			cur = list;
 			list = list->next;
@@ -599,8 +596,6 @@ void images_uninstall() {
 
 	iboot->type = fourcc("ibot");
 	images_change_type(iboot->data, fourcc("ibot"));
-
-	bufferPrintf("Flashing...\r\n");
 
 	images_rewind();
 	while(list != NULL) {
@@ -618,12 +613,12 @@ void images_uninstall() {
 		free(cur);
 	}
 
-	bufferPrintf("Done with uninstallation!\r\n");
+	bufferPrintf("Images uninstalled.\r\n");
 
 	images_release();
 	images_setup();
 
-	bufferPrintf("Refreshed image list\r\n");
+	bufferPrintf("Uninstall complete.\r\n");
 }
 
 void images_change_type(const void* img3Data, uint32_t type) {
