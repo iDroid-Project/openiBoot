@@ -511,8 +511,7 @@ void images_install(void* newData, size_t newDataLen) {
     
     bufferPrintf("Total size to be written %d\r\n",totalBytes);
     if((ImagesStart + totalBytes) >= 0xfc000) {
-        bufferPrintf("writing for total images size= 0x%x,new ibot size=0x%x at 0x%x would overflow NOR!\r\n", totalBytes, newPaddedDataLen,ImagesStart);
-        bufferPrintf("cancel installation\r\n");
+        bufferPrintf("**ABORTED** Writing total image size: 0x%x, new ibot size: 0x%x at 0x%x would overflow NOR!\r\n", totalBytes, newPaddedDataLen,ImagesStart);
         images_rewind();
         images_release();
         images_setup();
@@ -536,13 +535,17 @@ void images_install(void* newData, size_t newDataLen) {
 		free(cur->data);
 		free(cur);
 	}
-	bufferPrintf("Free space after flashing %d\r\n",0xfc000-MaxOffset);
-	bufferPrintf("Done with installation!\r\n");
+	bufferPrintf("Flashing Complete, Free space after flashing %d\r\n",0xfc000-MaxOffset);
 
 	images_release();
 	images_setup();
 
 	bufferPrintf("Refreshed image list\r\n");
+
+    bufferPrintf("Setting openiBoot version...\r\n");
+    nvram_setvar("opib-version", "0.1.1");
+    nvram_save();
+    bufferPrintf("openiBoot installation complete.\r\n");
 }
 
 void images_uninstall() {
