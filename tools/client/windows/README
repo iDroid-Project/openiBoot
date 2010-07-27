@@ -1,0 +1,17 @@
+== What is iRecovery? ==
+
+iRecovery is a libusb-based commandline utility for Mac OS X and Linux (perhaps windows too but I'm not developing/testing under windows). It is able to talk to the iBoot/iBSS in Apple's iPhone/iPod touch via USB.
+
+It's completely open-source, the source-code is released under the terms of the GNU General Public License version 3.
+The full license text can be found in the LICENSE file.
+
+It currently connects to 0x1281 (iPhone, iPhone 3G, iPod touch, iPod touch 2G: Recovery Mode/iBSS), 0x1227 (iPhone, iPhone 3G, iPod touch: WTF Mode; iPod touch 2G: DFU Mode).
+
+== Usage ==
+
+	./iRecovery -s 						starts a shell.
+	./iRecovery -r 						usb reset.
+	./iRecovery -f <file>			uploads a file.
+	./iRecovery -c "command"	send a single command.
+	
+	
