@@ -540,8 +540,11 @@ void images_install(void* newData, size_t newDataLen) {
 	images_release();
 	images_setup();
 
-    bufferPrintf("Setting openiBoot version...\r\n");
+    bufferPrintf("Configuring openiBoot settings...\r\n");
     nvram_setvar("opib-version", "0.1.1");
+    nvram_setvar("opib-temp-os", "0");
+    nvram_setvar("opib-default-os", "0");
+    nvram_setvar("opib-menu-timeout", "10");
     nvram_save();
     bufferPrintf("openiBoot installation complete.\r\n");
 }
