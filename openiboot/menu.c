@@ -205,16 +205,9 @@ int menu_setup(int timeout, int defaultOS) {
 	while(TRUE) {
 		char timeoutstr[4] = "";
 		if(timeout > 0){
-			if(timeoutLeft == 9){
-				sprintf(timeoutstr, "  ");
-				framebuffer_setloc(49, 47);
-				framebuffer_print_force(timeoutstr);
-				framebuffer_setloc(0,0);
-			}
-			sprintf(timeoutstr, "%d", timeoutLeft);
-			if(has_elapsed(startTime, (uint64_t)(timeout - (timeoutLeft * 1000)) * 1000)){
-				timeoutLeft -= 1;
-			}
+			sprintf(timeoutstr, "%2d", timeoutLeft);
+			uint64_t checkTime = timer_get_system_microtime();
+			timeoutLeft = (timeout - ((checkTime - startTime)/1000))/1000;
 			framebuffer_setloc(49, 47);
 			framebuffer_print_force(timeoutstr);
 			framebuffer_setloc(0,0);
@@ -227,13 +220,8 @@ int menu_setup(int timeout, int defaultOS) {
 			framebuffer_setloc(0,0);
 			drawSelectionBox();
 		}
-        	if (isMultitouchLoaded) {
-            		if(touch_watcher()) {
-                		break;
-            		} else {
-	        	        startTime = timer_get_system_microtime();
-	        	        udelay(100000);
-  	        	}
+		if (isMultitouchLoaded && touch_watcher()) {
+			break;
         	}
 		if(buttons_is_pushed(BUTTONS_HOLD)) {
 			toggle(TRUE);
