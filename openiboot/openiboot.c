@@ -72,7 +72,7 @@ void OpenIBootStart() {
 
 	framebuffer_setdisplaytext(TRUE);
 	framebuffer_clear();
-
+	bufferPrintf("Loading openiBoot...");
 #ifndef SMALL
 #ifndef NO_STBIMAGE
 	int defaultOS = 0;
@@ -124,6 +124,7 @@ void OpenIBootStart() {
 	} else {
         	framebuffer_setdisplaytext(FALSE);
         	isMultitouchLoaded = load_multitouch_images();
+		framebuffer_clear();
 		const char* sMenuTimeout = nvram_getvar("opib-menu-timeout");
 		int menuTimeout = -1;
 		if(sMenuTimeout)
