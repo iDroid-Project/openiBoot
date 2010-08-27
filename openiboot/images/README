@@ -1,11 +1,24 @@
-openiboot image resources
+openiBoot Image Resources
 -------------------------
+Images used by openiboot are PNGs linked into the binary via bin2c. 
+The original graphicsi for openiBoot were provided by poorlad and 
+modified by galiaxy.
 
-Images currently used by openiboot are grayscale PNGs linked into the binary
-via bin2c. The graphics are provided by poorlad and modified by galiaxy.
+The current graphics were provided by nickp666 with the intention of giving
+openiBoot a pit more of a polished look.
 
 The Apple logo is a trademark of Apple Inc., and is included for proper
 identification of Apple software on the device, and is believed to be
 necessary to avoid tarnishing or misrepresenting its image. It does not imply
 any association with or endorsement by the company, and its inclusion is
-believed to be fair use under United States copyright law.
+believed to be fair use under copyright law.
+
+The Android logo & associated text representation is a trademark of Google Inc., 
+and is included for proper identification of Google software on the device, and
+is believed to be necessary to avoid tarnishing or misrepresenting its image.
+It does not imply any association with or endorsement by the company, and its 
+inclusion is believed to be fair use under copyright law.
+
+Example use of bin2c
+------------------------
+bin2c dataHeaderPNG < Header.png > HeaderPNG.h
