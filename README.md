@@ -65,63 +65,64 @@ This will take a while, your NOR will be backed up during this process, and can 
 
 3. Installing multitouch firmware
 --------------------------------------------------
-h3. A. iPhone 3G user:
+A. iPhone 3G user:
 
    1. Convert zephyr2.bin
  *  Go to "openiboot/mk8900image"
  *  From "openiboot/mk8900image" execute this command (please adjust path to your firmware location): 
 
-bq. mk8900image zephyr2.bin zephyr2.img3 template-3g.img3
+	>mk8900image zephyr2.bin zephyr2.img3 template-3g.img3
 
  *  Using your favorite hex editor, edit "zephyr2.img3"
-     change data at offset 0x10 to 0x13 from *__cebi__* to *__2ztm__* and save it.
+     change data at offset 0x10 to 0x13 from *cebi* to *2ztm* and save it.
 
    2. Installing zephyr2.img3
 *   Run oibc executable
 *   From oibc prompt send "zephyr2.img3" to your iphone (default address is 0x09000000):
 
-bq.     !zephyr2.img3
+	>!zephyr2.img3
 
-     It will return this: file received (XXXXX bytes).
+	It will return this: file received (XXXXX bytes).
+
 *   Install the firmware from the address and with the size the upload command returned:
 
-bq.     multitouch_fw_install 0x09000000 XXXXX
+    >multitouch_fw_install 0x09000000 XXXXX
 
 
-h3. B. iPhone 2G user:
+B. iPhone 2G user:
 
    1. Convert zephyr_aspeed.bin and zephyr_main.bin
 *   Go to "openiboot/mk8900image"
 *   From "openiboot/mk8900image" execute this command (please adjust path to your firmware location): 
 
-bq.     mk8900image zephyr_aspeed.bin to zephyr_aspeed.img3 template.img3
+	>mk8900image zephyr_aspeed.bin to zephyr_aspeed.img3 template.img3
 
 *   Using your favorite hex editor, edit "zephyr_aspeed.img3"
-     change data at offset 0x10 to 0x13 from *__cebi__* to *__aztm__* and save it.
+     change data at offset 0x10 to 0x13 from *cebi* to *aztm* and save it.
 
 *   From "openiboot/mk8900image" execute this command (please adjust path to your firmware location): 
 
-bq.     mk8900image zephyr_main.bin to zephyr_main.img3 template.img3
+	>mk8900image zephyr_main.bin to zephyr_main.img3 template.img3
 
 *   Using your favorite hex editor, edit "zephyr_main.img3"
-     change data at offset 0x10 to 0x13 from *__cebi__* to *__mztm__* and save it.
+     change data at offset 0x10 to 0x13 from *cebi* to *mztm* and save it.
 
    2. Installing firmwares
 *   Run oibc executable
 *   From oibc prompt send "zephyr_aspeed.img3" to your iphone (default address is 0x09000000):
 
-bq.     !zephyr_aspeed.img3
+	>!zephyr_aspeed.img3
 
      It will return this: file received (XXXXX bytes).
 *   From oibc prompt send "zephyr_main.img3" to your iphone, in this case we will copy to memory location next to zephyr_aspeed.img:
 
-bq.     !zephyr_main.img3@0x09000000+XXXXX
+	>!zephyr_main.img3@0x09000000+XXXXX
 
      It will return this: file received (YYYYY bytes).
 
 *   Install the firmware from the address and with the size the upload command returned:
 
-bq.     multitouch_fw_install 0x09000000 XXXXX 0x09000000+XXXX YYYYY
+	>multitouch_fw_install 0x09000000 XXXXX 0x09000000+XXXX YYYYY
 
 
 4. Reporting issues/requesting features
