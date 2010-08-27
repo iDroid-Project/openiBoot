@@ -51,6 +51,7 @@ int received_file_size;
 static int setup_devices();
 static int setup_openiboot();
 static int load_multitouch_images();
+static void reset_tempos();
 extern uint8_t _binary_payload_bin_start;
 extern uint8_t _binary_payload_bin_end;
 extern uint8_t _binary_payload_bin_size;
