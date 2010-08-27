@@ -52,6 +52,7 @@ static int setup_devices();
 static int setup_openiboot();
 static int load_multitouch_images();
 static void reset_tempos();
+
 extern uint8_t _binary_payload_bin_start;
 extern uint8_t _binary_payload_bin_end;
 extern uint8_t _binary_payload_bin_size;
@@ -91,7 +92,7 @@ void OpenIBootStart() {
 			case 0:
 				framebuffer_clear();
 				bufferPrintf("Loading iOS...");
-				reset_tempos();
+				reset_tempos(sDefaultOS);
 				Image* image = images_get(fourcc("ibox"));
 				if(image == NULL)
 					image = images_get(fourcc("ibot"));
@@ -103,7 +104,7 @@ void OpenIBootStart() {
 			case 1:
 				framebuffer_clear();
 				bufferPrintf("Loading iDroid...");
-				reset_tempos();
+				reset_tempos(sDefaultOS);
 #ifndef NO_HFS
 #ifndef CONFIG_IPOD
 				radio_setup();
@@ -126,7 +127,7 @@ void OpenIBootStart() {
 			case 2:
 				framebuffer_clear();
 				bufferPrintf("Loading Console...");
-				reset_tempos();
+				reset_tempos(sDefaultOS);
 				hideMenu = "1";
 				break;
 		}
@@ -510,7 +511,7 @@ static int load_multitouch_images()
     return 1;
 }
 
-static void reset_tempos()
+static void reset_tempos(char* sDefaultOS)
 {
 	framebuffer_setdisplaytext(FALSE);
 	nvram_setvar("opib-temp-os",sDefaultOS);
