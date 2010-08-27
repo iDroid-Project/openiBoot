@@ -28,6 +28,8 @@ Wait, for a long time, as the toolchain is compiled.
 To run openiboot from the recovery mode (a.k.a iboot), you’ll need to create an img3 image.
 You will need a system capable of running x86 Linux binaries (Build requires libusb, libreadline and pthread). If compiling on 64-bit linux, you may need libc6-dev-i386 and type export ARCH=x86_64 before you proceed with the next steps, All community builds are run on an Ubuntu 10.04 Lucid Lynx system.
 
+Change into the openiboot subfolder
+
 **For iPod touch, run:**
 `PLATFORM=IPOD make openiboot.img3`
 
@@ -38,21 +40,23 @@ You will need a system capable of running x86 Linux binaries (Build requires lib
 `PLATFORM=3G make openiboot.img3`
 
 **Compile all in tools/client/:**
-`cd tools/client && make all && cd ..`
+`cd tools/client/linux && make all && cd ..`
+
+- The linux client will also build on OSX with the correct libusb version installed.
 
 2. Installing
 ---------------------------------------------------
-**Copy openiboot.img3 into tools/client**
+**Copy openiboot.img3 into tools/client/linux**
 
 **Put your phone into recovery mode**: hold home whilst powering on until you see the iTunes logo.
 
 **Run:** 
-`sudo tools/client/loadibec openiboot.img3`
+`sudo tools/client/linux/loadibec openiboot.img3`
 
 You should now see openiBoot on your phone, use the volume buttons to scroll to the console icon, then press home
 
 **Run the client:**
-sudo client/oibc
+sudo client/linux/oibc
 
 *NOTE: If you are on a mac, you will most likely need to do this as soon as you have selected the console - Linux does not manifest this issue.*
 
