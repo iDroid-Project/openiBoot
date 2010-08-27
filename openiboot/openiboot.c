@@ -85,40 +85,51 @@ void OpenIBootStart() {
 	if(sTempOS)
 		tempOS = parseNumber(sTempOS);
 	if(tempOS!=defaultOS) {
-		framebuffer_setdisplaytext(FALSE);
-		nvram_setvar("opib-temp-os",sDefaultOS);
-		nvram_save();
-		framebuffer_setdisplaytext(TRUE);
-		if(tempOS==0) {
-			Image* image = images_get(fourcc("ibox"));
-			if(image == NULL)
-				image = images_get(fourcc("ibot"));
-			void* imageData;
-			images_read(image, &imageData);
-			chainload((uint32_t)imageData);
-		} else if(tempOS==1) {
-			framebuffer_setdisplaytext(TRUE);
-			framebuffer_clear();
+				
+		switch (tempOS) {
+			case 0:
+				framebuffer_clear();
+				bufferPrintf("Loading iOS...");
+				reset_tempos();
+				Image* image = images_get(fourcc("ibox"));
+				if(image == NULL)
+					image = images_get(fourcc("ibot"));
+				void* imageData;
+				images_read(image, &imageData);
+				chainload((uint32_t)imageData);
+				break;
+			
+			case 1:
+				framebuffer_clear();
+				bufferPrintf("Loading iDroid...");
+				reset_tempos();
 #ifndef NO_HFS
 #ifndef CONFIG_IPOD
-			radio_setup();
+				radio_setup();
 #endif
-			nand_setup();
-			fs_setup();
-			if(globalFtlHasBeenRestored) {
-				if(ftl_sync()) {
-					bufferPrintf("ftl synced successfully");
-				} else {
-					bufferPrintf("error syncing ftl");
-				}
-			}	
-			pmu_set_iboot_stage(0);
-			startScripting("linux"); //start script mode if there is a script file
-			boot_linux_from_files();
+				nand_setup();
+				fs_setup();
+				if(globalFtlHasBeenRestored) {
+					if(ftl_sync()) {
+						bufferPrintf("ftl synced successfully");
+					} else {
+						bufferPrintf("error syncing ftl");
+					}
+				}	
+				pmu_set_iboot_stage(0);
+				startScripting("linux"); //start script mode if there is a script file
+				boot_linux_from_files();
 #endif
-		} else if(tempOS==2) {
-			hideMenu = "1";
+				break;
+				
+			case 2:
+				framebuffer_clear();
+				bufferPrintf("Loading Console...");
+				reset_tempos();
+				hideMenu = "1";
+				break;
 		}
+		
 	} else if(hideMenu && (strcmp(hideMenu, "1") == 0 || strcmp(hideMenu, "true") == 0)) {
 		bufferPrintf("Boot menu hidden. Use 'setenv opib-hide-menu false' and then 'saveenv' to unhide.\r\n");
 	} else {
@@ -496,4 +507,12 @@ static int load_multitouch_images()
         free(imageData);
     #endif
     return 1;
+}
+
+static void reset_tempos()
+{
+	framebuffer_setdisplaytext(FALSE);
+	nvram_setvar("opib-temp-os",sDefaultOS);
+	nvram_save();
+	framebuffer_setdisplaytext(TRUE);
 }
