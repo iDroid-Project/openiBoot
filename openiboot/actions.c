@@ -421,7 +421,7 @@ void boot_linux_from_files()
 
 	bufferPrintf("Loading kernel...\r\n");
 
-	size = fs_extract(1, "/zImage", (void*) 0x09000000);
+	size = fs_extract(1, "/idroid/zImage", (void*) 0x09000000);
 	if(size < 0)
 	{
 		bufferPrintf("Cannot find kernel.\r\n");
@@ -430,18 +430,18 @@ void boot_linux_from_files()
 
 	set_kernel((void*) 0x09000000, size);
 
-	bufferPrintf("Loading initrd...\r\n");
+	bufferPrintf("Loading android image...\r\n");
 
-	size = fs_extract(1, "/android.img.gz", (void*) 0x09000000);
+	size = fs_extract(1, "/idroid/android.img.gz", (void*) 0x09000000);
 	if(size < 0)
 	{
-		bufferPrintf("Cannot find ramdisk.\r\n");
+		bufferPrintf("Cannot find android.img.gz.\r\n");
 		return;
 	}
 
 	set_ramdisk((void*) 0x09000000, size);
 
-	bufferPrintf("Booting Linux...\r\n");
+	bufferPrintf("Booting...\r\n");
 
 	boot_linux("console=tty root=/dev/ram0 init=/init rw");
 }
