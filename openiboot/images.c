@@ -541,7 +541,7 @@ void images_install(void* newData, size_t newDataLen) {
 	images_setup();
 
     bufferPrintf("Configuring openiBoot settings...\r\n");
-    nvram_setvar("opib-version", "0.1.1");
+    nvram_setvar("opib-version", "0.1.2");
     
 	if(!nvram_getvar("opib-temp-os")) {
     	nvram_setvar("opib-temp-os", "0");
