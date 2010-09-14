@@ -716,8 +716,8 @@ int multitouch_ispoint_inside_region(uint16_t x, uint16_t y, int w, int h)
     fingerX = (fingerData->x * framebuffer_width()) / SensorWidth - 2;
     fingerY = ((SensorHeight - fingerData->y) * framebuffer_height()) / SensorHeight - 2;
     
-    if (fingerX>=x && fingerX<= (x + w)  && fingerY>=y && fingerY<= (y + w) ) {
-        return TRUE;
+    if (fingerX>=x && fingerX<= (x + w)  && fingerY>=y && fingerY<= (y + h) ) {     
+	return TRUE;
     }
     
     return FALSE;
