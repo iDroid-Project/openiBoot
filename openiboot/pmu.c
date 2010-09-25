@@ -13,7 +13,7 @@ int pmu_setup() {
 	return 0;
 }
 
-static void pmu_write_oocshdwn(int data) {
+void pmu_write_oocshdwn(int data) {
 	uint8_t registers[1];
 	uint8_t discardData[5];
 	uint8_t poweroffData[] = {7, 0xAA, 0xFC, 0x0, 0x0, 0x0};
@@ -28,7 +28,13 @@ static void pmu_write_oocshdwn(int data) {
 
 void pmu_poweroff() {
 	lcd_shutdown();
-	pmu_write_oocshdwn(PMU_OOCSHDWN_GOSTBY);
+
+	//pmu_write_oocshdwn(PMU_OOCSHDWN_GOSTBY);
+	
+	pmu_write_reg(0x0d, 0x1, FALSE);		// Only ONKEY can wake us up.
+	pmu_write_reg(0x0f, 0x7, FALSE);		// Set the debounce for ONKEY to 2s.
+	pmu_write_reg(0x76, 0x80, FALSE);		// I have no idea what this does, it's from the iOS kernel.
+	pmu_write_reg(PMU_OOCSHDWN, 3, FALSE);
 }
 
 void pmu_set_iboot_stage(uint8_t stage) {
