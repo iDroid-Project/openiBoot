@@ -159,7 +159,6 @@ void cmd_multitouch_fw_install(int argc, char** argv)
 }
 #endif
 
-#ifdef ENABLE_EXTRA
 void cmd_poweroff(int argc, char** argv) {
 	pmu_poweroff();
 }
@@ -1216,7 +1215,6 @@ void cmd_piezo_play(int argc, char** argv) {
 }
 
 #endif
-#endif //enable extra
 OPIBCommand CommandList[] = 
 	{
 		{"install", "install openiboot onto the device", cmd_install},
@@ -1227,7 +1225,6 @@ OPIBCommand CommandList[] =
 		{"nor_read", "read a block of NOR into RAM", cmd_nor_read},
 		{"nor_write", "write RAM into NOR", cmd_nor_write},
 		{"help", "list the available commands", cmd_help},
-#ifdef ENABLE_EXTRA
 		{"poweroff", "power off the device", cmd_poweroff},
 		{"echo", "echo back a line", cmd_echo},
 		{"clear", "clears the screen", cmd_clear},
@@ -1319,6 +1316,5 @@ OPIBCommand CommandList[] =
 		{"play", "play notes using piezo bytes", cmd_piezo_play},
 #endif
 		{"multitouch_setup", "set up the multitouch chip", cmd_multitouch_setup},		
-#endif //enable extra
 		{NULL, NULL}
 	};

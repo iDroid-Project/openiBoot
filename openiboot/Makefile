@@ -62,10 +62,6 @@ else
 	endif
 endif
 
-ifeq ($(ENABLE_EXTRA),YES)
-	CFLAGS	      += -DENABLE_EXTRA
-endif
-
 ifeq ($(DEBUG),YES)
 	CFLAGS        += -DDEBUG
 endif
