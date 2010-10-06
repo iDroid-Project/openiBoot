@@ -29,6 +29,8 @@
 #include "als.h"
 #include "piezo.h"
 #include "vibrator.h"
+#include "uart.h"
+#include "hardware/radio.h"
 
 void cmd_help(int argc, char** argv) {
     OPIBCommand* curCommand = CommandList;
@@ -39,12 +41,55 @@ void cmd_help(int argc, char** argv) {
 }
 
 void cmd_install(int argc, char** argv) {
-    bufferPrintf("Starting Install/Upgrade...\r\n");
-    images_install(&_start, (uint32_t)&OpenIBootEnd - (uint32_t)&_start);  
+	if((argc > 2 && argc < 4) || argc > 4)
+	{
+		bufferPrintf("Usage: %s <address> <len>\n", argv[0]);
+		return;
+	}
+
+	if(argc == 4)
+	{
+		uint32_t offset = parseNumber(argv[1]);
+		uint32_t len = parseNumber(argv[2]);
+		bufferPrintf("Installing OIB from 0x%08x:%d.\n", offset, len);
+		images_install((void*)offset, len, fourcc("ibot"), fourcc("ibox"));
+	}
+	else
+	{
+		bufferPrintf("Starting Install/Upgrade...\r\n");
+		images_install(&_start, (uint32_t)&OpenIBootEnd - (uint32_t)&_start, fourcc("ibot"), fourcc("ibox"));  
+	}
 }
 
 void cmd_uninstall(int argc, char** argv) {
-    images_uninstall();
+    images_uninstall(fourcc("ibot"), fourcc("ibox"));
+}
+
+void cmd_images_install(int argc, char** argv) {
+	if(argc < 4) {
+		bufferPrintf("Usage: %s <tag> <address> <len>\r\n", argv[0]);
+		return;
+	}
+
+	uint32_t tag = fourcc(argv[1]);
+	uint32_t address = parseNumber(argv[2]);
+	uint32_t len = parseNumber(argv[3]);
+
+	bufferPrintf("Installing image %s to 0x%08x:%d.\n", argv[1], address, len);
+	images_install((void*)address, len, tag, tag);
+	bufferPrintf("Done.\r\n");
+}
+
+void cmd_images_uninstall(int argc, char** argv) {
+	if(argc < 4) {
+		bufferPrintf("Usage: %s <tag>\r\n", argv[0]);
+		return;
+	}
+
+	uint32_t tag = fourcc(argv[1]);
+	bufferPrintf("Uninstalling image %s.\n", argv[1]);
+	images_uninstall(tag, tag);
+	bufferPrintf("Done.\r\n");
 }
 
 void cmd_reboot(int argc, char** argv) {
@@ -1221,6 +1266,8 @@ OPIBCommand CommandList[] =
 	{
 		{"install", "install openiboot onto the device", cmd_install},
 		{"uninstall", "uninstall openiboot from the device", cmd_uninstall},
+		{"images_install", "install a nor image", cmd_images_install},
+		{"images_uninstall", "uninstall a nor image", cmd_images_uninstall},
 		{"reboot", "reboot the device", cmd_reboot},
 		{"multitouch_fw_install", "install the multitouch firmware", cmd_multitouch_fw_install},
 		{"nand_erase", "erase a NAND block", cmd_nand_erase},

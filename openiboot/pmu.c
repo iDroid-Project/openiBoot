@@ -1,6 +1,7 @@
 #include "openiboot.h"
 #include "pmu.h"
 #include "hardware/pmu.h"
+#include "hardware/radio.h"
 #include "i2c.h"
 #include "timer.h"
 #include "gpio.h"
@@ -30,6 +31,7 @@ void pmu_poweroff() {
 	lcd_shutdown();
 
 	//pmu_write_oocshdwn(PMU_OOCSHDWN_GOSTBY);
+	pmu_gpio(RADIO_GPIO_BB_ON, TRUE, OFF);
 	
 	pmu_write_reg(0x0d, 0x1, FALSE);		// Only ONKEY can wake us up.
 	pmu_write_reg(0x0f, 0x7, FALSE);		// Set the debounce for ONKEY to 2s.

@@ -259,7 +259,7 @@ char** tokenize(char* commandline, int* argc) {
 	char** arguments;
 	int curArg = 1;
 	int inQuote = FALSE;
-	int inEscape = TRUE;
+	int inEscape = FALSE;
 
 	pos = commandline;
 	arguments = (char**) malloc(sizeof(char*) * 10);
@@ -271,7 +271,24 @@ char** tokenize(char* commandline, int* argc) {
 		}
 
 		if(inEscape)
+		{
+			switch(*pos)
+			{
+				case 'n':
+					*pos = '\n';
+					break;
+
+				case 'r':
+					*pos = '\r';
+					break;
+
+				case '0':
+					*pos = 0;
+					break;
+			}
+
 			inEscape = FALSE;
+		}
 		else if(*commandline == '\"') {
 		       	if(inQuote) {
 				inQuote = FALSE;

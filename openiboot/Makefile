@@ -66,6 +66,10 @@ ifeq ($(ENABLE_EXTRA),YES)
 	CFLAGS	      += -DENABLE_EXTRA
 endif
 
+ifeq ($(INSTALLER),YES)
+	CFLAGS		  += -DOPENIBOOT_INSTALLER
+endif
+
 ifeq ($(DEBUG),YES)
 	CFLAGS        += -DDEBUG
 endif

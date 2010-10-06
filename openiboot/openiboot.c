@@ -44,14 +44,61 @@
 #include "als.h"
 #include "multitouch.h"
 
+#ifdef OPENIBOOT_INSTALLER
+#include "images/installerLogoPNG.h"
+#endif
+
 int globalFtlHasBeenRestored = 0; 
 
 int received_file_size;
 
 static int setup_devices();
 static int setup_openiboot();
-static int load_multitouch_images();
-static void reset_tempos();
+
+#ifndef OPENIBOOT_INSTALLER
+static int load_multitouch_images()
+{
+    #ifdef CONFIG_IPHONE
+        Image* image = images_get(fourcc("mtza"));
+        if (image == NULL) {
+            return 0;
+        }
+        void* aspeedData;
+        size_t aspeedLength = images_read(image, &aspeedData);
+        
+        image = images_get(fourcc("mtzm"));
+        if(image == NULL) {
+            return 0;
+        }
+        
+        void* mainData;
+        size_t mainLength = images_read(image, &mainData);
+        
+        multitouch_setup(aspeedData, aspeedLength, mainData,mainLength);
+        free(aspeedData);
+        free(mainData);
+    #else
+        Image* image = images_get(fourcc("mtz2"));
+        if(image == NULL) {
+            return 0;
+        }
+        void* imageData;
+        size_t length = images_read(image, &imageData);
+        
+        multitouch_setup(imageData, length);
+        free(imageData);
+    #endif
+    return 1;
+}
+
+static void reset_tempos(char* sDefaultOS)
+{
+	framebuffer_setdisplaytext(FALSE);
+	nvram_setvar("opib-temp-os",sDefaultOS);
+	nvram_save();
+	framebuffer_setdisplaytext(TRUE);
+}
+#endif //OPENIBOOT_INSTALLER
 
 extern uint8_t _binary_payload_bin_start;
 extern uint8_t _binary_payload_bin_end;
@@ -72,6 +119,28 @@ void OpenIBootStart() {
 	setup_openiboot();
 	pmu_charge_settings(TRUE, FALSE, FALSE);
 
+#ifdef OPENIBOOT_INSTALLER
+	framebuffer_setdisplaytext(FALSE);
+	framebuffer_clear();
+
+	{
+		int w, h;
+		uint32_t *bgImg = framebuffer_load_image(datainstallerLogoPNG, sizeof(datainstallerLogoPNG), &w, &h, TRUE);
+		if(bgImg)
+		{
+			int x = (framebuffer_width() - w)/2;
+			int y = (framebuffer_height() - h)/2;
+
+			framebuffer_draw_image(bgImg, x, y, w, h);
+		}
+		else
+		{
+			framebuffer_setdisplaytext(TRUE);
+			bufferPrintf("Failed to load image...\n");
+		}
+	}
+
+#else
 	framebuffer_setdisplaytext(TRUE);
 	framebuffer_clear();
 	bufferPrintf("Loading openiBoot...");
@@ -146,6 +215,7 @@ void OpenIBootStart() {
 	}
 #endif
 #endif
+#endif //OPENIBOOT_INSTALLER
 
 	startUSB();
 
@@ -474,47 +544,4 @@ static int setup_openiboot() {
 	audiohw_init();
     isMultitouchLoaded = 0;
 	return 0;
-}
-
-static int load_multitouch_images()
-{
-    #ifdef CONFIG_IPHONE
-        Image* image = images_get(fourcc("mtza"));
-        if (image == NULL) {
-            return 0;
-        }
-        void* aspeedData;
-        size_t aspeedLength = images_read(image, &aspeedData);
-        
-        image = images_get(fourcc("mtzm"));
-        if(image == NULL) {
-            return 0;
-        }
-        
-        void* mainData;
-        size_t mainLength = images_read(image, &mainData);
-        
-        multitouch_setup(aspeedData, aspeedLength, mainData,mainLength);
-        free(aspeedData);
-        free(mainData);
-    #else
-        Image* image = images_get(fourcc("mtz2"));
-        if(image == NULL) {
-            return 0;
-        }
-        void* imageData;
-        size_t length = images_read(image, &imageData);
-        
-        multitouch_setup(imageData, length);
-        free(imageData);
-    #endif
-    return 1;
-}
-
-static void reset_tempos(char* sDefaultOS)
-{
-	framebuffer_setdisplaytext(FALSE);
-	nvram_setvar("opib-temp-os",sDefaultOS);
-	nvram_save();
-	framebuffer_setdisplaytext(TRUE);
 }
