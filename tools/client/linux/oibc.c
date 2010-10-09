@@ -290,7 +290,7 @@ void* doInput(void* threadid) {
 			sendBuffer(fileBuffer, len);
 			free(fileBuffer);
 		} else if(commandBuffer[0] == '~') {
-            if (getFile(commandBuffer)==1)
+            if (getFile(commandBuffer+1)==1)
                 continue;
             
         } else if (strcmp(commandBuffer,"install") == 0) {
@@ -300,12 +300,13 @@ void* doInput(void* threadid) {
 			commandBuffer[len] = '\n';
 			sendBuffer(toSendBuffer, strlen(toSendBuffer));
 
-			sprintf(toSendBuffer,"~norbackup.dump:1048576"); 
+			sprintf(toSendBuffer,"norbackup.dump:1048576"); 
 			getFile(toSendBuffer);
 			oibc_log("Fetching NOR backup.\n");
 			commandBuffer[len] = '\n';
 			oibc_log("NOR backed up, starting installation\n");
-			sendBuffer("install", len + 1);
+			sprintf(toSendBuffer,"install");
+			sendBuffer(toSendBuffer, strlen(toSendBuffer));
 		} else {
 			commandBuffer[len] = '\n';
 			sendBuffer(commandBuffer, len + 1);
@@ -320,7 +321,7 @@ void* doInput(void* threadid) {
 int getFile(char * commandBuffer)
 {
     char toSendBuffer[USB_BYTES_AT_A_TIME];
-    char* sizeLoc = strchr(&commandBuffer[1], ':');
+    char* sizeLoc = strchr(commandBuffer, ':');
     
     if(sizeLoc == NULL) {
         oibc_log("must specify length to read\n");
@@ -333,14 +334,14 @@ int getFile(char * commandBuffer)
     int toRead;
     sscanf(sizeLoc, "%i", &toRead);
     
-    char* atLoc = strchr(&commandBuffer[1], '@');
+    char* atLoc = strchr(commandBuffer, '@');
     
     if(atLoc != NULL)
         *atLoc = '\0';
     
-    FILE* file = fopen(&commandBuffer[1], "wb");
+    FILE* file = fopen(commandBuffer, "wb");
     if(!file) {
-        oibc_log("cannot open file: %s\n", &commandBuffer[1]);
+        oibc_log("cannot open file: %s\n", commandBuffer);
         return 1;
     }
     
