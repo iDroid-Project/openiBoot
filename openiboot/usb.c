@@ -9,17 +9,29 @@
 #include "interrupt.h"
 #include "openiboot-asmhelpers.h"
 
+typedef struct _USBMessageQueue
+{
+	struct _USBMessageQueue *next;
+	
+	USBDirection dir;
+	USBTransferType type;
+	char *data;
+	size_t dataLen;
+} USBMessageQueue;
+
 static void change_state(USBState new_state);
 
 static Boolean usb_inited;
 
-static USBState usb_state;
+static USBState gUsbState;
 static uint8_t usb_speed;
 static uint8_t usb_max_packet_size;
 static USBDirection endpoint_directions[USB_NUM_ENDPOINTS];
 static USBEndpointBidirHandlerInfo endpoint_handlers[USB_NUM_ENDPOINTS];
 static uint32_t inInterruptStatus[USB_NUM_ENDPOINTS];
 static uint32_t outInterruptStatus[USB_NUM_ENDPOINTS];
+static USBMessageQueue *usb_message_queue[USB_NUM_ENDPOINTS];
+static int usb_ep_queue_last = 0;
 
 USBEPRegisters* InEPRegs;
 USBEPRegisters* OutEPRegs;
@@ -83,6 +95,11 @@ static int8_t ringBufferEnqueue(RingBuffer* buffer, uint8_t value);
 
 static void usbTxRx(int endpoint, USBDirection direction, USBTransferType transferType, void* buffer, int bufferLen);
 
+USBState usb_state()
+{
+	return gUsbState;
+}
+
 int usb_setup() {
 	int i;
 
@@ -115,6 +132,7 @@ int usb_setup() {
 		bufferPrintf("EP %d: %d\r\n", i, endpoint_directions[i]);
 	}
 
+	memset(usb_message_queue, 0, sizeof(usb_message_queue));
 	memset(endpoint_handlers, 0, sizeof(endpoint_handlers));
 
 	// Set up the hardware
@@ -216,7 +234,8 @@ int usb_start(USBEnumerateHandler hEnumerate, USBStartHandler hStart) {
 			| USB_EPINT_TimeOUT | USB_EPINT_AHBErr | USB_EPINT_EPDisbld | USB_EPINT_XferCompl;
 		OutEPRegs[i].interrupt = USB_EPINT_OUTTknEPDis
 			| USB_EPINT_SetUp | USB_EPINT_AHBErr | USB_EPINT_EPDisbld | USB_EPINT_XferCompl;
-		
+	
+		InEPRegs[i].control = (InEPRegs[i].control & ~(DCTL_NEXTEP_MASK << DCTL_NEXTEP_SHIFT));
 	}
 
 	SET_REG(USB + GINTMSK, GINTMSK_OTG | GINTMSK_SUSPEND | GINTMSK_RESET | GINTMSK_INEP | GINTMSK_OEP | GINTMSK_DISCONNECT);
@@ -239,11 +258,6 @@ int usb_start(USBEnumerateHandler hEnumerate, USBStartHandler hStart) {
 	interrupt_enable(USB_INTERRUPT);
 
 	return 0;
-}
-
-static void receiveControl(void* buffer, int bufferLen) {
-	CleanAndInvalidateCPUDataCache();
-	receive(USB_CONTROLEP, USBControl, buffer, USB_MAX_PACKETSIZE, bufferLen);
 }
 
 static void usbTxRx(int endpoint, USBDirection direction, USBTransferType transferType, void* buffer, int bufferLen) {
@@ -275,7 +289,7 @@ static void usbTxRx(int endpoint, USBDirection direction, USBTransferType transf
 	if(endpoint == USB_CONTROLEP) {
 		// we'll only send one packet at a time on CONTROLEP
 		InEPRegs[endpoint].transferSize = ((1 & DEPTSIZ_PKTCNT_MASK) << DEPTSIZ_PKTCNT_SHIFT) | (bufferLen & DEPTSIZ0_XFERSIZ_MASK);
-		InEPRegs[endpoint].control = USB_EPCON_CLEARNAK;
+		InEPRegs[endpoint].control |= USB_EPCON_CLEARNAK;
 		return;
 	}
 
@@ -288,7 +302,7 @@ static void usbTxRx(int endpoint, USBDirection direction, USBTransferType transf
 		| (bufferLen & DEPTSIZ_XFERSIZ_MASK) | ((USB_MULTICOUNT & DIEPTSIZ_MC_MASK) << DIEPTSIZ_MC_SHIFT);
 
 
-	InEPRegs[endpoint].control = USB_EPCON_CLEARNAK | USB_EPCON_ACTIVE | ((transferType & USB_EPCON_TYPE_MASK) << USB_EPCON_TYPE_SHIFT) | (packetLength & USB_EPCON_MPS_MASK);
+	InEPRegs[endpoint].control |= USB_EPCON_CLEARNAK | USB_EPCON_ACTIVE | ((transferType & USB_EPCON_TYPE_MASK) << USB_EPCON_TYPE_SHIFT) | (packetLength & USB_EPCON_MPS_MASK);
 	
 }
 
@@ -311,7 +325,7 @@ static void receive(int endpoint, USBTransferType transferType, void* buffer, in
 	OutEPRegs[endpoint].dmaAddress = buffer;
 
 	// start the transfer
-	OutEPRegs[endpoint].control = USB_EPCON_ENABLE | USB_EPCON_CLEARNAK | USB_EPCON_ACTIVE
+	OutEPRegs[endpoint].control |= USB_EPCON_ENABLE | USB_EPCON_CLEARNAK | USB_EPCON_ACTIVE
 		| ((transferType & USB_EPCON_TYPE_MASK) << USB_EPCON_TYPE_SHIFT) | (packetLength & USB_EPCON_MPS_MASK);
 }
 
@@ -320,7 +334,9 @@ static int resetUSB() {
 
 	int endpoint;
 	for(endpoint = 0; endpoint < USB_NUM_ENDPOINTS; endpoint++) {
-		OutEPRegs[endpoint].control = OutEPRegs[endpoint].control | USB_EPCON_SETNAK;
+		usb_message_queue[endpoint] = NULL;
+		OutEPRegs[endpoint].control |= USB_EPCON_SETNAK;
+		//InEPRegs[endpoint].control |= USB_EPCON_SETNAK;
 	}
 
 	// enable interrupts for endpoint 0
@@ -361,6 +377,55 @@ static int isSetupPhaseDone() {
 	OutEPRegs[USB_CONTROLEP].interrupt = USB_EPINT_SetUp;
 
 	return isDone;
+}
+
+static void continueMessageQueue(int _ep)
+{
+	USBMessageQueue *q = usb_message_queue[_ep];
+	if(q != NULL)
+	{
+		usbTxRx(_ep, q->dir, q->type, q->data, q->dataLen);
+		if(q->dir == USBIn)
+		{
+			ringBufferEnqueue(txQueue, _ep);
+			advanceTxQueue();
+		}
+	}
+}
+
+static void queueMessage(int _ep, USBDirection _dir, USBTransferType _type, char *_data, size_t _dataLen)
+{
+	USBMessageQueue *t;
+	USBMessageQueue *q;
+
+	if(gUsbState < USBConfigured)
+		return;
+
+	q = malloc(sizeof(USBMessageQueue));
+	q->next = NULL;
+	q->dir = _dir;
+	q->type = _type;
+	q->data = _data;
+	q->dataLen = _dataLen;
+
+	EnterCriticalSection();
+	t = usb_message_queue[_ep];
+	if(t == NULL)
+	{
+		usb_message_queue[_ep] = q;
+		LeaveCriticalSection();
+
+		continueMessageQueue(_ep);
+	}
+	else
+	{
+		while(t->next != NULL)
+			t = t->next;
+
+		t->next = q;
+
+		LeaveCriticalSection();
+	}
 }
 
 static void callEndpointHandlers() {
@@ -440,8 +505,13 @@ static void handleTxInterrupts(int endpoint) {
 	if((inInterruptStatus[endpoint] & USB_EPINT_XferCompl) == USB_EPINT_XferCompl) {
 		InEPRegs[endpoint].interrupt = USB_EPINT_XferCompl;
 		//uartPrintf("\t\tUSB_EPINT_XferCompl\n");
+
 		currentlySending = 0xFF;
 		advanceTxQueue();
+
+		if(usb_message_queue[endpoint])
+			usb_message_queue[endpoint] = usb_message_queue[endpoint]->next;
+		continueMessageQueue(endpoint);
 	}
 	
 }
@@ -474,40 +544,46 @@ static void handleRxInterrupts(int endpoint) {
 		if(endpoint == 0) {
 			receiveControl(controlRecvBuffer, sizeof(USBSetupPacket));
 		}
+		else
+		{
+			if(usb_message_queue[endpoint])
+				usb_message_queue[endpoint] = usb_message_queue[endpoint]->next;
+			continueMessageQueue(endpoint);
+		}	
 	}
 }
 
 static void sendControl(void* buffer, int bufferLen) {
+	//queueMessage(USB_CONTROLEP, USBIn, USBControl, buffer, bufferLen);
 	usbTxRx(USB_CONTROLEP, USBIn, USBControl, buffer, bufferLen);
 	ringBufferEnqueue(txQueue, USB_CONTROLEP);
 	advanceTxQueue();
 }
 
+static void receiveControl(void* buffer, int bufferLen) {
+	CleanAndInvalidateCPUDataCache();
+	receive(USB_CONTROLEP, USBControl, buffer, USB_MAX_PACKETSIZE, bufferLen);
+}
+
 static void stallControl(void) {
-	InEPRegs[USB_CONTROLEP].control = USB_EPCON_STALL;
+	InEPRegs[USB_CONTROLEP].control |= USB_EPCON_STALL;
 }
 
 void usb_send_bulk(uint8_t endpoint, void* buffer, int bufferLen) {
-	usbTxRx(endpoint, USBIn, USBBulk, buffer, bufferLen);
-	ringBufferEnqueue(txQueue, endpoint);
-	advanceTxQueue();
+	queueMessage(endpoint, USBIn, USBBulk, buffer, bufferLen);
 }
 
 void usb_send_interrupt(uint8_t endpoint, void* buffer, int bufferLen) {
-	usbTxRx(endpoint, USBIn, USBInterrupt, buffer, bufferLen);
-	ringBufferEnqueue(txQueue, endpoint);
-	advanceTxQueue();
+	queueMessage(endpoint, USBIn, USBInterrupt, buffer, bufferLen);
 }
 
-
 void usb_receive_bulk(uint8_t endpoint, void* buffer, int bufferLen) {
-	usbTxRx(endpoint, USBOut, USBBulk, buffer, bufferLen);
+	queueMessage(endpoint, USBOut, USBBulk, buffer, bufferLen);
 }
 
 void usb_receive_interrupt(uint8_t endpoint, void* buffer, int bufferLen) {
-	usbTxRx(endpoint, USBOut, USBInterrupt, buffer, bufferLen);
+	queueMessage(endpoint, USBOut, USBInterrupt, buffer, bufferLen);
 }
-
 
 static int advanceTxQueue() {
 	EnterCriticalSection();
@@ -532,15 +608,15 @@ static int advanceTxQueue() {
 		}
 	}*/
 
-	InEPRegs[0].control = (InEPRegs[0].control & ~(DCTL_NEXTEP_MASK << DCTL_NEXTEP_SHIFT)) | ((nextEP & DCTL_NEXTEP_MASK) << DCTL_NEXTEP_SHIFT);
+	/*InEPRegs[0].control = (InEPRegs[0].control & ~(DCTL_NEXTEP_MASK << DCTL_NEXTEP_SHIFT)) | ((nextEP & DCTL_NEXTEP_MASK) << DCTL_NEXTEP_SHIFT);
 	InEPRegs[1].control = (InEPRegs[1].control & ~(DCTL_NEXTEP_MASK << DCTL_NEXTEP_SHIFT)) | ((nextEP & DCTL_NEXTEP_MASK) << DCTL_NEXTEP_SHIFT);
 	InEPRegs[3].control = (InEPRegs[3].control & ~(DCTL_NEXTEP_MASK << DCTL_NEXTEP_SHIFT)) | ((nextEP & DCTL_NEXTEP_MASK) << DCTL_NEXTEP_SHIFT);
-	InEPRegs[5].control = (InEPRegs[5].control & ~(DCTL_NEXTEP_MASK << DCTL_NEXTEP_SHIFT)) | ((nextEP & DCTL_NEXTEP_MASK) << DCTL_NEXTEP_SHIFT);
+	InEPRegs[5].control = (InEPRegs[5].control & ~(DCTL_NEXTEP_MASK << DCTL_NEXTEP_SHIFT)) | ((nextEP & DCTL_NEXTEP_MASK) << DCTL_NEXTEP_SHIFT);*/
 
 	// clear all the interrupts
 	InEPRegs[nextEP].interrupt = USB_EPINT_ALL;
 
-	// we're ready to transmit!
+	// we're ready to transmit! 
 	uint32_t controlStatus = InEPRegs[nextEP].control;
 	InEPRegs[nextEP].control = controlStatus | USB_EPCON_ENABLE | USB_EPCON_CLEARNAK;
 
@@ -574,10 +650,8 @@ static void usbIRQHandler(uint32_t token) {
 		}
 
 		if((status & GINTMSK_RESET) == GINTMSK_RESET) {
-			if(usb_state < USBError) {
-				bufferPrintf("usb: reset detected\r\n");
-				change_state(USBPowered);
-			}
+			bufferPrintf("usb: reset detected\r\n");
+			change_state(USBPowered);
 
 			int retval = resetUSB();
 
@@ -640,7 +714,7 @@ static void usbIRQHandler(uint32_t token) {
 									stall = TRUE;
 							}
 
-							if(usb_state < USBError) {
+							if(gUsbState < USBError) {
 								if(stall)
 									stallControl();
 								else
@@ -658,7 +732,7 @@ static void usbIRQHandler(uint32_t token) {
 							// send an acknowledgement
 							sendControl(controlSendBuffer, 0);
 
-							if(usb_state < USBError) {
+							if(gUsbState < USBError) {
 								change_state(USBAddress);
 							}
 							break;
@@ -683,15 +757,26 @@ static void usbIRQHandler(uint32_t token) {
 							// send an acknowledgment
 							sendControl(controlSendBuffer, 0);
 
-							if(usb_state < USBError) {
+							if(gUsbState < USBError) {
 								change_state(USBConfigured);
 								startHandler();
 							}
 							break;
 						default:
-							if(usb_state < USBError) {
-								change_state(USBUnknownRequest);
+							// Unknown Request
+							{	
+								int i;
+								uint8_t *pktDump = (uint8_t*)setupPacket;
+								bufferPrintf("Bad USB setup packet: ");
+								for(i = 0; i < sizeof(USBSetupPacket); i++)
+								{
+									bufferPrintf("0x%08x ", pktDump[i]);
+								}
+								bufferPrintf("\n");
 							}
+
+							//stallControl();
+							break;
 					}
 
 					// get the next SETUP packet
@@ -728,9 +813,9 @@ static void create_descriptors() {
 		deviceDescriptor.bLength = sizeof(USBDeviceDescriptor);
 		deviceDescriptor.bDescriptorType = USBDeviceDescriptorType;
 		deviceDescriptor.bcdUSB = USB_2_0;
-		deviceDescriptor.bDeviceClass = 0;
-		deviceDescriptor.bDeviceSubClass = 0;
-		deviceDescriptor.bDeviceProtocol = 0;
+		deviceDescriptor.bDeviceClass = 0xFF;
+		deviceDescriptor.bDeviceSubClass = 0xFF;
+		deviceDescriptor.bDeviceProtocol = 0xFF;
 		deviceDescriptor.bMaxPacketSize = USB_MAX_PACKETSIZE;
 		deviceDescriptor.idVendor = 0x525;
 		deviceDescriptor.idProduct = PRODUCT_IPHONE;
@@ -742,9 +827,9 @@ static void create_descriptors() {
 
 		deviceQualifierDescriptor.bDescriptorType = USBDeviceDescriptorType;
 		deviceQualifierDescriptor.bcdUSB = USB_2_0;
-		deviceQualifierDescriptor.bDeviceClass = 0;
-		deviceQualifierDescriptor.bDeviceSubClass = 0;
-		deviceQualifierDescriptor.bDeviceProtocol = 0;
+		deviceQualifierDescriptor.bDeviceClass = 0xFF;
+		deviceQualifierDescriptor.bDeviceSubClass = 0xFF;
+		deviceQualifierDescriptor.bDeviceProtocol = 0xFF;
 		deviceDescriptor.bMaxPacketSize = USB_MAX_PACKETSIZE;
 		deviceDescriptor.bNumConfigurations = 0;
 
@@ -764,14 +849,25 @@ USBDeviceQualifierDescriptor* usb_get_device_qualifier_descriptor() {
 
 static void setConfiguration(int i) {
 	int8_t j;
+
+	usb_ep_queue_last = 0;
+	InEPRegs[USB_CONTROLEP].control = (InEPRegs[USB_CONTROLEP].control & ~(DCTL_NEXTEP_MASK << DCTL_NEXTEP_SHIFT));
+
 	for(j = 0; j < configurations[i].descriptor.bNumInterfaces; j++) {
 		int8_t k;
 		for(k = 0; k < configurations[i].interfaces[j].descriptor.bNumEndpoints; k++) {
 			int endpoint = configurations[i].interfaces[j].endpointDescriptors[k].bEndpointAddress & 0x3;
 			if((configurations[i].interfaces[j].endpointDescriptors[k].bEndpointAddress & (0x1 << 7)) == (0x1 << 7)) {
-				InEPRegs[endpoint].control = InEPRegs[endpoint].control | DCTL_SETD0PID;
+				InEPRegs[endpoint].control |= DCTL_SETD0PID;
 			} else {
-				OutEPRegs[endpoint].control = OutEPRegs[endpoint].control | DCTL_SETD0PID;
+				OutEPRegs[endpoint].control |= DCTL_SETD0PID;
+			}
+	
+			if((configurations[i].interfaces[j].endpointDescriptors[k].bEndpointAddress & 0x80) != 0)
+			{
+				InEPRegs[usb_ep_queue_last].control = (InEPRegs[usb_ep_queue_last].control & ~(DCTL_NEXTEP_MASK << DCTL_NEXTEP_SHIFT)) | ((endpoint & DCTL_NEXTEP_MASK) << DCTL_NEXTEP_SHIFT);
+				InEPRegs[endpoint].control = (InEPRegs[endpoint].control & ~(DCTL_NEXTEP_MASK << DCTL_NEXTEP_SHIFT));
+				usb_ep_queue_last = endpoint;
 			}
 		}
 	}
@@ -1024,9 +1120,9 @@ int usb_shutdown() {
 }
 
 static void change_state(USBState new_state) {
-	bufferPrintf("USB state change: %d -> %d\r\n", usb_state, new_state);
-	usb_state = new_state;
-	if(usb_state == USBConfigured) {
+	bufferPrintf("USB state change: %d -> %d\r\n", gUsbState, new_state);
+	gUsbState = new_state;
+	if(gUsbState == USBConfigured) {
 		// TODO: set to host powered
 	}
 }

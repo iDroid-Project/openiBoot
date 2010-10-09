@@ -1,15 +1,48 @@
+/*
+ * oib.c - OpeniBoot Console for Linux (and other UNiXes).
+ *
+ * Copyright (C) 2008 Yiduo Wang
+ * Portions Copyright (C) 2010 Ricky Taylor
+ *
+ * This file is part of iDroid. An android distribution for Apple products.
+ * For more information, please visit http://www.idroidproject.org/.
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; either version 3
+ * of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ */
+
 #include <stdint.h>
 #include <stdio.h>
+#include <stdarg.h>
 #include <string.h>
 #include <usb.h>
 #include <pthread.h>
 #include <readline/readline.h>
+#include <errno.h>
+#include <getopt.h>
 
-#define OPENIBOOTCMD_DUMPBUFFER 0
-#define OPENIBOOTCMD_DUMPBUFFER_LEN 1
-#define OPENIBOOTCMD_DUMPBUFFER_GOAHEAD 2
-#define OPENIBOOTCMD_SENDCOMMAND 3
-#define OPENIBOOTCMD_SENDCOMMAND_GOAHEAD 4
+// TODO: We really need to sort the protocol out. -- Ricky26
+#define OPENIBOOTCMD_DUMPBUFFER				1
+#define OPENIBOOTCMD_DUMPBUFFER_LEN			2
+#define OPENIBOOTCMD_DUMPBUFFER_GOAHEAD		3
+#define OPENIBOOTCMD_SENDCOMMAND			4
+#define OPENIBOOTCMD_SENDCOMMAND_GOAHEAD	5
+#define OPENIBOOTCMD_READY					6
+#define OPENIBOOTCMD_NOTREADY				7
+#define OPENIBOOTCMD_ISREADY				8
+
+#define MAX_TO_SEND 512
 
 typedef struct OpenIBootCmd {
 	uint32_t command;
@@ -19,112 +52,191 @@ typedef struct OpenIBootCmd {
 static int getFile(char * commandBuffer);
 
 usb_dev_handle* device;
-pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 FILE* outputFile = NULL;
 volatile size_t readIntoOutput = 0;
 
-volatile int InterestWrite = 0;
+volatile char *dataToWrite;
+volatile int amtToWrite = 0;
+volatile int ready = 0;
+int readPending = 0;
+int silent = 0;
+
+pthread_mutex_t sendLock = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t sendCond = PTHREAD_COND_INITIALIZER;
+pthread_mutex_t exitLock = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t exitCond = PTHREAD_COND_INITIALIZER;
+pthread_cond_t readyCond = PTHREAD_COND_INITIALIZER;
 
 #define USB_BYTES_AT_A_TIME 512
 
-void* doOutput(void* threadid) {
+void oibc_log(const char *format, ...)
+{
+	va_list args;
+
+	if(silent)
+		return;
+
+	va_start(args, format);
+	vfprintf(stderr, format, args);
+	va_end(args);
+}
+
+int do_receiveBuffer(size_t totalLen)
+{
 	OpenIBootCmd cmd;
 	char* buffer;
-	int totalLen = 0;
 
-	while(1) {
-		if(InterestWrite)
+	if(totalLen > 0)
+	{
+		buffer = (char*) malloc(totalLen + 1);
+
+		cmd.command = OPENIBOOTCMD_DUMPBUFFER_GOAHEAD;
+		cmd.dataLen = totalLen;
+		usb_interrupt_write(device, 4, (char*)&cmd, sizeof(OpenIBootCmd), 1000);
+
+		int read = 0;
+		while(read < totalLen) {
+			int left = (totalLen - read);
+			size_t toRead = (left > USB_BYTES_AT_A_TIME) ? USB_BYTES_AT_A_TIME : left;
+			int hasRead;
+			hasRead = usb_bulk_read(device, 1, buffer + read, toRead, 1000);
+			read += hasRead;
+		}
+
+		int discarded = 0;
+		if(readIntoOutput > 0) {
+			if(readIntoOutput <= read) {
+				fwrite(buffer, 1, readIntoOutput, outputFile);
+				discarded += readIntoOutput;
+				readIntoOutput = 0;
+				fclose(outputFile);
+			} else {
+				fwrite(buffer, 1, read, outputFile);
+				discarded += read;
+				readIntoOutput -= read;
+			}
+		}
+
+		*(buffer + read) = '\0';
+		printf("%s", buffer + discarded); fflush(stdout);
+
+		free(buffer);
+	}
+
+	return 0;
+}
+
+int do_sendCommand()
+{
+	int toSend = 0;
+	while(amtToWrite > 0) {
+		if(amtToWrite <= MAX_TO_SEND)
+			toSend = amtToWrite;
+		else
+			toSend = MAX_TO_SEND;
+
+		usb_bulk_write(device, 2, (char*)dataToWrite, toSend, 1000);
+		dataToWrite += toSend;
+		amtToWrite -= toSend;
+	}
+
+	amtToWrite = 0; // Just in case.
+
+	pthread_cond_signal(&sendCond);
+
+	return 0;
+}
+
+void* doOutput(void* threadid) {
+	int ret;
+	OpenIBootCmd cmd;
+
+	cmd.command = OPENIBOOTCMD_ISREADY;
+	cmd.dataLen = 0;
+	usb_interrupt_write(device, 4, (char*)&cmd, sizeof(OpenIBootCmd), 1000);
+
+	while(1)
+	{
+		ret = usb_interrupt_read(device, 3, (char*)&cmd, sizeof(OpenIBootCmd), 100);
+		if(ret > 0)
 		{
-			sched_yield();
-			continue;
-		}
+			switch(cmd.command)
+			{
+			case OPENIBOOTCMD_DUMPBUFFER_LEN:
+				if(do_receiveBuffer(cmd.dataLen))
+					goto error;
+				readPending = 0;
+				break;
 
-		pthread_mutex_lock(&lock);
-		cmd.command = OPENIBOOTCMD_DUMPBUFFER;
-		cmd.dataLen = 0;
-		usb_interrupt_write(device, 4, (char*) (&cmd), sizeof(OpenIBootCmd), 1000);
-		while(usb_interrupt_read(device, 3, (char*) (&cmd), sizeof(OpenIBootCmd), 1000) < 0) {
-			//rl_deprep_terminal();
-			//exit(0);
-		}
-		totalLen = cmd.dataLen;
+			case OPENIBOOTCMD_SENDCOMMAND_GOAHEAD:
+				if(do_sendCommand())
+					goto error;
+				break;
 
-		while(totalLen > 0) {
-			buffer = (char*) malloc(totalLen + 1);
+			case OPENIBOOTCMD_READY:
+				ready = 1;
+				pthread_cond_broadcast(&readyCond);
+				break;
 
-			cmd.command = OPENIBOOTCMD_DUMPBUFFER_GOAHEAD;
-			cmd.dataLen = totalLen;
-			usb_interrupt_write(device, 4, (char*) (&cmd), sizeof(OpenIBootCmd), 1000);
+			case OPENIBOOTCMD_NOTREADY:
+				ready = 0;
+				break;
 
-			int read = 0;
-			while(read < totalLen) {
-				int left = (totalLen - read);
-				size_t toRead = (left > USB_BYTES_AT_A_TIME) ? USB_BYTES_AT_A_TIME : left;
-				int hasRead;
-				hasRead = usb_bulk_read(device, 1, buffer + read, toRead, 1000);
-				read += hasRead;
+			default:
+			error:
+				oibc_log("invalid command (%d:%d)\n", cmd.command, cmd.dataLen);
+				break;
 			}
-
-			int discarded = 0;
-			if(readIntoOutput > 0) {
-				if(readIntoOutput <= read) {
-					fwrite(buffer, 1, readIntoOutput, outputFile);
-					discarded += readIntoOutput;
-					readIntoOutput = 0;
-					fclose(outputFile);
-				} else {
-					fwrite(buffer, 1, read, outputFile);
-					discarded += read;
-					readIntoOutput -= read;
-				}
-			}
-
-			*(buffer + read) = '\0';
-			printf("%s", buffer + discarded); fflush(stdout);
-
-			free(buffer);
-
-			cmd.command = OPENIBOOTCMD_DUMPBUFFER;
-			cmd.dataLen = 0;
-			usb_interrupt_write(device, 4, (char*) (&cmd), sizeof(OpenIBootCmd), 1000);
-			usb_interrupt_read(device, 3, (char*) (&cmd), sizeof(OpenIBootCmd), 1000);
-			totalLen = cmd.dataLen;
 		}
-
-		pthread_mutex_unlock(&lock);
+		else if(ret == -ETIMEDOUT)
+		{
+			if(!readPending)
+			{
+				// Check whether there is some buffer to read... -- Ricky26
+				cmd.command = OPENIBOOTCMD_DUMPBUFFER;
+				cmd.dataLen = 0;
+				if(usb_interrupt_write(device, 4, (char*)&cmd, sizeof(OpenIBootCmd), 1000) == 4)
+					readPending = 1;
+			}
+		}
+		else	
+		{
+			oibc_log("failed to read interrupt, error %d: %s.\n", -ret, strerror(-ret));
+			pthread_cond_signal(&exitCond);
+			pthread_exit((void*)EIO);
+		}
 
 		sched_yield();
 	}
-	pthread_exit(NULL);
-}
 
-#define MAX_TO_SEND 512
+	pthread_cond_signal(&exitCond);
+	pthread_exit((void*)0);
+}
 
 void sendBuffer(char* buffer, size_t size) {
 	OpenIBootCmd cmd;
 
+	pthread_mutex_lock(&sendLock);
+
+	if(!ready)
+		pthread_cond_wait(&readyCond, &sendLock);
+
+	amtToWrite = size;
+	dataToWrite = buffer;
+
 	cmd.command = OPENIBOOTCMD_SENDCOMMAND;
 	cmd.dataLen = size;
 
-	usb_interrupt_write(device, 4, (char*) (&cmd), sizeof(OpenIBootCmd), 1000);
-
-	while(1) {
-		usb_interrupt_read(device, 3, (char*) (&cmd), sizeof(OpenIBootCmd), 1000);
-		if(cmd.command == OPENIBOOTCMD_SENDCOMMAND_GOAHEAD)
-			break;
+	if(usb_interrupt_write(device, 4, (char*) (&cmd), sizeof(OpenIBootCmd), 1000) < 0)
+	{
+		oibc_log("failed to send command.\n");
+		pthread_mutex_unlock(&sendLock);
+		return;
 	}
 
-	int toSend = 0;
-	while(size > 0) {
-		if(size <= MAX_TO_SEND)
-			toSend = size;
-		else
-			toSend = MAX_TO_SEND;
-
-		usb_bulk_write(device, 2, buffer, toSend, 1000);
-		buffer += toSend;
-		size -= toSend;
-	}
+	pthread_cond_wait(&sendCond, &sendLock);
+	
+	pthread_mutex_unlock(&sendLock);
 }
 
 void* doInput(void* threadid) {
@@ -144,6 +256,9 @@ void* doInput(void* threadid) {
 			write_history(".oibc-history");
 		}
 
+		if(!commandBuffer)
+			break;
+
 		char* fileBuffer = NULL;
 		int len = strlen(commandBuffer);
 
@@ -155,7 +270,7 @@ void* doInput(void* threadid) {
 
 			FILE* file = fopen(&commandBuffer[1], "rb");
 			if(!file) {
-				fprintf(stderr, "file not found: %s\n", &commandBuffer[1]);
+				oibc_log("file not found: %s\n", &commandBuffer[1]);
 				continue;
 			}
 			fseek(file, 0, SEEK_END);
@@ -171,49 +286,34 @@ void* doInput(void* threadid) {
 				sprintf(toSendBuffer, "sendfile 0x09000000");
 			}
 
-			InterestWrite = 1;
-			pthread_mutex_lock(&lock);
 			sendBuffer(toSendBuffer, strlen(toSendBuffer));
 			sendBuffer(fileBuffer, len);
-			pthread_mutex_unlock(&lock);
-			InterestWrite = 0;
 			free(fileBuffer);
 		} else if(commandBuffer[0] == '~') {
             if (getFile(commandBuffer)==1)
                 continue;
             
         } else if (strcmp(commandBuffer,"install") == 0) {
-            printf("Backing up your NOR to current directory as norbackup.dump\n");
-            printf(toSendBuffer, "nor_read 0x09000000 0x0 1048576");
+            oibc_log("Backing up your NOR to current directory as norbackup.dump\n");
+            sprintf(toSendBuffer, "nor_read 0x09000000 0x0 1048576");
 
-			InterestWrite = 1;
 			commandBuffer[len] = '\n';
-			pthread_mutex_lock(&lock);
 			sendBuffer(toSendBuffer, strlen(toSendBuffer));
-			pthread_mutex_unlock(&lock);
-			InterestWrite = 0;
 
 			sprintf(toSendBuffer,"~norbackup.dump:1048576"); 
 			getFile(toSendBuffer);
-			printf("Fetching NOR backup.\n");
-			InterestWrite = 1;
+			oibc_log("Fetching NOR backup.\n");
 			commandBuffer[len] = '\n';
-			pthread_mutex_lock(&lock);
-			printf("NOR backed up, starting installation\n");
+			oibc_log("NOR backed up, starting installation\n");
 			sendBuffer("install", len + 1);
-			pthread_mutex_unlock(&lock);
-			InterestWrite = 0;
 		} else {
-			InterestWrite = 1;
 			commandBuffer[len] = '\n';
-			pthread_mutex_lock(&lock);
 			sendBuffer(commandBuffer, len + 1);
-			pthread_mutex_unlock(&lock);
-			InterestWrite = 0;
 		}
 
 		sched_yield();
 	}
+	pthread_cond_signal(&exitCond);
 	pthread_exit(NULL);
 }
 
@@ -223,7 +323,7 @@ int getFile(char * commandBuffer)
     char* sizeLoc = strchr(&commandBuffer[1], ':');
     
     if(sizeLoc == NULL) {
-        fprintf(stderr, "must specify length to read\n");
+        oibc_log("must specify length to read\n");
         return 1;
     }
     
@@ -240,7 +340,7 @@ int getFile(char * commandBuffer)
     
     FILE* file = fopen(&commandBuffer[1], "wb");
     if(!file) {
-        fprintf(stderr, "cannot open file: %s\n", &commandBuffer[1]);
+        oibc_log("cannot open file: %s\n", &commandBuffer[1]);
         return 1;
     }
     
@@ -250,18 +350,33 @@ int getFile(char * commandBuffer)
         sprintf(toSendBuffer, "getfile 0x09000000 %d", toRead);
     }
     
-    InterestWrite = 1;
-    pthread_mutex_lock(&lock);
     sendBuffer(toSendBuffer, strlen(toSendBuffer));
     outputFile = file;
     readIntoOutput = toRead;
-    pthread_mutex_unlock(&lock);
-    InterestWrite = 0;
     
     return 0;
 }
 
-int main(int argc, char* argv[]) {
+int main(int argc, char* argv[])
+{
+	static struct option program_options[] = {
+		{"silent",	no_argument,	NULL,	's'},
+	};
+	
+	while(1)
+	{
+		int option_index = 0;
+		int c = getopt_long(argc, argv, "s", program_options, &option_index);
+		if(c == -1)
+			break;
+
+		switch(c)
+		{
+		case 's':
+			silent = 1;
+			break;
+		};
+	}
 
 	read_history(".oibc-history");
 
@@ -298,30 +413,40 @@ int main(int argc, char* argv[]) {
     		}
 	}
 
+	oibc_log("Failed to find a device in OpeniBoot mode.\n");
 	return 1;
 
 done:
 
 	device = usb_open(dev);
 	if(!device) {
+		oibc_log("Failed to open OpeniBoot device.\n");
 		return 2;
 	}
 
 	if(usb_claim_interface(device, i) != 0) {
+		oibc_log("Failed to claim OpeniBoot device.\n");
 		return 3;
 	}
 
 	pthread_t inputThread;
 	pthread_t outputThread;
 
-	printf("oiB client connected:\n");
-    printf("!<filename>[@<address>] to send a file, ~<filename>[@<address>]:<len> to receive a file\n");
-	printf("---------------------------------------------------------------------------------------------------------\n");
+	oibc_log("OiB client connected:\n");
+    oibc_log("!<filename>[@<address>] to send a file, ~<filename>[@<address>]:<len> to receive a file\n");
+	oibc_log("---------------------------------------------------------------------------------------------------------\n");
 
 	pthread_create(&outputThread, NULL, doOutput, NULL);
 	pthread_create(&inputThread, NULL, doInput, NULL);
 
-	pthread_exit(NULL);
+	pthread_mutex_lock(&exitLock);
+	pthread_cond_wait(&exitCond, &exitLock);
+	pthread_mutex_unlock(&exitLock);
+
+	pthread_cancel(inputThread);
+	pthread_cancel(outputThread);
+
+	rl_deprep_terminal(); // If we cancel readline, we must call this to not fsck up the terminal.
 
 	usb_release_interface(device, i);
 	usb_close(device);

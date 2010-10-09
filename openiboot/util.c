@@ -166,7 +166,16 @@ int puts(const char *str) {
 }
 
 unsigned long int parseNumber(const char* str) {
+	int neg = 0;
 	int base = 10;
+	int value;
+
+	if(*str == '-')
+	{
+		neg = 1;
+		str++;
+	}
+
 	if(*str == '0') {
 		if(*(str + 1) == 'x') {
 			base = 16;
@@ -186,7 +195,10 @@ unsigned long int parseNumber(const char* str) {
 		}
 	}
 
-	return strtoul(str, NULL, base);
+	value = strtoul(str, NULL, base);
+	if(neg)
+		return -value;
+	return value;
 }
 
 unsigned long int strtoul(const char* str, char** endptr, int base) {

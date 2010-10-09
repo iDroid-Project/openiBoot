@@ -112,7 +112,9 @@ typedef struct CommandQueue {
 } CommandQueue;
 
 CommandQueue* commandQueue = NULL;
+int ready = 0;
 
+static void setReady(int _r);
 static void startUSB();
 
 void OpenIBootStart() {
@@ -129,7 +131,7 @@ void OpenIBootStart() {
 		if(bgImg)
 		{
 			int x = (framebuffer_width() - w)/2;
-			int y = (framebuffer_height() - h)/2;
+			int y = (framebuffer_height() - h)/3;
 
 			framebuffer_draw_image(bgImg, x, y, w, h);
 		}
@@ -245,6 +247,8 @@ void OpenIBootStart() {
 
 	audiohw_postinit();
 
+	setReady(TRUE);
+
 	// Process command queue
 	while(TRUE) {
 		char* command = NULL;
@@ -259,7 +263,9 @@ void OpenIBootStart() {
 		LeaveCriticalSection();
 
 		if(command) {
+			setReady(FALSE);
 			processCommand(command);
+			setReady(TRUE);
 			free(command);
 		}
 	}
@@ -397,7 +403,17 @@ static void controlReceived(uint32_t token) {
 			bufferFlush((char*) dataSendBuffer, toRead);
 			usb_send_bulk(1, dataSendBuffer, toRead);
 		}
+
 		left -= toRead;
+
+		if(left == 0 && ready)
+		{
+			OpenIBootCmd *cmd = (OpenIBootCmd*)controlSendBuffer;
+			cmd->command = OPENIBOOTCMD_READY;
+			cmd->dataLen = 0;
+
+			usb_send_interrupt(3, controlSendBuffer, sizeof(OpenIBootCmd));
+		}
 	} else if(cmd->command == OPENIBOOTCMD_SENDCOMMAND) {
 		dataRecvPtr = dataRecvBuffer;
 		rxLeft = cmd->dataLen;
@@ -413,6 +429,15 @@ static void controlReceived(uint32_t token) {
 		usb_receive_bulk(2, dataRecvPtr, toRead);
 		rxLeft -= toRead;
 		dataRecvPtr += toRead;
+	}
+	else if(cmd->command == OPENIBOOTCMD_ISREADY)
+	{
+		if(ready)
+			reply->command = OPENIBOOTCMD_READY;
+		else
+			reply->command = OPENIBOOTCMD_NOTREADY;
+		reply->dataLen = 0;
+		usb_send_interrupt(3, controlSendBuffer, sizeof(OpenIBootCmd));
 	}
 
 	usb_receive_interrupt(4, controlRecvBuffer, sizeof(OpenIBootCmd));
@@ -491,6 +516,28 @@ static void startUSB()
 	usb_install_ep_handler(3, USBIn, controlSent, 0);
 	usb_install_ep_handler(1, USBIn, dataSent, 0);
 	usb_start(enumerateHandler, startHandler);
+}
+
+static void setReady(int _r)
+{
+	if(ready == _r)
+		return;
+	else
+	{
+		if(usb_state() >= USBConfigured && (_r == 0 || getScrollbackLen() == 0))
+		{
+			OpenIBootCmd *cmd = (OpenIBootCmd*)controlSendBuffer;
+			if(_r)
+				cmd->command = OPENIBOOTCMD_READY;
+			else
+				cmd->command = OPENIBOOTCMD_NOTREADY;
+			cmd->dataLen = 0;
+
+			usb_send_interrupt(3, controlSendBuffer, sizeof(OpenIBootCmd));
+		}
+
+		ready = _r;
+	}
 }
 
 static int setup_devices() {
