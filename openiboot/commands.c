@@ -207,7 +207,7 @@ void cmd_multitouch_fw_install(int argc, char** argv)
 void cmd_multitouch_fw_uninstall(int argc, char** argv) {
 #ifdef CONFIG_IPHONE	
 	images_uninstall(fourcc("mtza"), fourcc("mtza"));
-	images_uninstall(fourcc("mztm"), fourcc("mztm"));
+	images_uninstall(fourcc("mtzm"), fourcc("mtzm"));
 #else
 	images_uninstall(fourcc("mtz2"), fourcc("mtz2"));
 #endif	
