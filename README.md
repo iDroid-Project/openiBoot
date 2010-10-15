@@ -17,7 +17,7 @@ iDroid Project openiBoot
 
 1. Compiling
 ---------------------------------------------------
-**Build an ARM toolchain (only needs to be done once):**
+**Build an ARM toolchain (this only needs to be done once - for subsequent builds this step can be omitted unless there has been a toolchain update):**
 
 `sudo toolchain/build-toolchain.sh make`
 	
@@ -67,11 +67,10 @@ You should now see the same output on your computer, as is on your phone's scree
 
 This will take a while, your NOR will be backed up during this process, and can be found in the current directory as norbackup.dump but will flash openiBoot to your phone.
 
-3. Installing multitouch firmware
---------------------------------------------------
-A. iPhone 3G user:
+3. Installing multitouch firmware for openiBoot (This is optional)
+-------------------------------------------------------------------
+A. iPhone 3G user (Convert zephyr2.bin):
 
-   1. Convert zephyr2.bin
  *  Copy your zephyr2.bin to openiboot/mk8900image
  *  Go to "openiboot/mk8900image"
  *  From "openiboot/mk8900image" execute this command (please adjust path to your firmware location): 
@@ -94,9 +93,9 @@ A. iPhone 3G user:
     >multitouch_fw_install 0x09000000 XXXXX
 
 
-B. iPhone 2G user:
+B. iPhone 2G user (Convert zephyr_aspeed.bin and zephyr_main.bin):
 
-   1. Convert zephyr_aspeed.bin and zephyr_main.bin
+*	Copy your zephyr bins (zephyr_aspeed.bin and zephyr_main.bin) to openiboot/mk8900image
 *   Go to "openiboot/mk8900image"
 *   From "openiboot/mk8900image" execute this command (please adjust path to your firmware location): 
 
