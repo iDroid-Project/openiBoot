@@ -44,14 +44,61 @@
 #include "als.h"
 #include "multitouch.h"
 
+#ifdef OPENIBOOT_INSTALLER
+#include "images/installerLogoPNG.h"
+#endif
+
 int globalFtlHasBeenRestored = 0; 
 
 int received_file_size;
 
 static int setup_devices();
 static int setup_openiboot();
-static int load_multitouch_images();
-static void reset_tempos();
+
+#ifndef OPENIBOOT_INSTALLER
+static int load_multitouch_images()
+{
+    #ifdef CONFIG_IPHONE
+        Image* image = images_get(fourcc("mtza"));
+        if (image == NULL) {
+            return 0;
+        }
+        void* aspeedData;
+        size_t aspeedLength = images_read(image, &aspeedData);
+        
+        image = images_get(fourcc("mtzm"));
+        if(image == NULL) {
+            return 0;
+        }
+        
+        void* mainData;
+        size_t mainLength = images_read(image, &mainData);
+        
+        multitouch_setup(aspeedData, aspeedLength, mainData,mainLength);
+        free(aspeedData);
+        free(mainData);
+    #else
+        Image* image = images_get(fourcc("mtz2"));
+        if(image == NULL) {
+            return 0;
+        }
+        void* imageData;
+        size_t length = images_read(image, &imageData);
+        
+        multitouch_setup(imageData, length);
+        free(imageData);
+    #endif
+    return 1;
+}
+
+static void reset_tempos(const char* sDefaultOS)
+{
+	framebuffer_setdisplaytext(FALSE);
+	nvram_setvar("opib-temp-os",sDefaultOS);
+	nvram_save();
+	framebuffer_setdisplaytext(TRUE);
+}
+#endif //OPENIBOOT_INSTALLER
 
 extern uint8_t _binary_payload_bin_start;
 extern uint8_t _binary_payload_bin_end;
@@ -65,13 +112,37 @@ typedef struct CommandQueue {
 } CommandQueue;
 
 CommandQueue* commandQueue = NULL;
+int ready = 0;
 
+static void setReady(int _r);
 static void startUSB();
 
 void OpenIBootStart() {
 	setup_openiboot();
 	pmu_charge_settings(TRUE, FALSE, FALSE);
 
+#ifdef OPENIBOOT_INSTALLER
+	framebuffer_setdisplaytext(FALSE);
+	framebuffer_clear();
+
+	{
+		int w, h;
+		uint32_t *bgImg = framebuffer_load_image(datainstallerLogoPNG, sizeof(datainstallerLogoPNG), &w, &h, TRUE);
+		if(bgImg)
+		{
+			int x = (framebuffer_width() - w)/2;
+			int y = (framebuffer_height() - h)/3;
+
+			framebuffer_draw_image(bgImg, x, y, w, h);
+		}
+		else
+		{
+			framebuffer_setdisplaytext(TRUE);
+			bufferPrintf("Failed to load image...\n");
+		}
+	}
+
+#else
 	framebuffer_setdisplaytext(TRUE);
 	framebuffer_clear();
 	bufferPrintf("Loading openiBoot...");
@@ -146,6 +217,7 @@ void OpenIBootStart() {
 	}
 #endif
 #endif
+#endif //OPENIBOOT_INSTALLER
 
 	startUSB();
 
@@ -175,6 +247,8 @@ void OpenIBootStart() {
 
 	audiohw_postinit();
 
+	setReady(TRUE);
+
 	// Process command queue
 	while(TRUE) {
 		char* command = NULL;
@@ -189,7 +263,9 @@ void OpenIBootStart() {
 		LeaveCriticalSection();
 
 		if(command) {
+			setReady(FALSE);
 			processCommand(command);
+			setReady(TRUE);
 			free(command);
 		}
 	}
@@ -327,7 +403,17 @@ static void controlReceived(uint32_t token) {
 			bufferFlush((char*) dataSendBuffer, toRead);
 			usb_send_bulk(1, dataSendBuffer, toRead);
 		}
+
 		left -= toRead;
+
+		if(left == 0 && ready)
+		{
+			OpenIBootCmd *cmd = (OpenIBootCmd*)controlSendBuffer;
+			cmd->command = OPENIBOOTCMD_READY;
+			cmd->dataLen = 0;
+
+			usb_send_interrupt(3, controlSendBuffer, sizeof(OpenIBootCmd));
+		}
 	} else if(cmd->command == OPENIBOOTCMD_SENDCOMMAND) {
 		dataRecvPtr = dataRecvBuffer;
 		rxLeft = cmd->dataLen;
@@ -343,6 +429,15 @@ static void controlReceived(uint32_t token) {
 		usb_receive_bulk(2, dataRecvPtr, toRead);
 		rxLeft -= toRead;
 		dataRecvPtr += toRead;
+	}
+	else if(cmd->command == OPENIBOOTCMD_ISREADY)
+	{
+		if(ready)
+			reply->command = OPENIBOOTCMD_READY;
+		else
+			reply->command = OPENIBOOTCMD_NOTREADY;
+		reply->dataLen = 0;
+		usb_send_interrupt(3, controlSendBuffer, sizeof(OpenIBootCmd));
 	}
 
 	usb_receive_interrupt(4, controlRecvBuffer, sizeof(OpenIBootCmd));
@@ -423,6 +518,28 @@ static void startUSB()
 	usb_start(enumerateHandler, startHandler);
 }
 
+static void setReady(int _r)
+{
+	if(ready == _r)
+		return;
+	else
+	{
+		if(usb_state() >= USBConfigured && (_r == 0 || getScrollbackLen() == 0))
+		{
+			OpenIBootCmd *cmd = (OpenIBootCmd*)controlSendBuffer;
+			if(_r)
+				cmd->command = OPENIBOOTCMD_READY;
+			else
+				cmd->command = OPENIBOOTCMD_NOTREADY;
+			cmd->dataLen = 0;
+
+			usb_send_interrupt(3, controlSendBuffer, sizeof(OpenIBootCmd));
+		}
+
+		ready = _r;
+	}
+}
+
 static int setup_devices() {
 	// Basic prerequisites for everything else
 	miu_setup();
@@ -474,47 +591,4 @@ static int setup_openiboot() {
 	audiohw_init();
     isMultitouchLoaded = 0;
 	return 0;
-}
-
-static int load_multitouch_images()
-{
-    #ifdef CONFIG_IPHONE
-        Image* image = images_get(fourcc("mtza"));
-        if (image == NULL) {
-            return 0;
-        }
-        void* aspeedData;
-        size_t aspeedLength = images_read(image, &aspeedData);
-        
-        image = images_get(fourcc("mtzm"));
-        if(image == NULL) {
-            return 0;
-        }
-        
-        void* mainData;
-        size_t mainLength = images_read(image, &mainData);
-        
-        multitouch_setup(aspeedData, aspeedLength, mainData,mainLength);
-        free(aspeedData);
-        free(mainData);
-    #else
-        Image* image = images_get(fourcc("mtz2"));
-        if(image == NULL) {
-            return 0;
-        }
-        void* imageData;
-        size_t length = images_read(image, &imageData);
-        
-        multitouch_setup(imageData, length);
-        free(imageData);
-    #endif
-    return 1;
-}
-
-static void reset_tempos(char* sDefaultOS)
-{
-	framebuffer_setdisplaytext(FALSE);
-	nvram_setvar("opib-temp-os",sDefaultOS);
-	nvram_save();
-	framebuffer_setdisplaytext(TRUE);
 }

@@ -205,11 +205,15 @@ typedef struct RingBuffer {
 typedef void (*USBStartHandler)(void);
 typedef void (*USBEnumerateHandler)(USBInterface* interface);
 
-#define OPENIBOOTCMD_DUMPBUFFER 0
-#define OPENIBOOTCMD_DUMPBUFFER_LEN 1
-#define OPENIBOOTCMD_DUMPBUFFER_GOAHEAD 2
-#define OPENIBOOTCMD_SENDCOMMAND 3
-#define OPENIBOOTCMD_SENDCOMMAND_GOAHEAD 4
+// TODO: We really need to sort the protocol out. -- Ricky26
+#define OPENIBOOTCMD_DUMPBUFFER				1
+#define OPENIBOOTCMD_DUMPBUFFER_LEN			2
+#define OPENIBOOTCMD_DUMPBUFFER_GOAHEAD		3
+#define OPENIBOOTCMD_SENDCOMMAND			4
+#define OPENIBOOTCMD_SENDCOMMAND_GOAHEAD	5
+#define OPENIBOOTCMD_READY					6
+#define OPENIBOOTCMD_NOTREADY				7
+#define OPENIBOOTCMD_ISREADY				8
 
 typedef struct OpenIBootCmd {
 	uint32_t command;
@@ -242,6 +246,7 @@ typedef struct OpenIBootCmd {
 #define USB_SET_INTERFACE 11
 #define USB_SYNCH_FRAME 12
 
+USBState usb_state();
 int usb_setup();
 int usb_start(USBEnumerateHandler hEnumerate, USBStartHandler hStart);
 int usb_shutdown();

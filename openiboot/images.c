@@ -440,12 +440,13 @@ unsigned int images_read(Image* image, void** data) {
 	}
 }
 
-void images_install(void* newData, size_t newDataLen) {
+void images_install(void* newData, size_t newDataLen, uint32_t newFourcc, uint32_t replaceFourcc) {
 	ImageDataList* list = NULL;
 	ImageDataList* cur = NULL;
-	ImageDataList* iboot = NULL;
+	ImageDataList* toReplace = NULL;
     ImageDataList* verify = NULL;
     
+	int isReplace = (replaceFourcc != newFourcc) ? TRUE : FALSE;
 	int isUpgrade = FALSE;
 
 	Image* curImage = imageList;
@@ -467,10 +468,10 @@ void images_install(void* newData, size_t newDataLen) {
 		cur->data = malloc(curImage->padded);
 		nor_read(cur->data, curImage->offset, curImage->padded);
 
-		if(cur->type == fourcc("ibox")) {
+		if(isReplace && cur->type == replaceFourcc) {
 			isUpgrade = TRUE;
-		} else if(cur->type == fourcc("ibot")) {
-			iboot = cur;
+		} else if(cur->type == newFourcc) {
+			toReplace = cur;
 		}
 
 		curImage = curImage->next;
@@ -480,18 +481,18 @@ void images_install(void* newData, size_t newDataLen) {
 		bufferPrintf("Performing installation... (%d bytes)\r\n", newDataLen);
 
 		ImageDataList* ibox = malloc(sizeof(ImageDataList));
-		ibox->type = fourcc("ibox");
-		ibox->data = iboot->data;
-		ibox->next = iboot->next;
+		ibox->type = replaceFourcc;
+		ibox->data = toReplace->data;
+		ibox->next = toReplace->next;
 
-		iboot->next = ibox;
-		iboot->data = images_inject_img3(iboot->data, newData, newDataLen);
+		toReplace->next = ibox;
+		toReplace->data = images_inject_img3(toReplace->data, newData, newDataLen);
 		images_change_type(ibox->data, ibox->type);
 	} else {
 		bufferPrintf("Performing upgrade... (%d bytes)\r\n", newDataLen);
-		void* newIBoot = images_inject_img3(iboot->data, newData, newDataLen);
-		free(iboot->data);
-		iboot->data = newIBoot;
+		void* newIBoot = images_inject_img3(toReplace->data, newData, newDataLen);
+		free(toReplace->data);
+		toReplace->data = newIBoot;
 	}
 
     //check for size and availability
@@ -504,7 +505,7 @@ void images_install(void* newData, size_t newDataLen) {
         AppleImg3RootHeader* header = (AppleImg3RootHeader*) cur->data;
         totalBytes += header->base.size;
         
-        if(cur->type == fourcc("ibot")) {
+        if(cur->type == newFourcc) {
             newPaddedDataLen = header->base.size;
         }
     }
@@ -559,15 +560,15 @@ void images_install(void* newData, size_t newDataLen) {
     bufferPrintf("openiBoot installation complete.\r\n");
 }
 
-void images_uninstall() {
+void images_uninstall(uint32_t _fourcc, uint32_t _unreplace) {
 	ImageDataList* list = NULL;
 	ImageDataList* cur = NULL;
-	ImageDataList* iboot = NULL;
+	ImageDataList* oldImage = NULL;
 
 	Image* curImage = imageList;
 
 	while(curImage != NULL) {
-		if(curImage->type != fourcc("ibot")) {
+		if(curImage->type != _fourcc) {
 			if(cur == NULL) {
 				list = cur = malloc(sizeof(ImageDataList));
 			} else {
@@ -584,8 +585,8 @@ void images_uninstall() {
 			cur->data = malloc(curImage->padded);
 			nor_read(cur->data, curImage->offset, curImage->padded);
 
-			if(cur->type == fourcc("ibox")) {
-				iboot = cur;
+			if(_fourcc != _unreplace && cur->type == _unreplace) {
+				oldImage = cur;
 			}
 		} else {
 			bufferPrintf("Skipping: ");
@@ -596,7 +597,7 @@ void images_uninstall() {
 		curImage = curImage->next;
 	}
 
-	if(iboot == NULL) {
+	if(_fourcc != _unreplace && oldImage == NULL) {
 		bufferPrintf("No openiBoot installation was found.\n");
 		while(list != NULL) {
 			cur = list;
@@ -607,8 +608,8 @@ void images_uninstall() {
 		return;
 	}
 
-	iboot->type = fourcc("ibot");
-	images_change_type(iboot->data, fourcc("ibot"));
+	oldImage->type = _fourcc;
+	images_change_type(oldImage->data, _fourcc);
 
 	images_rewind();
 	while(list != NULL) {

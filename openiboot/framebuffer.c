@@ -99,6 +99,18 @@ void framebuffer_print(const char* str) {
 	}
 }
 
+void framebuffer_printf(const char* format, ...)
+{
+	static char buffer[1000];
+	va_list args;
+
+	buffer[0] = '\0';
+	va_start(args, format);
+	vsprintf(buffer, format, args);
+	va_end(args);
+	framebuffer_print(buffer);
+}
+
 void framebuffer_print_force(const char* str) {
 	size_t len = strlen(str);
 	int i;
@@ -237,6 +249,35 @@ void framebuffer_draw_image(uint32_t* image, int x, int y, int width, int height
 		framebuffer_draw_image565(image, x, y, width, height);
 }
 
+static void framebuffer_draw_image888_clip(uint32_t* image, int x, int y, int width, int height, int dw, int dh) {
+	register uint32_t sx;
+	register uint32_t sy;
+	for(sy = 0; sy < height; sy++) {
+		for(sx = 0; sx < width; sx++) {
+			*(PixelFromCoords(sx + x, sy + y)) = RGBA2BGR(image[(sy * width) + sx]);
+		}
+	}
+}
+
+static void framebuffer_draw_image565_clip(uint32_t* image, int x, int y, int width, int height, int dw, int dh) {
+	register uint32_t sx;
+	register uint32_t sy;
+
+	for(sy = 0; sy < dh; sy++) {
+		for(sx = 0; sx < dw; sx++) {
+			*(PixelFromCoords565(sx + x, sy + y)) = RGB16(image[(sy * width) + sx]);
+		}
+	}
+}
+
+void framebuffer_draw_image_clip(uint32_t* image, int x, int y, int width, int height, int dw, int dh)
+{
+	if(currentWindow->framebuffer.colorSpace == RGB888)
+		framebuffer_draw_image888_clip(image, x, y, width, height, dw, dh);
+	else
+		framebuffer_draw_image565_clip(image, x, y, width, height, dw, dh);
+}
+
 static void framebuffer_capture_image888(uint32_t* image, int x, int y, int width, int height) {
 	register uint32_t sx;
 	register uint32_t sy;
@@ -270,6 +311,12 @@ void framebuffer_draw_rect(uint32_t color, int x, int y, int width, int height) 
 	currentWindow->framebuffer.hline(&currentWindow->framebuffer, x, y + height, width, color);
 	currentWindow->framebuffer.vline(&currentWindow->framebuffer, y, x, height, color);
 	currentWindow->framebuffer.vline(&currentWindow->framebuffer, y, x + width, height, color);
+}
+
+void framebuffer_fill_rect(uint32_t color, int x, int y, int width, int height) {
+	int i;
+	for(i = 0; i < height; i++)
+		currentWindow->framebuffer.hline(&currentWindow->framebuffer, x, y+i, width, color);
 }
 
 #ifndef SMALL
