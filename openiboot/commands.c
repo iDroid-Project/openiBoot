@@ -204,6 +204,15 @@ void cmd_multitouch_fw_install(int argc, char** argv)
 }
 #endif
 
+void cmd_multitouch_fw_uninstall(int argc, char** argv) {
+#ifdef CONFIG_IPHONE	
+	images_uninstall(fourcc("mtza"), fourcc("mtza"));
+	images_uninstall(fourcc("mztm"), fourcc("mztm"));
+#else
+	images_uninstall(fourcc("mtz2"), fourcc("mtz2"));
+#endif	
+}
+
 void cmd_poweroff(int argc, char** argv) {
 	pmu_poweroff();
 }
@@ -1267,7 +1276,8 @@ OPIBCommand CommandList[] =
 		{"images_install", "install a nor image", cmd_images_install},
 		{"images_uninstall", "uninstall a nor image", cmd_images_uninstall},
 		{"reboot", "reboot the device", cmd_reboot},
-		{"multitouch_fw_install", "install the multitouch firmware", cmd_multitouch_fw_install},
+		{"multitouch_fw_install", "install multitouch firmware", cmd_multitouch_fw_install},
+		{"multitouch_fw_uninstall","uninstall multitouch firmware", cmd_multitouch_fw_uninstall},
 		{"nand_erase", "erase a NAND block", cmd_nand_erase},
 		{"nor_read", "read a block of NOR into RAM", cmd_nor_read},
 		{"nor_write", "write RAM into NOR", cmd_nor_write},
