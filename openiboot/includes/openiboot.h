@@ -27,6 +27,9 @@ typedef signed int intptr_t;
 #ifdef CONFIG_3G
 #define OPENIBOOT_VERSION_CONFIG " for iPhone 3G"
 #endif
+#ifdef CONFIG_IPHONE_4G
+#define OPENIBOOT_VERSION_CONFIG " for iPhone 4G"
+#endif
 
 #define XSTRINGIFY(s) STRINGIFY(s)
 #define STRINGIFY(s) #s

@@ -13,8 +13,10 @@ int arm_setup() {
 	GiveFullAccessCP10CP11();
 	EnableVFP();
 
+#ifndef CONFIG_IPHONE_4G
 	// Map the peripheral port of size 128 MB to 0x38000000
 	WritePeripheralPortMemoryRemapRegister(PeripheralPort | ARM11_PeripheralPortSize128MB);
+#endif
 	InvalidateCPUDataCache();
 	ClearCPUInstructionCache();
 
@@ -28,11 +30,13 @@ int arm_setup() {
 
 	WriteControlRegisterConfigData(ReadControlRegisterConfigData() | ARM11_Control_BRANCHPREDICTION); 	// Enable branch prediction
 
+#ifndef CONFIG_IPHONE_4G
 	// Enable return stack, dynamic branch prediction, static branch prediction
 	WriteAuxiliaryControlRegister(ReadAuxiliaryControlRegister()
 		| ARM11_AuxControl_RETURNSTACK
 		| ARM11_AuxControl_DYNAMICBRANCHPREDICTION
 		| ARM11_AuxControl_STATICBRANCHPREDICTION);
+#endif
 
 	return 0;
 }

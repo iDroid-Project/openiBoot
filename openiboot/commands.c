@@ -1271,6 +1271,7 @@ OPIBCommand CommandList[] =
 		{"wlan_prog_helper", "program wlan fw helper", cmd_wlan_prog_helper},
 		{"wlan_prog_real", "program wlan fw", cmd_wlan_prog_real},
 #ifndef CONFIG_IPOD
+#ifndef CONFIG_IPHONE_4G
 		{"radio_send", "send a command to the baseband", cmd_radio_send},
 		{"radio_nvram_list", "list entries in baseband NVRAM", cmd_radio_nvram_list},
 		{"radio_register", "register with a cellular network", cmd_radio_register},
@@ -1279,6 +1280,7 @@ OPIBCommand CommandList[] =
 		{"vibrator_loop", "turn the vibrator on in a loop", cmd_vibrator_loop},
 		{"vibrator_once", "vibrate once", cmd_vibrator_once},
 		{"vibrator_off", "turn the vibrator off", cmd_vibrator_off},
+#endif
 #endif
 		{"images_list", "list the images available on NOR", cmd_images_list},
 		{"images_read", "read an image on NOR", cmd_images_read},

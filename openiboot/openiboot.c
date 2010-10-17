@@ -148,7 +148,7 @@ void OpenIBootStart() {
 #endif
 
 	startUSB();
-
+/*
 #ifndef CONFIG_IPOD
 	camera_setup();
 	radio_setup();
@@ -159,7 +159,7 @@ void OpenIBootStart() {
 #ifndef CONFIG_IPOD
 	als_setup();
 #endif
-
+*/
 	nand_setup();
 #ifndef NO_HFS
 	fs_setup();
@@ -453,6 +453,7 @@ static int setup_devices() {
 
 static int setup_openiboot() {
 	arm_setup();
+	Reboot();
 	mmu_setup();
 	tasks_setup();
 	setup_devices();
@@ -468,10 +469,10 @@ static int setup_openiboot() {
 	images_setup();
 	nvram_setup();
 
-	lcd_setup();
-	framebuffer_setup();
+//	lcd_setup();
+//	framebuffer_setup();
 
-	audiohw_init();
+//	audiohw_init();
     isMultitouchLoaded = 0;
 	return 0;
 }
