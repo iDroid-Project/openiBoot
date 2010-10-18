@@ -3,7 +3,6 @@
 #include "openiboot-asmhelpers.h"
 
 int arm_setup() {
-
 	CleanAndInvalidateCPUDataCache();
 	ClearCPUInstructionCache();
 
@@ -23,9 +22,14 @@ int arm_setup() {
 	WriteControlRegisterConfigData(ReadControlRegisterConfigData() | ARM11_Control_INSTRUCTIONCACHE);	// Enable instruction cache
 	WriteControlRegisterConfigData(ReadControlRegisterConfigData() | ARM11_Control_DATACACHE);		// Enable data cache
 
+#ifndef CONFIG_IPHONE_4G
 	WriteControlRegisterConfigData((ReadControlRegisterConfigData()
 		& ~(ARM11_Control_STRICTALIGNMENTCHECKING))				// Disable strict alignment fault checking
 		| ARM11_Control_UNALIGNEDDATAACCESS);					// Enable unaligned data access operations
+#else
+	WriteControlRegisterConfigData((ReadControlRegisterConfigData()
+		& ~(ARM11_Control_STRICTALIGNMENTCHECKING)))				// Disable strict alignment fault checking
+#endif
 
 
 	WriteControlRegisterConfigData(ReadControlRegisterConfigData() | ARM11_Control_BRANCHPREDICTION); 	// Enable branch prediction
@@ -37,7 +41,6 @@ int arm_setup() {
 		| ARM11_AuxControl_DYNAMICBRANCHPREDICTION
 		| ARM11_AuxControl_STATICBRANCHPREDICTION);
 #endif
-
 	return 0;
 }
 
