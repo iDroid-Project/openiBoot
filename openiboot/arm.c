@@ -28,7 +28,7 @@ int arm_setup() {
 		| ARM11_Control_UNALIGNEDDATAACCESS);					// Enable unaligned data access operations
 #else
 	WriteControlRegisterConfigData((ReadControlRegisterConfigData()
-		& ~(ARM11_Control_STRICTALIGNMENTCHECKING)))				// Disable strict alignment fault checking
+		& ~(ARM11_Control_STRICTALIGNMENTCHECKING)));				// Disable strict alignment fault checking
 #endif
 
 
