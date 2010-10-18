@@ -43,6 +43,7 @@
 .global CallThumb
 
 .global Reboot
+.global EndlessLoop
 
 .global CurrentRunning
 
