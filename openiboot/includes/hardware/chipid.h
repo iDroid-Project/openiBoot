@@ -16,7 +16,7 @@
 // Values
 #define GET_SPICLOCKTYPE(x) GET_BITS(x, 24, 4)
 #ifdef CONFIG_IPHONE_4G
-#define CHIPID_GET_POWER_EPOCH(x) (GET_BITS((x), 9, 7) > 3 ? 3 : 4)
+#define CHIPID_GET_POWER_EPOCH(x) GET_BITS((x), 9, 7)
 #endif
 
 #endif

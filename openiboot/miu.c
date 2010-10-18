@@ -9,7 +9,6 @@
 #endif
 
 int miu_setup() {
-	Reboot();
 #ifndef CONFIG_IPHONE_4G
 	if(POWER_ID_EPOCH(*((uint8_t*)(POWER + POWER_ID))) != 3) {
 #else
