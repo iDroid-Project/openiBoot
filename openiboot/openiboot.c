@@ -426,6 +426,7 @@ static void startUSB()
 static int setup_devices() {
 	// Basic prerequisites for everything else
 	miu_setup();
+	Reboot();
 	power_setup();
 	clock_setup();
 
@@ -453,7 +454,6 @@ static int setup_devices() {
 
 static int setup_openiboot() {
 	arm_setup();
-	Reboot();
 	mmu_setup();
 	tasks_setup();
 	setup_devices();
