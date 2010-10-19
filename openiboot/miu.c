@@ -4,7 +4,6 @@
 #include "hardware/power.h"
 #include "util.h"
 #ifdef CONFIG_IPHONE_4G
-#include "openiboot-asmhelpers.h"
 #include "chipid.h"
 #endif
 
