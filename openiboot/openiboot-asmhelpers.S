@@ -185,9 +185,13 @@ WritePeripheralPortMemoryRemapRegister:
 	BX	LR
 
 GiveFullAccessCP10CP11:
+#ifndef CONFIG_IPHONE_4G
 	MRC	p15, 0,	R0, c1, c0, 2
 	MOV	R1, #(ARM11_AccessControl_CP10_ALL | ARM11_AccessControl_CP11_ALL)
 	ORR	R0, R0,	R1
+#else
+	MOV	R0, #(ARM11_AccessControl_CP10_ALL | ARM11_AccessControl_CP11_ALL)
+#endif
 	MCR	p15, 0,	R0, c1, c0, 2
 	BX	LR
 
