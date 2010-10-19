@@ -9,10 +9,10 @@ int arm_setup() {
 	WriteControlRegisterConfigData(ReadControlRegisterConfigData() & ~(ARM11_Control_INSTRUCTIONCACHE));	// Disable instruction cache
 	WriteControlRegisterConfigData(ReadControlRegisterConfigData() & ~(ARM11_Control_DATACACHE));		// Disable data cache
 
-#ifndef CONFIG_IPHONE_4G
 	GiveFullAccessCP10CP11();
 	EnableVFP();
 
+#ifndef CONFIG_IPHONE_4G
 	// Map the peripheral port of size 128 MB to 0x38000000
 	WritePeripheralPortMemoryRemapRegister(PeripheralPort | ARM11_PeripheralPortSize128MB);
 #endif
