@@ -213,12 +213,38 @@ HandleIRQ:
 	LDR	R5, =(VIC0 + VICADDRESS)
 	B	HandleIRQ_lookupHandler
 
+#ifndef CONFIG_IPHONE_4G
 HandleIRQ_checkVIC1:
 	LDR	R3, =(VIC1 + VICIRQSTATUS)	// Check if the interrupt was on VIC1, if it wasn't on VIC0
 	LDR	R3, [R3]
 	CMP	R3, #0
 	BEQ	HandleIRQ_return
 	LDR	R5, =(VIC1 + VICADDRESS)
+#else
+HandleIRQ_checkVIC1:
+	LDR	R3, =(VIC1 + VICIRQSTATUS)	// Check if the interrupt was on VIC1, if it wasn't on VIC0
+	LDR	R3, [R3]
+	CMP	R3, #0
+	BEQ	HandleIRQ_checkVIC2
+	LDR	R5, =(VIC1 + VICADDRESS)
+	B	HandleIRQ_lookupHandler
+
+HandleIRQ_checkVIC2:
+	LDR	R3, =(VIC2 + VICIRQSTATUS)	// Check if the interrupt was on VIC2, if it wasn't on VIC1
+	LDR	R3, [R3]
+	CMP	R3, #0
+	BEQ	HandleIRQ_checkVIC3
+	LDR	R5, =(VIC2 + VICADDRESS)
+	B	HandleIRQ_lookupHandler
+
+HandleIRQ_checkVIC3:
+	LDR	R3, =(VIC3 + VICIRQSTATUS)	// Check if the interrupt was on VIC3, if it wasn't on VIC2
+	LDR	R3, [R3]
+	CMP	R3, #0
+	BEQ	HandleIRQ_return
+	LDR	R5, =(VIC3 + VICADDRESS)
+#endif
+
 
 HandleIRQ_lookupHandler:
 	LDR	R2, [R5]			// Read VICADDRESS. Note that this indicates to the VIC hardware the interrupt is being serviced
