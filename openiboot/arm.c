@@ -3,10 +3,8 @@
 #include "openiboot-asmhelpers.h"
 
 int arm_setup() {
-#ifndef CONFIG_IPHONE_4G
 	CleanAndInvalidateCPUDataCache();
 	ClearCPUInstructionCache();
-#endif
 
 	WriteControlRegisterConfigData(ReadControlRegisterConfigData() & ~(ARM11_Control_INSTRUCTIONCACHE));	// Disable instruction cache
 	WriteControlRegisterConfigData(ReadControlRegisterConfigData() & ~(ARM11_Control_DATACACHE));		// Disable data cache
@@ -17,10 +15,10 @@ int arm_setup() {
 
 	// Map the peripheral port of size 128 MB to 0x38000000
 	WritePeripheralPortMemoryRemapRegister(PeripheralPort | ARM11_PeripheralPortSize128MB);
+#endif
 
 	InvalidateCPUDataCache();
 	ClearCPUInstructionCache();
-#endif
 
 	WriteControlRegisterConfigData(ReadControlRegisterConfigData() | ARM11_Control_INSTRUCTIONCACHE);	// Enable instruction cache
 	WriteControlRegisterConfigData(ReadControlRegisterConfigData() | ARM11_Control_DATACACHE);		// Enable data cache
