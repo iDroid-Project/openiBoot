@@ -3,6 +3,7 @@
 #include "util.h"
 #include "hardware/clock0.h"
 #include "hardware/clock1.h"
+#include "power.h"
 
 uint32_t ClockPLL;
 uint32_t PLLFrequencies[4];
@@ -160,6 +161,7 @@ int clock_setup() {
 }
 
 void clock_gate_switch(uint32_t gate, OnOff on_off) {
+#ifndef CONFIG_IPHONE_4G
 	uint32_t gate_register;
 	uint32_t gate_flag;
 
@@ -180,7 +182,9 @@ void clock_gate_switch(uint32_t gate, OnOff on_off) {
 	}
 
 	SET_REG(gate_register, gates);
-
+#else
+	power_ctrl(gate, on_off);
+#endif
 }
 
 int clock_set_bottom_bits_38100000(Clock0ConfigCode code) {
