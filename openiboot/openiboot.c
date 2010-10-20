@@ -148,7 +148,7 @@ void OpenIBootStart() {
 #endif
 
 	startUSB();
-/*
+#ifndef CONFIG_IPHONE_4
 #ifndef CONFIG_IPOD
 	camera_setup();
 	radio_setup();
@@ -159,7 +159,7 @@ void OpenIBootStart() {
 #ifndef CONFIG_IPOD
 	als_setup();
 #endif
-*/
+#endif
 	nand_setup();
 #ifndef NO_HFS
 	fs_setup();
@@ -469,10 +469,12 @@ static int setup_openiboot() {
 	images_setup();
 	nvram_setup();
 
-//	lcd_setup();
-//	framebuffer_setup();
+#ifndef CONFIG_IPHONE_4G
+	lcd_setup();
+	framebuffer_setup();
 
-//	audiohw_init();
+	audiohw_init();
+#endif
     isMultitouchLoaded = 0;
 	return 0;
 }

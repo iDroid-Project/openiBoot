@@ -78,6 +78,7 @@ ArmReset_relocate:
 	STR	R3, [R1],#4
 	BNE	ArmReset_relocate			// while the Zero flag wasn't set by the earlier SUBS operation, i.e.,
 							// the counter is not 0.
+
 	MOV	R0, #0					// reset caches, since we're about to do a jump to where there wasn't any
 							// data or instructions just moments ago
 #ifndef CONFIG_IPHONE_4G
@@ -440,5 +441,4 @@ GeneralStack:
 .bss
 
 OpenIBootEnd:
-
 
