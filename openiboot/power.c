@@ -33,7 +33,7 @@ int power_ctrl(uint32_t device, OnOff on_off) {
 	if (device > POWER_STATE_MAX) {
 		return -1;
 	}
-	uint32_t device_register = POWER_STATE + (device << 2);
+	uint32_t device_register = POWER + POWER_STATE + (device << 2);
 
 	if (on_off == ON) {
 		SET_REG(device_register, GET_REG(device_register) | 0xF);
