@@ -426,9 +426,12 @@ static void startUSB()
 static int setup_devices() {
 	// Basic prerequisites for everything else
 	miu_setup();
-	Reboot();
 	power_setup();
 	clock_setup();
+	if (TicksPerSec == 0x16E3601) {
+		Reboot();
+	}
+	EndlessLoop();
 
 	// Need interrupts for everything afterwards
 	interrupt_setup();
@@ -460,7 +463,9 @@ static int setup_openiboot() {
 
 	LeaveCriticalSection();
 
+#ifndef CONFIG_IPHONE_4G
 	clock_set_sdiv(0);
+#endif
 
 	aes_setup();
 

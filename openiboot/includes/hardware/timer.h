@@ -14,7 +14,11 @@
 
 // Devices
 
+#ifndef CONFIG_IPHONE_4G
 #define TIMER 0x3E200000
+#else
+#define TIMER 0xBF100000
+#endif
 
 // Registers
 
@@ -31,8 +35,13 @@
 #define TIMER_COUNT_BUFFER2 0xC
 #define TIMER_PRESCALER 0x10
 #define TIMER_UNKNOWN3 0x14
+#ifndef CONFIG_IPHONE_4G
 #define TIMER_TICKSHIGH 0x80
 #define TIMER_TICKSLOW 0x84
+#else
+#define TIMER_TICKSHIGH 0x2004
+#define TIMER_TICKSLOW 0x2000
+#endif
 #define TIMER_UNKREG0 0x88
 #define TIMER_UNKREG1 0x8C
 #define TIMER_UNKREG2 0x90
