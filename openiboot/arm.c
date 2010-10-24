@@ -41,6 +41,8 @@ int arm_setup() {
 		| ARM11_AuxControl_RETURNSTACK
 		| ARM11_AuxControl_DYNAMICBRANCHPREDICTION
 		| ARM11_AuxControl_STATICBRANCHPREDICTION);
+#else
+	WriteAuxiliaryControlRegister(ReadAuxiliaryControlRegister() | ARM_A8_AuxControl_SPECULATIVEACCESSAXI);
 #endif
 	return 0;
 }
