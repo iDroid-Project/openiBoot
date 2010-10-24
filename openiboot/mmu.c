@@ -12,7 +12,7 @@ int mmu_setup() {
 	CurrentPageTable = (uint32_t*) PageTable;
 
 	// Initialize the page table
-	
+
 	initialize_pagetable();
 
 	// Implement the page table
@@ -43,7 +43,11 @@ void initialize_pagetable() {
 	mmu_map_section_range(MemoryStart, MemoryEnd, MemoryStart, FALSE, FALSE);
 
 	// Now we get to setup default mappings that we will need
+#ifndef CONFIG_IPHONE_4G
 	mmu_map_section_range(0x08000000, 0x10000000, 0x08000000, TRUE, TRUE);	// unknown, but mapped by iPhone
+#else
+	mmu_map_section_range(0x20000000, 0x2C000000, 0x20000000, TRUE, TRUE);	// assumed. haven't really found that.
+#endif
 	mmu_map_section(AMC0, AMC0, TRUE, TRUE);
 
 	// Make our own code cacheable and bufferable
@@ -56,7 +60,10 @@ void initialize_pagetable() {
 	//mmu_map_section(ExceptionVector, OpenIBootLoad, TRUE, TRUE);
 
 	// Remap upper half of memory to the lower half
+	// Should we do that for i4? Devices are starting in upper half...
+	#ifndef CONFIG_IPHONE_4G
 	mmu_map_section_range(MemoryHigher, MemoryEnd, MemoryStart, FALSE, FALSE);
+	#endif
 }
 
 void mmu_map_section(uint32_t section, uint32_t target, Boolean cacheable, Boolean bufferable) {
