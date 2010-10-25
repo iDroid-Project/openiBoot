@@ -66,7 +66,7 @@ ArmReset:						// This function will setup the processor and kick off execution
 	LDR	R2, [R1]				// Get current settings
 	BIC	R2, R2, #3				// Mask out current MIU setting
 	ORR	R2, R2, #2				// Change setting so 0x0 is physical memory
-	STR	R2, [R1]				// Set MIU seetings
+	STR	R2, [R1]				// Set MIU settings
 #endif
 
 	LDR	R1, =_start				// OMG, we're not in the right place! Copy us to the right place
