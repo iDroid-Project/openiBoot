@@ -399,11 +399,10 @@ void derived_frequency_table_setup() {
 }
 
 uint32_t calculate_reference_frequency(uint32_t clock_register) {
-	 return (GET_BITS(clock_register, 3, 10) * 0x2DC6C00) / (GET_BITS(clock_register, 14, 7) * (1 << GET_BITS(clock_register, 0, 3)));
+	 return (GET_BITS(clock_register, 3, 10) * 0x2DC6C00) / (GET_BITS(clock_register, 14, 6) * (1 << GET_BITS(clock_register, 0, 3)));
 }
 
 int clock_setup() {
-	EndlessLoop();
 	CalculatedFrequencyTable[0] = CLOCK_REFERENCE_0_FREQUENCY;
 	if(!CLOCK_ACTIVE(CLOCK_REFERENCE_1)) {
 		CalculatedFrequencyTable[1] = calculate_reference_frequency(CLOCK_REFERENCE_1);
@@ -451,7 +450,7 @@ int clock_setup() {
 	USBPHY_FREQUENCY = get_frequency(0xE);
 	NCOREF_FREQUENCY = get_frequency(0xF); // 16
 BASE = 0x5FF3D040;
-default, 11, 12 => 0;
+default, 11, 12 => Frequency = 0;
 0, 6 => BASE + 0x14; 5
 2, 7 => BASE + 0x18; 6
 3, 8 => BASE + 0x6C; 27

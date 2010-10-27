@@ -428,7 +428,7 @@ static int setup_devices() {
 	miu_setup();
 	power_setup();
 	clock_setup();
-	if (TicksPerSec == 0x16E3601) {
+	if (PeripheralFrequency == 0) {
 		Reboot();
 	}
 	EndlessLoop();
@@ -457,7 +457,9 @@ static int setup_devices() {
 
 static int setup_openiboot() {
 	arm_setup();
+#ifndef CONFIG_IPHONE_4G
 	mmu_setup();
+#endif
 	tasks_setup();
 	setup_devices();
 
