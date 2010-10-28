@@ -68,7 +68,7 @@ void initialize_pagetable() {
 	// Make memory cachable and bufferable
 	mmu_map_section_range(RAMStart, RAMEnd, RAMStart, TRUE, TRUE);
 
-	// Make our own code cachable and bufferable
+	// Remap our own code to MemoryStart
 	mmu_map_section(MemoryStart, OpenIBootMemoryStart, TRUE, TRUE);
 
 	// No idea if the descriptions of the next are correct
