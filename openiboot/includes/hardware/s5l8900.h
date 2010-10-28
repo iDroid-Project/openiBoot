@@ -9,14 +9,18 @@
 
 #define MemoryStart 0x00000000
 #define MemoryEnd 0xFFFFFFFF
-#ifndef CONFIG_IPHONE_4
+#ifndef CONFIG_IPHONE_4G
 #define LargeMemoryStart 0x08000000				/* FIXME: This is an ugly hack to get around iBoot's memory rearrangement. Linux boot will only work for installed openiboot! */
 #define RAMEnd 0x08000000
+#define MemoryHigher 0x80000000
 #else
 #define LargeMemoryStart 0x60000000
-#define RAMEnd 0x60000000	// 512 MB RAM end there!
+#define RAMStart 0x40000000
+#define RAMEnd 0x60000000
+#define OpenIBootMemoryStart 0x5FF00000
+#define MemoryHigher 0xC0000000
+#define MemoryHigherEnd 0xC0400000
 #endif
-#define MemoryHigher 0x80000000
 #define ExceptionVector MemoryStart
 #ifdef SMALL
 #define PageTable (OpenIBootLoad + 0x24000)
@@ -25,7 +29,11 @@
 #define OpenIBootLoad 0x00000000
 #define GeneralStack ((PageTable - 4) + LargeMemoryStart)
 #define HeapStart (LargeMemoryStart + 0x02000000)
-#define PageTable (RAMEnd - 0x4000)	// In iPhone 4 iBoot it's 0x8000, in LLB 0x4000. Think we can keep that.
+#ifndef CONFIG_IPHONE_4G
+#define PageTable (RAMEnd - 0x4000)
+#else
+#define PageTable (RAMEnd - 0x8000)
+#endif
 #endif
 
 /*
@@ -35,7 +43,9 @@
 #define PeripheralPort 0x38000000
 #ifdef CONFIG_IPHONE_4G
 #define AMC0 0x84000000
-#define ROM 0x40000000
+#define AMC0End 0x84400000
+#define ROM 0x84C00000
+#define ROMEnd 0x84E00000
 #else
 #ifdef CONFIG_3G
 #define AMC0 0x38500000

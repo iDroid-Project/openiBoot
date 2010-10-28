@@ -23,8 +23,10 @@ int mmu_setup() {
 						
 	WriteTranslationTableBaseRegister0(CurrentPageTable);
 	InvalidateUnifiedTLBUnlockedEntries();
+#ifndef CONFIG_IPHONE_4G
 	mmu_enable();
 	InvalidateUnifiedTLBUnlockedEntries();
+#endif
 
 	return 0;
 }
@@ -42,12 +44,10 @@ void initialize_pagetable() {
 	// Initialize the page table with a default identity mapping
 	mmu_map_section_range(MemoryStart, MemoryEnd, MemoryStart, FALSE, FALSE);
 
-	// Now we get to setup default mappings that we will need
 #ifndef CONFIG_IPHONE_4G
+	// Now we get to setup default mappings that we will need
 	mmu_map_section_range(0x08000000, 0x10000000, 0x08000000, TRUE, TRUE);	// unknown, but mapped by iPhone
-#else
-	mmu_map_section_range(0x20000000, 0x2C000000, 0x20000000, TRUE, TRUE);	// assumed. haven't really found that.
-#endif
+
 	mmu_map_section(AMC0, AMC0, TRUE, TRUE);
 
 	// Make our own code cacheable and bufferable
@@ -61,9 +61,24 @@ void initialize_pagetable() {
 
 	// Remap upper half of memory to the lower half
 	// Should we do that for i4? Devices are starting in upper half...
-	#ifndef CONFIG_IPHONE_4G
 	mmu_map_section_range(MemoryHigher, MemoryEnd, MemoryStart, FALSE, FALSE);
-	#endif
+#else
+	mmu_map_section_range(AMC0, AMC0End, AMC0, TRUE, TRUE);
+
+	// Make memory cachable and bufferable
+	mmu_map_section_range(RAMStart, RAMEnd, RAMStart, TRUE, TRUE);
+
+	// Make our own code cachable and bufferable
+	mmu_map_section(MemoryStart, OpenIBootMemoryStart, TRUE, TRUE);
+
+	// No idea if the descriptions of the next are correct
+
+	// Make ROM buffer cachable and bufferable
+	mmu_map_section_range(ROM, ROMEnd, ROM, FALSE, FALSE);
+
+	// Remap upper half of memory to the lower half...
+	mmu_map_section_range(MemoryHigher, MemoryHigherEnd, RAMStart, FALSE, FALSE);
+#endif
 }
 
 void mmu_map_section(uint32_t section, uint32_t target, Boolean cacheable, Boolean bufferable) {

@@ -457,9 +457,7 @@ static int setup_devices() {
 
 static int setup_openiboot() {
 	arm_setup();
-#ifndef CONFIG_IPHONE_4G
 	mmu_setup();
-#endif
 	tasks_setup();
 	setup_devices();
 
