@@ -377,7 +377,7 @@ ClockStruct DerivedFrequencySourceTable[55] = {
 void derived_frequency_table_setup() {
 	int round;
 
-	for (round = 0; round != 54; round++) {
+	for (round = 0; round != 55; round++) {
 		if (DerivedFrequencySourceTable[round].address == 0) {
 			continue;
 		}
