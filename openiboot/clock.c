@@ -377,7 +377,7 @@ ClockStruct DerivedFrequencySourceTable[55] = {
 void derived_frequency_table_setup() {
 	int round;
 
-	for (round = 0; round != 55; round++) {
+	for (round = 0; round != 54; round++) {
 		if (DerivedFrequencySourceTable[round].address == 0) {
 			continue;
 		}
@@ -413,14 +413,17 @@ int clock_setup() {
 	if(!CLOCK_ACTIVE(CLOCK_REFERENCE_3)) {
 		CalculatedFrequencyTable[3] = calculate_reference_frequency(CLOCK_REFERENCE_3);
 	}
+/*	It actually never gets there.
+
 	if(!CLOCK_ACTIVE(CLOCK_REFERENCE_4)) {
 		CalculatedFrequencyTable[4] = calculate_reference_frequency(CLOCK_REFERENCE_4);
 	}
+*/
 	derived_frequency_table_setup();
 	IHaveNoIdeaWhatsThatFor = GET_BITS(0xBF100040, 0, 5);
-	if (GET_BITS(0xBF100040, 0, 5) == 2) {
+	if (IHaveNoIdeaWhatsThatFor == 2) {
 		IHaveNoIdeaWhatsThatFor2 = 1;
-	} else if (GET_BITS(0xBF100040, 0, 5) == 4) {
+	} else if (IHaveNoIdeaWhatsThatFor == 4) {
 		IHaveNoIdeaWhatsThatFor2 = 2;
 	} else {
 		IHaveNoIdeaWhatsThatFor2 = 0;
