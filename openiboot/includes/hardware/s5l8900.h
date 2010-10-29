@@ -14,6 +14,7 @@
 #define RAMEnd 0x08000000
 #define MemoryHigher 0x80000000
 #else
+#define MemoryStartEnd 0x00200000
 #define LargeMemoryStart 0x60000000
 #define RAMStart 0x40000000
 #define RAMEnd 0x60000000
@@ -44,8 +45,8 @@
 #ifdef CONFIG_IPHONE_4G
 #define AMC0 0x84000000
 #define AMC0End 0x84400000
-#define ROM 0x84C00000
-#define ROMEnd 0x84E00000
+#define AMC0Higher 0x84C00000
+#define AMC0HigherEnd 0x85000000
 #else
 #ifdef CONFIG_3G
 #define AMC0 0x38500000

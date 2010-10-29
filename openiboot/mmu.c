@@ -69,12 +69,10 @@ void initialize_pagetable() {
 	mmu_map_section_range(RAMStart, RAMEnd, RAMStart, TRUE, TRUE);
 
 	// Remap our own code to MemoryStart
-	mmu_map_section(MemoryStart, OpenIBootMemoryStart, TRUE, TRUE);
+	mmu_map_section_range(MemoryStart, MemoryStartEnd, OpenIBootMemoryStart, FALSE, FALSE);
 
-	// No idea if the descriptions of the next are correct
-
-	// Make ROM buffer cachable and bufferable
-	mmu_map_section_range(ROM, ROMEnd, ROM, FALSE, FALSE);
+	// unknown
+	mmu_map_section_range(AMC0Higher, AMC0HigherEnd, AMC0, FALSE, FALSE);
 
 	// Remap upper half of memory to the lower half...
 	mmu_map_section_range(MemoryHigher, MemoryHigherEnd, RAMStart, FALSE, FALSE);
