@@ -75,7 +75,7 @@ void initialize_pagetable() {
 	mmu_map_section_range(AMC0Higher, AMC0HigherEnd, AMC0, FALSE, FALSE);
 
 	// Remap upper half of memory to the lower half...
-	mmu_map_section_range(MemoryHigher, MemoryHigherEnd, RAMStart, FALSE, FALSE);
+	mmu_map_section_range(MemoryHigher, MemoryEnd, RAMStart, FALSE, FALSE);
 #endif
 }
 

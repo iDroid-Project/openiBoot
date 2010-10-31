@@ -20,7 +20,6 @@
 #define RAMEnd 0x60000000
 #define OpenIBootMemoryStart 0x5FF00000
 #define MemoryHigher 0xC0000000
-#define MemoryHigherEnd 0xC0400000
 #endif
 #define ExceptionVector MemoryStart
 #ifdef SMALL
