@@ -60,7 +60,6 @@ void initialize_pagetable() {
 	//mmu_map_section(ExceptionVector, OpenIBootLoad, TRUE, TRUE);
 
 	// Remap upper half of memory to the lower half
-	// Should we do that for i4? Devices are starting in upper half...
 	mmu_map_section_range(MemoryHigher, MemoryEnd, MemoryStart, FALSE, FALSE);
 #else
 	mmu_map_section_range(AMC0, AMC0End, AMC0, TRUE, TRUE);
@@ -69,7 +68,7 @@ void initialize_pagetable() {
 	mmu_map_section_range(RAMStart, RAMEnd, RAMStart, TRUE, TRUE);
 
 	// Remap our own code to MemoryStart
-	mmu_map_section_range(MemoryStart, MemoryStartEnd, OpenIBootMemoryStart, FALSE, FALSE);
+	mmu_map_section(MemoryStart, OpenIBootMemoryStart, TRUE, TRUE);
 
 	// unknown
 	mmu_map_section_range(AMC0Higher, AMC0HigherEnd, AMC0, FALSE, FALSE);
