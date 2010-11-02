@@ -26,7 +26,11 @@
 #define HeapStart (PageTable + 0x4000)
 #else
 #define OpenIBootLoad 0x00000000
+#ifndef CONFIG_IPHONE_4G
 #define GeneralStack ((PageTable - 4) + LargeMemoryStart)
+#else
+#define GeneralStack (PageTable - 4)
+#endif
 #define HeapStart (LargeMemoryStart + 0x02000000)
 #ifndef CONFIG_IPHONE_4G
 #define PageTable (RAMEnd - 0x4000)
