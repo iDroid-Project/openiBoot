@@ -97,7 +97,7 @@ CleanCPUDataCache_2:
 	BNE	CleanCPUDataCache_1
 	MOV	R0, #0
 #endif
-	MCR	p15, 0,	R0,c7,c10, 4			//  Data synchronization barrier
+	MCR	p15, 0,	R0,c7,c10, 4			// Data synchronization barrier
 	MCR	p15, 0,	R0,c7,c5			// invalidate entire instruction cache
 
 	LDR	R1, =_start				// jump to the right place!
