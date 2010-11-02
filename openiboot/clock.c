@@ -308,12 +308,12 @@ uint32_t CalculatedFrequencyTable[55] = {
 };
 
 ClockThirdStruct ClockThirdTable[6] = {
-	{0,		0,	},
-	{0x1F,		0,	},
-	{0x1F00,	8,	},
-	{0x3E000,	0xD	},
-	{0x7C0000,	0x12	},
-	{0xF800000,	0x17	}
+	{0,		0,	}, // GET_BITS(register, 0, 0);
+	{0x1F,		0,	}, // GET_BITS(register, 0, 5);
+	{0x1F00,	8,	}, // GET_BITS(register, 8, 5);
+	{0x3E000,	0xD	}, // GET_BITS(register, 13, 5);
+	{0x7C0000,	0x12	}, // GET_BITS(register, 18, 5);
+	{0xF800000,	0x17	} // GET_BITS(register, 23, 5);
 };
 
 ClockStruct DerivedFrequencySourceTable[55] = {
@@ -394,25 +394,26 @@ void derived_frequency_table_setup() {
 		if (divisor == ClockThirdTable[unknown].unkn2)  {
 			continue;
 		}
-		CalculatedFrequencyTable[round] = (((round == 5) ? IHaveNoIdeaWhatsThatFor : 1) * calculated_frequency) / divisor;
+		CalculatedFrequencyTable[round] = (uint32_t)(((uint64_t)((round == 5) ? IHaveNoIdeaWhatsThatFor : 1) * (uint64_t)calculated_frequency) / (uint64_t)divisor);
 	}
 }
 
 uint32_t calculate_reference_frequency(uint32_t clock_register) {
-	 return (GET_BITS(clock_register, 3, 10) * 0x2DC6C00) / (GET_BITS(clock_register, 14, 6) * (1 << GET_BITS(clock_register, 0, 3)));
+	 return (uint32_t)(((uint64_t)GET_BITS(clock_register, 3, 10) * (uint64_t)0x2DC6C00) / ((uint64_t)GET_BITS(clock_register, 14, 6) * (uint64_t)(1 << GET_BITS(clock_register, 0, 3))));
 }
 
 int clock_setup() {
 	CalculatedFrequencyTable[0] = CLOCK_REFERENCE_0_FREQUENCY;
-	if(!CLOCK_ACTIVE(CLOCK_REFERENCE_1)) {
+//	Currently don't do what I expect them to do. Use the hard way.
+//	if(CLOCK_ACTIVE(CLOCK_REFERENCE_1) == 0) {
 		CalculatedFrequencyTable[1] = calculate_reference_frequency(CLOCK_REFERENCE_1);
-	}
-	if(!CLOCK_ACTIVE(CLOCK_REFERENCE_2)) {
+//	}
+//	if(CLOCK_ACTIVE(CLOCK_REFERENCE_2) == 0) {
 		CalculatedFrequencyTable[2] = calculate_reference_frequency(CLOCK_REFERENCE_2);
-	}
-	if(!CLOCK_ACTIVE(CLOCK_REFERENCE_3)) {
+//	}
+//	if(CLOCK_ACTIVE(CLOCK_REFERENCE_3) == 0) {
 		CalculatedFrequencyTable[3] = calculate_reference_frequency(CLOCK_REFERENCE_3);
-	}
+//	}
 /*	It actually never gets there.
 
 	if(!CLOCK_ACTIVE(CLOCK_REFERENCE_4)) {
