@@ -23,10 +23,8 @@ int mmu_setup() {
 						
 	WriteTranslationTableBaseRegister0(CurrentPageTable);
 	InvalidateUnifiedTLBUnlockedEntries();
-#ifndef CONFIG_IPHONE_4G
 	mmu_enable();
 	InvalidateUnifiedTLBUnlockedEntries();
-#endif
 
 	return 0;
 }
@@ -66,9 +64,6 @@ void initialize_pagetable() {
 
 	// Make memory cachable and bufferable
 	mmu_map_section_range(RAMStart, RAMEnd, RAMStart, TRUE, TRUE);
-
-	// Remap our own code to MemoryStart
-	mmu_map_section(MemoryStart, OpenIBootMemoryStart, TRUE, TRUE);
 
 	// unknown
 	mmu_map_section_range(AMC0Higher, AMC0HigherEnd, AMC0, FALSE, FALSE);

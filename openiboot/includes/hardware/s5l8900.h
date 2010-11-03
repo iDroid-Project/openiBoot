@@ -17,7 +17,6 @@
 #define LargeMemoryStart 0x60000000
 #define RAMStart 0x40000000
 #define RAMEnd 0x60000000
-#define OpenIBootMemoryStart 0x5FF00000
 #define MemoryHigher 0xC0000000
 #endif
 #define ExceptionVector MemoryStart
