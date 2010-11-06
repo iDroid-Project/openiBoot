@@ -19,6 +19,7 @@ extern int HasFSInit;
 uint32_t readHFSFile(HFSPlusCatalogFile* file, uint8_t** buffer, Volume* volume);
 
 int fs_setup();
+int add_hfs(Volume* volume, uint8_t* buffer, size_t size, const char* outFileName);
 ExtentList* fs_get_extents(int partition, const char* fileName);
 void fs_cmd_ls(int argc, char** argv);
 void fs_cmd_cat(int argc, char** argv);

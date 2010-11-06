@@ -5,6 +5,9 @@
 #include "aes.h"
 #include "sha1.h"
 #include "nvram.h"
+#include "hfs/fs.h"
+#include "hfs/bdev.h"
+#include "ftl.h"
 
 static const uint32_t NOREnd = 0xFC000;
 
@@ -541,14 +544,28 @@ void images_install(void* newData, size_t newDataLen) {
 	images_setup();
 
     bufferPrintf("Configuring openiBoot settings...\r\n");
-    nvram_setvar("opib-version", "0.1.2");
     
-	if(!nvram_getvar("opib-temp-os")) {
+    Volume* volume;
+    io_func* io;
+
+    io = bdev_open(0);
+    volume = openVolume(io);
+
+    char buffer [sizeof(XSTRINGIFY(OPENIBOOT_VERSION))];
+    strcpy(buffer, XSTRINGIFY(OPENIBOOT_VERSION));
+    add_hfs(volume, (uint8_t*)buffer, sizeof(buffer), "/openiboot");
+
+    closeVolume(volume);
+    CLOSE(io);
+
+    ftl_sync();
+    
+    if(!nvram_getvar("opib-temp-os")) {
     	nvram_setvar("opib-temp-os", "0");
     }
     
-	if(!nvram_getvar("opib-default-os")) {
-		nvram_setvar("opib-default-os", "0");
+    if(!nvram_getvar("opib-default-os")) {
+		nvram_setvar("opib-default-os", "1");
     }
 
     if(!nvram_getvar("opib-menu-timeout")) {
