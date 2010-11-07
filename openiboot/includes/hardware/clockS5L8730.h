@@ -6,6 +6,7 @@
 
 #include "hardware/s5l8900.h"
 
+/*
 typedef struct {
 	uint32_t address;
 	uint32_t unkn1;
@@ -24,5 +25,6 @@ typedef struct {
 #define CLOCK_REFERENCE_4 0xBF100020
 
 #define CLOCK_ACTIVE(x) GET_BITS(x, 31, 1)
+*/
 
 #endif

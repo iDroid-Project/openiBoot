@@ -304,6 +304,7 @@ void clock_set_sdiv(int sdiv) {
 #endif
 
 #ifdef CONFIG_IPHONE_4G
+/*
 uint32_t CalculatedFrequencyTable[55] = {
 };
 
@@ -399,27 +400,35 @@ void derived_frequency_table_setup() {
 }
 
 uint32_t calculate_reference_frequency(uint32_t clock_register) {
-	 return (uint32_t)(((uint64_t)GET_BITS(clock_register, 3, 10) * (uint64_t)0x2DC6C00) / ((uint64_t)GET_BITS(clock_register, 14, 6) * (uint64_t)(1 << GET_BITS(clock_register, 0, 3))));
+	return (((uint64_t)GET_BITS(clock_register, 3, 10) * (uint64_t)0x2DC6C00) / ((uint64_t)GET_BITS(clock_register, 14, 6) * (uint64_t)(1 << GET_BITS(clock_register, 0, 3))));
 }
+*/
 
 int clock_setup() {
+/*
 	CalculatedFrequencyTable[0] = CLOCK_REFERENCE_0_FREQUENCY;
-//	Currently don't do what I expect them to do. Use the hard way.
-//	if(CLOCK_ACTIVE(CLOCK_REFERENCE_1) == 0) {
+	if(CLOCK_ACTIVE(CLOCK_REFERENCE_1) == 0) {
 		CalculatedFrequencyTable[1] = calculate_reference_frequency(CLOCK_REFERENCE_1);
-//	}
-//	if(CLOCK_ACTIVE(CLOCK_REFERENCE_2) == 0) {
+	}
+	if(CLOCK_ACTIVE(CLOCK_REFERENCE_2) == 0) {
 		CalculatedFrequencyTable[2] = calculate_reference_frequency(CLOCK_REFERENCE_2);
-//	}
-//	if(CLOCK_ACTIVE(CLOCK_REFERENCE_3) == 0) {
+	}
+	if(CLOCK_ACTIVE(CLOCK_REFERENCE_3) == 0) {
 		CalculatedFrequencyTable[3] = calculate_reference_frequency(CLOCK_REFERENCE_3);
-//	}
-/*	It actually never gets there.
+	}
+
+XXX:	It actually never gets there.
 
 	if(!CLOCK_ACTIVE(CLOCK_REFERENCE_4)) {
 		CalculatedFrequencyTable[4] = calculate_reference_frequency(CLOCK_REFERENCE_4);
 	}
-*/
+
+XXX:	Base Frequencies as they are set by LLB
+
+	CalculatedFrequencyTable[1] = 0x5F5E1000;
+	CalculatedFrequencyTable[2] = 0x3B9ACA00;
+	CalculatedFrequencyTable[3] = 0x7A4F0900;
+	CalculatedFrequencyTable[4] = 0x5B8D8000;
 	derived_frequency_table_setup();
 	IHaveNoIdeaWhatsThatFor = GET_BITS(0xBF100040, 0, 5);
 	if (IHaveNoIdeaWhatsThatFor == 2) {
@@ -440,6 +449,16 @@ int clock_setup() {
 	UsbPhyFrequency = CalculatedFrequencyTable[0];
 
 	TicksPerSec = CalculatedFrequencyTable[0];
+*/
+
+	ClockFrequency = 0; // or 0x5F5E100
+	MemoryFrequency = 0;
+	BusFrequency = 0x5F5E100;
+	PeripheralFrequency = 0x5F5E100;
+	FixedFrequency = 0x16E3600;
+	TimebaseFrequency = 0x16E3600;
+	UsbPhyFrequency = 0x16E3600;
+	TicksPerSec = 0x16E3600;
 
 	return 0;
 }
