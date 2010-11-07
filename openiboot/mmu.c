@@ -90,7 +90,7 @@ void mmu_map_section(uint32_t section, uint32_t target, Boolean cacheable, Boole
 	InvalidateUnifiedTLBUnlockedEntries();
 }
 
-void mmu_map_section_range(uint32_t rangeStart, uint32_t rangeEnd, uint32_t target, Boolean bufferable, Boolean cacheable) {
+void mmu_map_section_range(uint32_t rangeStart, uint32_t rangeEnd, uint32_t target, Boolean cacheable, Boolean bufferable) {
 	uint32_t currentSection;
 	uint32_t curTargetSection = target;
 	Boolean started = FALSE;
@@ -102,7 +102,7 @@ void mmu_map_section_range(uint32_t rangeStart, uint32_t rangeEnd, uint32_t targ
 			break;
 		}
 		started = TRUE;
-		mmu_map_section(currentSection, curTargetSection, bufferable, cacheable);
+		mmu_map_section(currentSection, curTargetSection, cacheable, bufferable);
 		curTargetSection += MMU_SECTION_SIZE;
 	}
 }
