@@ -178,13 +178,13 @@ int menu_setup(int timeout, int defaultOS) {
 	framebuffer_setloc(0, 0);
 
 	switch(defaultOS){
-		case 0:
+		case 1:
 			Selection = MenuSelectioniPhoneOS;
 			break;
-		case 1:
+		case 2:
 			Selection = MenuSelectionAndroidOS;
 			break;
-		case 2:
+		case 3:
 			Selection = MenuSelectionConsole;
 			break;
 		default:
