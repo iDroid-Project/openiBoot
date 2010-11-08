@@ -23,7 +23,7 @@ static int NORVendor;
 static void nor_prepare() {
 #ifdef CONFIG_3G
 	if(Prepared == 0) {
-		spi_set_baud(0, 12000000, SPIOption13Setting0, 1, 0, 0);
+		spi_set_baud(0, 12000000, SPIWordSize8, 1, 0, 0);
 	}
 #endif
 	Prepared++;

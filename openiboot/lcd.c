@@ -758,8 +758,8 @@ static void configureClockCON0(int OTFClockDivisor, int clockSource, int option4
 static int syrah_init() {
 	bufferPrintf("syrah_init() -- Hurray for displays\r\n");
 
-	spi_set_baud(1, 1000000, SPIOption13Setting0, 1, 1, 1);
-	spi_set_baud(0, 500000, SPIOption13Setting0, 1, 0, 0);
+	spi_set_baud(1, 1000000, SPIWordSize8, 1, 1, 1);
+	spi_set_baud(0, 500000, SPIWordSize8, 1, 0, 0);
 
 	setCommandMode(ON);
 
@@ -1175,8 +1175,8 @@ static int getPanelRegister(int reg) {
 
 static void syrah_quiesce() {
 	bufferPrintf("syrah_quiesce()\r\n");
-	spi_set_baud(1, 1000000, SPIOption13Setting0, 1, 1, 1);
-	spi_set_baud(0, 500000, SPIOption13Setting0, 1, 0, 0);
+	spi_set_baud(1, 1000000, SPIWordSize8, 1, 1, 1);
+	spi_set_baud(0, 500000, SPIWordSize8, 1, 0, 0);
 	enterRegisterMode();
 	udelay(1000);
 	setPanelRegister(0x55, 0x2);

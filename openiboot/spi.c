@@ -9,9 +9,9 @@
 #include "interrupt.h"
 
 static const SPIRegister SPIRegs[NUM_SPIPORTS] = {
-	{SPI0 + CONTROL, SPI0 + SETUP, SPI0 + STATUS, SPI0 + UNKREG1, SPI0 + TXDATA, SPI0 + RXDATA, SPI0 + CLKDIVIDER, SPI0 + UNKREG2, SPI0 + UNKREG3},
-	{SPI1 + CONTROL, SPI1 + SETUP, SPI1 + STATUS, SPI1 + UNKREG1, SPI1 + TXDATA, SPI1 + RXDATA, SPI1 + CLKDIVIDER, SPI1 + UNKREG2, SPI1 + UNKREG3},
-	{SPI2 + CONTROL, SPI2 + SETUP, SPI2 + STATUS, SPI2 + UNKREG1, SPI2 + TXDATA, SPI2 + RXDATA, SPI2 + CLKDIVIDER, SPI2 + UNKREG2, SPI2 + UNKREG3}
+	{SPI0 + CONTROL, SPI0 + SETUP, SPI0 + STATUS, SPI0 + UNKREG1, SPI0 + TXDATA, SPI0 + RXDATA, SPI0 + CLKDIVIDER, SPI0 + SPCNT, SPI0 + SPIDD},
+	{SPI1 + CONTROL, SPI1 + SETUP, SPI1 + STATUS, SPI1 + UNKREG1, SPI1 + TXDATA, SPI1 + RXDATA, SPI1 + CLKDIVIDER, SPI1 + SPCNT, SPI1 + SPIDD},
+	{SPI2 + CONTROL, SPI2 + SETUP, SPI2 + STATUS, SPI2 + UNKREG1, SPI2 + TXDATA, SPI2 + RXDATA, SPI2 + CLKDIVIDER, SPI2 + SPCNT, SPI2 + SPIDD}
 };
 
 static SPIInfo spi_info[NUM_SPIPORTS];
@@ -41,6 +41,82 @@ int spi_setup() {
 	return 0;
 }
 
+static void spi_txdata(int port, const volatile void *buff, int from, int to)
+{
+	int i=from>>spi_info[port].wordSize;
+	int j=to>>spi_info[port].wordSize;
+	switch(spi_info[port].wordSize)
+	{
+		case 0: // 8-bytes
+			{
+				uint8_t *buf = (uint8_t*)buff;
+				for(;i<j;i++)
+				{
+					SET_REG(SPIRegs[port].txData, buf[i]);
+				}
+			}
+			break;
+
+		case 1: // 16-bytes
+			{
+				uint16_t *buf = (uint16_t*)buff;
+				for(;i<j;i++)
+				{
+					SET_REG(SPIRegs[port].txData, buf[i]);
+				}
+			}
+			break;
+
+		case 2: // 32-bytes
+			{
+				uint32_t *buf = (uint32_t*)buff;
+				for(;i<j;i++)
+				{
+					SET_REG(SPIRegs[port].txData, buf[i]);
+				}
+			}
+			break;
+	}
+}
+
+static void spi_rxdata(int port, const volatile void *buff, int from, int to)
+{
+	int i=from>>spi_info[port].wordSize;
+	int j=to>>spi_info[port].wordSize;
+	switch(spi_info[port].wordSize)
+	{
+		case 0: // 8-bytes
+			{
+				uint8_t *buf = (uint8_t*)buff;
+				for(;i<j;i++)
+				{
+					buf[i] = GET_REG(SPIRegs[port].rxData);
+				}
+			}
+			break;
+
+		case 1: // 16-bytes
+			{
+				uint16_t *buf = (uint16_t*)buff;
+				for(;i<j;i++)
+				{
+					buf[i] = GET_REG(SPIRegs[port].rxData);
+				}
+			}
+			break;
+
+		case 2: // 32-bytes
+			{
+				uint32_t *buf = (uint32_t*)buff;
+				for(;i<j;i++)
+				{
+					buf[i] = GET_REG(SPIRegs[port].rxData);
+				}
+			}
+			break;
+	}
+}
+
 int spi_tx(int port, const uint8_t* buffer, int len, int block, int unknown) {
 	if(port > (NUM_SPIPORTS - 1)) {
 		return -1;
@@ -60,13 +136,10 @@ int spi_tx(int port, const uint8_t* buffer, int len, int block, int unknown) {
 	spi_info[port].txDone = FALSE;
 
 	if(unknown == 0) {
-		SET_REG(SPIRegs[port].unkReg2, 0);
+		SET_REG(SPIRegs[port].cnt, 0);
 	}
 
-	int i;
-	for(i = 0; i < spi_info[port].txCurrentLen; i++) {
-		SET_REG(SPIRegs[port].txData, buffer[i]);
-	}
+	spi_txdata(port, buffer, 0, spi_info[port].txCurrentLen);
 
 	SET_REG(SPIRegs[port].control, 1);
 
@@ -98,7 +171,7 @@ int spi_rx(int port, uint8_t* buffer, int len, int block, int noTransmitJunk) {
 		SET_REG(SPIRegs[port].setup, GET_REG(SPIRegs[port].setup) | 1);
 	}
 
-	SET_REG(SPIRegs[port].unkReg2, len);
+	SET_REG(SPIRegs[port].cnt, (len + ((1<<spi_info[port].wordSize)-1)) >> spi_info[port].wordSize);
 	SET_REG(SPIRegs[port].control, 1);
 
 	if(block) {
@@ -150,12 +223,9 @@ int spi_txrx(int port, const uint8_t* outBuffer, int outLen, uint8_t* inBuffer, 
 	spi_info[port].rxTotalLen = inLen;
 	spi_info[port].counter = 0;
 
-	int i;
-	for(i = 0; i < spi_info[port].txCurrentLen; i++) {
-		SET_REG(SPIRegs[port].txData, outBuffer[i]);
-	}
+	spi_txdata(port, outBuffer, 0, spi_info[port].txCurrentLen);
 
-	SET_REG(SPIRegs[port].unkReg2, inLen);
+	SET_REG(SPIRegs[port].cnt, (inLen + ((1<<spi_info[port].wordSize)-1)) >> spi_info[port].wordSize);
 	SET_REG(SPIRegs[port].control, 1);
 
 	if(block) {
@@ -168,24 +238,24 @@ int spi_txrx(int port, const uint8_t* outBuffer, int outLen, uint8_t* inBuffer, 
 	}
 }
 
-void spi_set_baud(int port, int baud, SPIOption13 option13, int isMaster, int isActiveLow, int lastClockEdgeMissing) {
+void spi_set_baud(int port, int baud, SPIWordSize wordSize, int isMaster, int isActiveLow, int lastClockEdgeMissing) {
 	if(port > (NUM_SPIPORTS - 1)) {
 		return;
 	}
 
 	SET_REG(SPIRegs[port].control, 0);
 
-	switch(option13) {
-		case SPIOption13Setting0:
-			spi_info[port].option13 = 0;
+	switch(wordSize) {
+		case SPIWordSize8:
+			spi_info[port].wordSize = 0;
 			break;
 
-		case SPIOption13Setting1:
-			spi_info[port].option13 = 1;
+		case SPIWordSize16:
+			spi_info[port].wordSize = 1;
 			break;
 
-		case SPIOption13Setting2:
-			spi_info[port].option13 = 2;
+		case SPIWordSize32:
+			spi_info[port].wordSize = 2;
 			break;
 	}
 
@@ -223,10 +293,10 @@ void spi_set_baud(int port, int baud, SPIOption13 option13, int isMaster, int is
 			| ((isMaster ? 0x3 : 0) << 3)
 			| ((spi_info[port].option5 ? 0x2 : 0x3D) << 5)
 			| (spi_info[port].clockSource << CLOCK_SHIFT)
-			| spi_info[port].option13 << 13;
+			| spi_info[port].wordSize << 13;
 
 	SET_REG(SPIRegs[port].setup, options);
-	SET_REG(SPIRegs[port].unkReg1, 0);
+	SET_REG(SPIRegs[port].pin, 0);
 	SET_REG(SPIRegs[port].control, 1);
 
 }
@@ -241,23 +311,19 @@ static void spiIRQHandler(uint32_t port) {
 		spi_info[port].counter++;
 	}
 
-	int i;
-
 	if(status & (1 << 1)) {
 		while(TRUE) {
 			// take care of tx
 			if(spi_info[port].txBuffer != NULL) {
-				if(spi_info[port].txCurrentLen < spi_info[port].txTotalLen) {
+				if(spi_info[port].txCurrentLen < spi_info[port].txTotalLen)
+				{
 					int toTX = spi_info[port].txTotalLen - spi_info[port].txCurrentLen;
-					int canTX = MAX_TX_BUFFER - TX_BUFFER_LEFT(status);
+					int canTX = (MAX_TX_BUFFER - TX_BUFFER_LEFT(status));
 
 					if(toTX > canTX)
 						toTX = canTX;
 
-					for(i = 0; i < toTX; i++) {
-						SET_REG(SPIRegs[port].txData, spi_info[port].txBuffer[spi_info[port].txCurrentLen + i]);
-					}
-
+					spi_txdata(port, spi_info[port].txBuffer, spi_info[port].txCurrentLen, spi_info[port].txCurrentLen+toTX);
 					spi_info[port].txCurrentLen += toTX;
 
 				} else {
@@ -272,15 +338,12 @@ dorx:
 				break;
 
 			int toRX = spi_info[port].rxTotalLen - spi_info[port].rxCurrentLen;
-			int canRX = GET_BITS(status, 8, 4);
+			int canRX = GET_BITS(status, 8, 4) << spi_info[port].wordSize;
 
 			if(toRX > canRX)
 				toRX = canRX;
 
-			for(i = 0; i < toRX; i++) {
-				spi_info[port].rxBuffer[spi_info[port].rxCurrentLen + i] = GET_REG(SPIRegs[port].rxData);
-			}
-
+			spi_rxdata(port, spi_info[port].rxBuffer, spi_info[port].rxCurrentLen, spi_info[port].rxCurrentLen+toRX);
 			spi_info[port].rxCurrentLen += toRX;
 
 			if(spi_info[port].rxCurrentLen < spi_info[port].rxTotalLen)
@@ -288,7 +351,6 @@ dorx:
 
 			spi_info[port].rxDone = TRUE;
 			spi_info[port].rxBuffer = NULL;
-
 		}
 
 

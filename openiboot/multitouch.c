@@ -675,7 +675,7 @@ static void multitouch_atn(uint32_t token)
 
 int mt_spi_tx(const MTSPISetting* setting, const uint8_t* outBuffer, int outLen)
 {
-	spi_set_baud(MT_SPI, setting->speed, SPIOption13Setting0, 1, 1, 1);
+	spi_set_baud(MT_SPI, setting->speed, SPIWordSize8, 1, 1, 1);
 	gpio_pin_output(MT_SPI_CS, 0);
 	udelay(setting->txDelay);
 	int ret = spi_tx(MT_SPI, outBuffer, outLen, TRUE, 0);
@@ -685,7 +685,7 @@ int mt_spi_tx(const MTSPISetting* setting, const uint8_t* outBuffer, int outLen)
 
 int mt_spi_txrx(const MTSPISetting* setting, const uint8_t* outBuffer, int outLen, uint8_t* inBuffer, int inLen)
 {
-	spi_set_baud(MT_SPI, setting->speed, SPIOption13Setting0, 1, 1, 1);
+	spi_set_baud(MT_SPI, setting->speed, SPIWordSize8, 1, 1, 1);
 	gpio_pin_output(MT_SPI_CS, 0);
 	udelay(setting->rxDelay);
 	int ret = spi_txrx(MT_SPI, outBuffer, outLen, inBuffer, inLen, TRUE);
