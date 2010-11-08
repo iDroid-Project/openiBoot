@@ -42,5 +42,8 @@ void CallThumb(uint32_t address);
 
 void Reboot();
 
+void SwapTask(TaskDescriptor *_td);
+void StartTask();
+
 #endif
 

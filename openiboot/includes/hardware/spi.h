@@ -17,8 +17,8 @@
 #define TXDATA 0x10
 #define RXDATA 0x20
 #define CLKDIVIDER 0x30
-#define UNKREG2 0x34
-#define UNKREG3 0x38
+#define SPCNT 0x34
+#define SPIDD 0x38
 
 // Values
 #define MAX_TX_BUFFER 8

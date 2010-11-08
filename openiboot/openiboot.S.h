@@ -29,5 +29,17 @@
 .equ TaskDescriptorIdentifier1, 0x7461736b
 .equ TaskDescriptorIdentifier2,	0x74736b32
 
+# TaskRegisterState
+.equ TaskRegisterState.r4,		0x00
+.equ TaskRegisterState.r5,		0x04
+.equ TaskRegisterState.r6,		0x08
+.equ TaskRegisterState.r7,		0x0c
+.equ TaskRegisterState.r8,		0x10
+.equ TaskRegisterState.r9,		0x14
+.equ TaskRegisterState.r10,		0x18
+.equ TaskRegisterState.r11,		0x1c
+.equ TaskRegisterState.sp,		0x20
+.equ TaskRegisterState.lr,		0x24
+
 #endif
 

@@ -44,6 +44,7 @@
 
 .global Reboot
 
+.global SwapTask
 .global CurrentRunning
 
 .text
@@ -264,6 +265,64 @@ Reboot:
 	MOVLS	R1, #WDT_ENABLE
 	STR	R1, [R0]
 	B	Reboot
+
+@
+@ Tasks
+@
+
+SwapTask:
+	@ Store current stuff
+	LDR R1, =CurrentRunning
+	LDR R1, [R1]
+	ADD R1, #TaskDescriptor.savedRegisters
+	STR R4, [R1, #TaskRegisterState.r4]
+	STR R5, [R1, #TaskRegisterState.r5]
+	STR R6, [R1, #TaskRegisterState.r6]
+	STR R7, [R1, #TaskRegisterState.r7]
+	STR R8, [R1, #TaskRegisterState.r8]
+	STR R9, [R1, #TaskRegisterState.r9]
+	STR R10, [R1, #TaskRegisterState.r10]
+	STR R11, [R1, #TaskRegisterState.r11]
+	STR SP, [R1, #TaskRegisterState.sp]
+	STR LR, [R1, #TaskRegisterState.lr]
+	
+	@ Load new task
+	ADD R1, R0, #TaskDescriptor.savedRegisters
+	LDR R4, [R1, #TaskRegisterState.r4]
+	LDR R5, [R1, #TaskRegisterState.r5]
+	LDR R6, [R1, #TaskRegisterState.r6]
+	LDR R7, [R1, #TaskRegisterState.r7]
+	LDR R8, [R1, #TaskRegisterState.r8]
+	LDR R9, [R1, #TaskRegisterState.r9]
+	LDR R10, [R1, #TaskRegisterState.r10]
+	LDR R11, [R1, #TaskRegisterState.r11]
+	LDR SP, [R1, #TaskRegisterState.sp]
+	LDR LR, [R1, #TaskRegisterState.lr]
+
+	@ Store new 'current' task
+	LDR R1, =CurrentRunning
+	STR R0, [R1]	
+	BX LR
+
+.global task_stop
+.global StartTask
+
+StartTask:
+	@ R4 = Task PTR
+	@ R5 = Argument
+
+	BL LeaveCriticalSection
+	
+	MOV R0, R5
+	BLX R4
+
+	BLX task_stop
+
+	@ We shouldn't get here, because the main thread is
+	@ never started. So umm, what do we do? Just let
+	@ the IP roam into the data segment? Sounds good. -- Ricky26
+
+	B Reboot
 
 .data
 

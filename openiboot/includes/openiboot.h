@@ -51,6 +51,11 @@ typedef enum OnOff {
 #endif
 #define uSecPerSec 1000000
 
+#define container_of(type, member, ptr) ({ \
+		const typeof(((type*)NULL)->member) *mptr = (ptr); \
+		(type*)(mptr - offsetof(type, member)); \
+	})
+
 typedef struct Event Event;
 
 typedef void (*TaskRoutineFunction)(void* opaque);
