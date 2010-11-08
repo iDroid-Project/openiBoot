@@ -1208,7 +1208,7 @@ static void framebuffer_fill(Framebuffer* framebuffer, int x, int y, int width, 
 	}
 
 	int line;
-	for(line = y; line < height; line++) {
+	for(line = y; maxLine < height; line++) {
 		framebuffer->hline(framebuffer, x, line, width, fill);
 	}
 }
