@@ -9,9 +9,9 @@
 #include "interrupt.h"
 
 static const SPIRegister SPIRegs[NUM_SPIPORTS] = {
-	{SPI0 + CONTROL, SPI0 + SETUP, SPI0 + STATUS, SPI0 + UNKREG1, SPI0 + TXDATA, SPI0 + RXDATA, SPI0 + CLKDIVIDER, SPI0 + SPCNT, SPI0 + SPIDD},
-	{SPI1 + CONTROL, SPI1 + SETUP, SPI1 + STATUS, SPI1 + UNKREG1, SPI1 + TXDATA, SPI1 + RXDATA, SPI1 + CLKDIVIDER, SPI1 + SPCNT, SPI1 + SPIDD},
-	{SPI2 + CONTROL, SPI2 + SETUP, SPI2 + STATUS, SPI2 + UNKREG1, SPI2 + TXDATA, SPI2 + RXDATA, SPI2 + CLKDIVIDER, SPI2 + SPCNT, SPI2 + SPIDD}
+	{SPI0 + CONTROL, SPI0 + SETUP, SPI0 + STATUS, SPI0 + PIN, SPI0 + TXDATA, SPI0 + RXDATA, SPI0 + CLKDIVIDER, SPI0 + SPCNT, SPI0 + SPIDD},
+	{SPI1 + CONTROL, SPI1 + SETUP, SPI1 + STATUS, SPI1 + PIN, SPI1 + TXDATA, SPI1 + RXDATA, SPI1 + CLKDIVIDER, SPI1 + SPCNT, SPI1 + SPIDD},
+	{SPI2 + CONTROL, SPI2 + SETUP, SPI2 + STATUS, SPI2 + PIN, SPI2 + TXDATA, SPI2 + RXDATA, SPI2 + CLKDIVIDER, SPI2 + SPCNT, SPI2 + SPIDD}
 };
 
 static SPIInfo spi_info[NUM_SPIPORTS];
@@ -318,7 +318,7 @@ static void spiIRQHandler(uint32_t port) {
 				if(spi_info[port].txCurrentLen < spi_info[port].txTotalLen)
 				{
 					int toTX = spi_info[port].txTotalLen - spi_info[port].txCurrentLen;
-					int canTX = (MAX_TX_BUFFER - TX_BUFFER_LEFT(status));
+					int canTX = (MAX_TX_BUFFER - TX_BUFFER_LEFT(status)) << spi_info[port].wordSize;
 
 					if(toTX > canTX)
 						toTX = canTX;

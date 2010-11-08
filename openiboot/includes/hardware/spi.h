@@ -13,7 +13,7 @@
 #define CONTROL 0x0
 #define SETUP 0x4
 #define STATUS 0x8
-#define UNKREG1 0xC
+#define PIN 0xC
 #define TXDATA 0x10
 #define RXDATA 0x20
 #define CLKDIVIDER 0x30
