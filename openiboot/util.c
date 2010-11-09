@@ -4,6 +4,7 @@
 #include "util.h"
 #include "openiboot-asmhelpers.h"
 #include "framebuffer.h"
+#include "acm.h"
 
 void __assert(const char* file, int line, const char* m) {
 	bufferPrintf("ASSERT FAILED: %s at %s:%d\r\n", m, file, line);
@@ -518,6 +519,9 @@ void bufferPrint(const char* toBuffer) {
 
 	int len = strlen(toBuffer);
 	addToBuffer(toBuffer, len);
+
+	if(acm_is_ready)
+		acm_buffer_notify();
 }
 
 void uartPrint(const char* toBuffer) {
