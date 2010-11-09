@@ -216,17 +216,16 @@ void* doInput(void* threadid) {
 		else if (strcmp(commandBuffer,"install") == 0)
 		{
             oibc_log("Backing up your NOR to current directory as norbackup.dump\n");
-            sprintf(toSendBuffer, "nor_read 0x09000000 0x0 1048576");
 
-			commandBuffer[len] = '\n';
+            sprintf(toSendBuffer, "nor_read 0x09000000 0x0 1048576\n");
 			sendBuffer(toSendBuffer, strlen(toSendBuffer));
 
-			sprintf(toSendBuffer,"norbackup.dump:1048576"); 
-			getFile(toSendBuffer);
 			oibc_log("Fetching NOR backup.\n");
-			commandBuffer[len] = '\n';
+			sprintf(toSendBuffer, "norbackup.dump:1048576");
+			getFile(toSendBuffer);
+
 			oibc_log("NOR backed up, starting installation\n");
-			sprintf(toSendBuffer,"install");
+			sprintf(toSendBuffer,"install\n");
 			sendBuffer(toSendBuffer, strlen(toSendBuffer));
 		}
 		else
