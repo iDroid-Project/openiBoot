@@ -120,7 +120,10 @@ int usb_setup() {
 	// Set up the hardware
 	clock_gate_switch(USB_OTGCLOCKGATE, ON);
 	clock_gate_switch(USB_PHYCLOCKGATE, ON);
+
+#ifndef CONFIG_IPHONE4
 	clock_gate_switch(EDRAM_CLOCKGATE, ON);
+#endif
 
 	// Generate a soft disconnect on host
 	SET_REG(USB + DCTL, GET_REG(USB + DCTL) | DCTL_SFTDISCONNECT);
@@ -171,11 +174,16 @@ int usb_setup() {
 
 	SET_REG(USB + GRSTCTL, GRSTCTL_CORESOFTRESET);
 
+#ifdef CONFIG_IPHONE4
+	while(GET_REG(USB+GRSTCTL) != GRSTCTL_CORESOFTRESET);
+	while(GET_REG(USB+GRSTCTL) > 0);
+#else
 	// wait until reset takes
 	while((GET_REG(USB + GRSTCTL) & GRSTCTL_CORESOFTRESET) == GRSTCTL_CORESOFTRESET);
 
 	// wait until reset completes
 	while((GET_REG(USB + GRSTCTL) & ~GRSTCTL_AHBIDLE) != 0);
+#endif
 
 	udelay(USB_RESETWAITFINISH_DELAYUS);
 
@@ -485,9 +493,7 @@ void usb_enable_endpoint(int _ep, USBDirection _dir, USBTransferType _type, int 
 				| ((_type & USB_EPCON_TYPE_MASK) << USB_EPCON_TYPE_SHIFT);
 
 			if(usb_fifo_mode == FIFODedicated)
-			{
-				// TODO: Allocate FIFO
-			}
+				usb_claim_fifo(_ep);
 			else if(usb_fifo_mode == FIFOShared)
 				usb_add_ep_to_queue(_ep);
 
