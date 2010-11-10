@@ -18,16 +18,19 @@
 #endif
 
 #if defined(CONFIG_IPHONE4)
-#define USB_OTGCLOCKGATE 0x2
-#define USB_PHYCLOCKGATE 0x23
+#define USB_OTGCLOCKGATE 0x18
+#define USB_PHYCLOCKGATE 0x1D
+#define USB_INTERRUPT 0xD
 #define USB_TURNAROUND 0xB
 #elif defined(CONFIG_IPOD2G)
 #define USB_OTGCLOCKGATE 0x18
 #define USB_PHYCLOCKGATE 0x19
+#define USB_INTERRUPT 0x13
 #define USB_TURNAROUND 0xB
 #else
 #define USB_OTGCLOCKGATE 0x2
 #define USB_PHYCLOCKGATE 0x23
+#define USB_INTERRUPT 0x13
 #define USB_TURNAROUND 0x5
 #endif
 
@@ -79,9 +82,6 @@
 #define USB_OUTREGS	0xB00
 
 #define USB_ONOFF 0xE00
-
-// Values
-#define USB_INTERRUPT 0x13
 
 #define USB_ONOFF_OFF 3	// bits 0, 1
 
