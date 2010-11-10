@@ -1292,11 +1292,14 @@ void framebuffer_hook() {
         Window* newWindow;
         newWindow = (Window*) malloc(sizeof(Window));
         newWindow->created = FALSE;
-//XXX IPAD
-//        newWindow->width = 1024;
-//        newWindow->height = 768;
+	#ifdef CONFIG_IPAD
+        newWindow->width = 1024;
+        newWindow->height = 768;
+	#endif
+	#ifndef CONFIG_IPAD
         newWindow->width = 640;
         newWindow->height = 960;
+	#endif
         newWindow->lineBytes = (newWindow->width + calculateStrideLen(RGB888, 0, newWindow->width))*4;
         createFramebuffer(&newWindow->framebuffer, 0x5F700000, newWindow->width, newWindow->height, newWindow->lineBytes/4, RGB888);
 	newWindow->created = TRUE;

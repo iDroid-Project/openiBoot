@@ -26,6 +26,10 @@ ifeq ($(PLATFORM),IPHONE_4)
 	SRC_C          += camera.c radio.c alsISL29003.c multitouch-z2.c wm8991.c vibrator.c
 endif
 
+ifeq ($(PLATFORM),IPAD)
+        SRC_C          += camera.c radio.c alsISL29003.c multitouch-z2.c wm8991.c vibrator.c
+endif
+
 # Variables
 ifeq ($(SMALL),YES)
 	LOAD           ?= 0x22000000
@@ -65,8 +69,13 @@ else
 			CFLAGS	+= -DCONFIG_IPHONE_4
 			IMG3TEMPLATE	= mk8900image/template-4g.img3
 		else
-			CFLAGS     += -DCONFIG_IPHONE
-			IMG3TEMPLATE    = mk8900image/template.img3
+	                ifeq ($(PLATFORM),IPAD)
+	                        CFLAGS  += -DCONFIG_IPAD -DCONFIG_IPHONE_4
+        	                IMG3TEMPLATE    = mk8900image/template-4g.img3
+			else
+				CFLAGS     += -DCONFIG_IPHONE
+				IMG3TEMPLATE    = mk8900image/template.img3
+			endif
 		endif
 	endif
 endif

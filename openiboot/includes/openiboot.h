@@ -28,8 +28,14 @@ typedef signed int intptr_t;
 #define OPENIBOOT_VERSION_CONFIG " for iPhone 3G"
 #endif
 #ifdef CONFIG_IPHONE_4
+#ifndef CONFIG_IPAD
 #define OPENIBOOT_VERSION_CONFIG " for iPhone 4G"
 #endif
+#endif
+#ifdef CONFIG_IPAD
+#define OPENIBOOT_VERSION_CONFIG " for iPad"
+#endif
+
 
 #define XSTRINGIFY(s) STRINGIFY(s)
 #define STRINGIFY(s) #s
