@@ -9,15 +9,6 @@
 #include "interrupt.h"
 #include "openiboot-asmhelpers.h"
 
-typedef struct _USBMessageQueue
-{
-	struct _USBMessageQueue *next;
-	
-	USBDirection dir;
-	char *data;
-	size_t dataLen;
-} USBMessageQueue;
-
 static void change_state(USBState new_state);
 
 static Boolean usb_inited;
@@ -35,6 +26,8 @@ static USBMessageQueue *usb_message_queue[USB_NUM_ENDPOINTS];
 
 static int usb_ep_queue_first = 0xFF;
 static int usb_ep_queue_last = 0xFF;
+static int usb_fifos_used = 0;
+static int usb_fifo_start = PERIODIC_TX_FIFO_STARTADDR;
 static int usb_global_in_nak = 0;
 static int usb_global_out_nak = 0;
 
@@ -137,12 +130,13 @@ int usb_setup() {
 	SET_REG(USB + USB_ONOFF, GET_REG(USB + USB_ONOFF) & (~USB_ONOFF_OFF));
 	udelay(USB_ONOFFSTART_DELAYUS);
 
+#if defined(USB_SETUP_PHY)
 	// power on PHY
 	SET_REG(USB_PHY + OPHYPWR, OPHYPWR_POWERON);
 	udelay(USB_PHYPWRPOWERON_DELAYUS);
 
+#if defined(CONFIG_IPOD2G)
 	// select clock
-#ifdef CONFIG_IPOD2G
 	uint32_t phyClockBits;
 	switch (clock_get_frequency(FrequencyBaseUsbPhy))
 	{
@@ -164,6 +158,7 @@ int usb_setup() {
 	}
 	SET_REG(USB_PHY + OPHYCLK, (GET_REG(USB_PHY + OPHYCLK) & OPHYCLK_CLKSEL_MASK) | phyClockBits);
 #else
+	// select clock
 	SET_REG(USB_PHY + OPHYCLK, (GET_REG(USB_PHY + OPHYCLK) & ~OPHYCLK_CLKSEL_MASK) | OPHYCLK_CLKSEL_48MHZ);
 #endif
 
@@ -172,6 +167,7 @@ int usb_setup() {
 	udelay(USB_RESET2_DELAYUS);
 	SET_REG(USB_PHY + ORSTCON, GET_REG(USB_PHY + ORSTCON) & (~ORSTCON_PHYSWRESET));
 	udelay(USB_RESET_DELAYUS);
+#endif
 
 	SET_REG(USB + GRSTCTL, GRSTCTL_CORESOFTRESET);
 
@@ -182,10 +178,6 @@ int usb_setup() {
 	while((GET_REG(USB + GRSTCTL) & ~GRSTCTL_AHBIDLE) != 0);
 
 	udelay(USB_RESETWAITFINISH_DELAYUS);
-
-	// allow host to reconnect
-	SET_REG(USB + DCTL, GET_REG(USB + DCTL) & (~DCTL_SFTDISCONNECT));
-	udelay(USB_SFTCONNECT_DELAYUS);
 
 	if(GET_REG(USB+GHWCFG4) & GHWCFG4_DED_FIFO_EN)
 		usb_fifo_mode = FIFODedicated;
@@ -227,6 +219,10 @@ int usb_setup() {
 	SET_REG(USB + DIEPMSK, USB_EPINT_NONE);
 	SET_REG(USB + DOEPMSK, USB_EPINT_NONE);
 
+	// allow host to reconnect
+	SET_REG(USB + DCTL, GET_REG(USB + DCTL) & (~DCTL_SFTDISCONNECT));
+	udelay(USB_SFTCONNECT_DELAYUS);
+
 	bufferPrintf("USB: Hardware Configuration\n"
 		"    HWCFG1 = 0x%08x\n"
 		"    HWCFG2 = 0x%08x\n"
@@ -257,14 +253,16 @@ int usb_start(USBEnumerateHandler hEnumerate, USBStartHandler hStart) {
 		controlRecvBuffer = memalign(DMA_ALIGN, CONTROL_RECV_BUFFER_LEN);
 
 	SET_REG(USB + GAHBCFG, GAHBCFG_DMAEN | GAHBCFG_BSTLEN_INCR8 | GAHBCFG_MASKINT);
-	SET_REG(USB + GUSBCFG, GUSBCFG_PHYIF16BIT | GUSBCFG_SRPENABLE | GUSBCFG_HNPENABLE | ((5 & GUSBCFG_TURNAROUND_MASK) << GUSBCFG_TURNAROUND_SHIFT));
+	SET_REG(USB + GUSBCFG, GUSBCFG_PHYIF16BIT | GUSBCFG_SRPENABLE | GUSBCFG_HNPENABLE | ((USB_TURNAROUND & GUSBCFG_TURNAROUND_MASK) << GUSBCFG_TURNAROUND_SHIFT));
+
 	SET_REG(USB + DCFG, DCFG_HISPEED | DCFG_NZSTSOUTHSHK); // some random setting. See specs
 	SET_REG(USB + DCFG, GET_REG(USB + DCFG) & ~(DCFG_DEVICEADDRMSK));
+
 	InEPRegs[0].control = USB_EPCON_ACTIVE;
 	OutEPRegs[0].control = USB_EPCON_ACTIVE;
 
 	SET_REG(USB + GRXFSIZ, RX_FIFO_DEPTH);
-	SET_REG(USB + GNPTXFSIZ, (TX_FIFO_DEPTH << GNPTXFSIZ_DEPTH_SHIFT) | TX_FIFO_STARTADDR);
+	SET_REG(USB + GNPTXFSIZ, (TX_FIFO_DEPTH << FIFO_DEPTH_SHIFT) | TX_FIFO_STARTADDR);
 
 	int i;
 	for(i = 0; i < USB_NUM_ENDPOINTS; i++) {
@@ -289,6 +287,7 @@ int usb_start(USBEnumerateHandler hEnumerate, USBStartHandler hStart) {
 	udelay(USB_PROGRAMDONE_DELAYUS);
 	SET_REG(USB + GOTGCTL, GET_REG(USB + GOTGCTL) | GOTGCTL_SESSIONREQUEST);
 
+	usb_enable_endpoint(0, USBBiDir, USBControl, 0x80);
 	usb_receive_control(controlRecvBuffer, sizeof(USBSetupPacket));
 
 	change_state(USBPowered);
@@ -379,6 +378,21 @@ static void usb_clear_global_in_nak()
 	}
 }
 
+static int usb_epmis()
+{
+	return (GET_REG(USB+DCFG) >> DCFG_ACTIVE_EP_COUNT_SHIFT) & DCFG_ACTIVE_EP_COUNT_MASK;
+}
+
+static void usb_set_epmis(int _amt)
+{
+	SET_REG(USB+DCFG, (GET_REG(USB+DCFG) &~ (DCFG_ACTIVE_EP_COUNT_MASK << DCFG_ACTIVE_EP_COUNT_SHIFT)) | (_amt << DCFG_ACTIVE_EP_COUNT_SHIFT));
+}
+
+static void usb_mod_epmis(int _amt)
+{
+	usb_set_epmis(usb_epmis() + _amt);
+}
+
 static void usb_flush_fifo(int _fifo)
 {
 	bufferPrintf("USB: Flushing %d.\n", _fifo);
@@ -404,11 +418,6 @@ static void usb_add_ep_to_queue(int _ep)
 	{
 		usb_ep_queue_first = _ep;
 		usb_ep_queue_last = _ep;
-		
-		/*int i;
-		for(i = 0; i < USB_NUM_ENDPOINTS; i++)
-			InEPRegs[i].control = (InEPRegs[i].control &~ (USB_EPCON_NEXTEP_MASK << USB_EPCON_NEXTEP_SHIFT))
-				| ((_ep & USB_EPCON_NEXTEP_MASK) << USB_EPCON_NEXTEP_SHIFT);*/
 
 		InEPRegs[_ep].control = (InEPRegs[_ep].control &~ (USB_EPCON_NEXTEP_MASK << USB_EPCON_NEXTEP_SHIFT))
 			| ((_ep & USB_EPCON_NEXTEP_MASK) << USB_EPCON_NEXTEP_SHIFT);
@@ -423,15 +432,33 @@ static void usb_add_ep_to_queue(int _ep)
 		usb_ep_queue_last = _ep;
 	}
 
-	int epCount = (GET_REG(USB+DCFG) >> DCFG_ACTIVE_EP_COUNT_SHIFT) & DCFG_ACTIVE_EP_COUNT_MASK;
-	epCount++;
-	SET_REG(USB+DCFG, (GET_REG(USB+DCFG) &~ (DCFG_ACTIVE_EP_COUNT_MASK << DCFG_ACTIVE_EP_COUNT_SHIFT)) | (epCount << DCFG_ACTIVE_EP_COUNT_SHIFT));
+	usb_mod_epmis(1);	
 
 	int i;
 	bufferPrintf("USB: loop = ");
 	for(i = 0; i < USB_NUM_ENDPOINTS; i++)
 		bufferPrintf("%d ", (InEPRegs[i].control >> USB_EPCON_NEXTEP_SHIFT) & USB_EPCON_NEXTEP_MASK);
 	bufferPrintf("\n");
+}
+
+static void usb_claim_fifo(int _ep)
+{
+	int i = 1;
+	for(; i < USB_NUM_FIFOS; i++)
+	{
+		if((usb_fifos_used & (1 << (i-1))) == 0)
+		{
+			// We found an unused fifo.
+			usb_fifos_used |= (1 << (i-1)); // Claim it
+			int fstart = usb_fifo_start;
+			usb_fifo_start += PERIODIC_TX_FIFO_DEPTH;
+
+			SET_REG(USB+DIEPTXF(i), fstart | (PERIODIC_TX_FIFO_DEPTH << FIFO_DEPTH_SHIFT));
+
+			InEPRegs[_ep].control = (InEPRegs[_ep].control & ~(USB_EPCON_TXFNUM_MASK << USB_EPCON_TXFNUM_SHIFT))
+									| ((i & USB_EPCON_TXFNUM_MASK) << USB_EPCON_TXFNUM_SHIFT);
+		}
+	}
 }
 
 void usb_enable_endpoint(int _ep, USBDirection _dir, USBTransferType _type, int _mps)
@@ -442,9 +469,7 @@ void usb_enable_endpoint(int _ep, USBDirection _dir, USBTransferType _type, int 
 		OutEPRegs[_ep].control = USB_EPCON_ACTIVE; // MPS = default, type = control, nextep = 0
 
 		if(usb_fifo_mode == FIFODedicated)
-		{
-			// TODO: Allocate FIFO
-		}
+			usb_claim_fifo(_ep);
 		else if(usb_fifo_mode == FIFOShared)
 			usb_add_ep_to_queue(_ep);
 		
@@ -537,11 +562,23 @@ static void usb_remove_ep_from_queue(int _ep)
 		}
 	}
 
+	usb_mod_epmis(-1);
+
 	int i;
 	bufferPrintf("USB: loop = ");
 	for(i = 0; i < USB_NUM_ENDPOINTS; i++)
 		bufferPrintf("%d ", (InEPRegs[i].control >> USB_EPCON_NEXTEP_SHIFT) & USB_EPCON_NEXTEP_MASK);
 	bufferPrintf("\n");
+}
+
+static void usb_release_fifo(int _ep)
+{
+	int fifo = (InEPRegs[_ep].control >> USB_EPCON_TXFNUM_SHIFT) & USB_EPCON_TXFNUM_MASK;
+	if(fifo > 0)
+	{
+		usb_fifos_used &= ~(1 << (fifo-1));
+		InEPRegs[_ep].control &= ~(USB_EPCON_TXFNUM_MASK << USB_EPCON_TXFNUM_SHIFT);
+	}
 }
 
 void usb_disable_endpoint(int _ep)
@@ -556,8 +593,9 @@ void usb_disable_endpoint(int _ep)
 
 		int fnum = (InEPRegs[_ep].control >> USB_EPCON_TXFNUM_SHIFT) & USB_EPCON_TXFNUM_MASK;
 
-		// If dedfifoenabled
-		// else
+		if(usb_fifo_mode == FIFODedicated)
+			usb_release_fifo(_ep);
+		else if(usb_fifo_mode == FIFOShared)
 			usb_remove_ep_from_queue(_ep);
 
 		InEPRegs[_ep].control |= USB_EPCON_SETNAK;
@@ -718,13 +756,14 @@ static int resetUSB()
 	usb_disable_all_endpoints();
 	usb_flush_all_fifos();
 
+	usb_fifo_start = PERIODIC_TX_FIFO_STARTADDR;
+
 	int i;
 	for(i = 0; i < USB_NUM_ENDPOINTS; i++)
 		clearEPMessages(i);
 
-	usb_global_in_nak = 1;
+	usb_global_in_nak = 0;
 	usb_global_out_nak = 0;
-
 	usb_clear_global_in_nak();
 	usb_clear_global_out_nak();
 

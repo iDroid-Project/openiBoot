@@ -109,6 +109,15 @@ typedef struct USBEPRegisters {
 	volatile uint32_t field_1C;
 } USBEPRegisters;
 
+typedef struct _USBMessageQueue
+{
+	struct _USBMessageQueue *next;
+	
+	USBDirection dir;
+	char *data;
+	size_t dataLen;
+} USBMessageQueue;
+
 typedef struct USBDeviceDescriptor {
 	uint8_t bLength;
 	uint8_t bDescriptorType;
@@ -203,21 +212,6 @@ typedef struct USBSetupPacket {
 typedef void (*USBStartHandler)(void);
 typedef void (*USBEnumerateHandler)(USBConfiguration *config);
 typedef int (*USBSetupHandler)(USBSetupPacket *packet);
-
-// TODO: We really need to sort the protocol out. -- Ricky26
-#define OPENIBOOTCMD_DUMPBUFFER				1
-#define OPENIBOOTCMD_DUMPBUFFER_LEN			2
-#define OPENIBOOTCMD_DUMPBUFFER_GOAHEAD		3
-#define OPENIBOOTCMD_SENDCOMMAND			4
-#define OPENIBOOTCMD_SENDCOMMAND_GOAHEAD	5
-#define OPENIBOOTCMD_READY					6
-#define OPENIBOOTCMD_NOTREADY				7
-#define OPENIBOOTCMD_ISREADY				8
-
-typedef struct OpenIBootCmd {
-	uint32_t command;
-	uint32_t dataLen;
-}  __attribute__ ((__packed__)) OpenIBootCmd;
 
 #define USBSetupPacketRequestTypeDirection(x) GET_BITS(x, 7, 1)
 #define USBSetupPacketRequestTypeType(x) GET_BITS(x, 5, 2)

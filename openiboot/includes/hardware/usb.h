@@ -3,9 +3,47 @@
 
 #include "hardware/s5l8900.h"
 
-// Device
+// Maximums supported by OIB
+#define USB_NUM_ENDPOINTS	6
+#define USB_NUM_FIFOS		15
+
+// Hardware configuration
+#if defined(CONFIG_IPHONE4)
+#define USB 0x86100000
+#define USB_PHY 0x86000000
+#else
 #define USB 0x38400000
 #define USB_PHY 0x3C400000
+#define USB_SETUP_PHY
+#endif
+
+#if defined(CONFIG_IPHONE4)
+#define USB_OTGCLOCKGATE 0x2
+#define USB_PHYCLOCKGATE 0x23
+#define USB_TURNAROUND 0xB
+#elif defined(CONFIG_IPOD2G)
+#define USB_OTGCLOCKGATE 0x18
+#define USB_PHYCLOCKGATE 0x19
+#define USB_TURNAROUND 0xB
+#else
+#define USB_OTGCLOCKGATE 0x2
+#define USB_PHYCLOCKGATE 0x23
+#define USB_TURNAROUND 0x5
+#endif
+
+#if defined(CONFIG_IPHONE4) || defined(CONFIG_IPOD2G)
+#define RX_FIFO_DEPTH				0x11B
+#define TX_FIFO_DEPTH				0x100
+#define TX_FIFO_STARTADDR			0x11B
+#define PERIODIC_TX_FIFO_STARTADDR	0x21B
+#define PERIODIC_TX_FIFO_DEPTH		0x100
+#else
+#define RX_FIFO_DEPTH				0x1C0
+#define TX_FIFO_DEPTH				0x1C0
+#define TX_FIFO_STARTADDR			0x200
+#define PERIODIC_TX_FIFO_STARTADDR	0x21B
+#define PERIODIC_TX_FIFO_DEPTH		0x100
+#endif
 
 // Registers
 #define OPHYPWR		0
@@ -45,8 +83,6 @@
 // Values
 #define USB_INTERRUPT 0x13
 
-#define USB_OTGCLOCKGATE 0x2
-#define USB_PHYCLOCKGATE 0x23
 #define USB_ONOFF_OFF 3	// bits 0, 1
 
 #define OPHYPWR_FORCESUSPEND 0x1
@@ -110,11 +146,7 @@
 #define GINTMSK_OEP (1 << 19)
 #define GINTMSK_DISCONNECT (1 << 29)
 
-#define RX_FIFO_DEPTH 0x1C0
-#define TX_FIFO_DEPTH 0x1C0
-#define TX_FIFO_STARTADDR 0x200
-
-#define GNPTXFSIZ_DEPTH_SHIFT 16
+#define FIFO_DEPTH_SHIFT 16
 
 #define GNPTXFSTS_GET_TXQSPCAVAIL(x) GET_BITS(x, 16, 8)
 
@@ -195,8 +227,6 @@
 #define USB_EPINT_EpDisbld 0x1
 #define USB_EPINT_NONE 0
 #define USB_EPINT_ALL 0xFFFFFFFF
-
-#define USB_NUM_ENDPOINTS 6
 
 #define USB_2_0 0x0200
 
