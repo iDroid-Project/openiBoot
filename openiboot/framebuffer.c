@@ -2,7 +2,8 @@
 #include "framebuffer.h"
 #include "lcd.h"
 #include "util.h"
-#include "pcf/6x10.h"
+#include "pcf/9x15.h"
+#include "openiboot-asmhelpers.h"
 
 static int TWidth;
 static int THeight;
@@ -26,9 +27,9 @@ static uint32_t ForegroundColor;
 
 #define RGBA2BGR(x) ((((x) >> 16) & 0xFF) | ((((x) >> 8) & 0xFF) << 8) | (((x) & 0xFF) << 16))
 
-inline int getCharPixel(OpenIBootFont* font, int ch, int x, int y) {
-	register int bitIndex = ((font->width * font->height) * ch) + (font->width * y) + x;
-	return (font->data[bitIndex / 8] >> (bitIndex % 8)) & 0x1;
+inline int getCharPixel(int ch, int x, int y) {
+	register int bitIndex = ((fontWidth * fontHeight) * ch) + (fontWidth * y) + x;
+	return (fontData[bitIndex / 8] >> (bitIndex % 8)) & 0x1;
 }
 
 inline volatile uint32_t* PixelFromCoords(register uint32_t x, register uint32_t y) {
@@ -40,13 +41,13 @@ inline volatile uint16_t* PixelFromCoords565(register uint32_t x, register uint3
 }
 
 int framebuffer_setup() {
-	Font = (OpenIBootFont*) fontData;
+	Font = (OpenIBootFont*) malloc(sizeof(OpenIBootFont));
 	BackgroundColor = COLOR_BLACK;
 	ForegroundColor = COLOR_WHITE;
 	FBWidth = currentWindow->framebuffer.width;
 	FBHeight = currentWindow->framebuffer.height;
-	TWidth = FBWidth / Font->width;
-	THeight = FBHeight / Font->height;
+	TWidth = FBWidth / fontWidth;
+	THeight = FBHeight / fontHeight;
 	framebuffer_clear();
 	FramebufferHasInit = TRUE;
 	return 0;
@@ -108,7 +109,7 @@ void framebuffer_print_force(const char* str) {
 }
 
 static void scrollup888() {
-	register volatile uint32_t* newFirstLine = PixelFromCoords(0, Font->height);
+	register volatile uint32_t* newFirstLine = PixelFromCoords(0, fontHeight);
 	register volatile uint32_t* oldFirstLine = PixelFromCoords(0, 0);
 	register volatile uint32_t* end = oldFirstLine + (FBWidth * FBHeight);
 	while(newFirstLine < end) {
@@ -121,7 +122,7 @@ static void scrollup888() {
 }
 
 static void scrollup565() {
-	register volatile uint16_t* newFirstLine = PixelFromCoords565(0, Font->height);
+	register volatile uint16_t* newFirstLine = PixelFromCoords565(0, fontHeight);
 	register volatile uint16_t* oldFirstLine = PixelFromCoords565(0, 0);
 	register volatile uint16_t* end = oldFirstLine + (FBWidth * FBHeight);
 	uint16_t bgcolor = BGR16(BackgroundColor);
@@ -143,12 +144,12 @@ void framebuffer_putc888(int c) {
 	} else {
 		register uint32_t sx;
 		register uint32_t sy;
-		for(sy = 0; sy < Font->height; sy++) {
-			for(sx = 0; sx < Font->width; sx++) {
-				if(getCharPixel(Font, c, sx, sy)) {
-					*(PixelFromCoords(sx + (Font->width * X), sy + (Font->height * Y))) = ForegroundColor;
+		for(sy = 0; sy < fontHeight; sy++) {
+			for(sx = 0; sx < fontWidth; sx++) {
+				if(getCharPixel(c, sx, sy)) {
+					*(PixelFromCoords(sx + (fontWidth * X), sy + (fontHeight * Y))) = ForegroundColor;
 				} else {
-					*(PixelFromCoords(sx + (Font->width * X), sy + (Font->height * Y))) = BackgroundColor;
+					*(PixelFromCoords(sx + (fontWidth * X), sy + (fontHeight * Y))) = BackgroundColor;
 				}
 			}
 		}
@@ -178,12 +179,12 @@ void framebuffer_putc565(int c) {
 	} else {
 		register uint32_t sx;
 		register uint32_t sy;
-		for(sy = 0; sy < Font->height; sy++) {
-			for(sx = 0; sx < Font->width; sx++) {
-				if(getCharPixel(Font, c, sx, sy)) {
-					*(PixelFromCoords565(sx + (Font->width * X), sy + (Font->height * Y))) = fgcolor;
+		for(sy = 0; sy < fontHeight; sy++) {
+			for(sx = 0; sx < fontWidth; sx++) {
+				if(getCharPixel(c, sx, sy)) {
+					*(PixelFromCoords565(sx + (fontWidth * X), sy + (fontHeight * Y))) = fgcolor;
 				} else {
-					*(PixelFromCoords565(sx + (Font->width * X), sy + (Font->height * Y))) = bgcolor;
+					*(PixelFromCoords565(sx + (fontWidth * X), sy + (fontHeight * Y))) = bgcolor;
 				}
 			}
 		}
@@ -313,4 +314,3 @@ void framebuffer_draw_rect_hgradient(int starting, int ending, int x, int y, int
 		level += step;
 	}
 }
-

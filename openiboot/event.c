@@ -2,6 +2,7 @@
 #include "timer.h"
 #include "event.h"
 #include "clock.h"
+#include "interrupt.h"
 #include "hardware/timer.h"
 #include "openiboot-asmhelpers.h"
 
@@ -11,6 +12,7 @@ static void init_event_list();
 static void eventTimerHandler();
 
 int event_setup() {
+#ifndef CONFIG_IPHONE_4
 	// In our implementation, we set TicksPerSec when we setup the clock
 	// so we don't have to do it here
 
@@ -24,6 +26,14 @@ int event_setup() {
 
 	// Turn the timer on
 	timer_on_off(EventTimer, ON);
+#else
+        RTCHasInit = TRUE;
+	init_event_list();
+
+//        SET_REG(TIMER_REGISTER_TICK, TIMER_STATE_MANUALUPDATE);
+        interrupt_install(TIMER_IRQ, eventTimerHandler, 0);
+        interrupt_enable(TIMER_IRQ);
+#endif
 
 	return 0;
 }
@@ -36,6 +46,10 @@ static void init_event_list() {
 static void eventTimerHandler() {
 	uint64_t curTime;
 	Event* event;
+
+#ifdef CONFIG_IPHONE_4
+        SET_REG(TIMER_REGISTER_TICK, TIMER_STATE_MANUALUPDATE);
+#endif
 
 	curTime = timer_get_system_microtime();
 

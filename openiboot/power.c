@@ -20,7 +20,7 @@ int power_setup() {
 }
 
 int power_ctrl(uint32_t device, OnOff on_off) {
-#ifndef CONFIG_IPHONE_4G
+#ifndef CONFIG_IPHONE_4
 	if(on_off == ON) {
 		SET_REG(POWER + POWER_ONCTRL, device);
 	} else {

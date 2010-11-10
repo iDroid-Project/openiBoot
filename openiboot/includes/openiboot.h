@@ -27,7 +27,7 @@ typedef signed int intptr_t;
 #ifdef CONFIG_3G
 #define OPENIBOOT_VERSION_CONFIG " for iPhone 3G"
 #endif
-#ifdef CONFIG_IPHONE_4G
+#ifdef CONFIG_IPHONE_4
 #define OPENIBOOT_VERSION_CONFIG " for iPhone 4G"
 #endif
 
@@ -53,6 +53,13 @@ typedef enum OnOff {
 #define NULL 0
 #endif
 #define uSecPerSec 1000000
+
+#define container_of(type, member, ptr) ({ \
+		const typeof(((type*)NULL)->member) *mptr = (ptr); \
+		(type*)(mptr - offsetof(type, member)); \
+	})
+
+
 
 typedef struct Event Event;
 

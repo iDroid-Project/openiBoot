@@ -4,7 +4,7 @@
 #include "hardware/s5l8900.h"
 
 // Device
-#ifndef CONFIG_IPHONE_4G
+#ifndef CONFIG_IPHONE_4
 #define POWER 0x39A00000	/* probably a part of the system controller */
 #else
 #define POWER 0xBF100000
@@ -23,7 +23,7 @@
 #define POWER_ONCTRL 0xC
 #define POWER_OFFCTRL 0x10
 #define POWER_SETSTATE 0x8
-#ifndef CONFIG_IPHONE_4G
+#ifndef CONFIG_IPHONE_4
 #define POWER_STATE 0x14
 #define POWER_ID 0x44
 #else

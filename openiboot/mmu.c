@@ -42,7 +42,7 @@ void initialize_pagetable() {
 	// Initialize the page table with a default identity mapping
 	mmu_map_section_range(MemoryStart, MemoryEnd, MemoryStart, FALSE, FALSE);
 
-#ifndef CONFIG_IPHONE_4G
+#ifndef CONFIG_IPHONE_4
 	// Now we get to setup default mappings that we will need
 	mmu_map_section_range(0x08000000, 0x10000000, 0x08000000, TRUE, TRUE);	// unknown, but mapped by iPhone
 

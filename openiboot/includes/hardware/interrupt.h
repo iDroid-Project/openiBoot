@@ -7,7 +7,7 @@
 
 // Constants
 
-#ifndef CONFIG_IPHONE_4G
+#ifndef CONFIG_IPHONE_4
 #define VIC_MaxInterrupt 0x40
 #else
 #define VIC_MaxInterrupt 0x80
@@ -16,7 +16,7 @@
 
 // Devices
 
-#ifndef CONFIG_IPHONE_4G
+#ifndef CONFIG_IPHONE_4
 #define VIC0 0x38E00000
 #define VIC1 0x38E01000
 #else

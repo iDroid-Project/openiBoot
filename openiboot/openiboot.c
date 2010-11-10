@@ -50,8 +50,10 @@ int received_file_size;
 
 static int setup_devices();
 static int setup_openiboot();
+#ifndef CONFIG_IPHONE_4
 static int load_multitouch_images();
 static void reset_tempos();
+#endif
 
 extern uint8_t _binary_payload_bin_start;
 extern uint8_t _binary_payload_bin_end;
@@ -59,6 +61,10 @@ extern uint8_t _binary_payload_bin_size;
 
 static void processCommand(char* command);
 
+static void controlSent(USBTransfer * transfer);
+static void controlReceived(USBTransfer * transfer);
+static void dataSent(USBTransfer * transfer);
+static void dataReceived(USBTransfer * transfer);
 typedef struct CommandQueue {
 	struct CommandQueue* next;
 	char* command;
@@ -70,6 +76,11 @@ static void startUSB();
 
 void OpenIBootStart() {
 	setup_openiboot();
+
+	framebuffer_hook();
+	framebuffer_setdisplaytext(TRUE);
+
+#ifndef CONFIG_IPHONE_4
 	pmu_charge_settings(TRUE, FALSE, FALSE);
 
 	framebuffer_setdisplaytext(TRUE);
@@ -147,6 +158,7 @@ void OpenIBootStart() {
 #endif
 #endif
 
+#endif
 	startUSB();
 #ifndef CONFIG_IPHONE_4
 #ifndef CONFIG_IPOD
@@ -159,7 +171,6 @@ void OpenIBootStart() {
 #ifndef CONFIG_IPOD
 	als_setup();
 #endif
-#endif
 	nand_setup();
 #ifndef NO_HFS
 	fs_setup();
@@ -167,13 +178,16 @@ void OpenIBootStart() {
 
 	pmu_set_iboot_stage(0);
 	startScripting("openiboot"); //start script mode if there is a file
+#endif
 	bufferPrintf("version: %s\r\n", OPENIBOOT_VERSION_STR);
 	bufferPrintf("-----------------------------------------------\r\n");
 	bufferPrintf("              WELCOME TO OPENIBOOT\r\n");
 	bufferPrintf("-----------------------------------------------\r\n");
 	DebugPrintf("                    DEBUG MODE\r\n");
 
+#ifndef CONFIG_IPHONE_4
 	audiohw_postinit();
+#endif
 
 	// Process command queue
 	while(TRUE) {
@@ -293,7 +307,7 @@ static void processCommand(char* command) {
 	free(argv);
 }
 
-static void controlReceived(uint32_t token) {
+static void controlReceived(USBTransfer * transfer) {
 	OpenIBootCmd* cmd = (OpenIBootCmd*)controlRecvBuffer;
 	OpenIBootCmd* reply = (OpenIBootCmd*)controlSendBuffer;
 
@@ -308,7 +322,7 @@ static void controlReceived(uint32_t token) {
 
 		reply->command = OPENIBOOTCMD_DUMPBUFFER_LEN;
 		reply->dataLen = length;
-		usb_send_interrupt(3, controlSendBuffer, sizeof(OpenIBootCmd));
+		usb_send_interrupt(3, controlSendBuffer, sizeof(OpenIBootCmd), controlSent);
 		//uartPrintf("got dumpbuffer cmd, returning length: %d\r\n", length);
 	} else if(cmd->command == OPENIBOOTCMD_DUMPBUFFER_GOAHEAD) {
 		left = cmd->dataLen;
@@ -317,7 +331,7 @@ static void controlReceived(uint32_t token) {
 
 		size_t toRead = (left > USB_BYTES_AT_A_TIME) ? USB_BYTES_AT_A_TIME: left;
 		if(sendFileBytesLeft > 0) {
-			usb_send_bulk(1, sendFilePtr, toRead);
+			usb_send_bulk(1, sendFilePtr, toRead, dataSent);
 			sendFilePtr += toRead;
 			sendFileBytesLeft -= toRead;
 			if(sendFileBytesLeft == 0) {
@@ -325,7 +339,7 @@ static void controlReceived(uint32_t token) {
 			}
 		} else {
 			bufferFlush((char*) dataSendBuffer, toRead);
-			usb_send_bulk(1, dataSendBuffer, toRead);
+			usb_send_bulk(1, dataSendBuffer, toRead, dataSent);
 		}
 		left -= toRead;
 	} else if(cmd->command == OPENIBOOTCMD_SENDCOMMAND) {
@@ -337,22 +351,22 @@ static void controlReceived(uint32_t token) {
 
 		reply->command = OPENIBOOTCMD_SENDCOMMAND_GOAHEAD;
 		reply->dataLen = cmd->dataLen;
-		usb_send_interrupt(3, controlSendBuffer, sizeof(OpenIBootCmd));
+		usb_send_interrupt(3, controlSendBuffer, sizeof(OpenIBootCmd), controlSent);
 
 		size_t toRead = (rxLeft > USB_BYTES_AT_A_TIME) ? USB_BYTES_AT_A_TIME: rxLeft;
-		usb_receive_bulk(2, dataRecvPtr, toRead);
+		usb_receive_bulk(2, dataRecvPtr, toRead, dataReceived);
 		rxLeft -= toRead;
 		dataRecvPtr += toRead;
 	}
 
-	usb_receive_interrupt(4, controlRecvBuffer, sizeof(OpenIBootCmd));
+	usb_receive_interrupt(4, controlRecvBuffer, sizeof(OpenIBootCmd), controlReceived);
 }
 
-static void dataReceived(uint32_t token) {
+static void dataReceived(USBTransfer * transfer) {
 	//uartPrintf("receiving remainder: %d\r\n", (int)rxLeft);
 	if(rxLeft > 0) {
 		size_t toRead = (rxLeft > USB_BYTES_AT_A_TIME) ? USB_BYTES_AT_A_TIME: rxLeft;
-		usb_receive_bulk(2, dataRecvPtr, toRead);
+		usb_receive_bulk(2, dataRecvPtr, toRead, dataReceived);
 		rxLeft -= toRead;
 		dataRecvPtr += toRead;
 	} else {
@@ -361,12 +375,12 @@ static void dataReceived(uint32_t token) {
 	}
 }
 
-static void dataSent(uint32_t token) {
+static void dataSent(USBTransfer * transfer) {
 	//uartPrintf("sending remainder: %d\r\n", (int)left);
 	if(left > 0) {
 		size_t toRead = (left > USB_BYTES_AT_A_TIME) ? USB_BYTES_AT_A_TIME: left;
 		if(sendFileBytesLeft > 0) {
-			usb_send_bulk(1, sendFilePtr, toRead);
+			usb_send_bulk(1, sendFilePtr, toRead, dataSent);
 			sendFilePtr += toRead;
 			sendFileBytesLeft -= toRead;
 			if(sendFileBytesLeft == 0) {
@@ -374,13 +388,13 @@ static void dataSent(uint32_t token) {
 			}
 		} else {
 			bufferFlush((char*) dataSendBuffer, toRead);
-			usb_send_bulk(1, dataSendBuffer, toRead);
+			usb_send_bulk(1, dataSendBuffer, toRead, dataSent);
 		}
 		left -= toRead;
 	}
 }
 
-static void controlSent(uint32_t token) {
+static void controlSent(USBTransfer * transfer) {
 	//uartPrintf("control sent\r\n");
 }
 
@@ -410,47 +424,48 @@ static void startHandler() {
 		USB_BYTES_AT_A_TIME = 0x80;
 	}
 
-	usb_receive_interrupt(4, controlRecvBuffer, sizeof(OpenIBootCmd));
+	usb_setup_endpoint(1, USBIn, USBBulk, getPacketSizeFromSpeed(), 0);
+	usb_setup_endpoint(2, USBOut, USBBulk, getPacketSizeFromSpeed(), 0);
+	usb_setup_endpoint(3, USBIn, USBInterrupt, USB_MAX_PACKETSIZE, 0);
+	usb_setup_endpoint(4, USBOut, USBInterrupt, USB_MAX_PACKETSIZE, 0);
+
+	usb_receive_interrupt(4, controlRecvBuffer, sizeof(OpenIBootCmd), controlReceived);
 }
 
 static void startUSB()
 {
-	usb_setup();
-	usb_install_ep_handler(4, USBOut, controlReceived, 0);
-	usb_install_ep_handler(2, USBOut, dataReceived, 0);
-	usb_install_ep_handler(3, USBIn, controlSent, 0);
-	usb_install_ep_handler(1, USBIn, dataSent, 0);
-	usb_start(enumerateHandler, startHandler);
+	usb_setup(enumerateHandler, startHandler);
 }
 
 static int setup_devices() {
 	// Basic prerequisites for everything else
 	miu_setup();
 	power_setup();
+
 	clock_setup();
-	if (PeripheralFrequency == 0) {
-		Reboot();
-	}
-	EndlessLoop();
 
 	// Need interrupts for everything afterwards
 	interrupt_setup();
 
-	gpio_setup();
+//	gpio_setup(); // Not yet
 
 	// For scheduling/sleeping niceties
 	timer_setup();
 	event_setup();
+#ifndef CONFIG_IPHONE_4
 	wdt_setup();
+#endif
 
 	// Other devices
 	usb_shutdown();
+#ifndef CONFIG_IPHONE_4
 	uart_setup();
 	i2c_setup();
 
 	dma_setup();
 
 	spi_setup();
+#endif
 
 	return 0;
 }
@@ -463,9 +478,8 @@ static int setup_openiboot() {
 
 	LeaveCriticalSection();
 
-#ifndef CONFIG_IPHONE_4G
+#ifndef CONFIG_IPHONE_4
 	clock_set_sdiv(0);
-#endif
 
 	aes_setup();
 
@@ -474,7 +488,6 @@ static int setup_openiboot() {
 	images_setup();
 	nvram_setup();
 
-#ifndef CONFIG_IPHONE_4G
 	lcd_setup();
 	framebuffer_setup();
 
@@ -484,6 +497,7 @@ static int setup_openiboot() {
 	return 0;
 }
 
+#ifndef CONFIG_IPHONE_4
 static int load_multitouch_images()
 {
     #ifdef CONFIG_IPHONE
@@ -526,3 +540,4 @@ static void reset_tempos(char* sDefaultOS)
 	nvram_save();
 	framebuffer_setdisplaytext(TRUE);
 }
+#endif

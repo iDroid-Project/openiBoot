@@ -2,6 +2,7 @@
 #define USB_H
 
 // assigned by USB Org
+#define VENDOR_NETCHIP 0x525
 #define VENDOR_APPLE 0x5AC
 
 // assigned by Apple
@@ -10,6 +11,7 @@
 
 // values we're using
 #define USB_MAX_PACKETSIZE 64
+#define USB_CONTROLEP_MAX_TRANSFER_SIZE 64
 #define USB_SETUP_PACKETS_AT_A_TIME 1
 #define CONTROL_SEND_BUFFER_LEN 0x80
 #define CONTROL_RECV_BUFFER_LEN 0x80
@@ -70,7 +72,9 @@ enum USBDescriptorType {
 	USBStringDescriptorType = 3,
 	USBInterfaceDescriptorType = 4,
 	USBEndpointDescriptorType = 5,
-	USBDeviceQualifierDescriptorType = 6
+	USBDeviceQualifierDescriptorType = 6,
+	USBOtherSpeedConfigurationDescriptorType = 7,
+	USBInterfacePowerDescriptorType = 8,
 };
 
 typedef enum USBSpeed {
@@ -79,27 +83,50 @@ typedef enum USBSpeed {
 	USBLowSpeed = 2
 } USBSpeed;
 
-typedef void (*USBEndpointHandler)(uint32_t token);
+typedef enum USBTransferStatus {
+	USBTransferInProgress = -1,
+	USBTransferSuccess = 0,
+	USBTransferFailed = 1,
+} USBTransferStatus;
 
-typedef struct USBEndpointHandlerInfo {
-	USBEndpointHandler	handler;
-	uint32_t		token;
-} USBEndpointHandlerInfo;
+typedef struct USBTransfer USBTransfer;
 
-typedef struct USBEndpointBidirHandlerInfo {
-	USBEndpointHandlerInfo in;
-	USBEndpointHandlerInfo out;
-} USBEndpointBidirHandlerInfo;
+typedef void (*USBEndpointHandler)(USBTransfer * transfer);
+
+struct USBTransfer {
+	uint8_t * buffer;
+	USBTransferStatus status;
+	uint32_t size;
+	uint32_t bytesTransferred;
+	USBEndpointHandler handler;
+	USBTransfer * next;
+};
+
+typedef struct USBEndpointTransferInfo {
+	uint32_t maxPacketSize;
+	USBTransferType type;
+	uint32_t token;
+	uint32_t currentPacketSize;
+	uint32_t currentTransferPacketsLeft;
+	USBTransfer * currentTransfer;
+	USBTransfer * lastTransfer;
+	uint32_t txFifo;		// Note: 1-based due to hardware setup
+} USBEndpointTransferInfo;
+
+typedef struct USBEndpointBidirTransferInfo {
+	USBEndpointTransferInfo in;
+	USBEndpointTransferInfo out;
+} USBEndpointBidirTransferInfo;
 
 typedef struct USBEPRegisters {
 	volatile uint32_t control;
 	volatile uint32_t field_4;
 	volatile uint32_t interrupt;
-	volatile uint32_t field_8;
+	volatile uint32_t field_C;
 	volatile uint32_t transferSize;
 	volatile void* dmaAddress;
 	volatile uint32_t field_18;
-	volatile uint32_t field_1C;
+	volatile uint32_t dmaBuffer;
 } USBEPRegisters;
 
 typedef struct USBDeviceDescriptor {
@@ -193,18 +220,6 @@ typedef struct USBSetupPacket {
 	uint16_t wLength;
 } __attribute__ ((__packed__)) USBSetupPacket;
 
-typedef struct RingBuffer {
-	int8_t* writePtr;
-	int8_t* readPtr;
-	uint32_t count;
-	uint32_t size;
-	int8_t* bufferStart;
-	int8_t* bufferEnd;
-} RingBuffer;
-
-typedef void (*USBStartHandler)(void);
-typedef void (*USBEnumerateHandler)(USBInterface* interface);
-
 #define OPENIBOOTCMD_DUMPBUFFER 0
 #define OPENIBOOTCMD_DUMPBUFFER_LEN 1
 #define OPENIBOOTCMD_DUMPBUFFER_GOAHEAD 2
@@ -222,36 +237,45 @@ typedef struct OpenIBootCmd {
 
 #define USBSetupPacketHostToDevice 0
 #define USBSetupPacketDeviceToHost 1
+
 #define USBSetupPacketStandard 0
 #define USBSetupPacketClass 1
 #define USBSetupPacketVendor 2
-#define USBSetupPacketRecpientDevice 0
-#define USBSetupPacketRecpientInterface 1
-#define USBSetupPacketRecpientEndpoint 2
-#define USBSetupPacketRecpientOther 3
 
-#define USB_CLEAR_FEATURE 1
-#define USB_GET_CONFIGURATION 8
-#define USB_GET_DESCRIPTOR 6
-#define USB_GET_INTERFACE 10
+#define USBSetupPacketRecipientDevice 0
+#define USBSetupPacketRecipientInterface 1
+#define USBSetupPacketRecipientEndpoint 2
+#define USBSetupPacketRecipientOther 3
+
 #define USB_GET_STATUS 0
-#define USB_SET_ADDRESS 5
-#define USB_SET_CONFIGURATION 9
-#define USB_SET_DESCRIPTOR 7
+#define USB_CLEAR_FEATURE 1
 #define USB_SET_FEATURE 3
+#define USB_SET_ADDRESS 5
+#define USB_GET_DESCRIPTOR 6
+#define USB_SET_DESCRIPTOR 7
+#define USB_GET_CONFIGURATION 8
+#define USB_SET_CONFIGURATION 9
+#define USB_GET_INTERFACE 10
 #define USB_SET_INTERFACE 11
 #define USB_SYNCH_FRAME 12
 
-int usb_setup();
-int usb_start(USBEnumerateHandler hEnumerate, USBStartHandler hStart);
+typedef void (*USBStartHandler)(void);
+typedef void (*USBEnumerateHandler)(USBInterface* interface);
+
+int usb_setup(USBEnumerateHandler hEnumerate, USBStartHandler hStart);
+int usb_start();
 int usb_shutdown();
-int usb_install_ep_handler(int endpoint, USBDirection direction, USBEndpointHandler handler, uint32_t token);
+
 void usb_add_endpoint(USBInterface* interface, int endpoint, USBDirection direction, USBTransferType transferType);
-void usb_send_interrupt(uint8_t endpoint, void* buffer, int bufferLen);
-void usb_send_bulk(uint8_t endpoint, void* buffer, int bufferLen);
-void usb_receive_bulk(uint8_t endpoint, void* buffer, int bufferLen);
-void usb_receive_interrupt(uint8_t endpoint, void* buffer, int bufferLen);
+void usb_setup_endpoint(uint8_t endpoint, USBDirection direction, USBTransferType type, int maxPacketSize, int token);
+
+void usb_send_interrupt(uint8_t endpoint, void* buffer, int bufferLen, USBEndpointHandler handler);
+void usb_send_bulk(uint8_t endpoint, void* buffer, int bufferLen, USBEndpointHandler handler);
+void usb_receive_bulk(uint8_t endpoint, void* buffer, int bufferLen, USBEndpointHandler handler);
+void usb_receive_interrupt(uint8_t endpoint, void* buffer, int bufferLen, USBEndpointHandler handler);
+
 USBSpeed usb_get_speed();
+uint16_t getPacketSizeFromSpeed(void);
 
 USBDeviceDescriptor* usb_get_device_descriptor();
 USBDeviceQualifierDescriptor* usb_get_device_qualifier_descriptor();

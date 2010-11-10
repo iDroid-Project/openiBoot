@@ -1217,6 +1217,8 @@ void cmd_piezo_play(int argc, char** argv) {
 #endif
 OPIBCommand CommandList[] = 
 	{
+#ifndef CONFIG_IPHONE_4
+// Bwahaha, disabling every commands. Safety first!
 		{"install", "install openiboot onto the device", cmd_install},
 		{"uninstall", "uninstall openiboot from the device", cmd_uninstall},
 		{"reboot", "reboot the device", cmd_reboot},
@@ -1271,7 +1273,7 @@ OPIBCommand CommandList[] =
 		{"wlan_prog_helper", "program wlan fw helper", cmd_wlan_prog_helper},
 		{"wlan_prog_real", "program wlan fw", cmd_wlan_prog_real},
 #ifndef CONFIG_IPOD
-#ifndef CONFIG_IPHONE_4G
+#ifndef CONFIG_IPHONE_4
 		{"radio_send", "send a command to the baseband", cmd_radio_send},
 		{"radio_nvram_list", "list entries in baseband NVRAM", cmd_radio_nvram_list},
 		{"radio_register", "register with a cellular network", cmd_radio_register},
@@ -1318,5 +1320,6 @@ OPIBCommand CommandList[] =
 		{"play", "play notes using piezo bytes", cmd_piezo_play},
 #endif
 		{"multitouch_setup", "set up the multitouch chip", cmd_multitouch_setup},		
+#endif
 		{NULL, NULL}
 	};

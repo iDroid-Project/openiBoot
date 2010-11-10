@@ -12,6 +12,7 @@
 #include "timer.h"
 #include "pmu.h"
 #include "nvram.h"
+#include "framebuffer.h"
 
 static int lcd_has_init = FALSE;
 static int lcd_init_attempted = FALSE;
@@ -1208,7 +1209,7 @@ static void framebuffer_fill(Framebuffer* framebuffer, int x, int y, int width, 
 	}
 
 	int line;
-	for(line = y; line < height; line++) {
+	for(line = y; line < maxLine; line++) {
 		framebuffer->hline(framebuffer, x, line, width, fill);
 	}
 }
@@ -1285,4 +1286,44 @@ void lcd_set_backlight_level(int level) {
 		}
 		pmu_write_regs(myBacklightData, sizeof(myBacklightData)/sizeof(PMURegisterData));
 	}
+}
+
+void framebuffer_hook() {
+        Window* newWindow;
+        newWindow = (Window*) malloc(sizeof(Window));
+        newWindow->created = FALSE;
+//XXX IPAD
+//        newWindow->width = 1024;
+//        newWindow->height = 768;
+        newWindow->width = 640;
+        newWindow->height = 960;
+        newWindow->lineBytes = (newWindow->width + calculateStrideLen(RGB888, 0, newWindow->width))*4;
+        createFramebuffer(&newWindow->framebuffer, 0x5F700000, newWindow->width, newWindow->height, newWindow->lineBytes/4, RGB888);
+	newWindow->created = TRUE;
+        currentWindow = newWindow;
+	CurFramebuffer = currentWindow->framebuffer.buffer;
+
+	framebuffer_setup();
+}
+
+void framebuffer_show_number(uint32_t number) {
+	int shift;
+	for (shift = 31; shift >= 0; shift--) {
+		int x = 0;
+		int y;
+		if (shift < 16) {
+			x = 320;
+			y = 15 - shift;
+		} else {
+			y = 31 - shift;
+		}
+		y *= 60;
+		if (((number>>shift) & 0x1) == 1) {
+			framebuffer_fill(&currentWindow->framebuffer, x, y, 320, 59, 0xFF1493);
+		} else {
+			framebuffer_fill(&currentWindow->framebuffer, x, y, 320, 59, 0x90EE90);
+		}
+		framebuffer_fill(&currentWindow->framebuffer, x, y+59, 320, 2, 0x0);
+	}
+	framebuffer_fill(&currentWindow->framebuffer, 320, 0, 1, 960, 0x0);
 }

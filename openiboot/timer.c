@@ -39,6 +39,26 @@ static void timer_init_rtc() {
 }
 
 int timer_setup() {
+#ifdef CONFIG_IPHONE_4
+	// Let's just assume this is timer setup...
+	// Why? It sets TicksPerSec, 2G/3G timer_setup did that, too.
+	int jep = 1;
+	if (jep) {
+		SET_REG(0xBF500004, GET_REG(0xBF500004) | 0x80000000);
+	}
+
+	SET_REG(0xBF101218, 0xEF0000);
+	SET_REG(0xBF10121C, 0xFC020408);
+	SET_REG(0xBF101220, 0x27C0011);
+	SET_REG(0xBF101228, 0x1830006);
+	SET_REG(0xBF101230, 0x12F0006);
+	SET_REG(0xBF101224, 0x20404);
+	SET_REG(0xBF10122C, 0x20404);
+	SET_REG(0xBF101234, 0x20409);
+	SET_REG(0xBF101200, 0);
+	SET_REG(0xBF101000, 0x3F);
+	return 0;
+#endif
 
 	/* timer needs clock signal */
 	clock_gate_switch(TIMER_CLOCKGATE, ON);

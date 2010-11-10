@@ -78,5 +78,7 @@ void lcd_shutdown();
 void lcd_set_backlight_level(int level);
 void lcd_window_address(int window, uint32_t framebuffer);
 
+void framebuffer_hook();
+
 #endif
 

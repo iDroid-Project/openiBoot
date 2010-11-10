@@ -1,7 +1,7 @@
 #include "openiboot.h"
 #include "clock.h"
 #include "util.h"
-#ifndef CONFIG_IPHONE_4G
+#ifndef CONFIG_IPHONE_4
 #include "hardware/clock0.h"
 #include "hardware/clock1.h"
 #else
@@ -21,7 +21,7 @@ uint32_t UnknownFrequency;
 uint32_t DisplayFrequency;  
 uint32_t FixedFrequency;
 uint32_t TimebaseFrequency;
-#ifdef CONFIG_IPHONE_4G
+#ifdef CONFIG_IPHONE_4
 uint32_t UsbPhyFrequency;
 
 uint32_t IHaveNoIdeaWhatsThatFor = 0; // 0x5FF3D120 - not populated before clock_setup. I assume there's nothing but 0x0
@@ -30,7 +30,7 @@ uint32_t IHaveNoIdeaWhatsThatFor2; // 0x5FF3D11C
 
 uint32_t TicksPerSec;
 
-#ifndef CONFIG_IPHONE_4G
+#ifndef CONFIG_IPHONE_4
 uint32_t ClockSDiv;
 
 int clock_setup() {
@@ -174,7 +174,7 @@ int clock_setup() {
 #endif
 
 void clock_gate_switch(uint32_t gate, OnOff on_off) {
-#ifndef CONFIG_IPHONE_4G
+#ifndef CONFIG_IPHONE_4
 	uint32_t gate_register;
 	uint32_t gate_flag;
 
@@ -200,7 +200,7 @@ void clock_gate_switch(uint32_t gate, OnOff on_off) {
 #endif
 }
 
-#ifndef CONFIG_IPHONE_4G
+#ifndef CONFIG_IPHONE_4
 int clock_set_bottom_bits_38100000(Clock0ConfigCode code) {
 	int bottomValue;
 
@@ -249,7 +249,7 @@ uint32_t clock_get_frequency(FrequencyBase freqBase) {
 			return 0;
 	}
 }
-#ifndef CONFIG_IPHONE_4G
+#ifndef CONFIG_IPHONE_4
 uint32_t clock_calculate_frequency(uint32_t pdiv, uint32_t mdiv, FrequencyBase freqBase) {
 	unsigned int y = clock_get_frequency(freqBase) / (0x1 << ClockSDiv);
 	uint64_t z = (((uint64_t) pdiv) * ((uint64_t) 1000000000)) / ((uint64_t) y);
@@ -303,7 +303,7 @@ void clock_set_sdiv(int sdiv) {
 }
 #endif
 
-#ifdef CONFIG_IPHONE_4G
+#ifdef CONFIG_IPHONE_4
 /*
 uint32_t CalculatedFrequencyTable[55] = {
 };
