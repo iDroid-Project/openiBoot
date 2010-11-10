@@ -28,15 +28,22 @@
 
 typedef enum USBState {
 	USBStart = 0,
-	USBPowered = 1,
-	USBDefault = 2,
-	USBAddress = 3,
-	USBConfigured = 4,
+	USBPowered,
+	USBEnumerated,
+	USBAddress,
+	USBConfigured,
 
 	// Values higher than USBError(0xEEE) are error conditions
 	USBUnknownDescriptorRequest = 0xEEE,
 	USBUnknownRequest = 0xEEF
 } USBState;
+
+typedef enum USBFIFOMode
+{
+	FIFOOther,
+	FIFOShared,
+	FIFODedicated,
+} USBFIFOMode;
 
 typedef enum USBDirection {
 	USBOut = 0,
@@ -79,7 +86,7 @@ typedef enum USBSpeed {
 	USBLowSpeed = 2
 } USBSpeed;
 
-typedef void (*USBEndpointHandler)(uint32_t token);
+typedef void (*USBEndpointHandler)(uint32_t token, int32_t amt);
 
 typedef struct USBEndpointHandlerInfo {
 	USBEndpointHandler	handler;
@@ -101,6 +108,15 @@ typedef struct USBEPRegisters {
 	volatile uint32_t field_18;
 	volatile uint32_t field_1C;
 } USBEPRegisters;
+
+typedef struct _USBMessageQueue
+{
+	struct _USBMessageQueue *next;
+	
+	USBDirection dir;
+	char *data;
+	size_t dataLen;
+} USBMessageQueue;
 
 typedef struct USBDeviceDescriptor {
 	uint8_t bLength;
@@ -193,32 +209,9 @@ typedef struct USBSetupPacket {
 	uint16_t wLength;
 } __attribute__ ((__packed__)) USBSetupPacket;
 
-typedef struct RingBuffer {
-	int8_t* writePtr;
-	int8_t* readPtr;
-	uint32_t count;
-	uint32_t size;
-	int8_t* bufferStart;
-	int8_t* bufferEnd;
-} RingBuffer;
-
 typedef void (*USBStartHandler)(void);
-typedef void (*USBEnumerateHandler)(USBInterface* interface);
-
-// TODO: We really need to sort the protocol out. -- Ricky26
-#define OPENIBOOTCMD_DUMPBUFFER				1
-#define OPENIBOOTCMD_DUMPBUFFER_LEN			2
-#define OPENIBOOTCMD_DUMPBUFFER_GOAHEAD		3
-#define OPENIBOOTCMD_SENDCOMMAND			4
-#define OPENIBOOTCMD_SENDCOMMAND_GOAHEAD	5
-#define OPENIBOOTCMD_READY					6
-#define OPENIBOOTCMD_NOTREADY				7
-#define OPENIBOOTCMD_ISREADY				8
-
-typedef struct OpenIBootCmd {
-	uint32_t command;
-	uint32_t dataLen;
-}  __attribute__ ((__packed__)) OpenIBootCmd;
+typedef void (*USBEnumerateHandler)(USBConfiguration *config);
+typedef int (*USBSetupHandler)(USBSetupPacket *packet);
 
 #define USBSetupPacketRequestTypeDirection(x) GET_BITS(x, 7, 1)
 #define USBSetupPacketRequestTypeType(x) GET_BITS(x, 5, 2)
@@ -250,12 +243,24 @@ USBState usb_state();
 int usb_setup();
 int usb_start(USBEnumerateHandler hEnumerate, USBStartHandler hStart);
 int usb_shutdown();
+
 int usb_install_ep_handler(int endpoint, USBDirection direction, USBEndpointHandler handler, uint32_t token);
+int usb_install_setup_handler(USBSetupHandler);
+
+USBInterface* usb_add_interface(USBConfiguration* configuration, uint8_t bInterfaceNumber, uint8_t bAlternateSetting, uint8_t bInterfaceClass, uint8_t bInterfaceSubClass, uint8_t bInterfaceProtocol, uint8_t iInterface);
+uint8_t usb_add_string_descriptor(const char* descriptorString);
+
 void usb_add_endpoint(USBInterface* interface, int endpoint, USBDirection direction, USBTransferType transferType);
+
+void usb_enable_endpoint(int _ep, USBDirection _dir, USBTransferType _ty, int _mps);
+void usb_disable_endpoint(int _ep);
+
 void usb_send_interrupt(uint8_t endpoint, void* buffer, int bufferLen);
 void usb_send_bulk(uint8_t endpoint, void* buffer, int bufferLen);
 void usb_receive_bulk(uint8_t endpoint, void* buffer, int bufferLen);
 void usb_receive_interrupt(uint8_t endpoint, void* buffer, int bufferLen);
+void usb_send_control(void *buffer, int bufferLen);
+void usb_receive_control(void *buffer, int bufferLen);
 USBSpeed usb_get_speed();
 
 USBDeviceDescriptor* usb_get_device_descriptor();

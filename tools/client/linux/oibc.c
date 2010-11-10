@@ -32,40 +32,23 @@
 #include <errno.h>
 #include <getopt.h>
 
-// TODO: We really need to sort the protocol out. -- Ricky26
-#define OPENIBOOTCMD_DUMPBUFFER				1
-#define OPENIBOOTCMD_DUMPBUFFER_LEN			2
-#define OPENIBOOTCMD_DUMPBUFFER_GOAHEAD		3
-#define OPENIBOOTCMD_SENDCOMMAND			4
-#define OPENIBOOTCMD_SENDCOMMAND_GOAHEAD	5
-#define OPENIBOOTCMD_READY					6
-#define OPENIBOOTCMD_NOTREADY				7
-#define OPENIBOOTCMD_ISREADY				8
-
 #define MAX_TO_SEND 512
+#define SEND_EP		2
+#define RECV_EP		1
+#define FILE_START_MAGIC "ACM: Starting File: "
 
-typedef struct OpenIBootCmd {
-	uint32_t command;
-	uint32_t dataLen;
-}  __attribute__ ((__packed__)) OpenIBootCmd;
-
-static int getFile(char * commandBuffer);
+static int getFile(char *commandBuffer);
+static int sendFile(char *commandBuffer);
 
 usb_dev_handle* device;
 FILE* outputFile = NULL;
-volatile size_t readIntoOutput = 0;
+volatile size_t readAmt = 0;
+volatile size_t currReadAmt = 0;
 
-volatile char *dataToWrite;
-volatile int amtToWrite = 0;
-volatile int ready = 0;
-int readPending = 0;
-int silent = 0;
+static int silent = 0;
 
-pthread_mutex_t sendLock = PTHREAD_MUTEX_INITIALIZER;
-pthread_cond_t sendCond = PTHREAD_COND_INITIALIZER;
 pthread_mutex_t exitLock = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t exitCond = PTHREAD_COND_INITIALIZER;
-pthread_cond_t readyCond = PTHREAD_COND_INITIALIZER;
 
 #define USB_BYTES_AT_A_TIME 512
 
@@ -81,132 +64,87 @@ void oibc_log(const char *format, ...)
 	va_end(args);
 }
 
-int do_receiveBuffer(size_t totalLen)
+void* doOutput(void* threadid)
 {
-	OpenIBootCmd cmd;
-	char* buffer;
-
-	if(totalLen > 0)
-	{
-		buffer = (char*) malloc(totalLen + 1);
-
-		cmd.command = OPENIBOOTCMD_DUMPBUFFER_GOAHEAD;
-		cmd.dataLen = totalLen;
-		usb_interrupt_write(device, 4, (char*)&cmd, sizeof(OpenIBootCmd), 1000);
-
-		int read = 0;
-		while(read < totalLen) {
-			int left = (totalLen - read);
-			size_t toRead = (left > USB_BYTES_AT_A_TIME) ? USB_BYTES_AT_A_TIME : left;
-			int hasRead;
-			hasRead = usb_bulk_read(device, 1, buffer + read, toRead, 1000);
-			read += hasRead;
-		}
-
-		int discarded = 0;
-		if(readIntoOutput > 0) {
-			if(readIntoOutput <= read) {
-				fwrite(buffer, 1, readIntoOutput, outputFile);
-				discarded += readIntoOutput;
-				readIntoOutput = 0;
-				fclose(outputFile);
-			} else {
-				fwrite(buffer, 1, read, outputFile);
-				discarded += read;
-				readIntoOutput -= read;
-			}
-		}
-
-		*(buffer + read) = '\0';
-		printf("%s", buffer + discarded); fflush(stdout);
-
-		free(buffer);
-	}
-
-	return 0;
-}
-
-int do_sendCommand()
-{
-	int toSend = 0;
-	while(amtToWrite > 0) {
-		if(amtToWrite <= MAX_TO_SEND)
-			toSend = amtToWrite;
-		else
-			toSend = MAX_TO_SEND;
-
-		usb_bulk_write(device, 2, (char*)dataToWrite, toSend, 1000);
-		dataToWrite += toSend;
-		amtToWrite -= toSend;
-	}
-
-	amtToWrite = 0; // Just in case.
-
-	pthread_cond_signal(&sendCond);
-
-	return 0;
-}
-
-void* doOutput(void* threadid) {
 	int ret;
-	OpenIBootCmd cmd;
-
-	cmd.command = OPENIBOOTCMD_ISREADY;
-	cmd.dataLen = 0;
-	usb_interrupt_write(device, 4, (char*)&cmd, sizeof(OpenIBootCmd), 1000);
+	static char buffer[513];
 
 	while(1)
 	{
-		ret = usb_interrupt_read(device, 3, (char*)&cmd, sizeof(OpenIBootCmd), 100);
-		if(ret > 0)
+		int ret = usb_bulk_read(device, RECV_EP, buffer, sizeof(buffer)-1, 5000);
+		if(ret >= 0)
 		{
-			switch(cmd.command)
+			buffer[ret] = 0;
+
+			char *ptr = buffer;
+			if(currReadAmt > 0)
 			{
-			case OPENIBOOTCMD_DUMPBUFFER_LEN:
-				if(do_receiveBuffer(cmd.dataLen))
-					goto error;
-				readPending = 0;
-				break;
+				int amt = currReadAmt;
+				if(ret < amt)
+					amt = ret;
 
-			case OPENIBOOTCMD_SENDCOMMAND_GOAHEAD:
-				if(do_sendCommand())
-					goto error;
-				break;
+				fwrite(buffer, 1, amt, outputFile);
 
-			case OPENIBOOTCMD_READY:
-				ready = 1;
-				pthread_cond_broadcast(&readyCond);
-				break;
+				ret -= amt;
+				currReadAmt -= amt;
+				ptr += amt;
 
-			case OPENIBOOTCMD_NOTREADY:
-				ready = 0;
-				break;
-
-			default:
-			error:
-				oibc_log("invalid command (%d:%d)\n", cmd.command, cmd.dataLen);
-				break;
+				if(currReadAmt == 0)
+				{
+					fclose(outputFile);
+					outputFile = NULL;
+				}
 			}
+
+			char *p2 = strstr(ptr, FILE_START_MAGIC);
+			if(p2)
+			{
+				*p2 = 0;
+				printf("%s", ptr);
+
+				p2 += strlen(FILE_START_MAGIC);
+
+				char *p3 = strchr(p2, '\n');
+				if(!p3)
+				{
+					fprintf(stderr, "Failed to read file part, no newline.\n");
+					continue;
+				}
+				else
+				{
+					*p3 = 0;
+					p3++;
+
+					int loc;
+					int size;
+
+					if(sscanf(p2, "%d %d", &loc, &size) > 0)
+					{
+						int buffLeft = ret - (p3 - buffer) - 1;
+						if(buffLeft - size < 0)
+						{
+							currReadAmt = size - buffLeft;
+							size = buffLeft;
+						}
+
+						fwrite(p3, 1, size, outputFile);
+
+						ptr = p3 + size;
+					}
+				}
+			}
+
+			printf("%s", ptr);
 		}
 		else if(ret == -ETIMEDOUT)
 		{
-			if(!readPending)
-			{
-				// Check whether there is some buffer to read... -- Ricky26
-				cmd.command = OPENIBOOTCMD_DUMPBUFFER;
-				cmd.dataLen = 0;
-				if(usb_interrupt_write(device, 4, (char*)&cmd, sizeof(OpenIBootCmd), 1000) == 4)
-					readPending = 1;
-			}
+			// Do something? -- Ricky26
 		}
-		else	
+		else
 		{
-			oibc_log("failed to read interrupt, error %d: %s.\n", -ret, strerror(-ret));
-			pthread_cond_signal(&exitCond);
-			pthread_exit((void*)EIO);
+			fprintf(stderr, "Failed to read: %s\n", strerror(-ret));
+			break;
 		}
-
-		sched_yield();
 	}
 
 	pthread_cond_signal(&exitCond);
@@ -214,29 +152,31 @@ void* doOutput(void* threadid) {
 }
 
 void sendBuffer(char* buffer, size_t size) {
-	OpenIBootCmd cmd;
 
-	pthread_mutex_lock(&sendLock);
+	int ret = 0;
 
-	if(!ready)
-		pthread_cond_wait(&readyCond, &sendLock);
-
-	amtToWrite = size;
-	dataToWrite = buffer;
-
-	cmd.command = OPENIBOOTCMD_SENDCOMMAND;
-	cmd.dataLen = size;
-
-	if(usb_interrupt_write(device, 4, (char*) (&cmd), sizeof(OpenIBootCmd), 1000) < 0)
+	if(size == 0)
+		ret = usb_bulk_write(device, SEND_EP, buffer, size, 10000);
+	else
 	{
-		oibc_log("failed to send command.\n");
-		pthread_mutex_unlock(&sendLock);
-		return;
+		while(size > USB_BYTES_AT_A_TIME)
+		{
+			ret = usb_bulk_write(device, SEND_EP, buffer, USB_BYTES_AT_A_TIME, 10000);
+			if(ret >= 0)
+			{
+				buffer += ret;
+				size -= ret;
+			}
+			else
+				break;
+		}
+
+		if(size > 0 && ret >= 0)
+			ret = usb_bulk_write(device, SEND_EP, buffer, size, 10000);
 	}
 
-	pthread_cond_wait(&sendCond, &sendLock);
-	
-	pthread_mutex_unlock(&sendLock);
+	if(ret < 0)
+		oibc_log("failed to send command (0x%08x:%s).\n", -ret, strerror(-ret));
 }
 
 void* doInput(void* threadid) {
@@ -245,6 +185,9 @@ void* doInput(void* threadid) {
 
 	rl_basic_word_break_characters = " \t\n\"\\'`@$><=;|&{(~!:";
 	rl_completion_append_character = '\0';
+
+	// Hack for strange Synopsys bug -- Ricky26
+	sendBuffer(NULL, 0);
 
 	while(1) {
 		if(commandBuffer != NULL)
@@ -259,55 +202,34 @@ void* doInput(void* threadid) {
 		if(!commandBuffer)
 			break;
 
-		char* fileBuffer = NULL;
 		int len = strlen(commandBuffer);
-
-		if(commandBuffer[0] == '!') {
-			char* atLoc = strchr(&commandBuffer[1], '@');
-
-			if(atLoc != NULL)
-				*atLoc = '\0';
-
-			FILE* file = fopen(&commandBuffer[1], "rb");
-			if(!file) {
-				oibc_log("file not found: %s\n", &commandBuffer[1]);
+		if(commandBuffer[0] == '!')
+		{
+			if(sendFile(commandBuffer+1))
 				continue;
-			}
-			fseek(file, 0, SEEK_END);
-			len = ftell(file);
-			fseek(file, 0, SEEK_SET);
-			fileBuffer = malloc(len);
-			fread(fileBuffer, 1, len, file);
-			fclose(file);
-
-			if(atLoc != NULL) {
-				sprintf(toSendBuffer, "sendfile %s", atLoc + 1);
-			} else {
-				sprintf(toSendBuffer, "sendfile 0x09000000");
-			}
-
-			sendBuffer(toSendBuffer, strlen(toSendBuffer));
-			sendBuffer(fileBuffer, len);
-			free(fileBuffer);
-		} else if(commandBuffer[0] == '~') {
-            if (getFile(commandBuffer+1)==1)
+		}
+		else if(commandBuffer[0] == '~')
+		{
+            if (getFile(commandBuffer+1))
                 continue;
-            
-        } else if (strcmp(commandBuffer,"install") == 0) {
+        }
+		else if (strcmp(commandBuffer,"install") == 0)
+		{
             oibc_log("Backing up your NOR to current directory as norbackup.dump\n");
-            sprintf(toSendBuffer, "nor_read 0x09000000 0x0 1048576");
 
-			commandBuffer[len] = '\n';
+            sprintf(toSendBuffer, "nor_read 0x09000000 0x0 1048576\n");
 			sendBuffer(toSendBuffer, strlen(toSendBuffer));
 
-			sprintf(toSendBuffer,"norbackup.dump:1048576"); 
-			getFile(toSendBuffer);
 			oibc_log("Fetching NOR backup.\n");
-			commandBuffer[len] = '\n';
+			sprintf(toSendBuffer, "norbackup.dump:1048576");
+			getFile(toSendBuffer);
+
 			oibc_log("NOR backed up, starting installation\n");
-			sprintf(toSendBuffer,"install");
+			sprintf(toSendBuffer,"install\n");
 			sendBuffer(toSendBuffer, strlen(toSendBuffer));
-		} else {
+		}
+		else
+		{
 			commandBuffer[len] = '\n';
 			sendBuffer(commandBuffer, len + 1);
 		}
@@ -318,7 +240,43 @@ void* doInput(void* threadid) {
 	pthread_exit(NULL);
 }
 
-int getFile(char * commandBuffer)
+int sendFile(char *commandBuffer)
+{
+    char toSendBuffer[USB_BYTES_AT_A_TIME];
+	char* atLoc = strchr(commandBuffer, '@');
+
+	if(atLoc != NULL)
+		*atLoc = '\0';
+
+	FILE* file = fopen(commandBuffer, "rb");
+	if(!file)
+	{
+		oibc_log("file not found: %s\n", commandBuffer);
+		return 1;
+	}
+
+	fseek(file, 0, SEEK_END);
+	size_t len = ftell(file);
+	fseek(file, 0, SEEK_SET);
+	char *fileBuffer = malloc(len);
+	fread(fileBuffer, 1, len, file);
+	fclose(file);
+
+	if(atLoc != NULL)
+		sprintf(toSendBuffer, "sendfile %s %d\n", atLoc + 1, len);
+	else
+		sprintf(toSendBuffer, "sendfile 0x09000000 %d\n", len);
+	
+	fprintf(stderr, "File length %d.\n", len);
+
+	sendBuffer(toSendBuffer, strlen(toSendBuffer));
+	sendBuffer(fileBuffer, len);
+	free(fileBuffer);
+
+	return 0;
+}
+
+int getFile(char *commandBuffer)
 {
     char toSendBuffer[USB_BYTES_AT_A_TIME];
     char* sizeLoc = strchr(commandBuffer, ':');
@@ -327,6 +285,9 @@ int getFile(char * commandBuffer)
         oibc_log("must specify length to read\n");
         return 1;
     }
+
+	while(readAmt)
+		sleep(50);
     
     *sizeLoc = '\0';
     sizeLoc++;
@@ -346,14 +307,14 @@ int getFile(char * commandBuffer)
     }
     
     if(atLoc != NULL) {
-        sprintf(toSendBuffer, "getfile %s %d", atLoc + 1, toRead);
+        sprintf(toSendBuffer, "recvfile %s %d\n", atLoc + 1, toRead);
     } else {
-        sprintf(toSendBuffer, "getfile 0x09000000 %d", toRead);
+        sprintf(toSendBuffer, "recvfile 0x09000000 %d\n", toRead);
     }
     
     sendBuffer(toSendBuffer, strlen(toSendBuffer));
     outputFile = file;
-    readIntoOutput = toRead;
+    readAmt = toRead;
     
     return 0;
 }
@@ -404,9 +365,9 @@ int main(int argc, char* argv[])
 			/* Loop through all of the interfaces */
 			for (i = 0; i < dev->config[0].bNumInterfaces; i++) {
 				for (a = 0; a < dev->config[0].interface[i].num_altsetting; a++) {
-					if(dev->config[0].interface[i].altsetting[a].bInterfaceClass == 0xFF
-						&& dev->config[0].interface[i].altsetting[a].bInterfaceSubClass == 0xFF
-						&& dev->config[0].interface[i].altsetting[a].bInterfaceProtocol == 0x51) {
+					if(dev->config[0].interface[i].altsetting[a].bInterfaceClass == 0xa
+						&& dev->config[0].interface[i].altsetting[a].bInterfaceSubClass == 0x0
+						&& dev->config[0].interface[i].altsetting[a].bInterfaceProtocol == 0x0) {
 						goto done;
 					}
     				}
@@ -448,6 +409,7 @@ done:
 	pthread_cancel(outputThread);
 
 	rl_deprep_terminal(); // If we cancel readline, we must call this to not fsck up the terminal.
+	fflush(stdin); // Prevent madness
 
 	usb_release_interface(device, i);
 	usb_close(device);

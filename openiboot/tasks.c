@@ -97,6 +97,8 @@ void task_destroy(TaskDescriptor *_td)
 
 int task_start(TaskDescriptor *_td, void *_fn, void *_arg)
 {
+	EnterCriticalSection();
+
 	if(_td->state == TASK_STOPPED)
 	{
 		_td->criticalSectionNestCount = 1;
@@ -106,19 +108,29 @@ int task_start(TaskDescriptor *_td, void *_fn, void *_arg)
 		_td->savedRegisters.lr = (uint32_t)&StartTask;
 		_td->savedRegisters.sp = (uint32_t)(_td->storage + _td->storageSize);
 
+		_td->state = TASK_RUNNING;
+
 		task_add_before(_td, &bootstrapTask);
+		
+		LeaveCriticalSection();
+
 		//bufferPrintf("Tasks: Added %s to tasks.\n", _td->taskName);
 		return 1;
 	}
+		
+	LeaveCriticalSection();
 
 	return 0;
 }
 
 void task_stop()
 {
+	EnterCriticalSection();
+
 	TaskDescriptor *next = CurrentRunning->taskList.next;
 	if(next == CurrentRunning)
 	{
+		LeaveCriticalSection();
 		bufferPrintf("Tasks: Cannot stop last task! Expect hell to break loose now!\n");
 		return;
 	}
@@ -128,7 +140,6 @@ void task_stop()
 	CurrentRunning->state = TASK_STOPPED;
 
 	// Swap onto next task
-	EnterCriticalSection();
 	SwapTask(next);
 	
 	// Can't ever reach here, code will continue in task_yield after
