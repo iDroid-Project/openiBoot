@@ -8,16 +8,15 @@
 #define USB_NUM_FIFOS		15
 
 // Hardware configuration
-#if defined(CONFIG_IPHONE4)
+#if defined(CONFIG_IPHONE_4G)
 #define USB 0x86100000
 #define USB_PHY 0x86000000
 #else
 #define USB 0x38400000
 #define USB_PHY 0x3C400000
-#define USB_SETUP_PHY
 #endif
 
-#if defined(CONFIG_IPHONE4)
+#if defined(CONFIG_IPHONE_4G)
 #define USB_OTGCLOCKGATE 0x18
 #define USB_PHYCLOCKGATE 0x1D
 #define USB_INTERRUPT 0xD
@@ -34,7 +33,7 @@
 #define USB_TURNAROUND 0x5
 #endif
 
-#if defined(CONFIG_IPHONE4) || defined(CONFIG_IPOD2G)
+#if defined(CONFIG_IPHONE_4G) || defined(CONFIG_IPOD2G)
 #define RX_FIFO_DEPTH				0x11B
 #define TX_FIFO_DEPTH				0x100
 #define TX_FIFO_STARTADDR			0x11B
@@ -48,10 +47,26 @@
 #define PERIODIC_TX_FIFO_DEPTH		0x100
 #endif
 
+#if defined(CONFIG_IPOD2G)
+#define OPHYUNK1_START 0x6
+#define OPHYUNK1_STOP_MASK 0x2
+#define OPHYUNK2_START 0xE3F
+#elif defined(CONFIG_IPHONE_4G)
+#define OPHYUNK4_START 0x200
+#define OPHYUNK1_START 0x6
+#define OPHYUNK1_STOP_MASK 0x2
+#define OPHYUNK2_START 0x733
+#endif
+
 // Registers
 #define OPHYPWR		0
 #define OPHYCLK		0x4
 #define ORSTCON		0x8
+#define OPHYUNK1	0x1C
+#define OPHYUNK2	0x44
+#define OPHYUNK3	0x48
+#define OPHYUNK4	0x60
+
 #define GOTGCTL		0x0
 #define GOTGINT		0x4
 #define GAHBCFG		0x8
@@ -93,9 +108,22 @@
 #define OPHYPWR_POWERON 0x0	// all the previous flags are off
 
 #define OPHYCLK_CLKSEL_MASK 0x3
+
+#define OPHYCLK_SPEED_48MHZ 48000000
+#define OPHYCLK_SPEED_12MHZ 12000000
+#define OPHYCLK_SPEED_24MHZ 24000000
+
+#if defined(CONFIG_IPOD2G) || defined(CONFIG_IPHONE_4G)
+#define OPHYCLK_CLKSEL_48MHZ 0x2
+#define OPHYCLK_CLKSEL_12MHZ 0x0
+#define OPHYCLK_CLKSEL_24MHZ 0x1
+#define OPHYCLK_CLKSEL_OTHER 0x3
+#else
+// TODO: these values are off according to iboot 3.1.3. Look into this.
 #define OPHYCLK_CLKSEL_48MHZ 0x0
 #define OPHYCLK_CLKSEL_12MHZ 0x2
 #define OPHYCLK_CLKSEL_24MHZ 0x3
+#endif
 
 #define GOTGCTL_BSESSIONVALID (1 << 19)
 #define GOTGCTL_SESSIONREQUEST (1 << 1)

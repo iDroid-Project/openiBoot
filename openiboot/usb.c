@@ -103,7 +103,10 @@ int usb_setup() {
 		return 0;
 	}
 
-#ifndef CONFIG_IPOD2G
+#if defined(CONFIG_IPHONE_4G)
+	// Wait for USB hardware to come alive
+	udelay(10000);
+#elif !defined(CONFIG_IPOD2G)
 	// Power on hardware
 	power_ctrl(POWER_USB, ON);
 	udelay(USB_START_DELAYUS);
@@ -121,24 +124,32 @@ int usb_setup() {
 	clock_gate_switch(USB_OTGCLOCKGATE, ON);
 	clock_gate_switch(USB_PHYCLOCKGATE, ON);
 
-#ifndef CONFIG_IPHONE4
+#ifndef CONFIG_IPHONE_4G
 	clock_gate_switch(EDRAM_CLOCKGATE, ON);
 #endif
-
-	// Generate a soft disconnect on host
-	SET_REG(USB + DCTL, GET_REG(USB + DCTL) | DCTL_SFTDISCONNECT);
-	udelay(USB_SFTDISCONNECT_DELAYUS);
 
 	// power on OTG
 	SET_REG(USB + USB_ONOFF, GET_REG(USB + USB_ONOFF) & (~USB_ONOFF_OFF));
 	udelay(USB_ONOFFSTART_DELAYUS);
 
-#if defined(USB_SETUP_PHY)
+	// Generate a soft disconnect on host
+	SET_REG(USB + DCTL, GET_REG(USB + DCTL) | DCTL_SFTDISCONNECT);
+	udelay(USB_SFTDISCONNECT_DELAYUS);
+
+#if defined(CONFIG_IPHONE_4G)
+	SET_REG(USB_PHY + OPHYUNK4, OPHYUNK4_START);
+	SET_REG(USB_PHY + OPHYPWR, OPHYPWR_PLLPOWERDOWN | OPHYPWR_XOPOWERDOWN); // Please tell me this turns the PHY ON, not OFF. -- Ricky26
+#else
 	// power on PHY
 	SET_REG(USB_PHY + OPHYPWR, OPHYPWR_POWERON);
+#endif
+
 	udelay(USB_PHYPWRPOWERON_DELAYUS);
 
-#if defined(CONFIG_IPOD2G)
+#if defined(CONFIG_IPOD2G) || defined(CONFIG_IPHONE_4G)
+	SET_REG(USB_PHY + OPHYUNK1, OPHYUNK1_START);
+	SET_REG(USB_PHY + OPHYUNK2, OPHYUNK2_START);
+	
 	// select clock
 	uint32_t phyClockBits;
 	switch (clock_get_frequency(FrequencyBaseUsbPhy))
@@ -159,7 +170,7 @@ int usb_setup() {
 			phyClockBits = OPHYCLK_CLKSEL_OTHER;
 			break;
 	}
-	SET_REG(USB_PHY + OPHYCLK, (GET_REG(USB_PHY + OPHYCLK) & OPHYCLK_CLKSEL_MASK) | phyClockBits);
+	SET_REG(USB_PHY + OPHYCLK, (GET_REG(USB_PHY + OPHYCLK) & ~OPHYCLK_CLKSEL_MASK) | phyClockBits);
 #else
 	// select clock
 	SET_REG(USB_PHY + OPHYCLK, (GET_REG(USB_PHY + OPHYCLK) & ~OPHYCLK_CLKSEL_MASK) | OPHYCLK_CLKSEL_48MHZ);
@@ -170,20 +181,14 @@ int usb_setup() {
 	udelay(USB_RESET2_DELAYUS);
 	SET_REG(USB_PHY + ORSTCON, GET_REG(USB_PHY + ORSTCON) & (~ORSTCON_PHYSWRESET));
 	udelay(USB_RESET_DELAYUS);
-#endif
 
 	SET_REG(USB + GRSTCTL, GRSTCTL_CORESOFTRESET);
 
-#ifdef CONFIG_IPHONE4
-	while(GET_REG(USB+GRSTCTL) != GRSTCTL_CORESOFTRESET);
-	while(GET_REG(USB+GRSTCTL) > 0);
-#else
 	// wait until reset takes
 	while((GET_REG(USB + GRSTCTL) & GRSTCTL_CORESOFTRESET) == GRSTCTL_CORESOFTRESET);
 
 	// wait until reset completes
 	while((GET_REG(USB + GRSTCTL) & ~GRSTCTL_AHBIDLE) != 0);
-#endif
 
 	udelay(USB_RESETWAITFINISH_DELAYUS);
 
@@ -465,6 +470,9 @@ static void usb_claim_fifo(int _ep)
 
 			InEPRegs[_ep].control = (InEPRegs[_ep].control & ~(USB_EPCON_TXFNUM_MASK << USB_EPCON_TXFNUM_SHIFT))
 									| ((i & USB_EPCON_TXFNUM_MASK) << USB_EPCON_TXFNUM_SHIFT);
+
+			bufferPrintf("USB: %d claimed FIFO %d. (0x%08x/0x%08x).\n", _ep, i, GET_REG(USB+DIEPTXF(i)), InEPRegs[_ep].control);
+			break;
 		}
 	}
 }
@@ -762,6 +770,7 @@ static int resetUSB()
 	usb_disable_all_endpoints();
 	usb_flush_all_fifos();
 
+	usb_fifos_used = 0;
 	usb_fifo_start = PERIODIC_TX_FIFO_STARTADDR;
 
 	int i;
@@ -823,7 +832,7 @@ static int continueMessageQueue(int _ep)
 	if(q != NULL)
 	{
 		//if(q->dir == USBIn) //_ep != 0)
-		//	bufferPrintf("USB: txrx 0x%08x, %d, %d, %d, %d\n", q, _ep, q->dir, q->data, q->dataLen);
+			bufferPrintf("USB: txrx 0x%08x, %d, %d, %d, %d\n", q, _ep, q->dir, q->data, q->dataLen);
 		
 		usb_txrx(_ep, q->dir, q->data, q->dataLen);
 		return 1;
@@ -837,17 +846,23 @@ static int clearMessage(int _ep)
 	USBMessageQueue *q;
    
 	EnterCriticalSection();
+
 	q = usb_message_queue[_ep];
 	if(q != NULL)
+	{
 		usb_message_queue[_ep] = q->next;
-	LeaveCriticalSection();
+		
+		LeaveCriticalSection();
 
-	if(q == NULL)
+		free(q);
+		
+		return 1;
+	}
+	else
+	{
+		LeaveCriticalSection();
 		return 0;
-
-	free(q);
-
-	return 1;
+	}
 }
 
 static void clearEPMessages(int _ep)
@@ -1006,7 +1021,7 @@ static void handleTxInterrupts(int endpoint) {
 	if((inInterruptStatus[endpoint] & USB_EPINT_INTknTXFEmp) == USB_EPINT_INTknTXFEmp) {
 		InEPRegs[endpoint].interrupt = USB_EPINT_INTknTXFEmp;
 		//uartPrintf("\t\tUSB_EPINT_INTknTXFEmp\r\n");
-		//bufferPrintf("in tkn tx fifo empty %d\n", endpoint);
+		bufferPrintf("in tkn tx fifo empty %d\n", endpoint);
 	}
 
 	if((inInterruptStatus[endpoint] & USB_EPINT_TimeOUT) == USB_EPINT_TimeOUT) {
@@ -1034,7 +1049,7 @@ static void handleTxInterrupts(int endpoint) {
 		InEPRegs[endpoint].interrupt = USB_EPINT_XferCompl;
 
 		//uartPrintf("\t\tUSB_EPINT_XferCompl\n");
-		//bufferPrintf("in xfercompl %d\n", endpoint);
+		bufferPrintf("in xfercompl %d\n", endpoint);
 		
 		// Flush token queue, as this EP is clearly functioning fine.
 		//SET_REG(USB+GRSTCTL, GET_REG(USB+GRSTCTL) | GRSTCTL_TKNFLUSH);
@@ -1081,7 +1096,7 @@ static void handleRxInterrupts(int endpoint) {
 		USBMessageQueue *q = usb_message_queue[endpoint];
 		OutEPRegs[endpoint].interrupt = USB_EPINT_XferCompl;
 
-		//bufferPrintf("out xfercompl %d\n", endpoint);
+		bufferPrintf("out xfercompl %d\n", endpoint);
 
 		if(endpoint == 0)
 		{
