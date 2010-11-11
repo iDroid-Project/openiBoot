@@ -49,6 +49,7 @@ int wdt_setup()
 
 void wdt_enable()
 {
+	return;
 	if(!wdt_init)
 		return;
 	

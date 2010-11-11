@@ -181,8 +181,16 @@ static void acm_parse(int32_t _amt)
 
 static void acm_received(uint32_t _tkn, int32_t _amt)
 {
-	if(!task_start(&acm_parse_task, &acm_parse, (void*)_amt))
-		bufferPrintf("ACM: Worker already running, what's going on?\n");
+	int attempts = 0;
+	while(attempts < 5)
+	{
+		if(task_start(&acm_parse_task, &acm_parse, (void*)_amt))
+			break;
+
+		task_yield();
+
+		bufferPrintf("ACM: Worker already running, yielding...\n");
+	}
 }
 
 static void acm_sent(uint32_t _tkn, int32_t _amt)
@@ -220,6 +228,8 @@ static void acm_enumerate(USBConfiguration *conf)
 
 static void acm_started()
 {
+	acm_is_ready = 0;
+
 	if(usb_get_speed() == USBHighSpeed)
 		acm_usb_mps = 512;
 	else
@@ -238,6 +248,8 @@ static void acm_started()
 
 	acm_send();
 	acm_is_ready = 1;
+
+	bufferPrintf("ACM: Ready.\n");
 }
 
 void acm_start()

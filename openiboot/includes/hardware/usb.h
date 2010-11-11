@@ -211,7 +211,7 @@
 #define DEPTSIZ_XFERSIZ_MASK 0x1FFFF
 
 // ENDPOINT_DIRECTIONS register has two bits per endpoint. 0, 1 for endpoint 0. 1, 2 for end point 1, etc.
-#define USB_EP_DIRECTION(ep) ((GET_REG(USB + USB_ENDPOINT_DIRECTIONS) >> ((ep) * 2)) & 0x3)
+#define USB_EP_DIRECTION(ep) (USBDirection)(2-((GET_REG(USB + GHWCFG1) >> ((ep) * 2)) & 0x3))
 #define USB_ENDPOINT_DIRECTIONS_BIDIR 0
 #define USB_ENDPOINT_DIRECTIONS_IN 1
 #define USB_ENDPOINT_DIRECTIONS_OUT 2

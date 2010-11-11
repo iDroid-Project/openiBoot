@@ -151,7 +151,7 @@ void OpenIBootStart()
 			case 1:
 				framebuffer_clear();
 				bufferPrintf("Loading iOS...");
-				reset_tempos();
+				reset_tempos(sDefaultOS);
 				Image* image = images_get(fourcc("ibox"));
 				if(image == NULL)
 					image = images_get(fourcc("ibot"));
@@ -163,7 +163,7 @@ void OpenIBootStart()
 			case 2:
 				framebuffer_clear();
 				bufferPrintf("Loading iDroid...");
-				reset_tempos();
+				reset_tempos(sDefaultOS);
 #ifndef NO_HFS
 #ifndef CONFIG_IPOD
 				radio_setup();
@@ -186,7 +186,7 @@ void OpenIBootStart()
 			case 3:
 				framebuffer_clear();
 				bufferPrintf("Loading Console...");
-				reset_tempos();
+				reset_tempos(sDefaultOS);
 				hideMenu = "1";
 				break;
 		}
@@ -290,45 +290,3 @@ static int setup_openiboot() {
 	return 0;
 }
 
-static int load_multitouch_images()
-{
-    #ifdef CONFIG_IPHONE
-        Image* image = images_get(fourcc("mtza"));
-        if (image == NULL) {
-            return 0;
-        }
-        void* aspeedData;
-        size_t aspeedLength = images_read(image, &aspeedData);
-        
-        image = images_get(fourcc("mtzm"));
-        if(image == NULL) {
-            return 0;
-        }
-        
-        void* mainData;
-        size_t mainLength = images_read(image, &mainData);
-        
-        multitouch_setup(aspeedData, aspeedLength, mainData,mainLength);
-        free(aspeedData);
-        free(mainData);
-    #else
-        Image* image = images_get(fourcc("mtz2"));
-        if(image == NULL) {
-            return 0;
-        }
-        void* imageData;
-        size_t length = images_read(image, &imageData);
-        
-        multitouch_setup(imageData, length);
-        free(imageData);
-    #endif
-    return 1;
-}
-
-static void reset_tempos()
-{
-	framebuffer_setdisplaytext(FALSE);
-	nvram_setvar("opib-temp-os","0");
-	nvram_save();
-	framebuffer_setdisplaytext(TRUE);
-}
