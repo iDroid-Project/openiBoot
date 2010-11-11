@@ -72,7 +72,9 @@ typedef struct CommandQueue {
 
 CommandQueue* commandQueue = NULL;
 
+#ifndef CONFIG_IPAD
 static void startUSB();
+#endif
 
 void OpenIBootStart() {
 	setup_openiboot();
@@ -159,7 +161,9 @@ void OpenIBootStart() {
 #endif
 
 #endif
+#ifndef CONFIG_IPAD
 	startUSB();
+#endif
 #ifndef CONFIG_IPHONE_4
 #ifndef CONFIG_IPOD
 	camera_setup();
@@ -179,10 +183,14 @@ void OpenIBootStart() {
 	pmu_set_iboot_stage(0);
 	startScripting("openiboot"); //start script mode if there is a file
 #endif
+	bufferPrintf("  ___                   _ ____              _   \r\n");
+	bufferPrintf(" / _ \\ _ __   ___ _ __ (_) __ )  ___   ___ | |_ \r\n");
+	bufferPrintf("| | | | '_ \\ / _ \\ '_ \\| |  _ \\ / _ \\ / _ \\| __|\r\n");
+	bufferPrintf("| |_| | |_) |  __/ | | | | |_) | (_) | (_) | |_ \r\n");
+	bufferPrintf(" \\___/| .__/ \\___|_| |_|_|____/ \\___/ \\___/ \\__|\r\n");
+	bufferPrintf("      |_|                                       \r\n");
+	bufferPrintf("\r\n");
 	bufferPrintf("version: %s\r\n", OPENIBOOT_VERSION_STR);
-	bufferPrintf("-----------------------------------------------\r\n");
-	bufferPrintf("              WELCOME TO OPENIBOOT\r\n");
-	bufferPrintf("-----------------------------------------------\r\n");
 	DebugPrintf("                    DEBUG MODE\r\n");
 
 #ifndef CONFIG_IPHONE_4
@@ -398,6 +406,7 @@ static void controlSent(USBTransfer * transfer) {
 	//uartPrintf("control sent\r\n");
 }
 
+#ifndef CONFIG_IPAD
 static void enumerateHandler(USBInterface* interface) {
 	usb_add_endpoint(interface, 1, USBIn, USBBulk);
 	usb_add_endpoint(interface, 2, USBOut, USBBulk);
@@ -436,6 +445,7 @@ static void startUSB()
 {
 	usb_setup(enumerateHandler, startHandler);
 }
+#endif
 
 static int setup_devices() {
 	// Basic prerequisites for everything else
