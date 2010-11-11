@@ -5,7 +5,7 @@ The original graphicsi for openiBoot were provided by poorlad and
 modified by galiaxy.
 
 The current graphics were provided by nickp666 with the intention of giving
-openiBoot a pit more of a polished look.
+openiBoot a bit more of a polished look.
 
 The Apple logo is a trademark of Apple Inc., and is included for proper
 identification of Apple software on the device, and is believed to be
@@ -18,6 +18,8 @@ and is included for proper identification of Google software on the device, and
 is believed to be necessary to avoid tarnishing or misrepresenting its image.
 It does not imply any association with or endorsement by the company, and its 
 inclusion is believed to be fair use under copyright law.
+
+The console icon is taken from the LGPL licenced Crystal icon set from: http://www.everaldo.com/crystal/
 
 Example use of bin2c
 ------------------------

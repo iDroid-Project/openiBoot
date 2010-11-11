@@ -1,6 +1,6 @@
 iDroid Project openiBoot
 ---------------------------------------------------
-Copyright (C) 2008 David Wang (planetbeing).
+	Copyright (C) 2008 David Wang (planetbeing).
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -17,7 +17,7 @@ Copyright (C) 2008 David Wang (planetbeing).
 
 1. Compiling
 ---------------------------------------------------
-**Build an ARM toolchain (only needs to be done once):**
+**Build an ARM toolchain (this only needs to be done once - for subsequent builds this step can be omitted unless there has been a toolchain update):**
 
 `sudo toolchain/build-toolchain.sh make`
 	
@@ -50,13 +50,13 @@ Change into the openiboot subfolder
 
 **Put your phone into recovery mode**: hold home whilst powering on until you see the iTunes logo.
 
-**Run:** 
-`sudo tools/client/linux/loadibec openiboot.img3`
+**Run (From the root of the openiboot tree):** 
+`sudo tools/client/linux/loadibec openiboot/openiboot.img3`
 
 You should now see openiBoot on your phone, use the volume buttons to scroll to the console icon, then press home
 
 **Run the client:**
-sudo client/linux/oibc
+`sudo client/linux/oibc`
 
 *NOTE: If you are on a mac, you will most likely need to do this as soon as you have selected the console - Linux does not manifest this issue.*
 
@@ -65,13 +65,13 @@ You should now see the same output on your computer, as is on your phone's scree
 **Type**: 
 `install` and press return
 
-This will take a while, your NOR will be backed up during this process, and can be found in the current directory as norbackup.bin but will flash openiBoot to your phone.
+This will take a while, your NOR will be backed up during this process, and can be found in the current directory as norbackup.dump but will flash openiBoot to your phone.
 
-3. Installing multitouch firmware
---------------------------------------------------
-A. iPhone 3G user:
+3. Installing multitouch firmware for openiBoot (This is optional)
+-------------------------------------------------------------------
+A. iPhone 3G user (Convert zephyr2.bin):
 
-   1. Convert zephyr2.bin
+ *  Copy your zephyr2.bin to openiboot/mk8900image
  *  Go to "openiboot/mk8900image"
  *  From "openiboot/mk8900image" execute this command (please adjust path to your firmware location): 
 
@@ -93,9 +93,9 @@ A. iPhone 3G user:
     >multitouch_fw_install 0x09000000 XXXXX
 
 
-B. iPhone 2G user:
+B. iPhone 2G user (Convert zephyr_aspeed.bin and zephyr_main.bin):
 
-   1. Convert zephyr_aspeed.bin and zephyr_main.bin
+*	Copy your zephyr bins (zephyr_aspeed.bin and zephyr_main.bin) to openiboot/mk8900image
 *   Go to "openiboot/mk8900image"
 *   From "openiboot/mk8900image" execute this command (please adjust path to your firmware location): 
 
@@ -132,5 +132,7 @@ B. iPhone 2G user:
 4. Reporting issues/requesting features
 --------------------------------------------------
 The iDroid Project has an issue tracking system set up to handle bug reports & feature requests, please see [http://dev.idroidproject.org/projects/openiboot][1] for more information.
+
+For anything else, we can be found lurking in #idroid-dev on irc.osx86.hu
 
   [1]: http://dev.idroidproject.org/projects/openiboot

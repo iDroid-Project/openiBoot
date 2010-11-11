@@ -102,40 +102,17 @@ int send_file(struct libusb_device_handle *handle, const char* filename) {
 		last = 0x800;
 	}
 
+	libusb_control_transfer(handle, 0x41, 0, 0, 0, 0, 0, 1000);
+
 	int i = 0;
 	char response[6];
 	for(i = 0; i < packets; i++) {
 		int size = i + 1 < packets ? 0x800 : last;
+		int bytes = 0;
 
-		if(!libusb_control_transfer(handle, 0x21, 1, i, 0, &buffer[i * 0x800], size, 1000)) {
+		if(libusb_bulk_transfer(handle, 4, &buffer[i * 0x800], size, &bytes, 1000)) {
 			printf("send_file: error sending packet.\n");
 			return -1;
-		}
-
-		if(libusb_control_transfer(handle, 0xA1, 3, 0, 0, response, 6, 1000) != 6) {
-			printf("send_file: error receiving status.\n");
-			return -1;
-
-		} else {
-			if(response[4] != 5) {
-				printf("send_file: invalid status.\n");
-				return -1;
-			}
-		}
-
-	}
-
-	libusb_control_transfer(handle, 0x21, 1, i, 0, buffer, 0, 1000);
-	for(i = 6; i <= 8; i++) {
-		if(libusb_control_transfer(handle, 0xA1, 3, 0, 0, response, 6, 1000) != 6) {
-			printf("send_file: error receiving status.\n");
-			return -1;
-
-		} else {
-			if(response[4] != i && response[4] != i-2) {
-				printf("send_file: invalid status.\n");
-				return -1;
-			}
 		}
 	}
 

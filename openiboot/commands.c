@@ -204,7 +204,15 @@ void cmd_multitouch_fw_install(int argc, char** argv)
 }
 #endif
 
-#ifdef ENABLE_EXTRA
+void cmd_multitouch_fw_uninstall(int argc, char** argv) {
+#ifdef CONFIG_IPHONE	
+	images_uninstall(fourcc("mtza"), fourcc("mtza"));
+	images_uninstall(fourcc("mtzm"), fourcc("mtzm"));
+#else
+	images_uninstall(fourcc("mtz2"), fourcc("mtz2"));
+#endif	
+}
+
 void cmd_poweroff(int argc, char** argv) {
 	pmu_poweroff();
 }
@@ -396,7 +404,7 @@ void cmd_rootfs(int argc, char** argv) {
 	bufferPrintf("set rootfs to %s on partition %d\r\n", fileName, partition);
 }
 
-void cmd_boot(int argc, char** argv) {
+void cmd_boot_linux(int argc, char** argv) {
 	char* arguments = "";
 
 	if(argc >= 2) {
@@ -406,6 +414,15 @@ void cmd_boot(int argc, char** argv) {
 	bufferPrintf("Booting kernel with arguments (%s)...\r\n", arguments);
 
 	boot_linux(arguments);
+}
+
+void cmd_boot_ios(int argc, char** argv) {
+	Image* image = images_get(fourcc("ibox"));
+	if(image == NULL)
+		image = images_get(fourcc("ibot"));
+	void* imageData;
+	images_read(image, &imageData);
+	chainload((uint32_t)imageData);
 }
 
 void cmd_go(int argc, char** argv) {
@@ -1261,7 +1278,6 @@ void cmd_piezo_play(int argc, char** argv) {
 }
 
 #endif
-#endif //enable extra
 OPIBCommand CommandList[] = 
 	{
 		{"install", "install openiboot onto the device", cmd_install},
@@ -1269,12 +1285,12 @@ OPIBCommand CommandList[] =
 		{"images_install", "install a nor image", cmd_images_install},
 		{"images_uninstall", "uninstall a nor image", cmd_images_uninstall},
 		{"reboot", "reboot the device", cmd_reboot},
-		{"multitouch_fw_install", "install the multitouch firmware", cmd_multitouch_fw_install},
+		{"multitouch_fw_install", "install multitouch firmware", cmd_multitouch_fw_install},
+		{"multitouch_fw_uninstall","uninstall multitouch firmware", cmd_multitouch_fw_uninstall},
 		{"nand_erase", "erase a NAND block", cmd_nand_erase},
 		{"nor_read", "read a block of NOR into RAM", cmd_nor_read},
 		{"nor_write", "write RAM into NOR", cmd_nor_write},
 		{"help", "list the available commands", cmd_help},
-#ifdef ENABLE_EXTRA
 		{"poweroff", "power off the device", cmd_poweroff},
 		{"echo", "echo back a line", cmd_echo},
 		{"clear", "clears the screen", cmd_clear},
@@ -1346,7 +1362,8 @@ OPIBCommand CommandList[] =
 		{"kernel", "load a Linux kernel", cmd_kernel},
 		{"ramdisk", "load a Linux ramdisk", cmd_ramdisk},
 		{"rootfs", "specify a file as the Linux rootfs", cmd_rootfs},
-		{"boot", "boot a Linux kernel", cmd_boot},
+		{"boot_linux", "boot a Linux kernel", cmd_boot_linux},
+		{"boot_ios", "boot a iOS via iBoot", cmd_boot_ios},
 		{"go", "jump to a specified address (interrupts disabled)", cmd_go},
 		{"jump", "jump to a specified address (interrupts enabled)", cmd_jump},
 		{"version", "display the version string", cmd_version},
@@ -1366,6 +1383,5 @@ OPIBCommand CommandList[] =
 		{"play", "play notes using piezo bytes", cmd_piezo_play},
 #endif
 		{"multitouch_setup", "set up the multitouch chip", cmd_multitouch_setup},		
-#endif //enable extra
 		{NULL, NULL}
 	};

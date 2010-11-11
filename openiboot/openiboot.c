@@ -146,13 +146,12 @@ void OpenIBootStart()
 		defaultOS = parseNumber(sDefaultOS);
 	if(sTempOS)
 		tempOS = parseNumber(sTempOS);
-	if(tempOS!=defaultOS) {
-				
+	if(tempOS>0) {	
 		switch (tempOS) {
-			case 0:
+			case 1:
 				framebuffer_clear();
 				bufferPrintf("Loading iOS...");
-				reset_tempos(sDefaultOS);
+				reset_tempos();
 				Image* image = images_get(fourcc("ibox"));
 				if(image == NULL)
 					image = images_get(fourcc("ibot"));
@@ -161,10 +160,10 @@ void OpenIBootStart()
 				chainload((uint32_t)imageData);
 				break;
 			
-			case 1:
+			case 2:
 				framebuffer_clear();
 				bufferPrintf("Loading iDroid...");
-				reset_tempos(sDefaultOS);
+				reset_tempos();
 #ifndef NO_HFS
 #ifndef CONFIG_IPOD
 				radio_setup();
@@ -184,14 +183,13 @@ void OpenIBootStart()
 #endif
 				break;
 				
-			case 2:
+			case 3:
 				framebuffer_clear();
 				bufferPrintf("Loading Console...");
-				reset_tempos(sDefaultOS);
+				reset_tempos();
 				hideMenu = "1";
 				break;
 		}
-		
 	} else if(hideMenu && (strcmp(hideMenu, "1") == 0 || strcmp(hideMenu, "true") == 0)) {
 		bufferPrintf("Boot menu hidden. Use 'setenv opib-hide-menu false' and then 'saveenv' to unhide.\r\n");
 	} else {
@@ -290,4 +288,47 @@ static int setup_openiboot() {
 	audiohw_init();
     isMultitouchLoaded = 0;
 	return 0;
+}
+
+static int load_multitouch_images()
+{
+    #ifdef CONFIG_IPHONE
+        Image* image = images_get(fourcc("mtza"));
+        if (image == NULL) {
+            return 0;
+        }
+        void* aspeedData;
+        size_t aspeedLength = images_read(image, &aspeedData);
+        
+        image = images_get(fourcc("mtzm"));
+        if(image == NULL) {
+            return 0;
+        }
+        
+        void* mainData;
+        size_t mainLength = images_read(image, &mainData);
+        
+        multitouch_setup(aspeedData, aspeedLength, mainData,mainLength);
+        free(aspeedData);
+        free(mainData);
+    #else
+        Image* image = images_get(fourcc("mtz2"));
+        if(image == NULL) {
+            return 0;
+        }
+        void* imageData;
+        size_t length = images_read(image, &imageData);
+        
+        multitouch_setup(imageData, length);
+        free(imageData);
+    #endif
+    return 1;
+}
+
+static void reset_tempos()
+{
+	framebuffer_setdisplaytext(FALSE);
+	nvram_setvar("opib-temp-os","0");
+	nvram_save();
+	framebuffer_setdisplaytext(TRUE);
 }

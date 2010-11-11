@@ -36,7 +36,7 @@ LIBRARIES          += -lgcc -nostdlib
 INC                += -Iincludes
 CFLAGS             += -Wall -Werror
 LDFLAGS            += -Ttext=$(LOAD) --nostdlib
-VERSION             = "0.1.2"
+VERSION             = "0.1.3"
 COMMIT              = $(shell git log | head -n1 | cut -b8-14)
 BUILD               = "$(COMMIT)"
 CFLAGS             += -DOPENIBOOT_VERSION=$(VERSION) -DOPENIBOOT_VERSION_BUILD=$(BUILD)
@@ -60,10 +60,6 @@ else
 		CFLAGS     += -DCONFIG_IPHONE
 		IMG3TEMPLATE    = mk8900image/template.img3
 	endif
-endif
-
-ifeq ($(ENABLE_EXTRA),YES)
-	CFLAGS	      += -DENABLE_EXTRA
 endif
 
 ifeq ($(INSTALLER),YES)
