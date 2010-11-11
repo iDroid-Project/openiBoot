@@ -92,7 +92,7 @@ COMPILE             = $(CC) $(INC) $(CFLAGS) $(ARCHFLAGS) -c $< -o $@
 MAKEDEPEND          = $(CC) -M $(INC) $(CFLAGS) $(ARCHFLAGS) -o "$(DEPDIR)/$*.d" $<
 
 # Rules
-.PHONY: clean all
+.PHONY: clean all install
 
 all:	openiboot.img2 openiboot-wtf.img2 openiboot.img3 openiboot.bin
 
@@ -156,3 +156,26 @@ openiboot-payload.img2: openiboot-payload mk8900image/mk8900image
 clean:
 	@rm -rf *.o $(DEPDIR) hfs/*.o openiboot openiboot.img2 openiboot-wtf.img2 openiboot.img3 openiboot-payload.bin openiboot-payload.img2
 	@cd mk8900image/; $(MAKE) clean
+	@cd ../tools/syringe; make clean
+	@cd ../tools/client/linux; make clean
+	@cd ../tools/libirecovery; make clean
+
+install:
+	@echo Building tools...
+	@make -C ../tools/client/linux > /dev/null
+	@make -C ../tools/libirecovery linux > /dev/null
+	@if test $(IMG3TEMPLATE) = "mk8900image/template-4g.img3"; then \
+		echo A4 device detected, building Syringe; \
+		make -C ../tools/syringe > /dev/null; \
+		echo Invoking syringe, enter DFU mode now; \
+		sudo ../tools/syringe/injectpois0n; \
+		sleep 5; \
+	else \
+		read -p "Put your device into recovery mode, then press enter to continue..."; \
+	fi
+	@echo Uploading OpeniBoot binary
+	@sudo ../tools/client/linux/loadibec openiboot.bin
+	@sleep 3
+	@echo Executing OpeniBoot binary 
+	@sudo ../tools/libirecovery/irecovery -c "go jump 0x41000000"
+	@echo Done, OpeniBoot should be running
