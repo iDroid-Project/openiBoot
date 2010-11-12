@@ -3,7 +3,11 @@
 #include <string.h>
 #define BUFFERSIZE (1024*1024)
 
+#ifdef __APPLE__
 #include <gelf.h>
+#else
+#include <linux/elf.h>
+#endif
 
 char createImage(char* inElf, size_t inElfSize, char** outImage, size_t* outImageSize) {
 	Elf32_Ehdr* elf_hdr = (Elf32_Ehdr*) inElf;
