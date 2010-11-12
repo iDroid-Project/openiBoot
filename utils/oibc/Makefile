@@ -14,5 +14,4 @@ oibc:	$(OIBC_OBJS)
 clean:
 	-rm *.o
 	-rm oibc
-	-rm loadibec
 
