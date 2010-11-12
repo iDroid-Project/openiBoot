@@ -2,6 +2,18 @@
 .SUFFIXES:
 .SUFFIXES:	.c .s .o
 
+UNAME := $(shell uname -s)
+
+ifeq ($(UNAME),Darwin)
+	HOSTPLATFORM=macosx
+else
+	ifeq ($(UNAME),Linux)
+		HOSTPLATFORM=linux
+	else
+		HOSTPLATFORM=windows
+	endif
+endif
+
 # Sources
 SRC_C               = accel.c aes.c arm.c buttons.c chipid.c clock.c commands.c dma.c event.c framebuffer.c ftl.c gpio.c i2c.c images.c interrupt.c lcd.c malloc.c miu.c mmu.c nand.c nor.c nvram.c openiboot.c pmu.c power.c printf.c sdio.c sha1.c spi.c tasks.c timer.c uart.c usb.c util.c wdt.c wlan.c scripting.c syscfg.c actions.c
 SRC_S               = entry.s openiboot-asmhelpers.s
@@ -162,8 +174,8 @@ clean:
 
 install:
 	@echo Building tools...
-	@make -C ../tools/client/linux > /dev/null
-	@make -C ../tools/libirecovery linux > /dev/null
+	@make -C ../tools/client/linux loadibec > /dev/null
+	@make -C ../tools/libirecovery $(HOSTPLATFORM) > /dev/null
 	@if test $(IMG3TEMPLATE) = "mk8900image/template-4g.img3"; then \
 		echo A4 device detected, building Syringe; \
 		make -C ../tools/syringe > /dev/null; \
