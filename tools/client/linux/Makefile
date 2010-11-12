@@ -1,7 +1,7 @@
 OIBC_OBJS = oibc.o
 LOADIBEC_OBJS = loadibec.o
 LINUX_OBJS = linux.o
-LIBRARIES = -L/opt/local/lib -lusb -lpthread -lreadline
+LIBRARIES = -L/opt/local/lib -lusb -lpthread -lreadline -I/usr/local/include
 LOADIBEC_LIBS = -L/opt/local/lib -lusb-1.0
 CFLAGS += -DHAVE_GETEUID -I/opt/local/include
 

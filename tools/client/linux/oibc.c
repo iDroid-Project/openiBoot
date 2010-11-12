@@ -1,7 +1,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
-#include <usb.h>
+#include "libusb.h"
 #include <pthread.h>
 #include <readline/readline.h>
 
