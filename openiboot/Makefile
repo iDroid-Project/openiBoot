@@ -171,7 +171,7 @@ install:
 		sudo ../tools/syringe/injectpois0n; \
 		sleep 5; \
 	else \
-		read -p "Put your device into recovery mode, then press enter to continue..."; \
+		read -p "Put your device into recovery mode, then press enter to continue..." tmp; \
 	fi
 	@echo Uploading OpeniBoot binary
 	@sudo ../tools/client/linux/loadibec openiboot.bin
