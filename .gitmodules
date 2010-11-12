@@ -1,0 +1,3 @@
+[submodule "utils/syringe"]
+	path = utils/syringe
+	url = git://github.com/ricky26/syringe.git
