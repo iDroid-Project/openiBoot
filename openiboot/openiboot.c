@@ -458,8 +458,8 @@ static int setup_devices() {
 
 	// Other devices
 	usb_shutdown();
-#ifndef CONFIG_IPHONE_4
 	uart_setup();
+#ifndef CONFIG_IPHONE_4
 	i2c_setup();
 
 	dma_setup();

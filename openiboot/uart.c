@@ -24,9 +24,24 @@ const UARTRegisters HWUarts[] = {
 	{UART + UART4 + UART_ULCON, UART + UART4 + UART_UCON, UART + UART4 + UART_UFCON, UART + UART4 + UART_UMCON,
 		UART + UART4 + UART_UTRSTAT, UART + UART4 + UART_UERSTAT, UART + UART4 + UART_UFSTAT,
 		UART + UART4 + UART_UMSTAT, UART + UART4 + UART_UTXH, UART + UART4 + UART_URXH, UART + UART4 + UART_UBAUD,
+#if !defined(CONFIG_IPHONE_4)
 		UART + UART4 + UART_UDIVSLOT}};
 
-UARTSettings UARTs[5];
+UARTSettings UARTs[NUM_UARTS];
+#else
+		UART + UART4 + UART_UDIVSLOT},
+	{UART + UART5 + UART_ULCON, UART + UART5 + UART_UCON, UART + UART5 + UART_UFCON, UART + UART5 + UART_UMCON,
+		UART + UART5 + UART_UTRSTAT, UART + UART5 + UART_UERSTAT, UART + UART5 + UART_UFSTAT,
+		UART + UART5 + UART_UMSTAT, UART + UART5 + UART_UTXH, UART + UART5 + UART_URXH, UART + UART5 + UART_UBAUD,
+		UART + UART5 + UART_UDIVSLOT},
+	{UART + UART6 + UART_ULCON, UART + UART6 + UART_UCON, UART + UART6 + UART_UFCON, UART + UART6 + UART_UMCON,
+		UART + UART6 + UART_UTRSTAT, UART + UART6 + UART_UERSTAT, UART + UART6 + UART_UFSTAT,
+		UART + UART6 + UART_UMSTAT, UART + UART6 + UART_UTXH, UART + UART6 + UART_URXH, UART + UART6 + UART_UBAUD,
+		UART + UART6 + UART_UDIVSLOT}};
+
+UARTSettings UARTs[NUM_UARTS];
+#endif
+
 
 int UartHasInit;
 
@@ -37,9 +52,14 @@ int uart_setup() {
 		return 0;
 	}
 
+#if !defined(CONFIG_IPHONE_4)
 	clock_gate_switch(UART_CLOCKGATE, ON);
+#endif
 
 	for(i = 0; i < NUM_UARTS; i++) {
+#if defined(CONFIG_IPHONE_4)
+		clock_gate_switch(UART_CLOCKGATE+i, ON);
+#endif
 		// set all uarts to transmit 8 bit frames, one stop bit per frame, no parity, no infrared mode
 		SET_REG(HWUarts[i].ULCON, UART_8BITS);
 
@@ -52,6 +72,12 @@ int uart_setup() {
 		UARTs[i].ureg = i;
 		UARTs[i].baud = 115200;
 
+#if defined(CONFIG_IPHONE_4)
+		if (i == 5) {
+			SET_REG(HWUarts[i].ULCON, UART_ULCON_UNKN);
+		}
+#endif
+
 		uart_set_clk(i, UART_CLOCK_EXT_UCLK0);
 		uart_set_sample_rate(i, 16);
 	}
@@ -62,10 +88,14 @@ int uart_setup() {
 	uart_set_flow_control(2, ON);
 	uart_set_flow_control(3, ON);
 
-#ifdef CONFIG_3G
+#if defined(CONFIG_3G) || defined (CONFIG_IPHONE_4)
 	uart_set_flow_control(4, ON);
 #else
 	uart_set_flow_control(4, OFF);
+#endif
+#if defined(CONFIG_IPHONE_4)
+	uart_set_flow_control(5, ON);
+	uart_set_flow_control(6, ON);
 #endif
 
 	// Reset and enable fifo
@@ -88,7 +118,7 @@ int uart_setup() {
 
 
 int uart_set_clk(int ureg, int clock) {
-	if(ureg > 4)
+	if(ureg >= NUM_UARTS)
 		return -1; // Invalid ureg
 
 	if(clock != UART_CLOCK_PCLK && clock != UART_CLOCK_EXT_UCLK0 && clock != UART_CLOCK_EXT_UCLK1) {
@@ -105,7 +135,7 @@ int uart_set_clk(int ureg, int clock) {
 }
 
 int uart_set_baud_rate(int ureg, uint32_t baud) {
-	if(ureg > 4)
+	if(ureg >= NUM_UARTS)
 		return -1; // Invalid ureg
 
 	uint32_t clockFrequency = (UARTs[ureg].clock == UART_CLOCK_PCLK) ? PeripheralFrequency : FixedFrequency;
@@ -122,7 +152,7 @@ int uart_set_baud_rate(int ureg, uint32_t baud) {
 }
 
 int uart_set_sample_rate(int ureg, int rate) {
-	if(ureg > 4)
+	if(ureg >= NUM_UARTS)
 		return -1; // Invalid ureg
 
 	uint32_t newSampleRate;
@@ -140,8 +170,10 @@ int uart_set_sample_rate(int ureg, int rate) {
 			return -1; // Invalid sample rate
 	}
 
+#if !defined(CONFIG_IPHONE_4)
 	SET_REG(HWUarts[ureg].UBAUD,
 		(GET_REG(HWUarts[ureg].UBAUD) & (~UART_SAMPLERATE_MASK)) | (newSampleRate << UART_SAMPLERATE_SHIFT));
+#endif
 
 	UARTs[ureg].sample_rate = rate;
 	uart_set_baud_rate(ureg, UARTs[ureg].baud);
@@ -150,7 +182,7 @@ int uart_set_sample_rate(int ureg, int rate) {
 }
 
 int uart_set_flow_control(int ureg, OnOff flow_control) {
-	if(ureg > 4)
+	if(ureg >= NUM_UARTS)
 		return -1; // Invalid ureg
 
 	if(flow_control == ON) {
@@ -170,7 +202,7 @@ int uart_set_flow_control(int ureg, OnOff flow_control) {
 }
 
 int uart_set_mode(int ureg, uint32_t mode) {
-	if(ureg > 4)
+	if(ureg >= NUM_UARTS)
 		return -1; // Invalid ureg
 
 	UARTs[ureg].mode = mode;
@@ -195,7 +227,7 @@ int uart_write(int ureg, const char *buffer, uint32_t length) {
 		uart_setup();
 	}
 
-	if(ureg > 4)
+	if(ureg >= NUM_UARTS)
 		return -1; // Invalid ureg
 
 	const UARTRegisters* uart = &HWUarts[ureg];
@@ -235,7 +267,7 @@ int uart_read(int ureg, char *buffer, uint32_t length, uint64_t timeout) {
 	if(!UartHasInit)
 		return -1;
 
-	if(ureg > 4)
+	if(ureg >= NUM_UARTS)
 		return -1; // Invalid ureg
 
 	const UARTRegisters* uart = &HWUarts[ureg];
@@ -274,4 +306,3 @@ int uart_read(int ureg, char *buffer, uint32_t length, uint64_t timeout) {
 
 	return written;
 }
-
