@@ -631,8 +631,8 @@ static void usb_cancel_out(int _ep)
 	EnterCriticalSection();
 
 	OutEPRegs[_ep].control |= USB_EPCON_DISABLE | USB_EPCON_SETNAK;
-	//while(!(OutEPRegs[_ep].interrupt & USB_EPINT_EPDisbld));
-	//OutEPRegs[_ep].interrupt = OutEPRegs[_ep].interrupt;
+	while(!(OutEPRegs[_ep].interrupt & USB_EPINT_EPDisbld));
+	OutEPRegs[_ep].interrupt = OutEPRegs[_ep].interrupt;
 
 	LeaveCriticalSection();
 	usb_clear_global_out_nak();
@@ -642,30 +642,21 @@ static void usb_cancel_endpoint(int _ep)
 {
 	USBDirection dir = USB_EP_DIRECTION(_ep);
 
-	if(dir != USBOut &&
-			(InEPRegs[_ep].control & (USB_EPCON_ENABLE | USB_EPCON_ACTIVE))
-			== (USB_EPCON_ENABLE | USB_EPCON_ACTIVE)) // Is IN EP
-	{
+	if(dir != USBOut && InEPRegs[_ep].control & USB_EPCON_ENABLE) // Is IN EP
 		usb_cancel_in(_ep);
-	}
 
-	if(dir != USBIn
-			&& (OutEPRegs[_ep].control & (USB_EPCON_ENABLE | USB_EPCON_ACTIVE))
-			== (USB_EPCON_ENABLE | USB_EPCON_ACTIVE)) // Is OUT EP
-	{
+	if(dir != USBIn && OutEPRegs[_ep].control & USB_EPCON_ENABLE) // Is OUT EP
 		usb_cancel_out(_ep);
-	}
 }
 
 void usb_disable_endpoint(int _ep)
 {
-	clearEPMessages(_ep);
+	USBDirection dir = USB_EP_DIRECTION(_ep);
 
-	if((InEPRegs[_ep].control & (USB_EPCON_ENABLE | USB_EPCON_ACTIVE))
-			== (USB_EPCON_ENABLE | USB_EPCON_ACTIVE)) // Is IN EP
+	if(dir != USBOut && InEPRegs[_ep].control & USB_EPCON_ENABLE) // Is IN EP
 	{
 		bufferPrintf("USB: Disabling IN EP %d.\n", _ep);
-		
+
 		usb_set_global_in_nak();
 
 		if(usb_fifo_mode == FIFODedicated)
@@ -678,8 +669,7 @@ void usb_disable_endpoint(int _ep)
 		usb_clear_global_in_nak();
 	}
 
-	if((OutEPRegs[_ep].control & (USB_EPCON_ENABLE | USB_EPCON_ACTIVE))
-			== (USB_EPCON_ENABLE | USB_EPCON_ACTIVE)) // Is OUT EP
+	if(dir != USBIn && OutEPRegs[_ep].control & USB_EPCON_ENABLE) // Is OUT EP
 	{
 		bufferPrintf("USB: Disabling OUT EP %d.\n", _ep);
 
@@ -689,13 +679,18 @@ void usb_disable_endpoint(int _ep)
 
 		usb_clear_global_out_nak();
 	}
+
+	clearEPMessages(_ep);
 }
 
 static void usb_disable_all_endpoints()
 {
 	int i;
 	for(i = 0; i < USB_NUM_ENDPOINTS; i++)
+	{
+		bufferPrintf("USB: EP%d in: 0x%08x out: 0x%08x\n", i, InEPRegs[i].control, OutEPRegs[i].control);
 		usb_disable_endpoint(i);
+	}
 }
 
 static void usb_cancel_in_endpoints()
@@ -854,8 +849,8 @@ static int continueMessageQueue(int _ep)
 	USBMessageQueue *q = usb_message_queue[_ep];
 	if(q != NULL)
 	{
-		if(_ep != 0)
-			bufferPrintf("USB: txrx 0x%08x, %d, %d, %d, %d\n", q, _ep, q->dir, q->data, q->dataLen);
+		//if(_ep != 0)
+		//	bufferPrintf("USB: txrx 0x%08x, %d, %d, %d, %d\n", q, _ep, q->dir, q->data, q->dataLen);
 		
 		usb_txrx(_ep, q->dir, q->data, q->dataLen);
 		return 1;
@@ -1046,14 +1041,7 @@ static void handleTxInterrupts(int endpoint) {
 	if((inInterruptStatus[endpoint] & USB_EPINT_INTknTXFEmp) == USB_EPINT_INTknTXFEmp) {
 		InEPRegs[endpoint].interrupt = USB_EPINT_INTknTXFEmp;
 		//uartPrintf("\t\tUSB_EPINT_INTknTXFEmp\r\n");
-		bufferPrintf("in tkn tx fifo empty %d (0x%08x)\n", endpoint, InEPRegs[endpoint].control);
-
-		/*USBMessageQueue *q = usb_message_queue[endpoint];
-		if(q != NULL)
-		{
-			if(q->dir == USBIn)
-				continueMessageQueue(endpoint);
-		}*/
+		//bufferPrintf("in tkn tx fifo empty %d (0x%08x)\n", endpoint, InEPRegs[endpoint].control);
 	}
 
 	if((inInterruptStatus[endpoint] & USB_EPINT_TimeOUT) == USB_EPINT_TimeOUT) {
