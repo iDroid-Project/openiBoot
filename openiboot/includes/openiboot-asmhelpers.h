@@ -41,6 +41,7 @@ void CallArm(uint32_t address);
 void CallThumb(uint32_t address);
 
 void Reboot();
+void EndlessLoop();
 
 void SwapTask(TaskDescriptor *_td);
 void StartTask();

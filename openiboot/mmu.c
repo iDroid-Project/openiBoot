@@ -12,7 +12,7 @@ int mmu_setup() {
 	CurrentPageTable = (uint32_t*) PageTable;
 
 	// Initialize the page table
-	
+
 	initialize_pagetable();
 
 	// Implement the page table
@@ -42,8 +42,10 @@ void initialize_pagetable() {
 	// Initialize the page table with a default identity mapping
 	mmu_map_section_range(MemoryStart, MemoryEnd, MemoryStart, FALSE, FALSE);
 
+#ifndef CONFIG_IPHONE_4
 	// Now we get to setup default mappings that we will need
 	mmu_map_section_range(0x08000000, 0x10000000, 0x08000000, TRUE, TRUE);	// unknown, but mapped by iPhone
+
 	mmu_map_section(AMC0, AMC0, TRUE, TRUE);
 
 	// Make our own code cacheable and bufferable
@@ -57,6 +59,18 @@ void initialize_pagetable() {
 
 	// Remap upper half of memory to the lower half
 	mmu_map_section_range(MemoryHigher, MemoryEnd, MemoryStart, FALSE, FALSE);
+#else
+	mmu_map_section_range(AMC0, AMC0End, AMC0, TRUE, TRUE);
+
+	// Make memory cachable and bufferable
+	mmu_map_section_range(RAMStart, RAMEnd, RAMStart, TRUE, TRUE);
+
+	// unknown
+	mmu_map_section_range(AMC0Higher, AMC0HigherEnd, AMC0, FALSE, FALSE);
+
+	// Remap upper half of memory to the lower half...
+	mmu_map_section_range(MemoryHigher, MemoryEnd, RAMStart, FALSE, FALSE);
+#endif
 }
 
 void mmu_map_section(uint32_t section, uint32_t target, Boolean cacheable, Boolean bufferable) {
@@ -76,7 +90,7 @@ void mmu_map_section(uint32_t section, uint32_t target, Boolean cacheable, Boole
 	InvalidateUnifiedTLBUnlockedEntries();
 }
 
-void mmu_map_section_range(uint32_t rangeStart, uint32_t rangeEnd, uint32_t target, Boolean bufferable, Boolean cacheable) {
+void mmu_map_section_range(uint32_t rangeStart, uint32_t rangeEnd, uint32_t target, Boolean cacheable, Boolean bufferable) {
 	uint32_t currentSection;
 	uint32_t curTargetSection = target;
 	Boolean started = FALSE;
@@ -88,7 +102,7 @@ void mmu_map_section_range(uint32_t rangeStart, uint32_t rangeEnd, uint32_t targ
 			break;
 		}
 		started = TRUE;
-		mmu_map_section(currentSection, curTargetSection, bufferable, cacheable);
+		mmu_map_section(currentSection, curTargetSection, cacheable, bufferable);
 		curTargetSection += MMU_SECTION_SIZE;
 	}
 }

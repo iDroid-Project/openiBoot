@@ -2,6 +2,18 @@
 .SUFFIXES:
 .SUFFIXES:	.c .s .o
 
+UNAME := $(shell uname -s)
+
+ifeq ($(UNAME),Darwin)
+	HOSTPLATFORM=macosx
+else
+	ifeq ($(UNAME),Linux)
+		HOSTPLATFORM=linux
+	else
+		HOSTPLATFORM=windows
+	endif
+endif
+
 # Sources
 SRC_C               = accel.c aes.c arm.c buttons.c chipid.c clock.c commands.c dma.c event.c framebuffer.c ftl.c gpio.c i2c.c images.c interrupt.c lcd.c malloc.c miu.c mmu.c nand.c nor.c nvram.c openiboot.c pmu.c power.c printf.c sdio.c sha1.c spi.c tasks.c timer.c uart.c usb.c util.c wdt.c wlan.c scripting.c syscfg.c actions.c acm.c
 SRC_S               = entry.S openiboot-asmhelpers.S
@@ -20,6 +32,14 @@ endif
 
 ifeq ($(PLATFORM),IPOD)
 	SRC_C          += multitouch-z2.c wm8958.c piezo.c
+endif
+
+ifeq ($(PLATFORM),IPHONE_4)
+	SRC_C          += camera.c radio.c alsISL29003.c multitouch-z2.c wm8991.c vibrator.c
+endif
+
+ifeq ($(PLATFORM),IPAD)
+        SRC_C          += camera.c radio.c alsISL29003.c multitouch-z2.c wm8991.c vibrator.c
 endif
 
 # Variables
@@ -57,8 +77,18 @@ else
 		CFLAGS     += -DCONFIG_3G
 		IMG3TEMPLATE    = mk8900image/template-3g.img3
 	else
-		CFLAGS     += -DCONFIG_IPHONE
-		IMG3TEMPLATE    = mk8900image/template.img3
+		ifeq ($(PLATFORM),IPHONE_4)
+			CFLAGS	+= -DCONFIG_IPHONE_4
+			IMG3TEMPLATE	= mk8900image/template-4g.img3
+		else
+	                ifeq ($(PLATFORM),IPAD)
+	                        CFLAGS  += -DCONFIG_IPAD -DCONFIG_IPHONE_4
+        	                IMG3TEMPLATE    = mk8900image/template-4g.img3
+			else
+				CFLAGS     += -DCONFIG_IPHONE
+				IMG3TEMPLATE    = mk8900image/template.img3
+			endif
+		endif
 	endif
 endif
 
@@ -78,7 +108,7 @@ COMPILE             = $(CC) $(INC) $(CFLAGS) $(ARCHFLAGS) -c $< -o $@
 MAKEDEPEND          = $(CC) -M $(INC) $(CFLAGS) $(ARCHFLAGS) -o "$(DEPDIR)/$*.d" $<
 
 # Rules
-.PHONY: clean all
+.PHONY: clean all install
 
 all:	openiboot.img2 openiboot-wtf.img2 openiboot.img3 openiboot.bin
 
@@ -140,5 +170,28 @@ openiboot-payload.img2: openiboot-payload mk8900image/mk8900image
 
 #.PHONY: clean
 clean:
-	@rm -rf *.o $(DEPDIR) hfs/*.o openiboot openiboot.img2 openiboot-wtf.img2 openiboot.img3 openiboot-payload.bin openiboot-payload.img2
+	@rm -rf iBSS* *.o $(DEPDIR) hfs/*.o openiboot openiboot.img2 openiboot-wtf.img2 openiboot.img3 openiboot-payload.bin openiboot-payload.img2
 	@cd mk8900image/; $(MAKE) clean
+	@cd ../tools/syringe; make clean
+	@cd ../tools/client/linux; make clean
+	@cd ../tools/libirecovery; make clean
+
+install:
+	@echo Building tools...
+	@make -C ../tools/client/linux loadibec > /dev/null
+	@make -C ../tools/libirecovery $(HOSTPLATFORM) > /dev/null
+	@if test $(IMG3TEMPLATE) = "mk8900image/template-4g.img3"; then \
+		echo A4 device detected, building Syringe; \
+		make -C ../tools/syringe > /dev/null; \
+		echo Invoking syringe, enter DFU mode now; \
+		sudo ../tools/syringe/injectpois0n; \
+		sleep 5; \
+	else \
+		read -p "Put your device into recovery mode, then press enter to continue..." tmp; \
+	fi
+	@echo Uploading OpeniBoot binary
+	@sudo ../tools/client/linux/loadibec openiboot.bin
+	@sleep 3
+	@echo Executing OpeniBoot binary 
+	@sudo ../tools/libirecovery/irecovery -c "go jump 0x41000000"
+	@echo Done, OpeniBoot should be running

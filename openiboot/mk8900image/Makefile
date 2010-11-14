@@ -1,11 +1,16 @@
 MKIMAGEOBJS=mk8900image.o
 LIBRARIES=-L/usr/lib -lm -ldl -lpng -lcrypto -lz
 CFLAGS +=
+UNAME := $(shell uname -s)
 
-ifeq ($(ARCH), x86_64)
-	LIBXPWN=x86_64/libxpwn.a x86_64/libcommon.a
+ifeq ($(UNAME),Darwin)
+	LIBXPWN=x86-osx/libxpwn.a x86-osx/libcommon.a
 else
-	LIBXPWN=x86/libxpwn.a x86/libcommon.a
+	ifeq ($(ARCH), x86_64)
+		LIBXPWN=x86_64/libxpwn.a x86_64/libcommon.a
+	else
+		LIBXPWN=x86/libxpwn.a x86/libcommon.a
+	endif
 endif
 
 %.o:	%.c

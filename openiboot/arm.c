@@ -3,7 +3,6 @@
 #include "openiboot-asmhelpers.h"
 
 int arm_setup() {
-
 	CleanAndInvalidateCPUDataCache();
 	ClearCPUInstructionCache();
 
@@ -13,27 +12,38 @@ int arm_setup() {
 	GiveFullAccessCP10CP11();
 	EnableVFP();
 
+#ifndef CONFIG_IPHONE_4
 	// Map the peripheral port of size 128 MB to 0x38000000
 	WritePeripheralPortMemoryRemapRegister(PeripheralPort | ARM11_PeripheralPortSize128MB);
+#endif
+
 	InvalidateCPUDataCache();
 	ClearCPUInstructionCache();
 
 	WriteControlRegisterConfigData(ReadControlRegisterConfigData() | ARM11_Control_INSTRUCTIONCACHE);	// Enable instruction cache
 	WriteControlRegisterConfigData(ReadControlRegisterConfigData() | ARM11_Control_DATACACHE);		// Enable data cache
 
+#ifndef CONFIG_IPHONE_4
 	WriteControlRegisterConfigData((ReadControlRegisterConfigData()
 		& ~(ARM11_Control_STRICTALIGNMENTCHECKING))				// Disable strict alignment fault checking
 		| ARM11_Control_UNALIGNEDDATAACCESS);					// Enable unaligned data access operations
+#else
+	WriteControlRegisterConfigData((ReadControlRegisterConfigData()
+		& ~(ARM11_Control_STRICTALIGNMENTCHECKING)));				// Disable strict alignment fault checking
+#endif
 
 
 	WriteControlRegisterConfigData(ReadControlRegisterConfigData() | ARM11_Control_BRANCHPREDICTION); 	// Enable branch prediction
 
+#ifndef CONFIG_IPHONE_4
 	// Enable return stack, dynamic branch prediction, static branch prediction
 	WriteAuxiliaryControlRegister(ReadAuxiliaryControlRegister()
 		| ARM11_AuxControl_RETURNSTACK
 		| ARM11_AuxControl_DYNAMICBRANCHPREDICTION
 		| ARM11_AuxControl_STATICBRANCHPREDICTION);
-
+#else
+	WriteAuxiliaryControlRegister(ReadAuxiliaryControlRegister() | ARM_A8_AuxControl_SPECULATIVEACCESSAXI);
+#endif
 	return 0;
 }
 

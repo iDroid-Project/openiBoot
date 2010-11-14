@@ -56,7 +56,7 @@ int received_file_size;
 static int setup_devices();
 static int setup_openiboot();
 
-#ifndef OPENIBOOT_INSTALLER
+#if !defined(OPENIBOOT_INSTALLER)&&!defined(CONFIG_IPHONE_4)
 static int load_multitouch_images()
 {
     #ifdef CONFIG_IPHONE
@@ -108,8 +108,18 @@ extern uint8_t _binary_payload_bin_size;
 void OpenIBootStart()
 {
 	setup_openiboot();
-	pmu_charge_settings(TRUE, FALSE, FALSE);
 
+#if defined(CONFIG_IPHONE_4)||defined(CONFIG_IPAD)
+	framebuffer_hook();
+#endif
+
+	framebuffer_setdisplaytext(TRUE);
+
+#if !defined(CONFIG_IPHONE_4) && !defined(CONFIG_IPAD)
+	pmu_charge_settings(TRUE, FALSE, FALSE);
+#endif
+
+#if !defined(CONFIG_IPHONE_4)&&!defined(CONFIG_IPAD)
 #ifdef OPENIBOOT_INSTALLER
 	framebuffer_setdisplaytext(FALSE);
 	framebuffer_clear();
@@ -205,6 +215,7 @@ void OpenIBootStart()
 #endif
 #endif
 #endif //OPENIBOOT_INSTALLER
+#endif
 
 	acm_start();
 
@@ -226,13 +237,19 @@ void OpenIBootStart()
 
 	pmu_set_iboot_stage(0);
 	startScripting("openiboot"); //start script mode if there is a file
+	bufferPrintf("  ___                   _ ____              _   \r\n");
+	bufferPrintf(" / _ \\ _ __   ___ _ __ (_) __ )  ___   ___ | |_ \r\n");
+	bufferPrintf("| | | | '_ \\ / _ \\ '_ \\| |  _ \\ / _ \\ / _ \\| __|\r\n");
+	bufferPrintf("| |_| | |_) |  __/ | | | | |_) | (_) | (_) | |_ \r\n");
+	bufferPrintf(" \\___/| .__/ \\___|_| |_|_|____/ \\___/ \\___/ \\__|\r\n");
+	bufferPrintf("      |_|                                       \r\n");
+	bufferPrintf("\r\n");
 	bufferPrintf("version: %s\r\n", OPENIBOOT_VERSION_STR);
-	bufferPrintf("-----------------------------------------------\r\n");
-	bufferPrintf("              WELCOME TO OPENIBOOT\r\n");
-	bufferPrintf("-----------------------------------------------\r\n");
 	DebugPrintf("                    DEBUG MODE\r\n");
 
+#ifndef CONFIG_IPHONE_4
 	audiohw_postinit();
+#endif
 
 	tasks_run(); // Runs forever.
 }
@@ -241,26 +258,32 @@ static int setup_devices() {
 	// Basic prerequisites for everything else
 	miu_setup();
 	power_setup();
+
 	clock_setup();
 
 	// Need interrupts for everything afterwards
 	interrupt_setup();
 
-	gpio_setup();
-
+#if !defined(CONFIG_IPHONE_4)&&!defined(CONFIG_IPAD)
+	gpio_setup(); // Not yet
+#endif
 	// For scheduling/sleeping niceties
 	timer_setup();
 	event_setup();
+#ifndef CONFIG_IPHONE_4
 	wdt_setup();
+#endif
 
 	// Other devices
 	usb_shutdown();
 	uart_setup();
+#ifndef CONFIG_IPHONE_4
 	i2c_setup();
 
 	dma_setup();
 
 	spi_setup();
+#endif
 
 	return 0;
 }
@@ -273,6 +296,7 @@ static int setup_openiboot() {
 
 	LeaveCriticalSection();
 
+#ifndef CONFIG_IPHONE_4
 	clock_set_sdiv(0);
 
 	aes_setup();
@@ -286,6 +310,7 @@ static int setup_openiboot() {
 	framebuffer_setup();
 
 	audiohw_init();
+#endif
     isMultitouchLoaded = 0;
 	return 0;
 }

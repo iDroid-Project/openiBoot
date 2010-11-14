@@ -20,6 +20,7 @@ int power_setup() {
 }
 
 int power_ctrl(uint32_t device, OnOff on_off) {
+#ifndef CONFIG_IPHONE_4
 	if(on_off == ON) {
 		SET_REG(POWER + POWER_ONCTRL, device);
 	} else {
@@ -28,6 +29,20 @@ int power_ctrl(uint32_t device, OnOff on_off) {
 
 	/* wait for the new state to take effect */
 	while((GET_REG(POWER + POWER_SETSTATE) & device) != (GET_REG(POWER + POWER_STATE) & device));
+#else
+	if (device > POWER_STATE_MAX) {
+		return -1;
+	}
+	uint32_t device_register = POWER + POWER_STATE + (device << 2);
 
+	if (on_off == ON) {
+		SET_REG(device_register, GET_REG(device_register) | 0xF);
+	} else {
+		SET_REG(device_register, GET_REG(device_register) & ~0xF);
+	}
+	
+	/* wait for the new state to take effect */
+	while ((GET_REG(device_register) & 0xF) != ((GET_REG(device_register) >> 4) & 0xF));
+#endif
 	return 0;
 }

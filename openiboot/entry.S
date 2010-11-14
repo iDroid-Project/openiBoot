@@ -47,6 +47,7 @@ ArmReset:						// This function will setup the processor and kick off execution
 
 	// We need to get the MIU settings right. First we have to setup the peripheral remap register
 
+#ifndef CONFIG_IPHONE_4
 	MOV	R1, #0x38000000				// Peripheral port at 0x38000000
 	ADD	R1, #0x12				// Peripheral port size 128 MB
 	MCR     p15, 0, R1, c15, c2, 4			// Write peripheral port settings
@@ -57,6 +58,16 @@ ArmReset:						// This function will setup the processor and kick off execution
 	BIC	R2, #0x7				// Mask out current MIU setting
 	ORR	R2, #1					// Change setting so 0x0 is physical memory
 	STR	R2, [R1]				// Set MIU settings
+#else
+	// There's no peripheral remap register. Need to change the base addresses for each A4 device.
+	// If you find it though, feel free to fix it.
+
+	LDR	R1, =0xBFC00000				// MIU register	
+	LDR	R2, [R1]				// Get current settings
+	BIC	R2, R2, #3				// Mask out current MIU setting
+	ORR	R2, R2, #2				// Change setting so 0x0 is physical memory
+	STR	R2, [R1]				// Set MIU settings
+#endif
 
 	LDR	R1, =_start				// OMG, we're not in the right place! Copy us to the right place
 	LDR	R2, =(OpenIBootEnd - OpenIBootLoad)	// This is the size of OpenIBoot
@@ -70,7 +81,23 @@ ArmReset_relocate:
 
 	MOV	R0, #0					// reset caches, since we're about to do a jump to where there wasn't any
 							// data or instructions just moments ago
+#ifndef CONFIG_IPHONE_4
 	MCR	p15, 0,	R0,c7,c10			// clean entire data cache
+#else
+	MOV	R2, #0x2000
+CleanCPUDataCache_1:
+	SUB	R2, R2, #0x40
+	MOV	R1, #0
+CleanCPUDataCache_2:
+	SUBS	R1, R1, #0x40000000
+	ORR	R0, R1, R2
+	MCR	p15, 0, R0,c7,c10, 2
+	BNE	CleanCPUDataCache_2
+	CMP	R2, #0
+	BNE	CleanCPUDataCache_1
+	MOV	R0, #0
+#endif
+	MCR	p15, 0,	R0,c7,c10, 4			// Data synchronization barrier
 	MCR	p15, 0,	R0,c7,c5			// invalidate entire instruction cache
 
 	LDR	R1, =_start				// jump to the right place!
@@ -120,10 +147,25 @@ ArmReset_loopForever:					// shouldn't reach here
 DebugReboot:						// Write to the WDT register without memory access
 							// This ought to cause a reboot same as the normal
 							// Reboot function
+#ifndef CONFIG_IPHONE_4
 	MOV	R1, #0x3E000000
 	ADD	R1, #0x00300000
 	MOV	R0, #0x100000
 	STR	R0, [R1]
+#else
+	LDR     R1, =0xBF10202C
+	LDR     R3, =0xBF102024
+	MOVS    R0, #0
+	MOVS    R2, #1
+	STR     R0, [R1]
+	STR     R2, [R3]
+	LDR     R2, =0xBF102020
+	MOV	R3, #0x80000000
+	STR     R3, [R2]
+	MOVS    R3, #4
+	STR     R3, [R1]
+	STR     R0, [R2]
+#endif
 	B	DebugReboot
 
 //
@@ -172,12 +214,38 @@ HandleIRQ:
 	LDR	R5, =(VIC0 + VICADDRESS)
 	B	HandleIRQ_lookupHandler
 
+#ifndef CONFIG_IPHONE_4
 HandleIRQ_checkVIC1:
 	LDR	R3, =(VIC1 + VICIRQSTATUS)	// Check if the interrupt was on VIC1, if it wasn't on VIC0
 	LDR	R3, [R3]
 	CMP	R3, #0
 	BEQ	HandleIRQ_return
 	LDR	R5, =(VIC1 + VICADDRESS)
+#else
+HandleIRQ_checkVIC1:
+	LDR	R3, =(VIC1 + VICIRQSTATUS)	// Check if the interrupt was on VIC1, if it wasn't on VIC0
+	LDR	R3, [R3]
+	CMP	R3, #0
+	BEQ	HandleIRQ_checkVIC2
+	LDR	R5, =(VIC1 + VICADDRESS)
+	B	HandleIRQ_lookupHandler
+
+HandleIRQ_checkVIC2:
+	LDR	R3, =(VIC2 + VICIRQSTATUS)	// Check if the interrupt was on VIC2, if it wasn't on VIC1
+	LDR	R3, [R3]
+	CMP	R3, #0
+	BEQ	HandleIRQ_checkVIC3
+	LDR	R5, =(VIC2 + VICADDRESS)
+	B	HandleIRQ_lookupHandler
+
+HandleIRQ_checkVIC3:
+	LDR	R3, =(VIC3 + VICIRQSTATUS)	// Check if the interrupt was on VIC3, if it wasn't on VIC2
+	LDR	R3, [R3]
+	CMP	R3, #0
+	BEQ	HandleIRQ_return
+	LDR	R5, =(VIC3 + VICADDRESS)
+#endif
+
 
 HandleIRQ_lookupHandler:
 	LDR	R2, [R5]			// Read VICADDRESS. Note that this indicates to the VIC hardware the interrupt is being serviced

@@ -2,6 +2,7 @@
 #define USB_H
 
 // assigned by USB Org
+#define VENDOR_NETCHIP 0x525
 #define VENDOR_APPLE 0x5AC
 
 // assigned by Apple
@@ -10,6 +11,7 @@
 
 // values we're using
 #define USB_MAX_PACKETSIZE 64
+#define USB_CONTROLEP_MAX_TRANSFER_SIZE 64
 #define USB_SETUP_PACKETS_AT_A_TIME 1
 #define CONTROL_SEND_BUFFER_LEN 0x80
 #define CONTROL_RECV_BUFFER_LEN 0x80
@@ -77,7 +79,9 @@ enum USBDescriptorType {
 	USBStringDescriptorType = 3,
 	USBInterfaceDescriptorType = 4,
 	USBEndpointDescriptorType = 5,
-	USBDeviceQualifierDescriptorType = 6
+	USBDeviceQualifierDescriptorType = 6,
+	USBOtherSpeedConfigurationDescriptorType = 7,
+	USBInterfacePowerDescriptorType = 8,
 };
 
 typedef enum USBSpeed {
@@ -219,23 +223,25 @@ typedef int (*USBSetupHandler)(USBSetupPacket *packet);
 
 #define USBSetupPacketHostToDevice 0
 #define USBSetupPacketDeviceToHost 1
+
 #define USBSetupPacketStandard 0
 #define USBSetupPacketClass 1
 #define USBSetupPacketVendor 2
-#define USBSetupPacketRecpientDevice 0
-#define USBSetupPacketRecpientInterface 1
-#define USBSetupPacketRecpientEndpoint 2
-#define USBSetupPacketRecpientOther 3
 
-#define USB_CLEAR_FEATURE 1
-#define USB_GET_CONFIGURATION 8
-#define USB_GET_DESCRIPTOR 6
-#define USB_GET_INTERFACE 10
+#define USBSetupPacketRecipientDevice 0
+#define USBSetupPacketRecipientInterface 1
+#define USBSetupPacketRecipientEndpoint 2
+#define USBSetupPacketRecipientOther 3
+
 #define USB_GET_STATUS 0
-#define USB_SET_ADDRESS 5
-#define USB_SET_CONFIGURATION 9
-#define USB_SET_DESCRIPTOR 7
+#define USB_CLEAR_FEATURE 1
 #define USB_SET_FEATURE 3
+#define USB_SET_ADDRESS 5
+#define USB_GET_DESCRIPTOR 6
+#define USB_SET_DESCRIPTOR 7
+#define USB_GET_CONFIGURATION 8
+#define USB_SET_CONFIGURATION 9
+#define USB_GET_INTERFACE 10
 #define USB_SET_INTERFACE 11
 #define USB_SYNCH_FRAME 12
 
@@ -261,6 +267,7 @@ void usb_receive_bulk(uint8_t endpoint, void* buffer, int bufferLen);
 void usb_receive_interrupt(uint8_t endpoint, void* buffer, int bufferLen);
 void usb_send_control(void *buffer, int bufferLen);
 void usb_receive_control(void *buffer, int bufferLen);
+
 USBSpeed usb_get_speed();
 
 USBDeviceDescriptor* usb_get_device_descriptor();

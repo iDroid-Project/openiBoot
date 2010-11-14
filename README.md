@@ -39,6 +39,12 @@ Change into the openiboot subfolder
 **For iPhone 3G, run:**
 `PLATFORM=3G make openiboot.img3`
 
+**For iPhone 4, run:**
+`PLATFORM=IPHONE_4 make openiboot.img3`
+
+**For iPad, run:**
+`PLATFORM=IPAD make openiboot.img3`
+
 **Compile all in tools/client/:**
 `cd tools/client/linux && make all && cd ..`
 

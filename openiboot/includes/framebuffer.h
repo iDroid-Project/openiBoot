@@ -36,4 +36,7 @@ void framebuffer_fill_rect(uint32_t color, int x, int y, int width, int height);
 void framebuffer_draw_rect_hgradient(int starting, int ending, int x, int y, int width, int height);
 void framebuffer_setcolors(uint32_t fore, uint32_t back);
 
+void framebuffer_set_init();
+void framebuffer_show_number(uint32_t number);
+
 #endif

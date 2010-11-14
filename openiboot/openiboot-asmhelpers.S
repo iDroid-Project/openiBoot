@@ -43,6 +43,7 @@
 .global CallThumb
 
 .global Reboot
+.global EndlessLoop
 
 .global SwapTask
 .global CurrentRunning
@@ -237,19 +238,63 @@ CleanDataCacheLineMVA:
 	BX	LR
 
 CleanCPUDataCache:
+#ifndef CONFIG_IPHONE_4
 	MOV	R0, #0
 	MCR	p15, 0,	R0, c7, c10
+#else
+	MOV	R2, #0x2000
+CleanCPUDataCache_1:
+	SUB	R2, R2, #0x40
+	MOV	R1, #0
+CleanCPUDataCache_2:
+	SUBS	R1, R1, #0x40000000
+	ORR	R0, R1, R2
+	MCR	p15, 0, R0, c7, c10, 2
+	BNE	CleanCPUDataCache_2
+	CMP	R2, #0
+	BNE	CleanCPUDataCache_1
+	MOV	R0, #0
+#endif
 	MCR	p15, 0,	R0, c7, c10, 4	@ Data synchronization barrier
 	BX	LR
 
 InvalidateCPUDataCache:
+#ifndef CONFIG_IPHONE_4
 	MOV	R0, #0
 	MCR	p15, 0,	R0, c7, c6
+#else
+	MOV	R2, #0x2000
+InvalidateCPUDataCache_1:
+	SUB	R2, R2, #0x40
+	MOV	R1, #0
+InvalidateCPUDataCache_2:
+	SUBS	R1, R1, #0x40000000
+	ORR	R0, R1, R2
+	MCR	p15, 0, R0, c7, c6, 2
+	BNE	InvalidateCPUDataCache_2
+	CMP	R2, #0
+	BNE	InvalidateCPUDataCache_1
+#endif
 	BX	LR
 
 CleanAndInvalidateCPUDataCache:
+#ifndef CONFIG_IPHONE_4
 	MOV	R0, #0
 	MCR	p15, 0,	R0, c7, c14
+#else
+	MOV	R2, #0x2000
+CleanAndInvalidateCPUDataCache_1:
+	SUB	R2, R2, #0x40
+	MOV	R1, #0
+CleanAndInvalidateCPUDataCache_2:
+	SUBS	R1, R1, #0x40000000
+	ORR	R0, R1, R2
+	MCR	p15, 0, R0, c7, c14, 2
+	BNE	CleanAndInvalidateCPUDataCache_2
+	CMP	R2, #0
+	BNE	CleanAndInvalidateCPUDataCache_1
+	MOV	R0, #0
+#endif
 	MCR	p15, 0,	R0, c7, c10, 4	@ Data synchronization barrier
 	BX	LR
 
@@ -261,9 +306,24 @@ ClearCPUCaches:
 	BX	LR
 
 Reboot:
+#ifndef CONFIG_IPHONE_4
 	LDR	R0, =WDT_CTRL
-	MOVLS	R1, #WDT_ENABLE
+	MOV	R1, #WDT_ENABLE
 	STR	R1, [R0]
+#else
+	LDR     R1, =0xBF10202C
+	LDR     R3, =0xBF102024
+	MOVS    R0, #0
+	MOVS    R2, #1
+	STR     R0, [R1]
+	STR     R2, [R3]
+	LDR     R2, =0xBF102020
+	MOV     R3, #0x80000000
+	STR     R3, [R2]
+	MOVS    R3, #4
+	STR     R3, [R1]
+	STR     R0, [R2]
+#endif
 	B	Reboot
 
 @
@@ -323,6 +383,9 @@ StartTask:
 	@ the IP roam into the data segment? Sounds good. -- Ricky26
 
 	B Reboot
+
+EndlessLoop:
+	B	EndlessLoop
 
 .data
 

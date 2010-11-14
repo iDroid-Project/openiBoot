@@ -29,84 +29,6 @@
 #include "als.h"
 #include "piezo.h"
 #include "vibrator.h"
-#include "uart.h"
-#include "hardware/radio.h"
-#include "mux.h"
-
-#if defined(OPENIBOOT_INSTALLER)
-#include "images/installerBarEmptyPNG.h"
-#include "images/installerBarFullPNG.h"
-
-static uint32_t *cmd_progress_empty = NULL;
-static int cmd_progress_empty_width, cmd_progress_empty_height;
-static uint32_t *cmd_progress_full = NULL;
-static int cmd_progress_full_width, cmd_progress_full_height;
-
-void cmd_progress(int argc, char **argv)
-{
-	if(argc != 2)
-	{
-		bufferPrintf("Usage: %s <percentage>\n", argv[0]);
-		return;		
-	}
-
-	int x,y,w;
-	int percent = parseNumber(argv[1]);
-
-	if(cmd_progress_empty == NULL)
-		cmd_progress_empty = framebuffer_load_image(
-				datainstallerBarEmptyPNG, sizeof(datainstallerBarEmptyPNG),
-				&cmd_progress_empty_width, &cmd_progress_empty_height, 0);
-		
-	if(cmd_progress_full == NULL)
-		cmd_progress_full = framebuffer_load_image(
-				datainstallerBarFullPNG, sizeof(datainstallerBarFullPNG),
-				&cmd_progress_full_width, &cmd_progress_full_height, 0);
-
-	x = (framebuffer_width()-cmd_progress_empty_width)/2;
-	y = 2*((framebuffer_height()-cmd_progress_empty_height)/3);
-	w = (percent*cmd_progress_full_width)/100;
-
-	if(percent < 0)
-	{
-		framebuffer_fill_rect(0, x, y, cmd_progress_empty_width, cmd_progress_empty_height);
-	}
-	else if(percent > 100)
-	{
-		int left = ((percent-100)%120)-20;
-		int right = left + 20;
-		if(left < 0)
-			left = 0;
-		if(right > 100)
-			right = 100;
-
-		left = (left*cmd_progress_full_width)/100;
-		right = (right*cmd_progress_full_width)/100;
-
-		if(right < 100)
-			framebuffer_draw_image(cmd_progress_empty, x, y,
-					cmd_progress_empty_width, cmd_progress_empty_height);	
-		
-		framebuffer_draw_image_clip(cmd_progress_full, x, y,
-				cmd_progress_full_width, cmd_progress_full_height,
-				right, cmd_progress_full_height);
-
-		if(left > 0)
-			framebuffer_draw_image_clip(cmd_progress_empty, x, y,
-					cmd_progress_empty_width, cmd_progress_empty_height,
-					left, cmd_progress_empty_height);
-	}
-	else
-	{	
-		framebuffer_draw_image(cmd_progress_empty, x, y,
-				cmd_progress_empty_width, cmd_progress_empty_height);	
-
-		framebuffer_draw_image_clip(cmd_progress_full, x, y,
-				cmd_progress_full_width, cmd_progress_full_height,
-				w, cmd_progress_full_height);
-	}
-}
-#endif
 
 void cmd_help(int argc, char** argv) {
     OPIBCommand* curCommand = CommandList;
@@ -1319,126 +1241,6 @@ void cmd_vibrator_off(int argc, char** argv)
 #endif
 #endif
 
-void cmd_mux_init(int argc, char** argv) {
-	mux_init();
-}
-
-static void cmd_mux_send_done(struct mux_queue *item)
-{
-	bufferPrintf("Send result: %d\n", item->ret);
-	free(item->buff);
-}
-
-void cmd_mux_send(int argc, char** argv) {
-	if(argc != 2)
-	{
-		bufferPrintf("Usage: %s <hex string>\r\n", argv[0]);
-		return;
-	}
-
-	int byte_count;
-	uint8_t *bytes;
-	hexToBytes(argv[1], &bytes, &byte_count);
-
-	mux_analyse_packet(bytes, byte_count);
-
-	if(mux_send(bytes, byte_count, &cmd_mux_send_done) < 0)
-		free(bytes);
-}
-
-static void cmd_mux_recv_done(struct mux_queue *item)
-{
-	if(item->ret <= 0)
-	{
-		bufferPrintf("No output\n");
-	}
-	else
-		mux_analyse_packet(item->buff, item->ret);
-
-	free(item->buff);
-}
-
-void cmd_mux_recv(int argc, char** argv) {
-	if(argc != 2)
-	{
-		bufferPrintf("Usage: %s <read amount>\r\n", argv[0]);
-		return;
-	}
-
-	int byte_count = parseNumber(argv[1]);
-	uint8_t *bytes = malloc(byte_count);
-
-	int ret = mux_recv(bytes, byte_count, &cmd_mux_recv_done);
-	if(ret < 0)
-	{
-		bufferPrintf("%s failed.\n", argv[0]);
-		free(bytes);
-	}
-}
-
-void cmd_mux_test(int argc, char** argv) {
-	if(argc < 2 || argc > 6)
-	{
-		bufferPrintf("Usage: %s <cmd>[, <next>[, <flag A>[, <flag B>[, <length override>]]]]\r\n", argv[0]);
-		return;
-	}
-
-	int16_t next = 0;
-	int16_t length = -1;
-	uint8_t flagA = 0;
-	uint8_t flagB = 0;
-
-	if(argc > 2)
-		next = parseNumber(argv[2]);
-
-	if(argc > 3)
-		flagA = parseNumber(argv[3]);
-	
-	if(argc > 4)
-		flagB = parseNumber(argv[4]);
-	
-	if(argc > 5)
-		length = parseNumber(argv[5]);
-
-	mux_test(argv[1], next, flagA, flagB, length);
-}
-
-void cmd_mux_radio_read(int argc, char** argv)
-{
-	if(argc != 2)
-	{
-		bufferPrintf("Usage: %s <read amount>\r\n", argv[0]);
-		return;
-	}
-
-	int byte_count = parseNumber(argv[1]);
-	char *bytes = malloc(byte_count);
-	int ret;
-
-	//int ret = radio_read(bytes, byte_count);
-	
-	uart_set_baud_rate(RADIO_UART, 115200);
-	ret = uart_read(RADIO_UART, bytes, byte_count, 1000000);
-	if(ret <= 0)
-		bufferPrintf("%s failed.\n", argv[0]);
-	else
-	{
-		int i;
-		bufferPrintf("Output: %s", bytes);
-		for(i = 0; i < ret; i++)
-		{
-			if(i % 8 == 0)
-				bufferPrintf("\n    0x%02x", bytes[i]);
-			else
-				bufferPrintf(" 0x%02x", bytes[i]);
-		}
-		bufferPrintf("\n");
-	}
-	
-	free(bytes);
-
-}
-
 #ifdef CONFIG_IPOD
 void cmd_piezo_buzz(int argc, char** argv) {
 	if(argc < 2) {
@@ -1476,6 +1278,8 @@ void cmd_piezo_play(int argc, char** argv) {
 #endif
 OPIBCommand CommandList[] = 
 	{
+#ifndef CONFIG_IPHONE_4
+// Bwahaha, disabling every commands. Safety first!
 		{"install", "install openiboot onto the device", cmd_install},
 		{"uninstall", "uninstall openiboot from the device", cmd_uninstall},
 		{"images_install", "install a nor image", cmd_images_install},
@@ -1533,6 +1337,7 @@ OPIBCommand CommandList[] =
 		{"wlan_prog_helper", "program wlan fw helper", cmd_wlan_prog_helper},
 		{"wlan_prog_real", "program wlan fw", cmd_wlan_prog_real},
 #ifndef CONFIG_IPOD
+#ifndef CONFIG_IPHONE_4
 		{"radio_send", "send a command to the baseband", cmd_radio_send},
 		{"radio_nvram_list", "list entries in baseband NVRAM", cmd_radio_nvram_list},
 		{"radio_register", "register with a cellular network", cmd_radio_register},
@@ -1541,6 +1346,7 @@ OPIBCommand CommandList[] =
 		{"vibrator_loop", "turn the vibrator on in a loop", cmd_vibrator_loop},
 		{"vibrator_once", "vibrate once", cmd_vibrator_once},
 		{"vibrator_off", "turn the vibrator off", cmd_vibrator_off},
+#endif
 #endif
 		{"images_list", "list the images available on NOR", cmd_images_list},
 		{"images_read", "read an image on NOR", cmd_images_read},
@@ -1579,13 +1385,9 @@ OPIBCommand CommandList[] =
 		{"play", "play notes using piezo bytes", cmd_piezo_play},
 #endif
 		{"multitouch_setup", "set up the multitouch chip", cmd_multitouch_setup},		
-		{"mux_init", "initialize the 27.010 mux", cmd_mux_init},
-		{"mux_send", "", cmd_mux_send},
-		{"mux_recv", "", cmd_mux_recv},
-		{"mux_test", "", cmd_mux_test},
-		{"mux_radio_read", "", cmd_mux_radio_read},
 #ifdef OPENIBOOT_INSTALLER
 		{"progress", "Set the install progress.", cmd_progress},
 #endif
+#endif //IPHONE4
 		{NULL, NULL}
 	};

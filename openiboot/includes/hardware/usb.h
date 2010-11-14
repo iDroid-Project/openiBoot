@@ -186,9 +186,17 @@
 
 #define GNPTXFSTS_GET_TXQSPCAVAIL(x) GET_BITS(x, 16, 8)
 
-#define DAINTMSK_ALL 0xFFFFFFFF
-#define DAINTMSK_OUT_SHIFT 16
-#define DAINTMSK_IN_SHIFT 0
+#define GHWCFG4_DED_FIFO_EN         (1 << 25)
+
+#define DAINT_ALL                   0xFFFFFFFF
+#define DAINT_NONE                  0
+#define DAINT_OUT_SHIFT             16
+#define DAINT_IN_SHIFT              0
+
+#define DAINTMSK_ALL                0xFFFFFFFF
+#define DAINTMSK_NONE               0
+#define DAINTMSK_OUT_SHIFT          16
+#define DAINTMSK_IN_SHIFT           0
 
 #define DCTL_SFTDISCONNECT			0x2
 #define DCTL_PROGRAMDONE			(1 << 11)
@@ -199,9 +207,10 @@
 
 #define DSTS_GET_SPEED(x) GET_BITS(x, 1, 2)
 
-#define DCFG_NZSTSOUTHSHK (1 << 2)
-#define DCFG_HISPEED 0x0
-#define DCFG_FULLSPEED 0x1
+#define DCFG_NZSTSOUTHSHK           (1 << 2)
+#define DCFG_EPMSCNT                (1 << 18)
+#define DCFG_HISPEED                0x0
+#define DCFG_FULLSPEED              0x1
 #define DCFG_DEVICEADDR_UNSHIFTED_MASK 0x7F
 #define DCFG_DEVICEADDR_SHIFT 4
 #define DCFG_DEVICEADDRMSK (DCFG_DEVICEADDR_UNSHIFTED_MASK << DCFG_DEVICEADDR_SHIFT)
