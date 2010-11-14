@@ -97,6 +97,8 @@ typedef struct USBEndpointHandlerInfo {
 	uint32_t		token;
 } USBEndpointHandlerInfo;
 
+typedef void (*USBEndpointHandler)(USBTransfer * transfer);
+
 typedef struct USBEndpointBidirHandlerInfo {
 	USBEndpointHandlerInfo in;
 	USBEndpointHandlerInfo out;
@@ -106,11 +108,11 @@ typedef struct USBEPRegisters {
 	volatile uint32_t control;
 	volatile uint32_t field_4;
 	volatile uint32_t interrupt;
-	volatile uint32_t field_8;
+	volatile uint32_t field_C;
 	volatile uint32_t transferSize;
 	volatile void* dmaAddress;
 	volatile uint32_t field_18;
-	volatile uint32_t field_1C;
+	volatile uint32_t dmaBuffer;
 } USBEPRegisters;
 
 typedef struct _USBMessageQueue

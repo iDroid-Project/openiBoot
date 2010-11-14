@@ -229,7 +229,6 @@ void OpenIBootStart()
 #ifndef CONFIG_IPOD
 	als_setup();
 #endif
-
 	nand_setup();
 #ifndef NO_HFS
 	fs_setup();
@@ -267,6 +266,7 @@ static int setup_devices() {
 #if !defined(CONFIG_IPHONE_4)&&!defined(CONFIG_IPAD)
 	gpio_setup(); // Not yet
 #endif
+
 	// For scheduling/sleeping niceties
 	timer_setup();
 	event_setup();

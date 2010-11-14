@@ -45,7 +45,11 @@ inline volatile uint16_t* PixelFromCoords565(register uint32_t x, register uint3
 }
 
 int framebuffer_setup() {
+<<<<<<< HEAD
 	Font = (OpenIBootFont*)fontData; //(OpenIBootFont*) malloc(sizeof(OpenIBootFont)); // Someone explain why Bluerise did this -- Ricky26
+=======
+	Font = (OpenIBootFont*) malloc(sizeof(OpenIBootFont));
+>>>>>>> 0befaaa4da916099b4b3e4df462bb5bb690c8e7c
 	BackgroundColor = COLOR_BLACK;
 	ForegroundColor = COLOR_WHITE;
 	FBWidth = currentWindow->framebuffer.width;
