@@ -31,7 +31,6 @@ static int usb_fifos_used = 0;
 static int usb_fifo_start = PERIODIC_TX_FIFO_STARTADDR;
 static int usb_global_in_nak = 0;
 static int usb_global_out_nak = 0;
-static TaskDescriptor usb_reset_task;
 
 USBEPRegisters* InEPRegs;
 USBEPRegisters* OutEPRegs;
@@ -90,57 +89,10 @@ USBState usb_state()
 	return gUsbState;
 }
 
-int usb_setup() {
-	int i;
-
-	// This is not relevant to the hardware,
-	// and usb_setup is called when setting up a new
-	// USB protocol. So we should reset the EP
-	// handlers here! -- Ricky26
-	memset(endpoint_handlers, 0, sizeof(endpoint_handlers));
-	startHandler = NULL;
-	enumerateHandler = NULL;
-	setupHandler = NULL;
-
-	if(usb_inited) {
-		return 0;
-	}
-
-#if defined(CONFIG_IPHONE_4G)
-	// Wait for USB hardware to come alive
-	udelay(10000);
-#elif !defined(CONFIG_IPOD2G)
-	// Power on hardware
-	power_ctrl(POWER_USB, ON);
-	udelay(USB_START_DELAYUS);
-#endif
-
-	InEPRegs = (USBEPRegisters*)(USB + USB_INREGS);
-	OutEPRegs = (USBEPRegisters*)(USB + USB_OUTREGS);
-
-	change_state(USBStart);
-
-	// Initialize our data structures
-	memset(usb_message_queue, 0, sizeof(usb_message_queue));
-	task_init(&usb_reset_task, "USB-reset");
-
-	// Set up the hardware
-	clock_gate_switch(USB_OTGCLOCKGATE, ON);
-	clock_gate_switch(USB_PHYCLOCKGATE, ON);
-
-#ifndef CONFIG_IPHONE_4G
-	clock_gate_switch(EDRAM_CLOCKGATE, ON);
-#endif
-
-	// power on OTG
-	SET_REG(USB + USB_ONOFF, GET_REG(USB + USB_ONOFF) & (~USB_ONOFF_OFF));
-	udelay(USB_ONOFFSTART_DELAYUS);
-
-	// Generate a soft disconnect on host
-	SET_REG(USB + DCTL, GET_REG(USB + DCTL) | DCTL_SFTDISCONNECT);
-	udelay(USB_SFTDISCONNECT_DELAYUS);
-
-#if defined(CONFIG_IPHONE_4G)
+#if defined(USB_PHY_A4)||defined(USB_PHY_2G)
+static inline void init_phy()
+{
+#if defined(USB_PHY_A4)
 	SET_REG(USB_PHY + OPHYUNK4, OPHYUNK4_START);
 	SET_REG(USB_PHY + OPHYPWR, OPHYPWR_PLLPOWERDOWN | OPHYPWR_XOPOWERDOWN); // Please tell me this turns the PHY ON, not OFF. -- Ricky26
 #else
@@ -150,7 +102,6 @@ int usb_setup() {
 
 	udelay(USB_PHYPWRPOWERON_DELAYUS);
 
-#if defined(CONFIG_IPOD2G) || defined(CONFIG_IPHONE_4G)
 	SET_REG(USB_PHY + OPHYUNK1, OPHYUNK1_START);
 	SET_REG(USB_PHY + OPHYUNK2, OPHYUNK2_START);
 	
@@ -175,16 +126,82 @@ int usb_setup() {
 			break;
 	}
 	SET_REG(USB_PHY + OPHYCLK, (GET_REG(USB_PHY + OPHYCLK) & ~OPHYCLK_CLKSEL_MASK) | phyClockBits);
-#else
-	// select clock
-	SET_REG(USB_PHY + OPHYCLK, (GET_REG(USB_PHY + OPHYCLK) & (~OPHYCLK_CLKSEL_MASK)) | OPHYCLK_CLKSEL_48MHZ);
-#endif
 
 	// reset phy
 	SET_REG(USB_PHY + ORSTCON, GET_REG(USB_PHY + ORSTCON) | ORSTCON_PHYSWRESET);
 	udelay(USB_RESET2_DELAYUS);
 	SET_REG(USB_PHY + ORSTCON, GET_REG(USB_PHY + ORSTCON) & (~ORSTCON_PHYSWRESET));
 	udelay(USB_RESET_DELAYUS);
+}
+#else
+void init_phy()
+{
+	// power on PHY
+	SET_REG(USB_PHY + OPHYPWR, OPHYPWR_POWERON);
+	udelay(USB_PHYPWRPOWERON_DELAYUS);
+
+	// select clock
+	SET_REG(USB_PHY + OPHYCLK, (GET_REG(USB_PHY + OPHYCLK) & (~OPHYCLK_CLKSEL_MASK)) | OPHYCLK_CLKSEL_48MHZ);
+
+	// reset phy
+	SET_REG(USB_PHY + ORSTCON, GET_REG(USB_PHY + ORSTCON) | ORSTCON_PHYSWRESET);
+	udelay(USB_RESET2_DELAYUS);
+	SET_REG(USB_PHY + ORSTCON, GET_REG(USB_PHY + ORSTCON) & (~ORSTCON_PHYSWRESET));
+	udelay(USB_RESET_DELAYUS);
+}
+#endif
+
+int usb_setup() {
+	int i;
+
+	// This is not relevant to the hardware,
+	// and usb_setup is called when setting up a new
+	// USB protocol. So we should reset the EP
+	// handlers here! -- Ricky26
+	memset(endpoint_handlers, 0, sizeof(endpoint_handlers));
+	startHandler = NULL;
+	enumerateHandler = NULL;
+	setupHandler = NULL;
+
+	if(usb_inited) {
+		return 0;
+	}
+
+#ifdef USB_PHY_1G
+	// Power on hardware
+	power_ctrl(POWER_USB, ON);
+	udelay(USB_START_DELAYUS);
+#else
+	// Wait for USB hardware to come alive
+	udelay(10000);
+#endif
+
+	InEPRegs = (USBEPRegisters*)(USB + USB_INREGS);
+	OutEPRegs = (USBEPRegisters*)(USB + USB_OUTREGS);
+
+	change_state(USBStart);
+
+	// Initialize our data structures
+	memset(usb_message_queue, 0, sizeof(usb_message_queue));
+
+	// Set up the hardware
+	clock_gate_switch(USB_OTGCLOCKGATE, ON);
+	clock_gate_switch(USB_PHYCLOCKGATE, ON);
+
+#ifndef USB_PHY_A4
+	clock_gate_switch(EDRAM_CLOCKGATE, ON);
+#endif
+
+	// power on OTG
+	SET_REG(USB + USB_ONOFF, GET_REG(USB + USB_ONOFF) & (~USB_ONOFF_OFF));
+	udelay(USB_ONOFFSTART_DELAYUS);
+
+	// Generate a soft disconnect on host
+	SET_REG(USB + DCTL, GET_REG(USB + DCTL) | DCTL_SFTDISCONNECT);
+	udelay(USB_SFTDISCONNECT_DELAYUS);
+
+	// Initialise PHY
+	init_phy();
 
 	SET_REG(USB + GRSTCTL, GRSTCTL_CORESOFTRESET);
 
@@ -414,6 +431,8 @@ static void usb_flush_fifo(int _fifo)
 {
 	bufferPrintf("USB: Flushing %d.\n", _fifo);
 
+	EnterCriticalSection();
+
 	// Wait until FIFOs aren't being accessed
 	while((GET_REG(USB + GRSTCTL) & GRSTCTL_AHBIDLE) == 0);
 
@@ -422,12 +441,14 @@ static void usb_flush_fifo(int _fifo)
 
 	// Wait for FIFOs to be flushed
 	while(GET_REG(USB+GRSTCTL) & GRSTCTL_TXFFLUSH);
+
+	LeaveCriticalSection();
 }
 
-static void usb_flush_all_fifos()
+/*static void usb_flush_all_fifos()
 {
-	//usb_flush_fifo(0x10);
-}
+	usb_flush_fifo(0x10);
+}*/
 
 static void usb_add_ep_to_queue(int _ep)
 {
@@ -631,8 +652,11 @@ static void usb_cancel_out(int _ep)
 	EnterCriticalSection();
 
 	OutEPRegs[_ep].control |= USB_EPCON_DISABLE | USB_EPCON_SETNAK;
-	while(!(OutEPRegs[_ep].interrupt & USB_EPINT_EPDisbld));
-	OutEPRegs[_ep].interrupt = OutEPRegs[_ep].interrupt;
+	if(_ep > 0)
+	{
+		while(!(OutEPRegs[_ep].interrupt & USB_EPINT_EPDisbld));
+		OutEPRegs[_ep].interrupt = OutEPRegs[_ep].interrupt;
+	}	
 
 	LeaveCriticalSection();
 	usb_clear_global_out_nak();
@@ -687,10 +711,7 @@ static void usb_disable_all_endpoints()
 {
 	int i;
 	for(i = 0; i < USB_NUM_ENDPOINTS; i++)
-	{
-		bufferPrintf("USB: EP%d in: 0x%08x out: 0x%08x\n", i, InEPRegs[i].control, OutEPRegs[i].control);
 		usb_disable_endpoint(i);
-	}
 }
 
 static void usb_cancel_in_endpoints()
@@ -774,7 +795,7 @@ static int resetUSB()
 	SET_REG(USB + DCFG, GET_REG(USB + DCFG) & ~DCFG_DEVICEADDRMSK);
 	
 	usb_disable_all_endpoints();
-	usb_flush_all_fifos();
+	//usb_flush_all_fifos();
 
 	if(usb_fifo_mode == FIFOShared)
 		usb_set_epmis(0);
@@ -784,15 +805,17 @@ static int resetUSB()
 
 	int i;
 	for(i = 0; i < USB_NUM_ENDPOINTS; i++)
-		clearEPMessages(i);
-	
-	/*clearEPMessages(USB_CONTROLEP);
-
-	for(i = 0; i < USB_NUM_ENDPOINTS; i++)
 	{
-		if(usb_message_queue[i] != NULL)
-			continueMessageQueue(i);
-	}*/
+		InEPRegs[i].control = 0;
+		OutEPRegs[i].control = 0;
+
+		InEPRegs[i].interrupt = USB_EPINT_INEPNakEff | USB_EPINT_INTknEPMis | USB_EPINT_INTknTXFEmp
+			| USB_EPINT_TimeOUT | USB_EPINT_AHBErr | USB_EPINT_EPDisbld | USB_EPINT_XferCompl;
+		OutEPRegs[i].interrupt = USB_EPINT_OUTTknEPDis
+			| USB_EPINT_SetUp | USB_EPINT_AHBErr | USB_EPINT_EPDisbld | USB_EPINT_XferCompl;
+	
+		clearEPMessages(i);
+	}
 
 	usb_global_in_nak = 0;
 	usb_global_out_nak = 0;
@@ -1196,14 +1219,14 @@ static void usbIRQHandler(uint32_t token)
 		}
 
 		if((status & GINTMSK_RESET) == GINTMSK_RESET) {
+			SET_REG(USB + GINTSTS, GINTMSK_RESET);
+
 			bufferPrintf("USB: reset detected\r\n");
+
 			change_state(USBPowered);
 
 			resetUSB();
-			/*if(!task_start(&usb_reset_task, &resetUSB, NULL))
-				bufferPrintf("USB: already being reset.\n");*/
 
-			SET_REG(USB + GINTSTS, GINTMSK_RESET);
 			process = TRUE;
 		}
 
@@ -1774,7 +1797,7 @@ int usb_install_ep_handler(int endpoint, USBDirection direction, USBEndpointHand
 
 int usb_shutdown()
 {
-#ifndef CONFIG_IPOD2G
+#ifdef USB_PHY_1G
 	power_ctrl(POWER_USB, ON);
 #endif
 

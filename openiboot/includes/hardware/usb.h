@@ -7,8 +7,16 @@
 #define USB_NUM_ENDPOINTS	6
 #define USB_NUM_FIFOS		15
 
+#if defined(CONFIG_IPHONE_4G)||defined(CONFIG_IPAD)
+#define USB_PHY_A4
+#elif defined(CONFIG_IPOD2G)
+#define USB_PHY_2G
+#else
+#define USB_PHY_1G
+#endif
+
 // Hardware configuration
-#if defined(CONFIG_IPHONE_4G)
+#if defined(USB_PHY_A4)
 #define USB 0x86100000
 #define USB_PHY 0x86000000
 #else
@@ -16,12 +24,12 @@
 #define USB_PHY 0x3C400000
 #endif
 
-#if defined(CONFIG_IPHONE_4G)
+#if defined(USB_PHY_A4)
 #define USB_OTGCLOCKGATE 0x18
 #define USB_PHYCLOCKGATE 0x1D
 #define USB_INTERRUPT 0xD
 #define USB_TURNAROUND 0xB
-#elif defined(CONFIG_IPOD2G)
+#elif defined(USB_PHY_2G)
 #define USB_OTGCLOCKGATE 0x18
 #define USB_PHYCLOCKGATE 0x19
 #define USB_INTERRUPT 0x13
@@ -33,7 +41,7 @@
 #define USB_TURNAROUND 0x5
 #endif
 
-#if defined(CONFIG_IPHONE_4G) || defined(CONFIG_IPOD2G)
+#if defined(USB_PHY_A4) || defined(USB_PHY_2G)
 #define RX_FIFO_DEPTH				0x11B
 #define TX_FIFO_DEPTH				0x100
 #define TX_FIFO_STARTADDR			0x11B
@@ -47,11 +55,11 @@
 #define PERIODIC_TX_FIFO_DEPTH		0x100
 #endif
 
-#if defined(CONFIG_IPOD2G)
+#if defined(USB_PHY_2G)
 #define OPHYUNK1_START 0x6
 #define OPHYUNK1_STOP_MASK 0x2
 #define OPHYUNK2_START 0xE3F
-#elif defined(CONFIG_IPHONE_4G)
+#elif defined(USB_PHY_A4)
 #define OPHYUNK4_START 0x200
 #define OPHYUNK1_START 0x6
 #define OPHYUNK1_STOP_MASK 0x2
@@ -113,7 +121,7 @@
 #define OPHYCLK_SPEED_12MHZ 12000000
 #define OPHYCLK_SPEED_24MHZ 24000000
 
-#if defined(CONFIG_IPOD2G) || defined(CONFIG_IPHONE_4G)
+#if defined(USB_PHY_2G) || defined(USB_PHY_A4)
 #define OPHYCLK_CLKSEL_48MHZ 0x2
 #define OPHYCLK_CLKSEL_12MHZ 0x0
 #define OPHYCLK_CLKSEL_24MHZ 0x1
