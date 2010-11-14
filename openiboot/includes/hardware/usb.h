@@ -7,7 +7,7 @@
 #define USB_NUM_ENDPOINTS	6
 #define USB_NUM_FIFOS		15
 
-#if defined(CONFIG_IPHONE_4G)||defined(CONFIG_IPAD)
+#if defined(CONFIG_IPHONE_4)||defined(CONFIG_IPAD)
 #define USB_PHY_A4
 #elif defined(CONFIG_IPOD2G)
 #define USB_PHY_2G
@@ -122,9 +122,9 @@
 #define OPHYCLK_SPEED_24MHZ 24000000
 
 #if defined(USB_PHY_2G) || defined(USB_PHY_A4)
-#define OPHYCLK_CLKSEL_48MHZ 0x2
 #define OPHYCLK_CLKSEL_12MHZ 0x0
 #define OPHYCLK_CLKSEL_24MHZ 0x1
+#define OPHYCLK_CLKSEL_48MHZ 0x2
 #define OPHYCLK_CLKSEL_OTHER 0x3
 #else
 // TODO: these values are off according to iboot 3.1.3. Look into this.
