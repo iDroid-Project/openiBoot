@@ -97,8 +97,6 @@ typedef struct USBEndpointHandlerInfo {
 	uint32_t		token;
 } USBEndpointHandlerInfo;
 
-typedef void (*USBEndpointHandler)(USBTransfer * transfer);
-
 typedef struct USBEndpointBidirHandlerInfo {
 	USBEndpointHandlerInfo in;
 	USBEndpointHandlerInfo out;
