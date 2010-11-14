@@ -219,6 +219,7 @@ void OpenIBootStart()
 
 	acm_start();
 
+#if !defined(CONFIG_IPHONE_4)&&!defined(CONFIG_IPAD)
 #ifndef CONFIG_IPOD
 	camera_setup();
 	radio_setup();
@@ -236,6 +237,7 @@ void OpenIBootStart()
 
 	pmu_set_iboot_stage(0);
 	startScripting("openiboot"); //start script mode if there is a file
+#endif
 	bufferPrintf("  ___                   _ ____              _   \r\n");
 	bufferPrintf(" / _ \\ _ __   ___ _ __ (_) __ )  ___   ___ | |_ \r\n");
 	bufferPrintf("| | | | '_ \\ / _ \\ '_ \\| |  _ \\ / _ \\ / _ \\| __|\r\n");
