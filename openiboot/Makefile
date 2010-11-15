@@ -177,7 +177,7 @@ clean:
 
 install:
 	@echo Building tools...
-	@make -C ../utils/syringe > /dev/null
+	@make -C ../utils/syringe &> /dev/null
 	@if test $(IMG3TEMPLATE) = "mk8900image/template-4g.img3"; then \
 		echo A4 device detected, injecting pois0n; \
 		echo Please enter DFU mode now; \
