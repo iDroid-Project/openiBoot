@@ -873,7 +873,7 @@ static int continueMessageQueue(int _ep)
 	if(q != NULL)
 	{
 		//if(_ep != 0)
-		//	bufferPrintf("USB: txrx 0x%08x, %d, %d, %d, %d\n", q, _ep, q->dir, q->data, q->dataLen);
+			bufferPrintf("USB: txrx 0x%08x, %d, %d, %d, %d\n", q, _ep, q->dir, q->data, q->dataLen);
 		
 		usb_txrx(_ep, q->dir, q->data, q->dataLen);
 		return 1;
@@ -1092,7 +1092,7 @@ static void handleTxInterrupts(int endpoint) {
 		InEPRegs[endpoint].interrupt = USB_EPINT_XferCompl;
 
 		//uartPrintf("\t\tUSB_EPINT_XferCompl\n");
-		//bufferPrintf("in xfercompl %d\n", endpoint);
+		bufferPrintf("in xfercompl %d\n", endpoint);
 		
 		// Flush token queue, as this EP is clearly functioning fine.
 		//SET_REG(USB+GRSTCTL, GET_REG(USB+GRSTCTL) | GRSTCTL_TKNFLUSH);
@@ -1139,7 +1139,7 @@ static void handleRxInterrupts(int endpoint) {
 		USBMessageQueue *q = usb_message_queue[endpoint];
 		OutEPRegs[endpoint].interrupt = USB_EPINT_XferCompl;
 
-		//bufferPrintf("out xfercompl %d\n", endpoint);
+		bufferPrintf("out xfercompl %d\n", endpoint);
 
 		if(endpoint == 0)
 		{
@@ -1194,6 +1194,7 @@ void usb_receive_interrupt(uint8_t endpoint, void* buffer, int bufferLen)
 
 static void usbIRQHandler(uint32_t token)
 {
+	bufferPrintf("USB: Interrupt 0x%08x\n", GET_REG(USB+GINTSTS));
 	// we need to mask because GINTSTS is set for a particular interrupt even if it's masked in GINTMSK (GINTMSK just prevents an interrupt being generated)
 	uint32_t status = GET_REG(USB + GINTSTS) & GET_REG(USB + GINTMSK);
 	int process = FALSE;
