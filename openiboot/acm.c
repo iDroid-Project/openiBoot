@@ -88,6 +88,7 @@ static void acm_parse(int32_t _amt)
 			acm_file_recv_left -= _amt;
 			//bufferPrintf("ACM: Got %d of file (%d remain).\n", _amt, acm_file_recv_left);
 
+			EnterCriticalSection(); // Deliberately unended.
 			usb_receive_bulk(ACM_EP_RECV, acm_recv_buffer, acm_usb_mps);
 			return;
 		}
@@ -158,6 +159,8 @@ static void acm_parse(int32_t _amt)
 		}
 	}
 
+	EnterCriticalSection(); // Deliberately unended.
+
 	if(start < _amt)
 	{
 		if(acm_unprocessed > 0)
@@ -165,6 +168,7 @@ static void acm_parse(int32_t _amt)
 			bufferPrintf("ACM: command too long, discarding...\n");
 			acm_unprocessed = 0;
 			usb_receive_bulk(ACM_EP_RECV, acm_recv_buffer, acm_usb_mps);
+			task_stop();
 			return;
 		}
 		else
@@ -173,10 +177,6 @@ static void acm_parse(int32_t _amt)
 
 	acm_unprocessed = _amt-start;
 	usb_receive_bulk(ACM_EP_RECV, acm_recv_buffer+acm_unprocessed, acm_usb_mps);
-
-	task_stop();
-
-	bufferPrintf("ACM: Uh oh!\n");
 }
 
 static void acm_received(uint32_t _tkn, int32_t _amt)

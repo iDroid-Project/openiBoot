@@ -136,8 +136,8 @@ void task_stop()
 	}
 
 	// Remove us from the queue
-	task_remove(CurrentRunning);
 	CurrentRunning->state = TASK_STOPPED;
+	task_remove(CurrentRunning);
 
 	// Swap onto next task
 	SwapTask(next);
