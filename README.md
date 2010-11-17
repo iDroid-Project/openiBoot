@@ -34,10 +34,10 @@ Change into the openiboot subfolder
 `PLATFORM=IPOD make openiboot.img3`
 
 **For iPhone 2G, run:**
-`PLATFORM=IPHONE make openiboot.img3`
+`PLATFORM=IPHONE_2G make openiboot.img3`
 
 **For iPhone 3G, run:**
-`PLATFORM=3G make openiboot.img3`
+`PLATFORM=IPHONE_3G make openiboot.img3`
 
 **For iPhone 4, run:**
 `PLATFORM=IPHONE_4 make openiboot.img3`
@@ -52,8 +52,6 @@ Change into the openiboot subfolder
 
 2. Installing
 ---------------------------------------------------
-**Copy openiboot.img3 into tools/client/linux**
-
 **Put your phone into recovery mode**: hold home whilst powering on until you see the iTunes logo.
 
 **Run (From the root of the openiboot tree):** 
