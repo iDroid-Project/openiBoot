@@ -7,11 +7,11 @@
 #define WMCODEC_I2C 1
 #endif
 
-#ifdef CONFIG_IPHONE
+#ifdef CONFIG_IPHONE_2G
 #define WMCODEC_I2C 0
 #endif
 
-#ifdef CONFIG_3G
+#ifdef CONFIG_IPHONE_3G
 #define WMCODEC_I2C 0
 #define WMCODEC_I2C_SLAVE_ADDR 0x36
 #else

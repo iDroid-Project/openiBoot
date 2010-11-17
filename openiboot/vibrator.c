@@ -1,16 +1,16 @@
 #include <openiboot.h>
 #include <clock.h>
 #include <vibrator.h>
-#ifdef CONFIG_IPHONE
+#ifdef CONFIG_IPHONE_2G
 #include <util.h>
 #include <radio.h>
 #endif
-#ifdef CONFIG_3G
+#ifdef CONFIG_IPHONE_3G
 #include <timer.h>
 #include <hardware/timer.h>
 #endif
 
-#ifdef CONFIG_IPHONE
+#ifdef CONFIG_IPHONE_2G
 void vibrator_loop(int frequency, int period, int timeOn)
 {
 	char buf[100];
@@ -47,7 +47,7 @@ void vibrator_off()
 }
 #endif
 
-#ifdef CONFIG_3G
+#ifdef CONFIG_IPHONE_3G
 void vibrator_loop(int frequency, int period, int time)
 {
 	// The second option represents the duty cycle of the PWM that drives the vibrator.

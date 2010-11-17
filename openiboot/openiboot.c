@@ -59,7 +59,7 @@ static int setup_openiboot();
 #if !defined(OPENIBOOT_INSTALLER)&&!defined(CONFIG_IPHONE_4)
 static int load_multitouch_images()
 {
-    #ifdef CONFIG_IPHONE
+    #ifdef CONFIG_IPHONE_2G
         Image* image = images_get(fourcc("mtza"));
         if (image == NULL) {
             return 0;

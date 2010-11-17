@@ -88,7 +88,7 @@ int uart_setup() {
 	uart_set_flow_control(2, ON);
 	uart_set_flow_control(3, ON);
 
-#if defined(CONFIG_3G) || defined (CONFIG_IPHONE_4)
+#if defined(CONFIG_IPHONE_3G) || defined (CONFIG_IPHONE_4)
 	uart_set_flow_control(4, ON);
 #else
 	uart_set_flow_control(4, OFF);
