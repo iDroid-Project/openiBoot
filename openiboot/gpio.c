@@ -107,17 +107,17 @@ int gpio_setup() {
 		gpio_set(0x502, 0);
 		gpio_set(0x503, 0);
 		gpio_set(0x504, 0);
-		gpio_switch(0x502, 0xFFFFFFFF);
-		gpio_switch(0x503, 0xFFFFFFFF);
-		gpio_switch(0x504, 0xFFFFFFFF);
+		gpio_switch(0x502, ON);
+		gpio_switch(0x503, ON);
+		gpio_switch(0x504, ON);
 		gpio_set(0x202, 0);
 		gpio_set(0x301, 0);
 		gpio_set(0x304, 0);
 		gpio_set(0x305, 0);
-		gpio_switch(0x202, 0xFFFFFFFF);
-		gpio_switch(0x301, 0xFFFFFFFF);
-		gpio_switch(0x304, 0xFFFFFFFF);
-		gpio_switch(0x305, 0xFFFFFFFF);
+		gpio_switch(0x202, ON);
+		gpio_switch(0x301, ON);
+		gpio_switch(0x304, ON);
+		gpio_switch(0x305, ON);
 		udelay(100);
 		v[0] = chipid_get_gpio();
 		v[1] = gpio_pin_state(0x504);
@@ -240,7 +240,7 @@ int gpio_pin_state(int port) {
 	if (port == 0x16) {
 		return spi_status(pin);
 	} else {
-		return !(GET_REG(GPIO + (8 * port + pin) * sizeof(uint32_t)) & 1);
+		return (GET_REG(GPIO + (8 * port + pin) * sizeof(uint32_t)) & 1);
 	}
 #endif
 }
@@ -287,9 +287,9 @@ void gpio_switch(OnOff on_off, uint32_t pinport) {
 	uint32_t pin_register = GPIO + (((pinport >> 5) & 0x7F8) + ((pinport & 0x7)<<2));
 
 	if (on_off == ON) {
-		SET_REG(pin_register, ((GET_REG(pin_register) & (~(0x3<<3))) | (0x1<<3)));
+		SET_REG(pin_register, ((GET_REG(pin_register) & (~(0x3<<7))) | (0x1<<7)));
 	} else {
-		SET_REG(pin_register, (GET_REG(pin_register) & (~(0x3<<3))));
+		SET_REG(pin_register, (GET_REG(pin_register) & (~(0x3<<7))));
 	}
 	// There would be a third state when (state > 0), setting 0x3, but iBoot didn't ever do that.
 }
