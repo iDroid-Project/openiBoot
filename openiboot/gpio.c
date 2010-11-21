@@ -135,7 +135,7 @@ int gpio_setup() {
 		gpio_set(0x304, 4);
 		gpio_set(0x305, 4);
 		uint32_t new_status = ((v[0] << 3 | v[1] << 2 | v[2] << 1 | v[3]) << 16) | ((v[4] << 3 | v[5] << 2 | v[6] << 1 | v[7]) << 8) | 1;
-		SET_REG(POWER + POWER_ID, (GET_BITS(GET_REG(POWER + POWER_ID), 24, 8)) | (new_status & 0xFFFFFF));
+		SET_REG(POWER + POWER_ID, (GET_REG(POWER + POWER_ID) & 0xFF000000) | (new_status & 0xFFFFFF));
 	}
 
 	return 0;
