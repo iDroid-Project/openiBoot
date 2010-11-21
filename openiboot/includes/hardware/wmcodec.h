@@ -18,7 +18,7 @@
 #define WMCODEC_I2C_SLAVE_ADDR 0x34
 #endif
 
-#ifdef CONFIG_IPHONE_4
+#if defined(CONFIG_IPHONE_4) || defined(CONFIG_IPAD)
 #define WMCODEC_I2C 0
 #endif
 

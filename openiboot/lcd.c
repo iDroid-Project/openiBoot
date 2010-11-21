@@ -1288,15 +1288,15 @@ void lcd_set_backlight_level(int level) {
 	}
 }
 
+#if defined(CONFIG_IPHONE_4) || defined(CONFIG_IPAD)
 void framebuffer_hook() {
         Window* newWindow;
         newWindow = (Window*) malloc(sizeof(Window));
         newWindow->created = FALSE;
-	#ifdef CONFIG_IPAD
+	#if defined(CONFIG_IPAD)
         newWindow->width = 1024;
         newWindow->height = 768;
-	#endif
-	#ifndef CONFIG_IPAD
+	#else
         newWindow->width = 640;
         newWindow->height = 960;
 	#endif
@@ -1330,3 +1330,4 @@ void framebuffer_show_number(uint32_t number) {
 	}
 	framebuffer_fill(&currentWindow->framebuffer, 320, 0, 1, 960, 0x0);
 }
+#endif

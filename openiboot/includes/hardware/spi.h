@@ -48,7 +48,7 @@
 #define GPIO_SPI2_CS0 0x705
 #endif
 
-#ifdef CONFIG_IPHONE_4
+#if defined(CONFIG_IPHONE_4) || defined(CONFIG_IPAD)
 #define GPIO_SPI2_CS0 0x705 // No!
 #endif
 

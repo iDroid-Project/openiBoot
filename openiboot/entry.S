@@ -47,7 +47,7 @@ ArmReset:						// This function will setup the processor and kick off execution
 
 	// We need to get the MIU settings right. First we have to setup the peripheral remap register
 
-#ifndef CONFIG_IPHONE_4
+#if !defined(CONFIG_IPHONE_4) && !defined(CONFIG_IPAD)
 	MOV	R1, #0x38000000				// Peripheral port at 0x38000000
 	ADD	R1, #0x12				// Peripheral port size 128 MB
 	MCR     p15, 0, R1, c15, c2, 4			// Write peripheral port settings
@@ -81,7 +81,7 @@ ArmReset_relocate:
 
 	MOV	R0, #0					// reset caches, since we're about to do a jump to where there wasn't any
 							// data or instructions just moments ago
-#ifndef CONFIG_IPHONE_4
+#if !defined(CONFIG_IPHONE_4) && !defined(CONFIG_IPAD)
 	MCR	p15, 0,	R0,c7,c10			// clean entire data cache
 #else
 	MOV	R2, #0x2000
@@ -147,7 +147,7 @@ ArmReset_loopForever:					// shouldn't reach here
 DebugReboot:						// Write to the WDT register without memory access
 							// This ought to cause a reboot same as the normal
 							// Reboot function
-#ifndef CONFIG_IPHONE_4
+#if !defined(CONFIG_IPHONE_4) && !defined(CONFIG_IPAD)
 	MOV	R1, #0x3E000000
 	ADD	R1, #0x00300000
 	MOV	R0, #0x100000
@@ -214,7 +214,7 @@ HandleIRQ:
 	LDR	R5, =(VIC0 + VICADDRESS)
 	B	HandleIRQ_lookupHandler
 
-#ifndef CONFIG_IPHONE_4
+#if !defined(CONFIG_IPHONE_4) && !defined(CONFIG_IPAD)
 HandleIRQ_checkVIC1:
 	LDR	R3, =(VIC1 + VICIRQSTATUS)	// Check if the interrupt was on VIC1, if it wasn't on VIC0
 	LDR	R3, [R3]

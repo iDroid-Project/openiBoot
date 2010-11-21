@@ -8,7 +8,11 @@
 #define GPIOIC 0x39A00000	/* probably a part of the system controller */
 
 // gpioBaseAddress
+#if !defined(CONFIG_IPHONE_4) && !defined(CONFIG_IPAD)
 #define GPIO 0x3E400000
+#else
+#define GPIO 0xBFA00000
+#endif
 
 // Registers
 #define GPIO_INTLEVEL 0x80
