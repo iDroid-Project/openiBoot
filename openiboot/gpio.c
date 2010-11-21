@@ -5,6 +5,12 @@
 #include "hardware/gpio.h"
 #include "clock.h"
 #include "util.h"
+#if defined(CONFIG_IPHONE_4) || defined(CONFIG_IPAD)
+#include "timer.h"
+#include "spi.h"
+#include "chipid.h"
+#include "hardware/power.h"
+#endif
 
 static GPIORegisters* GPIORegs;
 
@@ -28,9 +34,40 @@ typedef struct {
 
 GPIOInterruptGroup InterruptGroups[GPIO_NUMINTGROUPS];
 
+#if defined(CONFIG_IPHONE_4) || defined(CONFIG_IPAD)
+void gpio_switch(OnOff on_off, uint32_t pinport);
+void gpio_set(uint32_t pinport, int mode);
+
+const uint16_t gpio_reset_table[] = {
+	0x210, 0x210, 0x390, 0x390, 0x210, 0x290, 0x213, 0x212,
+	0x213, 0x212, 0x213, 0x290, 0x290, 0x390, 0x212, 0x1E,
+	0x212, 0x212, 0x390, 0x212, 0x212, 0x290, 0x212, 0x390,
+	0x210, 0x1E, 0x290, 0x212, 0x1E, 0x1E, 0x213, 0x212,
+	0x390, 0x290, 0x212, 0x1E, 0x390, 0x390, 0x390, 0x1E,
+	0x1E, 0x1E, 0x630, 0x630, 0x630, 0x213, 0x630, 0x630,
+	0x630, 0x212, 0x630, 0x630, 0x630, 0x212, 0x630, 0x630,
+	0x630, 0x630, 0x630, 0x630, 0x1E, 0x1E, 0x630, 0x630,
+	0x613, 0x630, 0x630, 0x630, 0x630, 0x630, 0x230, 0x230,
+	0x230, 0x1E, 0x1E, 0x230, 0x230, 0x250, 0x250, 0x230,
+	0x230, 0xA30, 0xA30, 0xA30, 0xA30, 0xAB0, 0xAB0, 0xBB0,
+	0xBB0, 0xAB0, 0xAB0, 0xAB0, 0xAB0, 0xAB0, 0xAB0, 0xAB0,
+	0xAB0, 0x81E, 0x81E, 0x81E, 0x81E, 0xA30, 0xA30, 0xA30,
+	0xA30, 0xAB0, 0xAB0, 0xBB0, 0xBB0, 0xAB0, 0xAB0, 0xAB0,
+	0xAB0, 0xAB0, 0xAB0, 0xAB0, 0xAB0, 0x1E, 0xA30, 0x230,
+	0x212, 0x230, 0x213, 0x212, 0x630, 0x630, 0x630, 0x630,
+	0x630, 0x630, 0x630, 0x630, 0x630, 0x630, 0x630, 0x630,
+	0x630, 0x630, 0x630, 0x1E, 0x212, 0x1E, 0x230, 0x630,
+	0x630, 0xE30, 0xFB0, 0xFB0, 0xFB0, 0xFB0, 0xFB0, 0x81E,
+	0x81E, 0x81E, 0x81E, 0x1E, 0x1E, 0x1E, 0x210, 0x210,
+	0x210, 0x212, 0x210, 0x212, 0x1E, 0x210, 0x210, 0x212,
+	0x1E, 0x1E, 0x1E, 0x1E, 0x1E, 0x1E, 0x1E, 0x1E,
+};
+#else
 static void gpio_handle_interrupt(uint32_t token);
+#endif
 
 int gpio_setup() {
+#if !defined(CONFIG_IPHONE_4) && !defined(CONFIG_IPAD)
 	int i;
 
 	GPIORegs = (GPIORegisters*) GPIO;
@@ -64,6 +101,45 @@ int gpio_setup() {
 	clock_gate_switch(GPIO_CLOCKGATE, ON);
 
 	return 0;
+#else
+	uint8_t v[8];
+	if (!(GET_REG(GPIO) & 1)) {
+		gpio_set(0x502, 0);
+		gpio_set(0x503, 0);
+		gpio_set(0x504, 0);
+		gpio_switch(0x502, 0xFFFFFFFF);
+		gpio_switch(0x503, 0xFFFFFFFF);
+		gpio_switch(0x504, 0xFFFFFFFF);
+		gpio_set(0x202, 0);
+		gpio_set(0x301, 0);
+		gpio_set(0x304, 0);
+		gpio_set(0x305, 0);
+		gpio_switch(0x202, 0xFFFFFFFF);
+		gpio_switch(0x301, 0xFFFFFFFF);
+		gpio_switch(0x304, 0xFFFFFFFF);
+		gpio_switch(0x305, 0xFFFFFFFF);
+		udelay(100);
+		v[0] = chipid_get_gpio();
+		v[1] = gpio_pin_state(0x504);
+		v[2] = gpio_pin_state(0x503);
+		v[3] = gpio_pin_state(0x502);
+		v[4] = gpio_pin_state(0x305);
+		v[5] = gpio_pin_state(0x304);
+		v[6] = gpio_pin_state(0x301);
+		v[7] = gpio_pin_state(0x202);
+		gpio_set(0x502, 4);
+		gpio_set(0x503, 4);
+		gpio_set(0x504, 4);
+		gpio_set(0x202, 4);
+		gpio_set(0x301, 4);
+		gpio_set(0x304, 4);
+		gpio_set(0x305, 4);
+		uint32_t new_status = ((v[0] << 3 | v[1] << 2 | v[2] << 1 | v[3]) << 16) | ((v[4] << 3 | v[5] << 2 | v[6] << 1 | v[7]) << 8) | 1;
+		SET_REG(POWER + POWER_ID, (GET_BITS(GET_REG(POWER + POWER_ID), 24, 8)) | (new_status & 0xFFFFFF));
+	}
+
+	return 0;
+#endif
 }
 
 void gpio_register_interrupt(uint32_t interrupt, int type, int level, int autoflip, InterruptServiceRoutine handler, uint32_t token)
@@ -112,6 +188,7 @@ void gpio_interrupt_disable(uint32_t interrupt)
 	LeaveCriticalSection();
 }
 
+#if !defined(CONFIG_IPHONE_4) && !defined(CONFIG_IPAD)
 static void gpio_handle_interrupt(uint32_t token)
 {
 	uint32_t statReg = GPIOIC + GPIO_INTSTAT + (0x4 * token);
@@ -151,9 +228,21 @@ static void gpio_handle_interrupt(uint32_t token)
 		}
 	}
 }
+#endif
 
 int gpio_pin_state(int port) {
+#if !defined(CONFIG_IPHONE_4) && !defined(CONFIG_IPAD)
 	return ((GPIORegs[GET_BITS(port, 8, 5)].DAT & (1 << GET_BITS(port, 0, 3))) != 0);
+#else
+	uint8_t pin = port & 0x7;
+	port = port >> 8;
+
+	if (port == 0x16) {
+		return spi_status(pin);
+	} else {
+		return !(GET_REG(GPIO + (8 * port + pin) * sizeof(uint32_t)) & 1);
+	}
+#endif
 }
 
 void gpio_custom_io(int port, int bits) {
@@ -193,3 +282,65 @@ void gpio_pulldown_configure(int port, GPIOPDSetting setting)
 	}
 }
 
+#if defined(CONFIG_IPHONE_4) || defined(CONFIG_IPAD)
+void gpio_switch(OnOff on_off, uint32_t pinport) {
+	uint32_t pin_register = GPIO + (((pinport >> 5) & 0x7F8) + ((pinport & 0x7)<<2));
+
+	if (on_off == ON) {
+		SET_REG(pin_register, ((GET_REG(pin_register) & (~(0x3<<3))) | (0x1<<3)));
+	} else {
+		SET_REG(pin_register, (GET_REG(pin_register) & (~(0x3<<3))));
+	}
+	// There would be a third state when (state > 0), setting 0x3, but iBoot didn't ever do that.
+}
+
+void gpio_set(uint32_t pinport, int mode) {
+	uint8_t pin = pinport & 0x7;
+	uint8_t port = (pinport >> 8) & 0xFF;
+	uint16_t bitmask;
+	uint16_t value;
+	uint32_t pin_register;
+	if (port == 0x16) {
+		spi_on_off(pin, mode);
+	} else {
+		pin_register = GPIO + (8 * port + pin) * sizeof(uint32_t);
+		switch(mode) {
+			default:
+				return;
+		case 0:
+			value = 0x210;
+			bitmask = 0x27E;
+			break;
+		case 1:
+			value = 0x212;
+			bitmask = 0x27E;
+			break;
+		case 2: // set pin state
+			value = 0x212;
+			bitmask = 0x27F;
+			break;
+		case 3: // set pin state
+			value = 0x213;
+			bitmask = 0x27F;
+			break;
+		case 4: // reset
+			value = gpio_reset_table[8 * port + pin];
+			bitmask = 0x3FF;
+			break;
+		case 5:
+			value = 0x230;
+			bitmask = 0x27E;
+			break;
+		case 6:
+			value = 0x250;
+			bitmask = 0x27E;
+			break;
+		case 7:
+			value = 0x270;
+			bitmask = 0x27E;
+			break;
+		}
+	SET_REG(pin_register, (GET_REG(pin_register) & (~bitmask)) | (value & bitmask));
+	}
+}
+#endif

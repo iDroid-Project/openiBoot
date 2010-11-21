@@ -1,7 +1,7 @@
 #include "openiboot.h"
 #include "clock.h"
 #include "util.h"
-#ifndef CONFIG_IPHONE_4
+#if !defined(CONFIG_IPHONE_4) && !defined(CONFIG_IPAD)
 #include "hardware/clock0.h"
 #include "hardware/clock1.h"
 #else
@@ -21,16 +21,16 @@ uint32_t UnknownFrequency;
 uint32_t DisplayFrequency;  
 uint32_t FixedFrequency;
 uint32_t TimebaseFrequency;
-#ifdef CONFIG_IPHONE_4
+#if defined(CONFIG_IPHONE_4) || defined(CONFIG_IPAD)
 uint32_t UsbPhyFrequency;
 
-uint32_t IHaveNoIdeaWhatsThatFor = 0; // 0x5FF3D120 - not populated before clock_setup. I assume there's nothing but 0x0
-uint32_t IHaveNoIdeaWhatsThatFor2; // 0x5FF3D11C
+uint32_t CPU_clock_setting;
+uint32_t clock_freq_multiplier;
 #endif
 
 uint32_t TicksPerSec;
 
-#ifndef CONFIG_IPHONE_4
+#if !defined(CONFIG_IPHONE_4) && !defined(CONFIG_IPAD)
 uint32_t ClockSDiv;
 
 int clock_setup() {
@@ -174,7 +174,7 @@ int clock_setup() {
 #endif
 
 void clock_gate_switch(uint32_t gate, OnOff on_off) {
-#ifndef CONFIG_IPHONE_4
+#if !defined(CONFIG_IPHONE_4) && !defined(CONFIG_IPAD)
 	uint32_t gate_register;
 	uint32_t gate_flag;
 
@@ -200,7 +200,7 @@ void clock_gate_switch(uint32_t gate, OnOff on_off) {
 #endif
 }
 
-#ifndef CONFIG_IPHONE_4
+#if !defined(CONFIG_IPHONE_4) && !defined(CONFIG_IPAD)
 int clock_set_bottom_bits_38100000(Clock0ConfigCode code) {
 	int bottomValue;
 
@@ -249,7 +249,7 @@ uint32_t clock_get_frequency(FrequencyBase freqBase) {
 			return 0;
 	}
 }
-#ifndef CONFIG_IPHONE_4
+#if !defined(CONFIG_IPHONE_4) && !defined(CONFIG_IPAD)
 uint32_t clock_calculate_frequency(uint32_t pdiv, uint32_t mdiv, FrequencyBase freqBase) {
 	unsigned int y = clock_get_frequency(freqBase) / (0x1 << ClockSDiv);
 	uint64_t z = (((uint64_t) pdiv) * ((uint64_t) 1000000000)) / ((uint64_t) y);
@@ -303,7 +303,7 @@ void clock_set_sdiv(int sdiv) {
 }
 #endif
 
-#ifdef CONFIG_IPHONE_4
+#if defined(CONFIG_IPHONE_4) || defined(CONFIG_IPAD)
 /*
 uint32_t CalculatedFrequencyTable[55] = {
 };
@@ -382,7 +382,7 @@ void derived_frequency_table_setup() {
 		if (DerivedFrequencySourceTable[round].address == 0) {
 			continue;
 		}
-		uint32_t clock_register_bits = GET_BITS(DerivedFrequencySourceTable[round].address, 28, 2);
+		uint32_t clock_register_bits = GET_BITS(GET_REG(DerivedFrequencySourceTable[round].address), 28, 2);
 		uint8_t unkn_byte = DerivedFrequencySourceTable[round].unkn_bytes[clock_register_bits];
 		uint32_t calculated_frequency = CalculatedFrequencyTable[unkn_byte];
 		uint32_t unknown = DerivedFrequencySourceTable[round].unkn1;
@@ -400,7 +400,7 @@ void derived_frequency_table_setup() {
 }
 
 uint32_t calculate_reference_frequency(uint32_t clock_register) {
-	return (((uint64_t)GET_BITS(clock_register, 3, 10) * (uint64_t)0x2DC6C00) / ((uint64_t)GET_BITS(clock_register, 14, 6) * (uint64_t)(1 << GET_BITS(clock_register, 0, 3))));
+	return (((uint64_t)GET_BITS(GET_REG(clock_register), 3, 10) * (uint64_t)0x2DC6C00) / ((uint64_t)GET_BITS(GET_REG(clock_register), 14, 6) * (uint64_t)(1 << GET_BITS(GET_REG(clock_register), 0, 3))));
 }
 */
 
@@ -430,13 +430,13 @@ XXX:	Base Frequencies as they are set by LLB
 	CalculatedFrequencyTable[3] = 0x7A4F0900;
 	CalculatedFrequencyTable[4] = 0x5B8D8000;
 	derived_frequency_table_setup();
-	IHaveNoIdeaWhatsThatFor = GET_BITS(0xBF100040, 0, 5);
-	if (IHaveNoIdeaWhatsThatFor == 2) {
-		IHaveNoIdeaWhatsThatFor2 = 1;
-	} else if (IHaveNoIdeaWhatsThatFor == 4) {
-		IHaveNoIdeaWhatsThatFor2 = 2;
+	clock_freq_multiplier = GET_BITS(GET_REG(0xBF100040), 0, 5);
+	if (clock_freq_multiplier == 2) {
+		CPU_clock_setting = 1;
+	} else if (clock_freq_multiplier == 4) {
+		CPU_clock_setting = 2;
 	} else {
-		IHaveNoIdeaWhatsThatFor2 = 0;
+		CPU_clock_setting = 0;
 	}
 
 

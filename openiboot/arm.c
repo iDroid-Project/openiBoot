@@ -12,7 +12,7 @@ int arm_setup() {
 	GiveFullAccessCP10CP11();
 	EnableVFP();
 
-#ifndef CONFIG_IPHONE_4
+#if !defined(CONFIG_IPHONE_4) && !defined(CONFIG_IPAD)
 	// Map the peripheral port of size 128 MB to 0x38000000
 	WritePeripheralPortMemoryRemapRegister(PeripheralPort | ARM11_PeripheralPortSize128MB);
 #endif
@@ -23,7 +23,7 @@ int arm_setup() {
 	WriteControlRegisterConfigData(ReadControlRegisterConfigData() | ARM11_Control_INSTRUCTIONCACHE);	// Enable instruction cache
 	WriteControlRegisterConfigData(ReadControlRegisterConfigData() | ARM11_Control_DATACACHE);		// Enable data cache
 
-#ifndef CONFIG_IPHONE_4
+#if !defined(CONFIG_IPHONE_4) && !defined(CONFIG_IPAD)
 	WriteControlRegisterConfigData((ReadControlRegisterConfigData()
 		& ~(ARM11_Control_STRICTALIGNMENTCHECKING))				// Disable strict alignment fault checking
 		| ARM11_Control_UNALIGNEDDATAACCESS);					// Enable unaligned data access operations
@@ -35,7 +35,7 @@ int arm_setup() {
 
 	WriteControlRegisterConfigData(ReadControlRegisterConfigData() | ARM11_Control_BRANCHPREDICTION); 	// Enable branch prediction
 
-#ifndef CONFIG_IPHONE_4
+#if !defined(CONFIG_IPHONE_4) && !defined(CONFIG_IPAD)
 	// Enable return stack, dynamic branch prediction, static branch prediction
 	WriteAuxiliaryControlRegister(ReadAuxiliaryControlRegister()
 		| ARM11_AuxControl_RETURNSTACK
