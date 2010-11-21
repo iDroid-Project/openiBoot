@@ -103,7 +103,7 @@ int gpio_setup() {
 	return 0;
 #else
 	uint8_t v[8];
-	if (!(GET_REG(GPIO) & 1)) {
+	if (!(GET_REG(POWER + POWER_ID) & 1)) {
 		gpio_set(0x502, 0);
 		gpio_set(0x503, 0);
 		gpio_set(0x504, 0);
