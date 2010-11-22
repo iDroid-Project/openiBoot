@@ -92,10 +92,9 @@ static int load_multitouch_images()
     return 1;
 }
 
-static void reset_tempos(const char* sDefaultOS)
+static void reset_tempos()
 {
 	framebuffer_setdisplaytext(FALSE);
-	//nvram_setvar("opib-temp-os",sDefaultOS);
 	nvram_setvar("opib-temp-os",0);
 	nvram_save();
 	framebuffer_setdisplaytext(TRUE);
@@ -161,8 +160,8 @@ void OpenIBootStart()
 		switch (tempOS) {
 			case 1:
 				framebuffer_clear();
-				bufferPrintf("Loading iOS...");
-				reset_tempos(sDefaultOS);
+				bufferPrintf("Loading iOS...\r\n");
+				reset_tempos();
 				Image* image = images_get(fourcc("ibox"));
 				if(image == NULL)
 					image = images_get(fourcc("ibot"));
@@ -173,8 +172,8 @@ void OpenIBootStart()
 			
 			case 2:
 				framebuffer_clear();
-				bufferPrintf("Loading iDroid...");
-				reset_tempos(sDefaultOS);
+				bufferPrintf("Loading iDroid...\r\n");
+				reset_tempos();
 #ifndef NO_HFS
 #ifndef CONFIG_IPOD
 				radio_setup();
@@ -183,9 +182,9 @@ void OpenIBootStart()
 				fs_setup();
 				if(globalFtlHasBeenRestored) {
 					if(ftl_sync()) {
-						bufferPrintf("ftl synced successfully");
+						bufferPrintf("ftl synced successfully\r\n");
 					} else {
-						bufferPrintf("error syncing ftl");
+						bufferPrintf("error syncing ftl\r\n");
 					}
 				}	
 				pmu_set_iboot_stage(0);
@@ -196,8 +195,8 @@ void OpenIBootStart()
 				
 			case 3:
 				framebuffer_clear();
-				bufferPrintf("Loading Console...");
-				reset_tempos(sDefaultOS);
+				bufferPrintf("Loading Console...\r\n");
+				reset_tempos();
 				hideMenu = "1";
 				break;
 		}
