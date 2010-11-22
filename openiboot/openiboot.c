@@ -95,7 +95,8 @@ static int load_multitouch_images()
 static void reset_tempos(const char* sDefaultOS)
 {
 	framebuffer_setdisplaytext(FALSE);
-	nvram_setvar("opib-temp-os",sDefaultOS);
+	//nvram_setvar("opib-temp-os",sDefaultOS);
+	nvram_setvar("opib-temp-os",0);
 	nvram_save();
 	framebuffer_setdisplaytext(TRUE);
 }
