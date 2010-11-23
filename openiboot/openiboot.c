@@ -277,9 +277,9 @@ static int setup_devices() {
 	// Other devices
 	usb_shutdown();
 	uart_setup();
-#if !defined(CONFIG_IPHONE_4) && !defined(CONFIG_IPAD)
 	i2c_setup();
 
+#if !defined(CONFIG_IPHONE_4) && !defined(CONFIG_IPAD)
 	dma_setup();
 
 	spi_setup();

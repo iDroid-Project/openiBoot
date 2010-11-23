@@ -4,10 +4,17 @@
 #include "hardware/s5l8900.h"
 
 // Device
+#if !defined(CONFIG_IPHONE_4) && !defined(CONFIG_IPAD)
 #define I2C0 0x3C600000
 #define I2C1 0x3C900000
+#else
+#define I2C0 0x83200000
+#define I2C1 0x83300000
+#define I2C2 0x83400000
+#endif
 
 // Registers
+#if !defined(CONFIG_IPHONE_4) && !defined(CONFIG_IPAD)
 #define IICCON 0x0
 #define IICSTAT 0x4
 #define IICADD 0x8
@@ -17,6 +24,17 @@
 #define IICREG18 0x18
 #define IICREG1C 0x1C
 #define IICREG20 0x20
+#else
+#define IICREG0 0x0
+#define IICREG8 0x8
+#define IICREGC 0xC
+#define IICREG10 0x10
+#define IICREG14 0x14
+#define IICREG18 0x18
+#define IICREG20 0x20
+#define IICREG24 0x24
+#endif
+
 
 // Values
 #define IICCON_INIT 0x3F00
