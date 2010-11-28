@@ -214,7 +214,7 @@ void cmd_nand_erase(int argc, char** argv)
 }
 
 
-#ifdef CONFIG_IPHONE
+#ifdef CONFIG_IPHONE_2G
 void cmd_multitouch_fw_install(int argc, char** argv)
 {
     if(argc < 5)
@@ -280,7 +280,7 @@ void cmd_multitouch_fw_install(int argc, char** argv)
 #endif
 
 void cmd_multitouch_fw_uninstall(int argc, char** argv) {
-#ifdef CONFIG_IPHONE	
+#ifdef CONFIG_IPHONE_2G	
 	images_uninstall(fourcc("mtza"), fourcc("mtza"));
 	images_uninstall(fourcc("mtzm"), fourcc("mtzm"));
 #else
@@ -1104,7 +1104,7 @@ void cmd_audiohw_speaker_vol(int argc, char** argv)
 {
 	if(argc < 2)
 	{
-#ifdef CONFIG_3G
+#ifdef CONFIG_IPHONE_3G
 		bufferPrintf("%s <loudspeaker volume> (between 0 and 100)\r\n", argv[0]);
 #else
 		bufferPrintf("%s <loudspeaker volume> [speaker volume] (between 0 and 100... 'speaker' is the one next to your ear)\r\n", argv[0]);
@@ -1114,7 +1114,7 @@ void cmd_audiohw_speaker_vol(int argc, char** argv)
 
 	int vol = parseNumber(argv[1]);
 
-#ifdef CONFIG_3G
+#ifdef CONFIG_IPHONE_3G
 	audiohw_set_speaker_vol(vol);
 	bufferPrintf("Set speaker volume to: %d\r\n", vol);
 #else
@@ -1133,7 +1133,7 @@ void cmd_audiohw_speaker_vol(int argc, char** argv)
 }
 #endif
 
-#ifdef CONFIG_IPHONE
+#ifdef CONFIG_IPHONE_2G
 void cmd_multitouch_setup(int argc, char** argv)
 {
 	if(argc < 5)
@@ -1239,7 +1239,7 @@ void cmd_radio_hangup(int argc, char** argv) {
 	radio_hangup(argv[1]);
 }
 
-#ifdef CONFIG_IPHONE
+#ifdef CONFIG_IPHONE_2G
 void cmd_vibrator_loop(int argc, char** argv)
 {
 	if(argc < 4) {
@@ -1278,7 +1278,7 @@ void cmd_vibrator_off(int argc, char** argv)
 	vibrator_off();
 }
 #endif
-#ifdef CONFIG_3G
+#ifdef CONFIG_IPHONE_3G
 void cmd_vibrator_loop(int argc, char** argv)
 {
 	if(argc < 3) {
@@ -1465,6 +1465,6 @@ OPIBCommand CommandList[] =
 #ifdef OPENIBOOT_INSTALLER
 		{"progress", "Set the install progress.", cmd_progress},
 #endif
-#endif //IPHONE4
+#endif //IPHONE_4
 		{NULL, NULL}
 	};

@@ -3,7 +3,7 @@
 
 #define ALS_I2C 0
 
-#ifdef CONFIG_3G
+#ifdef CONFIG_IPHONE_3G
 #define ALS_ADDR 0x88
 #else
 #define ALS_ADDR 0x92

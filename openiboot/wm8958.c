@@ -112,7 +112,7 @@ void audiohw_play_pcm(const void* addr_in, uint32_t size, int use_speaker)
 	uint32_t i2sController;
 	uint32_t dma;
 
-#ifdef CONFIG_IPHONE
+#ifdef CONFIG_IPHONE_2G
 	if(use_speaker)
 	{
 		i2sController = BB_I2S;
@@ -123,7 +123,7 @@ void audiohw_play_pcm(const void* addr_in, uint32_t size, int use_speaker)
 #endif
 		i2sController = WM_I2S;
 		dma = DMA_WM_I2S_TX;
-#ifdef CONFIG_IPHONE
+#ifdef CONFIG_IPHONE_2G
 	}
 #endif
 

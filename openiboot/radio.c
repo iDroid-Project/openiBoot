@@ -20,7 +20,7 @@ static int RadioAvailable = FALSE;
 static char* response_buf;
 #define RESPONSE_BUF_SIZE 0x1000
 
-#ifdef CONFIG_3G
+#ifdef CONFIG_IPHONE_3G
 int radio_setup_3g()
 {
 	response_buf = malloc(RESPONSE_BUF_SIZE);
@@ -122,7 +122,7 @@ int radio_setup_2g()
 
 int radio_setup()
 {
-#if CONFIG_3G
+#if CONFIG_IPHONE_3G
     return radio_setup_3g();
 #else
     return radio_setup_2g();
@@ -391,7 +391,7 @@ int speaker_setup()
 	// something set at the very beginning
 	radio_cmd("at+xdrv=0,41,25\r\n", 10);
 
-#ifdef CONFIG_IPHONE
+#ifdef CONFIG_IPHONE_2G
 	bufferPrintf("radio: enabling internal speaker\r\n");
 
 	// mute everything?
@@ -472,7 +472,7 @@ void radio_call(const char* number)
 
 	audiohw_switch_normal_call(TRUE);
 
-#ifdef CONFIG_3G
+#ifdef CONFIG_IPHONE_3G
 	radio_cmd("at+xdrv=0,8,0,0\r\n", 10);
 #else
 	radio_cmd("at+xdrv=0,4\r\n", 10);
@@ -496,7 +496,7 @@ void radio_call(const char* number)
 
 	loudspeaker_vol(40);
 
-#ifdef CONFIG_3G
+#ifdef CONFIG_IPHONE_3G
 	radio_cmd("at+xdrv=0,8,1,0\r\n", 10);
 #endif
 
@@ -526,7 +526,7 @@ void radio_call(const char* number)
 	radio_cmd(buf, 10);
 	radio_cmd("at+cmut=0\r\n", 10);
 
-#ifndef CONFIG_3G
+#ifndef CONFIG_IPHONE_3G
 	radio_cmd("at+xdrv=4,0,0,0,0,0\r\n", 10);
 
 	speaker_vol(68);
@@ -575,7 +575,7 @@ void radio_call(const char* number)
 			break;
 	}
 
-#ifndef CONFIG_3G
+#ifndef CONFIG_IPHONE_3G
 	// do the rest
 	radio_cmd("at+xdrv=4,0,0,0,0,0\r\n", 10);
 #endif

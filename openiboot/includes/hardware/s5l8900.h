@@ -49,7 +49,7 @@
 #define AMC0Higher 0x84C00000
 #define AMC0HigherEnd 0x85000000
 #else
-#ifdef CONFIG_3G
+#ifdef CONFIG_IPHONE_3G
 #define AMC0 0x38500000
 #define ROM 0x50000000
 #else

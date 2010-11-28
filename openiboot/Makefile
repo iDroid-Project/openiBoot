@@ -22,11 +22,11 @@ HFS_SRC_C           = hfs/btree.c hfs/catalog.c hfs/extents.c hfs/fastunicodecom
 
 MENU_SRC_C          = menu.c stb_image.c
 
-ifeq ($(PLATFORM),IPHONE)
+ifeq ($(PLATFORM),IPHONE_2G)
 	SRC_C          += camera.c radio.c als.c multitouch.c wm8958.c vibrator.c
 endif
 
-ifeq ($(PLATFORM),3G)
+ifeq ($(PLATFORM),IPHONE_3G)
 	SRC_C          += camera.c radio.c alsISL29003.c multitouch-z2.c wm8991.c vibrator.c
 endif
 
@@ -56,7 +56,7 @@ LIBRARIES          += -lgcc -nostdlib
 INC                += -Iincludes
 CFLAGS             += -Wall -Werror
 LDFLAGS            += -Ttext=$(LOAD) --nostdlib
-VERSION             = "0.1.3"
+VERSION             = "0.2"
 COMMIT              = $(shell git log | head -n1 | cut -b8-14)
 BUILD               = "$(COMMIT)"
 CFLAGS             += -DOPENIBOOT_VERSION=$(VERSION) -DOPENIBOOT_VERSION_BUILD=$(BUILD)
@@ -73,8 +73,8 @@ ifeq ($(PLATFORM),IPOD)
 	CFLAGS         += -DCONFIG_IPOD
 	IMG3TEMPLATE    = mk8900image/template-ipod.img3
 else
-	ifeq ($(PLATFORM),3G)
-		CFLAGS     += -DCONFIG_3G
+	ifeq ($(PLATFORM),IPHONE_3G)
+		CFLAGS     += -DCONFIG_IPHONE_3G
 		IMG3TEMPLATE    = mk8900image/template-3g.img3
 	else
 		ifeq ($(PLATFORM),IPHONE_4)
@@ -85,7 +85,7 @@ else
 	                        CFLAGS  += -DCONFIG_IPAD -DCONFIG_IPHONE_4
         	                IMG3TEMPLATE    = mk8900image/template-4g.img3
 			else
-				CFLAGS     += -DCONFIG_IPHONE
+				CFLAGS     += -DCONFIG_IPHONE_2G
 				IMG3TEMPLATE    = mk8900image/template.img3
 			endif
 		endif
@@ -172,9 +172,8 @@ openiboot-payload.img2: openiboot-payload mk8900image/mk8900image
 clean:
 	@rm -rf iBSS* *.o $(DEPDIR) hfs/*.o openiboot openiboot.img2 openiboot-wtf.img2 openiboot.img3 openiboot-payload.bin openiboot-payload.img2
 	@cd mk8900image/; $(MAKE) clean
-	@cd ../tools/syringe; make clean
-	@cd ../tools/client/linux; make clean
-	@cd ../tools/libirecovery; make clean
+	@cd ../utils/syringe; make clean
+	@cd ../utils/oibc; make clean
 
 install:
 	@echo Building tools...

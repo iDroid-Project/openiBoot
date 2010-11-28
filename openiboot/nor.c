@@ -4,7 +4,7 @@
 #include "util.h"
 #include "timer.h"
 
-#ifdef CONFIG_3G
+#ifdef CONFIG_IPHONE_3G
 #include "spi.h"
 #include "gpio.h"
 #include "hardware/spi.h"
@@ -14,14 +14,14 @@ static int NORSectorSize = 4096;
 
 static int Prepared = 0;
 
-#ifdef CONFIG_3G
+#ifdef CONFIG_IPHONE_3G
 static int WritePrepared = FALSE;
 #endif
 
 static int NORVendor;
 
 static void nor_prepare() {
-#ifdef CONFIG_3G
+#ifdef CONFIG_IPHONE_3G
 	if(Prepared == 0) {
 		spi_set_baud(0, 12000000, SPIWordSize8, 1, 0, 0);
 	}
@@ -36,7 +36,7 @@ static void nor_unprepare() {
 static NorInfo* probeNOR() {
 	nor_prepare();
 
-#ifdef CONFIG_3G
+#ifdef CONFIG_IPHONE_3G
 	uint8_t command = NOR_SPI_JEDECID;
 	uint8_t deviceID[3];
 	gpio_pin_output(GPIO_SPI0_CS0, 0);
@@ -81,7 +81,7 @@ static NorInfo* probeNOR() {
 	return NULL;
 }
 
-#ifdef CONFIG_3G
+#ifdef CONFIG_IPHONE_3G
 static uint8_t nor_get_status() {
 	nor_prepare();
 	uint8_t data;
@@ -184,7 +184,7 @@ static int nor_serial_prepare_write(uint32_t offset, uint16_t data) {
 
 #endif
 
-#ifdef CONFIG_3G
+#ifdef CONFIG_IPHONE_3G
 
 static int nor_serial_write_byte(uint32_t offset, uint8_t data) {
 	nor_prepare();
@@ -216,7 +216,7 @@ static int nor_serial_write_byte(uint32_t offset, uint8_t data) {
 
 int nor_write_word(uint32_t offset, uint16_t data) {
 	nor_prepare();
-#ifdef CONFIG_3G
+#ifdef CONFIG_IPHONE_3G
 	if(NORVendor == 0xBF)
 	{
 		// SST has the auto-increment program opcode that lets programming happen more quickly
@@ -268,7 +268,7 @@ uint16_t nor_read_word(uint32_t offset) {
 	uint16_t data;
 	nor_prepare();
 
-#ifdef CONFIG_3G
+#ifdef CONFIG_IPHONE_3G
 	uint8_t command[4];
 	command[0] = NOR_SPI_READ;
 	command[1] = (offset >> 16) & 0xFF;
@@ -291,7 +291,7 @@ uint16_t nor_read_word(uint32_t offset) {
 int nor_erase_sector(uint32_t offset) {
 	nor_prepare();
 
-#ifdef CONFIG_3G
+#ifdef CONFIG_IPHONE_3G
 	if(nor_wait_for_ready(100) != 0) {
 		nor_unprepare();
 		return -1;
@@ -338,7 +338,7 @@ int nor_erase_sector(uint32_t offset) {
 
 void nor_read(void* buffer, int offset, int len) {
 	nor_prepare();
-#ifdef CONFIG_3G
+#ifdef CONFIG_IPHONE_3G
 	uint8_t command[4];
 	uint8_t* data = buffer;
 	while(len > 0) {
@@ -406,13 +406,13 @@ int nor_write(void* buffer, int offset, int len) {
 		for(j = 0; j < (NORSectorSize / 2); j++) {
 			if(nor_write_word(((i + startSector) * NORSectorSize) + (j * 2), curSector[j]) != 0) {
 				nor_unprepare();
-#ifdef CONFIG_3G
+#ifdef CONFIG_IPHONE_3G
 				nor_write_disable();
 #endif
 				return -1;
 			}
 		}
-#ifdef CONFIG_3G
+#ifdef CONFIG_IPHONE_3G
 		nor_write_disable();
 #endif
 	}
