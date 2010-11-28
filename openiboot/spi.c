@@ -363,3 +363,16 @@ dorx:
 	SET_REG(SPIRegs[port].status, status);
 }
 
+#if defined(CONFIG_IPHONE_4) || defined(CONFIG_IPAD)
+void spi_on_off(uint8_t spi, OnOff on_off) {
+        if (on_off == ON) {
+                SET_REG(SPIRegs[spi].pin, GET_REG(SPIRegs[spi].pin) | 0x2);
+        } else {
+                SET_REG(SPIRegs[spi].pin, GET_REG(SPIRegs[spi].pin) & (~0x2));
+        }
+}
+
+int spi_status(uint8_t spi) {
+	return ((GET_REG(SPIRegs[spi].pin) >> 1) & 1);
+}
+#endif

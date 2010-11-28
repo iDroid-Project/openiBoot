@@ -12,7 +12,7 @@ static void init_event_list();
 static void eventTimerHandler();
 
 int event_setup() {
-#ifndef CONFIG_IPHONE_4
+#if !defined(CONFIG_IPHONE_4) && !defined(CONFIG_IPAD)
 	// In our implementation, we set TicksPerSec when we setup the clock
 	// so we don't have to do it here
 
@@ -47,7 +47,7 @@ static void eventTimerHandler() {
 	uint64_t curTime;
 	Event* event;
 
-#ifdef CONFIG_IPHONE_4
+#if defined(CONFIG_IPHONE_4) || defined(CONFIG_IPAD)
         SET_REG(TIMER_REGISTER_TICK, TIMER_STATE_MANUALUPDATE);
 #endif
 

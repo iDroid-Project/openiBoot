@@ -110,7 +110,7 @@
 #define ARM11_PeripheralPortSize1GB 20
 #define ARM11_PeripheralPortSize2GB 21
 
-#ifdef CONFIG_IPHONE_4
+#if defined(CONFIG_IPHONE_4) || defined(CONFIG_IPAD)
 #define ARM_A8_AuxControl_SPECULATIVEACCESSAXI 0x8
 #endif
 

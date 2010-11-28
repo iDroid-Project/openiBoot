@@ -56,7 +56,7 @@ int received_file_size;
 static int setup_devices();
 static int setup_openiboot();
 
-#if !defined(OPENIBOOT_INSTALLER)&&!defined(CONFIG_IPHONE_4)
+#if !defined(OPENIBOOT_INSTALLER)&&!defined(CONFIG_IPHONE_4)&&!defined(CONFIG_IPAD)
 static int load_multitouch_images()
 {
     #ifdef CONFIG_IPHONE_2G
@@ -219,7 +219,7 @@ void OpenIBootStart()
 
 	acm_start();
 
-#if !defined(CONFIG_IPHONE_4)&&!defined(CONFIG_IPAD)
+#if !defined(CONFIG_IPHONE_4) && !defined(CONFIG_IPAD)
 #ifndef CONFIG_IPOD
 	camera_setup();
 	radio_setup();
@@ -248,7 +248,7 @@ void OpenIBootStart()
 	bufferPrintf("version: %s\r\n", OPENIBOOT_VERSION_STR);
 	DebugPrintf("                    DEBUG MODE\r\n");
 
-#ifndef CONFIG_IPHONE_4
+#if !defined(CONFIG_IPHONE_4) && !defined(CONFIG_IPAD)
 	audiohw_postinit();
 #endif
 
@@ -265,21 +265,19 @@ static int setup_devices() {
 	// Need interrupts for everything afterwards
 	interrupt_setup();
 
-#if !defined(CONFIG_IPHONE_4)&&!defined(CONFIG_IPAD)
-	gpio_setup(); // Not yet
-#endif
+	gpio_setup();
 
 	// For scheduling/sleeping niceties
 	timer_setup();
 	event_setup();
-#ifndef CONFIG_IPHONE_4
+#if !defined(CONFIG_IPHONE_4) && !defined(CONFIG_IPAD)
 	wdt_setup();
 #endif
 
 	// Other devices
 	usb_shutdown();
 	uart_setup();
-#ifndef CONFIG_IPHONE_4
+#if !defined(CONFIG_IPHONE_4) && !defined(CONFIG_IPAD)
 	i2c_setup();
 
 	dma_setup();
@@ -298,7 +296,7 @@ static int setup_openiboot() {
 
 	LeaveCriticalSection();
 
-#ifndef CONFIG_IPHONE_4
+#if !defined(CONFIG_IPHONE_4) && !defined(CONFIG_IPAD)
 	clock_set_sdiv(0);
 
 	aes_setup();

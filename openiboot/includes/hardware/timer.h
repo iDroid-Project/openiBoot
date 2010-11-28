@@ -14,7 +14,7 @@
 
 // Devices
 
-#ifndef CONFIG_IPHONE_4
+#if !defined(CONFIG_IPHONE_4) && !defined(CONFIG_IPAD)
 #define TIMER 0x3E200000
 #else
 #define TIMER 0xBF100000
@@ -35,7 +35,7 @@
 #define TIMER_COUNT_BUFFER2 0xC
 #define TIMER_PRESCALER 0x10
 #define TIMER_UNKNOWN3 0x14
-#ifndef CONFIG_IPHONE_4
+#if !defined(CONFIG_IPHONE_4) && !defined(CONFIG_IPAD)
 #define TIMER_TICKSHIGH 0x80
 #define TIMER_TICKSLOW 0x84
 #else
@@ -53,7 +53,7 @@
 // Timer
 #define NUM_TIMERS 7
 #define TIMER_CLOCKGATE 0x25
-#ifndef CONFIG_IPHONE_4
+#if !defined(CONFIG_IPHONE_4) && !defined(CONFIG_IPAD)
 #define TIMER_IRQ 0x7
 #else
 #define TIMER_IRQ 0x6

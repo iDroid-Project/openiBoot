@@ -24,7 +24,7 @@ const UARTRegisters HWUarts[] = {
 	{UART + UART4 + UART_ULCON, UART + UART4 + UART_UCON, UART + UART4 + UART_UFCON, UART + UART4 + UART_UMCON,
 		UART + UART4 + UART_UTRSTAT, UART + UART4 + UART_UERSTAT, UART + UART4 + UART_UFSTAT,
 		UART + UART4 + UART_UMSTAT, UART + UART4 + UART_UTXH, UART + UART4 + UART_URXH, UART + UART4 + UART_UBAUD,
-#if !defined(CONFIG_IPHONE_4)
+#if !defined(CONFIG_IPHONE_4) && !defined(CONFIG_IPAD)
 		UART + UART4 + UART_UDIVSLOT}};
 
 UARTSettings UARTs[NUM_UARTS];
@@ -52,12 +52,12 @@ int uart_setup() {
 		return 0;
 	}
 
-#if !defined(CONFIG_IPHONE_4)
+#if !defined(CONFIG_IPHONE_4) && !defined(CONFIG_IPAD)
 	clock_gate_switch(UART_CLOCKGATE, ON);
 #endif
 
 	for(i = 0; i < NUM_UARTS; i++) {
-#if defined(CONFIG_IPHONE_4)
+#if defined(CONFIG_IPHONE_4) || defined(CONFIG_IPAD)
 		clock_gate_switch(UART_CLOCKGATE+i, ON);
 #endif
 		// set all uarts to transmit 8 bit frames, one stop bit per frame, no parity, no infrared mode
@@ -72,7 +72,7 @@ int uart_setup() {
 		UARTs[i].ureg = i;
 		UARTs[i].baud = 115200;
 
-#if defined(CONFIG_IPHONE_4)
+#if defined(CONFIG_IPHONE_4) || defined(CONFIG_IPAD)
 		if (i == 5) {
 			SET_REG(HWUarts[i].ULCON, UART_ULCON_UNKN);
 		}
@@ -88,12 +88,12 @@ int uart_setup() {
 	uart_set_flow_control(2, ON);
 	uart_set_flow_control(3, ON);
 
-#if defined(CONFIG_IPHONE_3G) || defined (CONFIG_IPHONE_4)
+#if defined(CONFIG_IPHONE_3G) || defined (CONFIG_IPHONE_4) || defined(CONFIG_IPAD)
 	uart_set_flow_control(4, ON);
 #else
 	uart_set_flow_control(4, OFF);
 #endif
-#if defined(CONFIG_IPHONE_4)
+#if defined(CONFIG_IPHONE_4) || defined(CONFIG_IPAD)
 	uart_set_flow_control(5, ON);
 	uart_set_flow_control(6, ON);
 #endif
@@ -170,7 +170,7 @@ int uart_set_sample_rate(int ureg, int rate) {
 			return -1; // Invalid sample rate
 	}
 
-#if !defined(CONFIG_IPHONE_4)
+#if !defined(CONFIG_IPHONE_4) && !defined(CONFIG_IPAD)
 	SET_REG(HWUarts[ureg].UBAUD,
 		(GET_REG(HWUarts[ureg].UBAUD) & (~UART_SAMPLERATE_MASK)) | (newSampleRate << UART_SAMPLERATE_SHIFT));
 #endif

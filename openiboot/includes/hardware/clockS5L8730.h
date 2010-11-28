@@ -24,7 +24,7 @@ typedef struct {
 #define CLOCK_REFERENCE_3 0xBF100010
 #define CLOCK_REFERENCE_4 0xBF100020
 
-#define CLOCK_ACTIVE(x) GET_BITS(x, 31, 1)
+#define CLOCK_ACTIVE(x) GET_BITS(GET_REG(x), 31, 1)
 */
 
 #endif

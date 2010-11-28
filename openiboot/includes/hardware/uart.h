@@ -4,14 +4,14 @@
 #include "hardware/s5l8900.h"
 
 // Devices
-#if !defined(CONFIG_IPHONE_4)
+#if !defined(CONFIG_IPHONE_4) && !defined(CONFIG_IPAD)
 #define UART 0x3CC00000
 #else
 #define UART 0x82500000
 #endif
 
 // Registers
-#if !defined(CONFIG_IPHONE_4)
+#if !defined(CONFIG_IPHONE_4) && !defined(CONFIG_IPAD)
 #define UART0 0x0
 #define UART1 0x4000
 #define UART2 0x8000
@@ -41,7 +41,7 @@
 #define UART_UDIVSLOT 0x2C
 
 // Values
-#if !defined(CONFIG_IPHONE_4)
+#if !defined(CONFIG_IPHONE_4) && !defined(CONFIG_IPAD)
 #define NUM_UARTS 5
 #define UART_CLOCKGATE 0x29
 #else

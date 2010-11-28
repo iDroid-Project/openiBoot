@@ -82,7 +82,7 @@ else
 			IMG3TEMPLATE	= mk8900image/template-4g.img3
 		else
 	                ifeq ($(PLATFORM),IPAD)
-	                        CFLAGS  += -DCONFIG_IPAD -DCONFIG_IPHONE_4
+	                        CFLAGS  += -DCONFIG_IPAD
         	                IMG3TEMPLATE    = mk8900image/template-4g.img3
 			else
 				CFLAGS     += -DCONFIG_IPHONE_2G
@@ -177,20 +177,14 @@ clean:
 
 install:
 	@echo Building tools...
-	@make -C ../tools/client/linux loadibec > /dev/null
-	@make -C ../tools/libirecovery $(HOSTPLATFORM) > /dev/null
+	@make -C ../utils/syringe &> /dev/null
 	@if test $(IMG3TEMPLATE) = "mk8900image/template-4g.img3"; then \
-		echo A4 device detected, building Syringe; \
-		make -C ../tools/syringe > /dev/null; \
-		echo Invoking syringe, enter DFU mode now; \
-		sudo ../tools/syringe/injectpois0n; \
-		sleep 5; \
+		echo A4 device detected, injecting pois0n; \
+		echo Please enter DFU mode now; \
+		sudo ../utils/syringe/injectpois0n; \
 	else \
 		read -p "Put your device into recovery mode, then press enter to continue..." tmp; \
 	fi
 	@echo Uploading OpeniBoot binary
-	@sudo ../tools/client/linux/loadibec openiboot.bin
-	@sleep 3
-	@echo Executing OpeniBoot binary 
-	@sudo ../tools/libirecovery/irecovery -c "go jump 0x41000000"
+	@sudo ../utils/syringe/loadibec openiboot.bin
 	@echo Done, OpeniBoot should be running
