@@ -18,13 +18,13 @@ typedef signed int intptr_t;
 #define OPENIBOOT_VERSION_DEBUG ""
 #endif
 
-#ifdef CONFIG_IPHONE
+#ifdef CONFIG_IPHONE_2G
 #define OPENIBOOT_VERSION_CONFIG " for iPhone 2G"
 #endif
 #ifdef CONFIG_IPOD
 #define OPENIBOOT_VERSION_CONFIG " for iPod touch 1G"
 #endif
-#ifdef CONFIG_3G
+#ifdef CONFIG_IPHONE_3G
 #define OPENIBOOT_VERSION_CONFIG " for iPhone 3G"
 #endif
 #ifdef CONFIG_IPHONE_4

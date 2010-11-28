@@ -1,7 +1,7 @@
 #ifndef HW_RADIO_H
 #define HW_RADIO_H
 
-#ifdef CONFIG_3G
+#ifdef CONFIG_IPHONE_3G
 #define RADIO_GPIO_BB_RESET 0x700
 #define RADIO_GPIO_RADIO_ON 0x1507
 #define RADIO_GPIO_BB_ON 0x3

@@ -764,8 +764,8 @@ static int syrah_init() {
 
 	setCommandMode(ON);
 
-#ifdef CONFIG_3G
-	gpio_pin_output(LCD_GPIO_3G_ENABLE, 0);
+#ifdef CONFIG_IPHONE_3G
+	gpio_pin_output(LCD_GPIO_IPHONE_3G_ENABLE, 0);
 #endif
 
 	gpio_pin_output(LCD_GPIO_MPL_RX_ENABLE, 0);
@@ -781,11 +781,11 @@ static int syrah_init() {
 	transmitCommandOnSPI1(0x36, 0x8);
 	udelay(15000);
 #endif
-#ifdef CONFIG_3G
+#ifdef CONFIG_IPHONE_3G
 	togglePixelClock(ON);
 	transmitCommandOnSPI1(0x6D, 0x0);
 #endif
-#ifdef CONFIG_IPHONE
+#ifdef CONFIG_IPHONE_2G
 	transmitCommandOnSPI1(0x6D, 0x40);
 #endif
 
@@ -1056,7 +1056,7 @@ static void togglePixelClock(OnOff swt) {
 	}
 }
 
-#ifdef CONFIG_3G
+#ifdef CONFIG_IPHONE_3G
 static int detect_lcd_gpio_config() {
 	static int hasDetected = FALSE;
 	static int detectedConfig = 0;
@@ -1074,7 +1074,7 @@ static int detect_lcd_gpio_config() {
 static void resetLCD() {
 	int altResetDirection = FALSE;
 
-#ifdef CONFIG_3G
+#ifdef CONFIG_IPHONE_3G
 	if(detect_lcd_gpio_config() < 3)
 		altResetDirection = TRUE;
 #endif

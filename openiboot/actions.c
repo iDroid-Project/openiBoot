@@ -109,7 +109,7 @@ struct atag_iphone_nand {
 };
 
 #define ATAG_IPHONE_WIFI_TYPE_2G 0
-#define ATAG_IPHONE_WIFI_TYPE_3G 1
+#define ATAG_IPHONE_WIFI_TYPE_IPHONE_3G 1
 #define ATAG_IPHONE_WIFI_TYPE_IPOD 2
 
 struct atag_iphone_wifi {
@@ -243,7 +243,7 @@ static void setup_wifi_tags()
 
 static void setup_prox_tag()
 {
-#ifdef CONFIG_3G
+#ifdef CONFIG_IPHONE_3G
 	uint8_t* prox_cal;
 	int prox_cal_size;
 
@@ -266,7 +266,7 @@ static void setup_prox_tag()
 
 static void setup_mt_tag()
 {
-#ifndef CONFIG_IPHONE
+#ifndef CONFIG_IPHONE_2G
 	uint8_t* cal;
 	int cal_size;
 

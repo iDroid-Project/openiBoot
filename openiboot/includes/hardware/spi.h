@@ -44,7 +44,7 @@
 #define GPIO_SPI2_CS1 0x705
 #endif
 
-#ifdef CONFIG_IPHONE
+#ifdef CONFIG_IPHONE_2G
 #define GPIO_SPI2_CS0 0x705
 #endif
 
@@ -60,7 +60,7 @@
 
 #define GPIO_SPI1_CS0 0x1800
 
-#ifdef CONFIG_3G
+#ifdef CONFIG_IPHONE_3G
 #define GPIO_SPI0_CS1 0x705
 #define GPIO_SPI0_CS2 0x706
 #endif

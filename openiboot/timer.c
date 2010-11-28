@@ -41,7 +41,7 @@ static void timer_init_rtc() {
 int timer_setup() {
 #if defined(CONFIG_IPHONE_4) || defined(CONFIG_IPAD)
 	// Let's just assume this is timer setup...
-	// Why? It sets TicksPerSec, 2G/3G timer_setup did that, too.
+	// Why? It sets TicksPerSec, 2G/IPHONE_3G timer_setup did that, too.
 	int jep = 1;
 	if (jep) {
 		SET_REG(0xBF500004, GET_REG(0xBF500004) | 0x80000000);
