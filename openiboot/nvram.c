@@ -3,6 +3,8 @@
 #include "util.h"
 #include "nor.h"
 
+#ifndef CONFIG_A4 // More stuff needed for A4
+
 static uint8_t* bank1Data;
 static uint8_t* bank2Data;
 
@@ -278,3 +280,5 @@ int nvram_setup() {
 
 	return 0;
 }
+
+#endif //CONFIG_A4

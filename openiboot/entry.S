@@ -1,4 +1,4 @@
-#include "hardware/s5l8900.h"
+#include "hardware/platform.h"
 #include "hardware/interrupt.h"
 #include "hardware/edgeic.h"
 #include "hardware/arm.h"

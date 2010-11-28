@@ -2,6 +2,7 @@
 #include "openiboot-asmhelpers.h"
 #include "hardware/power.h"
 #include "hardware/usb.h"
+#include "hardware/platform.h"
 #include "acm.h"
 #include "usb.h"
 #include "commands.h"

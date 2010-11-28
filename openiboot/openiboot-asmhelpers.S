@@ -1,4 +1,4 @@
-#include "hardware/s5l8900.h"
+#include "hardware/platform.h"
 #include "hardware/arm.h"
 
 .include "openiboot.S.h"
@@ -364,6 +364,7 @@ SwapTask:
 	STR R0, [R1]	
 	BX LR
 
+.thumb_func
 .global task_stop
 .global StartTask
 
@@ -376,7 +377,7 @@ StartTask:
 	MOV R0, R5
 	BLX R4
 
-	BLX task_stop
+	BL task_stop
 
 	@ We shouldn't get here, because the main thread is
 	@ never started. So umm, what do we do? Just let

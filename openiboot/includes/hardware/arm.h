@@ -1,8 +1,6 @@
 #ifndef HW_ARM_H
 #define HW_ARM_H
 
-#include "hardware/s5l8900.h"
-
 // Control registers
 #define ARM11_CPSR_FIQDISABLE 0x40
 #define ARM11_CPSR_IRQDISABLE 0x80
@@ -110,10 +108,7 @@
 #define ARM11_PeripheralPortSize1GB 20
 #define ARM11_PeripheralPortSize2GB 21
 
-#if defined(CONFIG_IPHONE_4) || defined(CONFIG_IPAD)
 #define ARM_A8_AuxControl_SPECULATIVEACCESSAXI 0x8
-#endif
-
 
 #endif
 

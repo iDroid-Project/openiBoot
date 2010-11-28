@@ -4,6 +4,7 @@
 #include "util.h"
 #include "hardware/power.h"
 #include "hardware/usb.h"
+#include "hardware/platform.h"
 #include "timer.h"
 #include "clock.h"
 #include "tasks.h"

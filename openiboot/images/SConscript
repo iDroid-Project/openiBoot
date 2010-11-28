@@ -1,0 +1,31 @@
+Import('*')
+
+#
+# Build file for bin2c, and image headers.
+#
+
+bin2c = henv.Program('bin2c', ['bin2c.c'])
+
+def generate_actions(source, target, env, for_sig=False, **kw):
+	Depends(target, bin2c)
+	return "%s < %s > %s" % (str(bin2c[0]), source[0], target[0])
+
+env.Append(BUILDERS = {'Bin2C': Builder(generator=generate_actions)})
+
+images = [
+	'ConsolePNG.h',
+	'ConsoleSelectedPNG.h',
+	'HeaderPNG.h',
+	'iPhoneOSPNG.h',
+	'iPhoneOSSelectedPNG.h',
+	'AndroidOSSelectedPNG.h',
+	'AndroidOSPNG.h',
+	'installerLogoPNG.h',
+	'installerBarEmptyPNG.h',
+	'installerBarFullPNG.h',
+	]
+
+for i in images:
+	j = i.replace('PNG.h', '.png')
+	t = env.Bin2C(i, j)
+	Default(t)

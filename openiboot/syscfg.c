@@ -3,6 +3,8 @@
 #include "nor.h"
 #include "util.h"
 
+#ifndef CONFIG_A4 // TODO: Syscfg for A4
+
 #define SCFG_MAGIC 0x53436667
 #define CNTB_MAGIC 0x434e5442
 #define SCFG_LOCATION 0x4000
@@ -97,3 +99,5 @@ uint8_t* syscfg_get_entry(uint32_t type, int* size)
 
 	return NULL;
 }
+
+#endif //CONFIG_A4

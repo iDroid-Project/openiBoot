@@ -32,6 +32,8 @@
 #include "uart.h"
 #include "hardware/radio.h"
 
+#ifndef CONFIG_A4
+
 #if defined(OPENIBOOT_INSTALLER)
 #include "images/installerBarEmptyPNG.h"
 #include "images/installerBarFullPNG.h"
@@ -1353,10 +1355,11 @@ void cmd_piezo_play(int argc, char** argv) {
 }
 
 #endif
+
+#endif //CONFIG_A4
 OPIBCommand CommandList[] = 
 	{
-#if !defined(CONFIG_IPHONE_4) && !defined(CONFIG_IPAD)
-// Bwahaha, disabling every commands. Safety first!
+#ifndef CONFIG_A4 // Bwahaha, disabling every commands. Safety first!
 		{"install", "install openiboot onto the device", cmd_install},
 		{"uninstall", "uninstall openiboot from the device", cmd_uninstall},
 		{"images_install", "install a nor image", cmd_images_install},
@@ -1465,6 +1468,6 @@ OPIBCommand CommandList[] =
 #ifdef OPENIBOOT_INSTALLER
 		{"progress", "Set the install progress.", cmd_progress},
 #endif
-#endif //IPHONE_4
+#endif // CONFIG_A4
 		{NULL, NULL}
 	};

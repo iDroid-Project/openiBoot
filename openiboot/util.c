@@ -1,5 +1,5 @@
 #include "openiboot.h"
-#include "hardware/s5l8900.h"
+#include "hardware/platform.h"
 #include "uart.h"
 #include "util.h"
 #include "openiboot-asmhelpers.h"

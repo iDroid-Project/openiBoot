@@ -2,7 +2,7 @@
 #define CLOCK_H
 
 #include "openiboot.h"
-#include "hardware/clock1.h"
+#include "hardware/clock.h"
 
 typedef enum Clock0ConfigCode {
 	Clock0ConfigCode0 = 0,

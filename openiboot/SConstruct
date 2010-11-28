@@ -1,0 +1,78 @@
+#
+# The root build file for OpeniBoot.
+#
+
+#
+# Configuration, change this stuff
+#
+version="0.2"
+# /Configuration
+
+SConscript([
+	'scons/ARMEnvironment.SConscript',
+	'scons/Git.SConscript',
+	])
+Import('*')
+
+henv = Environment()
+Export('henv')
+
+henv.Append(CPPFLAGS = ['-g'])
+
+env = ARMEnvironment()
+env.Append(CPPDEFINES=[
+	'OPENIBOOT_VERSION='+version,
+	'OPENIBOOT_VERSION_BUILD='+GetGitCommit(),
+	])
+Export('env')
+
+def localize(env, ls):
+	return [File(f) for f in ls]
+env.AddMethod(localize, "Localize")
+
+base_src = env.Localize([
+	'acm.c',
+	'actions.c',
+	'commands.c',
+	'framebuffer.c',
+	'images.c',
+	'malloc.c',
+	'menu.c',
+	'nvram.c',
+	'openiboot.c',
+	'printf.c',
+	'scripting.c',
+	'sha1.c',
+	'stb_image.c',
+	'syscfg.c',
+	'tasks.c',
+	'usb.c',
+	'util.c',
+	'openiboot-asmhelpers.S',
+	'entry.S',
+	])
+Export('base_src')
+
+# Build Host Modules
+henv.SConscript([
+	'images/SConscript',
+	'mk8900image/SConscript',
+	])
+
+# Build Modules
+env.SConscript([
+	'hfs/SConscript',
+	'radio-pmb8876/SConscript',
+	'radio-pmb8878/SConscript',
+	'plat-s5l8900/SConscript',
+	'plat-a4/SConscript',
+	])
+
+# 'all' Target
+Import('*')
+all = Action(
+	iphone_3g_openiboot_img3 +
+	iphone_2g_openiboot_img3 +
+	ipod_1g_openiboot_img3
+	)
+Default(all)

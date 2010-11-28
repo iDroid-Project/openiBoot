@@ -8,6 +8,8 @@
 #include "printf.h"
 #include "util.h"
 
+#ifndef CONFIG_A4 // TODO: Sort out FTL/NAND for A4
+
 int scriptCommand(char* command){
     int argc;
 	char** argv = tokenize(command, &argc);
@@ -163,3 +165,5 @@ void startScripting(char* loadedFrom)
 	free(bufferLine);
 	free(address);
 }
+
+#endif //CONFIG_A4

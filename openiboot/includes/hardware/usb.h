@@ -1,8 +1,6 @@
 #ifndef HW_USB_H
 #define HW_USB_H
 
-#include "hardware/s5l8900.h"
-
 // Maximums supported by OIB
 #define USB_NUM_ENDPOINTS	6
 #define USB_NUM_FIFOS		15
