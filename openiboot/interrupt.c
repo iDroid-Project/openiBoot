@@ -122,3 +122,27 @@ int interrupt_disable(int irq_no) {
 	return 0;
 }
 
+#if defined(CONFIG_IPHONE_4) || defined(CONFIG_IPAD)
+int interrupt_set_int_type(int irq_no, uint8_t type) {
+	if(irq_no >= VIC_MaxInterrupt) {
+		return -1;
+	}
+
+	int vic = (irq_no >> 5);
+	int irq = (irq_no & 0x1F);
+
+	EnterCriticalSection();
+	if (type & 1) {
+		SET_REG(VIC0 + VICINTSELECT + (vic << 16), GET_REG(VIC0 + VICINTSELECT + (vic << 16)) | 1 << irq);
+		EnableCPUFIQ();
+	} else {
+		SET_REG(VIC0 + VICINTSELECT + (vic << 16), GET_REG(VIC0 + VICINTSELECT + (vic << 16)) & ~(1 << irq));
+	}
+	LeaveCriticalSection();
+
+	if (type & 2)
+		return -1; // edge not supported
+
+	return 0;
+}
+#endif

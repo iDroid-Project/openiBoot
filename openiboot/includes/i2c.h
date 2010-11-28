@@ -21,6 +21,7 @@ typedef enum I2CState {
 } I2CState;
 
 
+#if !defined(CONFIG_IPHONE_4) && !defined(CONFIG_IPAD)
 typedef struct I2CInfo {
 	uint32_t field_0;
 	uint32_t frequency;
@@ -48,6 +49,32 @@ typedef struct I2CInfo {
 	uint32_t register_1C;
 	uint32_t register_20;
 } I2CInfo;
+#else
+typedef struct I2CInfo {
+	uint32_t unkn0;
+	uint32_t unkn1;
+	int is_write;
+	uint32_t address;
+	int operation_result;
+	I2CState state;
+	const uint8_t* registers;
+	int bufferLen;
+	uint8_t* buffer;
+	uint32_t iic_scl_gpio;
+	uint32_t iic_sda_gpio;
+	uint8_t interrupt;
+	uint32_t register_0;
+	uint32_t register_8;
+	uint32_t register_C;
+	uint32_t register_10;
+	uint32_t register_14;
+	uint32_t register_18;
+	uint32_t register_20;
+	uint32_t register_24;
+	// This is NOT in iBoot. Added because it's easier to handle.
+	uint8_t clockgate;
+} I2CInfo;
+#endif
 
 int i2c_setup();
 I2CError i2c_rx(int bus, int iicaddr, const uint8_t* registers, int num_regs, void* buffer, int len);
