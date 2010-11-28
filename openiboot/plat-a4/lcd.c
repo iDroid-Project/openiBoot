@@ -8,7 +8,7 @@ Window* currentWindow;
 
 volatile uint32_t* CurFramebuffer;
 
-static int numWindows = 0;
+//static int numWindows = 0;
 uint32_t NextFramebuffer = 0;
 
 static int calculateStrideLen(ColorSpace colorSpace, int extra, int width) {
@@ -120,7 +120,7 @@ static void vline_rgb565(Framebuffer* framebuffer, int start, int line_no, int l
 	}
 }
 
-static void setWindow(int window, int wordSetting, int zero1, ColorSpace colorSpace, int width1, uint32_t framebuffer, int zero2, int width2, int zero3, int height) {
+/*static void setWindow(int window, int wordSetting, int zero1, ColorSpace colorSpace, int width1, uint32_t framebuffer, int zero2, int width2, int zero3, int height) {
 	int nibblesPerPixel;
 
 	switch(colorSpace) {
@@ -177,7 +177,7 @@ static void setWindow(int window, int wordSetting, int zero1, ColorSpace colorSp
 	SET_REG(windowBase + 12, size);
 	SET_REG(windowBase, hspan);
 	SET_REG(windowBase + 16, qlen);
-}
+}*/
 
 void lcd_window_address(int window, uint32_t framebuffer) {
 	uint32_t windowBase;
@@ -204,7 +204,7 @@ void lcd_window_address(int window, uint32_t framebuffer) {
 	SET_REG(windowBase + 8, framebuffer);
 }
 
-static void setLayer(int window, int zero0, int zero1) {
+/*static void setLayer(int window, int zero0, int zero1) {
 	uint32_t data = zero0 << 16 | zero1;
 	switch(window) {
 		case 1:
@@ -223,7 +223,7 @@ static void setLayer(int window, int zero0, int zero1) {
 			SET_REG(LCD + 0xCC, data);
 			break;
 	}
-}
+}*/
 
 
 
@@ -244,7 +244,7 @@ static void createFramebuffer(Framebuffer* framebuffer, uint32_t framebufferAddr
 	}
 }
 
-static Window* createWindow(int zero0, int zero1, int width, int height, ColorSpace colorSpace) {
+/*static Window* createWindow(int zero0, int zero1, int width, int height, ColorSpace colorSpace) {
 	Window* newWindow;
 	int currentWindowNo = numWindows;
 
@@ -298,7 +298,7 @@ static Window* createWindow(int zero0, int zero1, int width, int height, ColorSp
 	newWindow->created = TRUE;
 
 	return newWindow;
-}
+}*/
 
 void framebuffer_hook() {
         Window* newWindow;

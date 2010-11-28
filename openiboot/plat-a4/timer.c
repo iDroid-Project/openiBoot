@@ -23,12 +23,12 @@ const TimerRegisters HWTimers[] = {
 
 TimerInfo Timers[7];
 
-static void timerIRQHandler(uint32_t token);
-static void callTimerHandler(int timer_id, uint32_t flags);
+//static void timerIRQHandler(uint32_t token);
+//static void callTimerHandler(int timer_id, uint32_t flags);
 
 int RTCHasInit;
 
-static void timer_init_rtc() {
+/*static void timer_init_rtc() {
 	SET_REG(TIMER + TIMER_UNKREG0, TIMER_UNKREG0_RESET1);
 	SET_REG(TIMER + TIMER_UNKREG2, TIMER_UNKREG2_RESET);
 	SET_REG(TIMER + TIMER_UNKREG1, TIMER_UNKREG1_RESET);
@@ -36,7 +36,7 @@ static void timer_init_rtc() {
 	SET_REG(TIMER + TIMER_UNKREG3, TIMER_UNKREG3_RESET);
 	SET_REG(TIMER + TIMER_UNKREG0, TIMER_UNKREG0_RESET2);
 	RTCHasInit = TRUE;
-}
+}*/
 
 int timer_setup() {
 	// Let's just assume this is timer setup...
@@ -170,13 +170,13 @@ int timer_on_off(int timer_id, OnOff on_off) {
 	}
 }
 
-static void timerIRQHandler(uint32_t token) {
+/*static void timerIRQHandler(uint32_t token) {
 	//dump_memory(0x3e200000, 0x100);
 
-	/* this function does not implement incrementing a counter at dword_18022B28 like Apple's */
+	// this function does not implement incrementing a counter at dword_18022B28 like Apple's 
 	uint32_t stat = GET_REG(TIMER + TIMER_IRQSTAT);
 
-	/* signal timer is being handled */
+	// signal timer is being handled 
 	volatile register uint32_t discard = GET_REG(TIMER + TIMER_IRQLATCH); discard --;
 
 	if(stat & TIMER_SPECIALTIMER_BIT0) {
@@ -192,11 +192,11 @@ static void timerIRQHandler(uint32_t token) {
 		callTimerHandler(i, stat >> (8 * (NUM_TIMERS - i - 1)));
 	}
 
-	/* signal timer has been handled */
+	// signal timer has been handled 
 	SET_REG(TIMER + TIMER_IRQLATCH, stat);
-}
+}*/
 
-static void callTimerHandler(int timer_id, uint32_t flags) {
+/*static void callTimerHandler(int timer_id, uint32_t flags) {
 	if((flags & (1 << 2)) != 0) {
 		if(Timers[timer_id].handler1)
 			Timers[timer_id].handler1();
@@ -211,7 +211,7 @@ static void callTimerHandler(int timer_id, uint32_t flags) {
 		if(Timers[timer_id].handler2)
 			Timers[timer_id].handler2();
 	}
-}
+}*/
 
 uint64_t timer_get_system_microtime() {
         uint64_t ticks;

@@ -24,6 +24,7 @@ env.Append(CPPDEFINES=[
 	'OPENIBOOT_VERSION='+version,
 	'OPENIBOOT_VERSION_BUILD='+GetGitCommit(),
 	])
+env.Append(CPPFLAGS = ['-Wall', '-Werror'])
 Export('env')
 
 def localize(env, ls):
@@ -67,12 +68,3 @@ env.SConscript([
 	'plat-s5l8900/SConscript',
 	'plat-a4/SConscript',
 	])
-
-# 'all' Target
-Import('*')
-all = Action(
-	iphone_3g_openiboot_img3 +
-	iphone_2g_openiboot_img3 +
-	ipod_1g_openiboot_img3
-	)
-Default(all)

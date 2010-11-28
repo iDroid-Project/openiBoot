@@ -1444,8 +1444,8 @@ static int win32munmap(void* ptr, size_t size) {
 #define ACQUIRE_LOCK(l)      (wdt_disable(), EnterCriticalSection(), 0)
 #define RELEASE_LOCK(l)      (LeaveCriticalSection(), wdt_enable(), 0)
 #else
-#define ACQUIRE_LOCK(l)		(0)
-#define RELEASE_LOCK(l)		(0)
+#define ACQUIRE_LOCK(l)		
+#define RELEASE_LOCK(l)		
 #endif
 #define PTHREAD_MUTEX_INITIALIZER 0
 
