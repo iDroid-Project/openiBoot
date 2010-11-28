@@ -6,26 +6,27 @@ Import('*')
 
 bin2c = henv.Program('bin2c', ['bin2c.c'])
 
-def generate_actions(source, target, env, for_sig=False, **kw):
+def generate_actions(source, target, env, for_signature=False):
 	Depends(target, bin2c)
-	return "%s < %s > %s" % (str(bin2c[0]), source[0], target[0])
+	return "%s %s < %s > %s" % (str(bin2c[0]), env['BASE'], source[0], target[0])
 
 env.Append(BUILDERS = {'Bin2C': Builder(generator=generate_actions)})
 
 images = [
-	'ConsolePNG.h',
-	'ConsoleSelectedPNG.h',
-	'HeaderPNG.h',
-	'iPhoneOSPNG.h',
-	'iPhoneOSSelectedPNG.h',
-	'AndroidOSSelectedPNG.h',
-	'AndroidOSPNG.h',
-	'installerLogoPNG.h',
-	'installerBarEmptyPNG.h',
-	'installerBarFullPNG.h',
+	'Console',
+	'ConsoleSelected',
+	'Header',
+	'iPhoneOS',
+	'iPhoneOSSelected',
+	'AndroidOSSelected',
+	'AndroidOS',
+	'installerLogo',
+	'installerBarEmpty',
+	'installerBarFull',
 	]
 
 for i in images:
-	j = i.replace('PNG.h', '.png')
-	t = env.Bin2C(i, j)
+	j = i + '.png'
+	k = i + 'PNG.h'
+	t = env.Bin2C(k, j, BASE=('data' + i + 'PNG'))
 	Default(t)
