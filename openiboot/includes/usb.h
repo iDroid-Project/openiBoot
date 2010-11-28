@@ -246,8 +246,8 @@ typedef int (*USBSetupHandler)(USBSetupPacket *packet);
 #define USB_SYNCH_FRAME 12
 
 USBState usb_state();
-int usb_setup();
-int usb_start(USBEnumerateHandler hEnumerate, USBStartHandler hStart);
+int usb_setup(USBEnumerateHandler hEnumerate, USBStartHandler hStart);
+int usb_start();
 int usb_shutdown();
 
 int usb_install_ep_handler(int endpoint, USBDirection direction, USBEndpointHandler handler, uint32_t token);
