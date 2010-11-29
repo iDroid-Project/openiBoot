@@ -3,12 +3,11 @@
 #
 
 def ARMEnvironment(*a, **kw):
-	env = Environment(tools=['gcc', 'gnulink', 'gas', 'ar'], *a, **kw)
-	plat_flags = ['-mlittle-endian', '-mfpu=vfp', '-mthumb', '-mthumb-interwork']
+	env = Environment(tools=['gas', 'gcc', 'gnulink', 'ar'], *a, **kw)
+	plat_flags = ['-mlittle-endian', '-mfpu=vfp', '-mthumb', '-mthumb-interwork', '-fPIC']
 	env.Append(CPPPATH = ['#includes'])
-	env.Append(ASFLAGS = plat_flags+['-Lincludes'])
 	env.Append(CPPFLAGS = plat_flags+['-nostdlib'])
-	env.Append(LINKFLAGS = plat_flags+['-nostdlib', '--format=binary'])
+	env.Append(LINKFLAGS = plat_flags+['-nostdlib', '--nostdlib', '-Ttext=0x0'])
 	env.Append(LIBS = ['gcc'])
 
 	if not env.has_key("CROSS"):

@@ -3,9 +3,46 @@
 #include <string.h>
 #define BUFFERSIZE (1024*1024)
 
+#ifdef __APPLE__
+#include <gelf.h>
+#else
+#include <linux/elf.h>
+#endif
+
+char createImage(char* inElf, size_t inElfSize, char** outImage, size_t* outImageSize) {
+	Elf32_Ehdr* elf_hdr = (Elf32_Ehdr*) inElf;
+	size_t maxmem;
+
+	if(strncmp(elf_hdr->e_ident, ELFMAG, 4) != 0 ) {
+		return 0;
+	}
+
+	Elf32_Phdr* phdrs = (Elf32_Phdr*) (inElf + elf_hdr->e_phoff);
+	int i;
+
+	maxmem = 0;
+	for(i = 0; i < elf_hdr->e_phnum; i++) {
+		int memExtent = phdrs[i].p_vaddr + phdrs[i].p_memsz - elf_hdr->e_entry;
+		if(maxmem < memExtent) {
+			maxmem = memExtent;
+		}
+	}
+
+	*outImageSize = maxmem;
+	*outImage = (char*) malloc(*outImageSize);
+	memset(*outImage, 0, *outImageSize);
+	for(i = 0; i < elf_hdr->e_phnum; i++) {
+		memcpy(*outImage + phdrs[i].p_vaddr - elf_hdr->e_entry, inElf + phdrs[i].p_offset, phdrs[i].p_filesz);
+	}
+
+	return 1;
+}
+
 int main(int argc, char* argv[]) {
-	char* inFileData;
-	size_t inFileSize;
+	char* inElf;
+	size_t inElfSize;
+	char* outImage;
+	size_t outImageSize;
 	init_libxpwn();
 
 	if(argc < 3) {
@@ -59,15 +96,24 @@ int main(int argc, char* argv[]) {
 		newFile = outFile;
 	}
 
-	inFileSize = (size_t) inFile->getLength(inFile);
-	inFileData = (char*) malloc(inFileSize);
-	inFile->read(inFile, inFileData, inFileSize);
+	inElfSize = (size_t) inFile->getLength(inFile);
+	inElf = (char*) malloc(inElfSize);
+	inFile->read(inFile, inElf, inElfSize);
 	inFile->close(inFile);
 
-	newFile->write(newFile, inFileData, inFileSize);
+	if(!createImage(inElf, inElfSize, &outImage, &outImageSize)) {
+		outImage = inElf;
+		outImageSize = inElfSize;
+	} else {
+		free(inElf);
+	}
+
+	newFile->write(newFile, outImage, outImageSize);
 	newFile->close(newFile);
 
-	free(inFileData);
+
+
+	free(outImage);
 
 	return 0;
 }
