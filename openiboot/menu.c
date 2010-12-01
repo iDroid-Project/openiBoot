@@ -1,5 +1,6 @@
 #ifndef SMALL
 #ifndef NO_STBIMAGE
+#ifndef CONFIG_A4 // TODO: Fix for A4
 
 #include "openiboot.h"
 #include "lcd.h"
@@ -315,6 +316,7 @@ int menu_setup(int timeout, int defaultOS) {
 	return 0;
 }
 
+#endif
 #endif
 #endif
 

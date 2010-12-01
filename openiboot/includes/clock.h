@@ -2,7 +2,7 @@
 #define CLOCK_H
 
 #include "openiboot.h"
-#include "hardware/clock1.h"
+#include "hardware/clock.h"
 
 typedef enum Clock0ConfigCode {
 	Clock0ConfigCode0 = 0,
@@ -36,12 +36,12 @@ typedef enum FrequencyBase {
 	FrequencyBaseDisplay,
 	FrequencyBaseFixed,
 	FrequencyBaseTimebase,
-	#ifdef CONFIG_IPHONE_4
+	#if defined(CONFIG_IPHONE_4) || defined(CONFIG_IPAD)
 	FrequencyBaseUsbPhy,
 	#endif
 } FrequencyBase;
 
-#ifndef CONFIG_IPHONE_4
+#if !defined(CONFIG_IPHONE_4) && !defined(CONFIG_IPAD)
 int clock_set_bottom_bits_38100000(Clock0ConfigCode code);
 int clock_setup();
 void clock_gate_switch(uint32_t gate, OnOff on_off);

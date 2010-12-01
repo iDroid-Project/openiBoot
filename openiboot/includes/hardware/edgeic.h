@@ -1,8 +1,6 @@
 #ifndef HW_EDGEIC_H
 #define HW_EDGEIC_H
 
-#include "hardware/s5l8900.h"
-
 // Devices
 #define EDGEIC 0x38E02000
 

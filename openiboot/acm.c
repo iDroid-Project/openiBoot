@@ -2,6 +2,7 @@
 #include "openiboot-asmhelpers.h"
 #include "hardware/power.h"
 #include "hardware/usb.h"
+#include "hardware/platform.h"
 #include "acm.h"
 #include "usb.h"
 #include "commands.h"
@@ -256,12 +257,10 @@ void acm_start()
 {
 	task_init(&acm_parse_task, "ACM");
 
-	usb_setup();
+	usb_setup(acm_enumerate, acm_started);
 	usb_install_ep_handler(ACM_EP_SEND, USBIn, acm_sent, 0);
 	usb_install_ep_handler(ACM_EP_RECV, USBOut, acm_received, 0);
 	usb_install_setup_handler(acm_setup);
-	
-	usb_start(acm_enumerate, acm_started);
 }
 
 void acm_stop()

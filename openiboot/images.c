@@ -9,6 +9,8 @@
 #include "hfs/bdev.h"
 #include "ftl.h"
 
+#ifndef CONFIG_A4
+
 static const uint32_t NOREnd = 0xFC000;
 
 Image* imageList = NULL;
@@ -769,3 +771,4 @@ int images_verify(Image* image) {
 	return retVal;
 }
 
+#endif // CONFIG_A4

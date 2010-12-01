@@ -1,0 +1,14 @@
+Import("*")
+
+hfs_src = env.Localize([
+	'bdev.c',
+	'btree.c',
+	'catalog.c',
+	'extents.c',
+	'fastunicodecompare.c',
+	'fs.c',
+	'rawfile.c',
+	'utility.c',
+	'volume.c',
+	])
+Export('hfs_src')

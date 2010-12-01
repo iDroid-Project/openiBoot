@@ -1,4 +1,5 @@
 #include "actions.h"
+#include "hardware/platform.h"
 #include "openiboot-asmhelpers.h"
 #include "arm.h"
 #include "lcd.h"
@@ -12,6 +13,8 @@
 #include "syscfg.h"
 
 #define MACH_APPLE_IPHONE 1506
+
+#ifndef CONFIG_A4 // TODO: FS required for A4
 
 /* this code is adapted from http://www.simtec.co.uk/products/SWLINUX/files/booting_article.html, which is distributed under the BSD license */
 
@@ -446,3 +449,4 @@ void boot_linux_from_files()
 	boot_linux("console=tty root=/dev/ram0 init=/init rw");
 }
 #endif
+#endif // CONFIG_A4

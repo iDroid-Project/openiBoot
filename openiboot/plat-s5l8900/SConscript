@@ -1,0 +1,40 @@
+Import("*")
+
+env = env.Clone()
+env.Append(CPPPATH = [Dir('includes')])
+env.Append(ASFLAGS = ['-L'+str(Dir('includes'))])
+env.Append(CPPDEFINES = ['CONFIG_S5L8900'])
+
+plat_s5l8900_src = env.Localize([
+	'accel.c',
+	'aes.c',
+	'arm.c',
+	'buttons.c',
+	'chipid.c',
+	'clock.c',
+	'dma.c',
+	'event.c',
+	'gpio.c',
+	'i2c.c',
+	'interrupt.c',
+	'lcd.c',
+	'miu.c',
+	'mmu.c',
+	'nand.c',
+	'ftl.c',
+	'nor.c',
+	'pmu.c',
+	'power.c',
+	'sdio.c',
+	'spi.c',
+	'timer.c',
+	'uart.c',
+	'vibrator.c',
+	'wdt.c',
+	'wlan.c',
+	]) + hfs_src
+Export('plat_s5l8900_src')
+
+env.SConscript('iPhone3G.SConscript', 'env')
+env.SConscript('iPhone2G.SConscript', 'env')
+env.SConscript('iPod1G.SConscript', 'env')

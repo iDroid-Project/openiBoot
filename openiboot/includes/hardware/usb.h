@@ -1,8 +1,6 @@
 #ifndef HW_USB_H
 #define HW_USB_H
 
-#include "hardware/s5l8900.h"
-
 // Maximums supported by OIB
 #define USB_NUM_ENDPOINTS	6
 #define USB_NUM_FIFOS		15
@@ -28,7 +26,7 @@
 #define USB_OTGCLOCKGATE 0x18
 #define USB_PHYCLOCKGATE 0x1D
 #define USB_INTERRUPT 0xD
-#define USB_TURNAROUND 0xB
+#define USB_TURNAROUND 0x5
 #elif defined(USB_PHY_2G)
 #define USB_OTGCLOCKGATE 0x18
 #define USB_PHYCLOCKGATE 0x19
@@ -182,6 +180,8 @@
 #define GINTMSK_OEP (1 << 19)
 #define GINTMSK_DISCONNECT (1 << 29)
 
+#define GOTGINT_SESENDDET	(1 << 2)
+
 #define FIFO_DEPTH_SHIFT 16
 
 #define GNPTXFSTS_GET_TXQSPCAVAIL(x) GET_BITS(x, 16, 8)
@@ -253,6 +253,7 @@
 #define USB_EPCON_STALL			(1 << 21)
 #define USB_EPCON_TYPE_MASK		0x3
 #define USB_EPCON_TYPE_SHIFT	18
+#define USB_EPCON_NAKSTS		(1 << 17)
 #define USB_EPCON_ACTIVE		(1 << 15)
 #define USB_EPCON_NEXTEP_MASK	0xF
 #define USB_EPCON_NEXTEP_SHIFT	11

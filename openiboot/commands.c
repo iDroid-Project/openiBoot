@@ -29,6 +29,85 @@
 #include "als.h"
 #include "piezo.h"
 #include "vibrator.h"
+#include "uart.h"
+#include "hardware/radio.h"
+
+#ifndef CONFIG_A4
+
+#if defined(OPENIBOOT_INSTALLER)
+#include "images/installerBarEmptyPNG.h"
+#include "images/installerBarFullPNG.h"
+
+static uint32_t *cmd_progress_empty = NULL;
+static int cmd_progress_empty_width, cmd_progress_empty_height;
+static uint32_t *cmd_progress_full = NULL;
+static int cmd_progress_full_width, cmd_progress_full_height;
+
+void cmd_progress(int argc, char **argv)
+{
+	if(argc != 2)
+	{
+		bufferPrintf("Usage: %s <percentage>\n", argv[0]);
+		return;		
+	}
+
+	int x,y,w;
+	int percent = parseNumber(argv[1]);
+
+	if(cmd_progress_empty == NULL)
+		cmd_progress_empty = framebuffer_load_image(
+				datainstallerBarEmptyPNG, sizeof(datainstallerBarEmptyPNG),
+				&cmd_progress_empty_width, &cmd_progress_empty_height, 0);
+		
+	if(cmd_progress_full == NULL)
+		cmd_progress_full = framebuffer_load_image(
+				datainstallerBarFullPNG, sizeof(datainstallerBarFullPNG),
+				&cmd_progress_full_width, &cmd_progress_full_height, 0);
+
+	x = (framebuffer_width()-cmd_progress_empty_width)/2;
+	y = 2*((framebuffer_height()-cmd_progress_empty_height)/3);
+	w = (percent*cmd_progress_full_width)/100;
+
+	if(percent < 0)
+	{
+		framebuffer_fill_rect(0, x, y, cmd_progress_empty_width, cmd_progress_empty_height);
+	}
+	else if(percent > 100)
+	{
+		int left = ((percent-100)%120)-20;
+		int right = left + 20;
+		if(left < 0)
+			left = 0;
+		if(right > 100)
+			right = 100;
+
+		left = (left*cmd_progress_full_width)/100;
+		right = (right*cmd_progress_full_width)/100;
+
+		if(right < 100)
+			framebuffer_draw_image(cmd_progress_empty, x, y,
+					cmd_progress_empty_width, cmd_progress_empty_height);	
+		
+		framebuffer_draw_image_clip(cmd_progress_full, x, y,
+				cmd_progress_full_width, cmd_progress_full_height,
+				right, cmd_progress_full_height);
+
+		if(left > 0)
+			framebuffer_draw_image_clip(cmd_progress_empty, x, y,
+					cmd_progress_empty_width, cmd_progress_empty_height,
+					left, cmd_progress_empty_height);
+	}
+	else
+	{	
+		framebuffer_draw_image(cmd_progress_empty, x, y,
+				cmd_progress_empty_width, cmd_progress_empty_height);	
+
+		framebuffer_draw_image_clip(cmd_progress_full, x, y,
+				cmd_progress_full_width, cmd_progress_full_height,
+				w, cmd_progress_full_height);
+	}
+}
+#endif
 
 void cmd_help(int argc, char** argv) {
     OPIBCommand* curCommand = CommandList;
@@ -1276,10 +1355,11 @@ void cmd_piezo_play(int argc, char** argv) {
 }
 
 #endif
+
+#endif //CONFIG_A4
 OPIBCommand CommandList[] = 
 	{
-#ifndef CONFIG_IPHONE_4
-// Bwahaha, disabling every commands. Safety first!
+#ifndef CONFIG_A4 // Bwahaha, disabling every commands. Safety first!
 		{"install", "install openiboot onto the device", cmd_install},
 		{"uninstall", "uninstall openiboot from the device", cmd_uninstall},
 		{"images_install", "install a nor image", cmd_images_install},
@@ -1337,7 +1417,7 @@ OPIBCommand CommandList[] =
 		{"wlan_prog_helper", "program wlan fw helper", cmd_wlan_prog_helper},
 		{"wlan_prog_real", "program wlan fw", cmd_wlan_prog_real},
 #ifndef CONFIG_IPOD
-#ifndef CONFIG_IPHONE_4
+#if !defined(CONFIG_IPHONE_4) && !defined(CONFIG_IPAD)
 		{"radio_send", "send a command to the baseband", cmd_radio_send},
 		{"radio_nvram_list", "list entries in baseband NVRAM", cmd_radio_nvram_list},
 		{"radio_register", "register with a cellular network", cmd_radio_register},
@@ -1388,6 +1468,6 @@ OPIBCommand CommandList[] =
 #ifdef OPENIBOOT_INSTALLER
 		{"progress", "Set the install progress.", cmd_progress},
 #endif
-#endif //IPHONE_4
+#endif // CONFIG_A4
 		{NULL, NULL}
 	};

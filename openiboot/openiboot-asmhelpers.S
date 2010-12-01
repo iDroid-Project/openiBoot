@@ -1,4 +1,4 @@
-#include "hardware/s5l8900.h"
+#include "hardware/platform.h"
 #include "hardware/arm.h"
 
 .include "openiboot.S.h"
@@ -238,7 +238,7 @@ CleanDataCacheLineMVA:
 	BX	LR
 
 CleanCPUDataCache:
-#ifndef CONFIG_IPHONE_4
+#if !defined(CONFIG_IPHONE_4) && !defined(CONFIG_IPAD)
 	MOV	R0, #0
 	MCR	p15, 0,	R0, c7, c10
 #else
@@ -259,7 +259,7 @@ CleanCPUDataCache_2:
 	BX	LR
 
 InvalidateCPUDataCache:
-#ifndef CONFIG_IPHONE_4
+#if !defined(CONFIG_IPHONE_4) && !defined(CONFIG_IPAD)
 	MOV	R0, #0
 	MCR	p15, 0,	R0, c7, c6
 #else
@@ -278,7 +278,7 @@ InvalidateCPUDataCache_2:
 	BX	LR
 
 CleanAndInvalidateCPUDataCache:
-#ifndef CONFIG_IPHONE_4
+#if !defined(CONFIG_IPHONE_4) && !defined(CONFIG_IPAD)
 	MOV	R0, #0
 	MCR	p15, 0,	R0, c7, c14
 #else
@@ -306,7 +306,7 @@ ClearCPUCaches:
 	BX	LR
 
 Reboot:
-#ifndef CONFIG_IPHONE_4
+#if !defined(CONFIG_IPHONE_4) && !defined(CONFIG_IPAD)
 	LDR	R0, =WDT_CTRL
 	MOV	R1, #WDT_ENABLE
 	STR	R1, [R0]
@@ -364,6 +364,7 @@ SwapTask:
 	STR R0, [R1]	
 	BX LR
 
+.thumb_func
 .global task_stop
 .global StartTask
 
@@ -376,7 +377,7 @@ StartTask:
 	MOV R0, R5
 	BLX R4
 
-	BLX task_stop
+	BL task_stop
 
 	@ We shouldn't get here, because the main thread is
 	@ never started. So umm, what do we do? Just let
