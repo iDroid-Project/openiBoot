@@ -38,6 +38,8 @@ void pmu_write_oocshdwn(int data) {
 }
 
 void pmu_poweroff() {
+	OpenIBootShutdown();
+
 	lcd_shutdown();
 
 	//pmu_write_oocshdwn(PMU_OOCSHDWN_GOSTBY);

@@ -144,6 +144,7 @@ extern TaskDescriptor* CurrentRunning;
 
 typedef void (*initfn_t)(void);
 typedef void (*exitfn_t)(void);
+typedef void (*mainfn_t)(void);
 
 #define BOOT_MODULE_INIT_SECTION	".init_modules_boot"
 #define MODULE_INIT_SECTION			".init_modules"
@@ -156,5 +157,9 @@ typedef void (*exitfn_t)(void);
 void init_boot_modules();
 void init_modules();
 void exit_modules();
+
+void OpenIBootShutdown();
+void OpenIBootConsole();
+extern mainfn_t OpenIBootMain;
 
 #endif

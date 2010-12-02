@@ -1,5 +1,7 @@
 #include "openiboot.h"
 #include "commands.h"
+#include "framebuffer.h"
+#include "util.h"
 #include "images/installerBarEmptyPNG.h"
 #include "images/installerBarFullPNG.h"
 #include "images/installerLogoPNG.h"
@@ -9,7 +11,7 @@ static int cmd_progress_empty_width, cmd_progress_empty_height;
 static uint32_t *cmd_progress_full = NULL;
 static int cmd_progress_full_width, cmd_progress_full_height;
 
-void installer_init()
+static void installer_init()
 {
 	framebuffer_setdisplaytext(FALSE);
 	framebuffer_clear();

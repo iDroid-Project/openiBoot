@@ -37,7 +37,7 @@ def build_target(env, name, fname, flag, sources, img3template=None):
 	env.Append(CPPDEFINES=[flag])
 
 	# Work out filenames
-	elf_name = '#' + fname + '_openiboot'
+	elf_name = '#' + fname
 	bin_name = elf_name + '.bin'
 	img3_name = elf_name + '.img3'
 
@@ -62,16 +62,28 @@ def build_target(env, name, fname, flag, sources, img3template=None):
 	return elf, bin, img3
 env.AddMethod(build_target, 'OpenIBootTarget')
 
+# Sources for menu
+menu_src = env.Localize([
+	'menu.c',
+	])
+Export('menu_src')
+
+# Sources for installer image
+installer_src = env.Localize([
+	'installer.c',
+	])
+Export('installer_src')
+
 # Base Target Sources
 base_src = env.Localize([
 	'init.c', # Must be linked BEFORE any modules with init functions
 	'acm.c',
+	'audiohw.c',
 	'actions.c',
 	'commands.c',
 	'framebuffer.c',
 	'images.c',
 	'malloc.c',
-	'menu.c',
 	'nvram.c',
 	'openiboot.c',
 	'printf.c',

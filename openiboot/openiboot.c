@@ -3,17 +3,11 @@
 #include "tasks.h"
 #include "util.h"
 
-int globalFtlHasBeenRestored = 0; 
-int received_file_size;
+mainfn_t OpenIBootMain = NULL;
 
-void OpenIBootStart()
+void OpenIBootConsole()
 {
-	platform_init();
-
-	init_boot_modules();
 	init_modules();
-
-	//startScripting("openiboot"); //start script mode if there is a file
 	bufferPrintf("  ___                   _ ____              _   \r\n");
 	bufferPrintf(" / _ \\ _ __   ___ _ __ (_) __ )  ___   ___ | |_ \r\n");
 	bufferPrintf("| | | | '_ \\ / _ \\ '_ \\| |  _ \\ / _ \\ / _ \\| __|\r\n");
@@ -23,14 +17,22 @@ void OpenIBootStart()
 	bufferPrintf("\r\n");
 	bufferPrintf("version: %s\r\n", OPENIBOOT_VERSION_STR);
 	DebugPrintf("                    DEBUG MODE\r\n");
+}
 
-//#if !defined(CONFIG_IPHONE_4) && !defined(CONFIG_IPAD)
-//	audiohw_postinit();
-//#endif
+void OpenIBootStart()
+{
+	platform_init();
+
+	OpenIBootMain = &OpenIBootConsole;
+	init_boot_modules();
+
+	OpenIBootMain();
 
 	tasks_run(); // Runs forever.
+}
 
+void OpenIBootShutdown()
+{
 	exit_modules();
-
 	platform_shutdown();
 }

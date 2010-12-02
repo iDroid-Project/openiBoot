@@ -8,7 +8,7 @@
 #define FTL_ID_V2 0x43303034
 #define FTL_ID_V3 0x43303035
 
-int globalFtlHasBeenRestored; /* global variable to tell wether a ftl_restore has been done*/
+int globalFtlHasBeenRestored = 0; /* global variable to tell wether a ftl_restore has been done*/
 
 int HasFTLInit = FALSE;
 int CleanFreeVb = FALSE;

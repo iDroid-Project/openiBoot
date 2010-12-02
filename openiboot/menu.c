@@ -352,7 +352,6 @@ int menu_setup(int timeout, int defaultOS) {
 		}
 
 		pmu_set_iboot_stage(0);
-		startScripting("linux"); //start script mode if there is a script file
 		boot_linux_from_files();
 #endif
 	}
@@ -408,7 +407,6 @@ void menu_init()
 					}
 				}	
 				pmu_set_iboot_stage(0);
-				//startScripting("linux"); //start script mode if there is a script file
 				boot_linux_from_files();
 #endif
 				break;
@@ -434,8 +432,15 @@ void menu_init()
 	}
 #endif
 #endif
+
+	OpenIBootConsole();
 }
-MODULE_INIT_BOOT(menu_init);
+
+static void menu_init_boot()
+{
+	OpenIBootMain = &menu_init;
+}
+MODULE_INIT_BOOT(menu_init_boot);
 
 #endif
 #endif

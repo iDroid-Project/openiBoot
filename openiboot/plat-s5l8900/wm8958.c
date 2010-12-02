@@ -24,6 +24,7 @@
 #include "clock.h"
 #include "dma.h"
 #include "util.h"
+#include "radio.h"
 #include "openiboot-asmhelpers.h"
 
 const void* pcm_buffer;
@@ -504,3 +505,16 @@ void audiohw_set_monitor(bool enable) {
     (void)enable;
 }
 #endif /* HAVE_RECORDING */
+
+
+
+void audiohw_set_speaker_vol(int vol)
+{
+#ifdef CONFIG_IPHONE_2G
+	loudspeaker_vol(vol);
+	bufferPrintf("Set loudspeaker volume to: %d\r\n", vol);
+
+	speaker_vol(vol);
+	bufferPrintf("Set speaker volume to: %d\r\n", vol);
+#endif
+}
