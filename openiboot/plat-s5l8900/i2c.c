@@ -1,4 +1,5 @@
 #include "openiboot.h"
+#include "commands.h"
 #include "i2c.h"
 #include "hardware/i2c.h"
 #include "util.h"
@@ -254,3 +255,40 @@ static void do_i2c(I2CInfo* i2c) {
 	}
 }
 
+void cmd_iic_read(int argc, char** argv) {
+	if(argc < 4) {
+		bufferPrintf("usage: %s <bus> <address> <register>\n", argv[0]);
+		return;
+	}
+
+
+	int bus = parseNumber(argv[1]);
+	int address = parseNumber(argv[2]);
+	uint8_t registers[1];
+	uint8_t out[1];
+
+	registers[0] = parseNumber(argv[3]);
+
+	int error = i2c_rx(bus, address, registers, 1, out, 1);
+	
+	bufferPrintf("result: %d, error: %d\r\n", (int) out[0], error);
+}
+COMMAND("iic_read", "read a IIC register", cmd_iic_read);
+
+void cmd_iic_write(int argc, char** argv) {
+	if(argc < 5) {
+		bufferPrintf("usage: %s <bus> <address> <register> <value>\r\n", argv[0]);
+		return;
+	}
+
+	uint8_t buffer[2];
+	int bus = parseNumber(argv[1]);
+	int address = parseNumber(argv[2]);
+	buffer[0] = parseNumber(argv[3]);
+	buffer[1] = parseNumber(argv[4]);
+
+	int error = i2c_tx(bus, address, buffer, 2);
+	
+	bufferPrintf("result: %d\r\n", error);
+}
+COMMAND("iic_write", "write a IIC register", cmd_iic_write);

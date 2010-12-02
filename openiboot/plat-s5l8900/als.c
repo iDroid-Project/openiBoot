@@ -1,4 +1,5 @@
 #include "openiboot.h"
+#include "commands.h"
 #include "als.h"
 #include "hardware/als.h"
 #include "i2c.h"
@@ -54,6 +55,12 @@ int als_setup()
 
 	return 0;
 }
+
+static void als_init()
+{
+	als_setup();
+}
+MODULE_INIT(als_init);
 
 void als_setchannel(int channel)
 {
@@ -187,3 +194,33 @@ static void als_clearint()
 	uint8_t buf = 0x80 | 0x40;
 	i2c_tx(ALS_I2C, ALS_ADDR, &buf, sizeof(buf)); 
 }
+
+void cmd_als(int argc, char** argv) {
+	bufferPrintf("data = %d\r\n", als_data());
+}
+COMMAND("als", "display ambient light sensor data", cmd_als);
+
+void cmd_als_channel(int argc, char** argv) {
+	if(argc < 2)
+	{
+		bufferPrintf("usage: %s <channel>\r\n", argv[0]);
+		return;
+	}
+
+	int channel = parseNumber(argv[1]);
+	bufferPrintf("Setting als channel to %d\r\n", channel);
+	als_setchannel(channel);
+}
+COMMAND("als_channel", "set channel to get ALS data from", cmd_als_channel);
+
+void cmd_als_en(int argc, char** argv) {
+	bufferPrintf("Enabling ALS interrupt.\r\n");
+	als_enable_interrupt();
+}
+COMMAND("als_en", "enable continuous reporting of ALS data", cmd_als_en);
+
+void cmd_als_dis(int argc, char** argv) {
+	bufferPrintf("Disabling ALS interrupt.\r\n");
+	als_disable_interrupt();
+}
+COMMAND("als_dis", "disable continuous reporting of ALS data", cmd_als_dis);

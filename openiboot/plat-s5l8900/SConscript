@@ -29,7 +29,6 @@ plat_s5l8900_src = env.Localize([
 	'spi.c',
 	'timer.c',
 	'uart.c',
-	'vibrator.c',
 	'wdt.c',
 	'wlan.c',
 	]) + hfs_src

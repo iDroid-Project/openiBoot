@@ -109,7 +109,7 @@ static void acm_parse(int32_t _amt)
 			strcpy(safeCommand, command);
 			int argc;
 			char** argv = tokenize(command, &argc);
-			OPIBCommand* curCommand = CommandList;
+			//OPIBCommand* curCommand = CommandList;
 
 			if(argc >= 3 && strcmp(argv[0], "sendfile") == 0)
 			{
@@ -137,7 +137,7 @@ static void acm_parse(int32_t _amt)
 			}
 			else
 			{
-				int success = FALSE;
+				/*int success = FALSE;
 				while(curCommand->name != NULL) {
 					if(strcmp(argv[0], curCommand->name) == 0) {
 						bufferPrintf("ACM: Starting: %s\n", safeCommand);
@@ -151,7 +151,13 @@ static void acm_parse(int32_t _amt)
 
 				if(!success) {
 					bufferPrintf("ACM: Unknown command: %s\r\n", safeCommand);
-				}
+				}*/
+
+				bufferPrintf("ACM: Starting %s\n", command);
+				if(command_run(argc, argv) == 0)
+					bufferPrintf("ACM: Done: %s\n", command);
+				else
+					bufferPrintf("ACM: Unknown command: %s\n", command);
 				
 				start = i+1;
 			}

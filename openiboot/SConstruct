@@ -25,6 +25,7 @@ env.Append(CPPDEFINES=[
 	'OPENIBOOT_VERSION_BUILD='+GetGitCommit(),
 	])
 env.Append(CPPFLAGS = ['-Wall', '-Werror', '-O3', '-Ttext=0x0'])
+env.Append(LINKFLAGS = ['-Wl,-e,_start'])
 Export('env')
 
 def localize(env, ls):
@@ -36,10 +37,15 @@ def build_target(env, name, fname, flag, sources, img3template=None):
 	env['OBJPREFIX'] = name + '_'	
 	env.Append(CPPDEFINES=[flag])
 
-	elf_name = fname + '_openiboot'
+	# Work out filenames
+	elf_name = '#' + fname + '_openiboot'
 	bin_name = elf_name + '.bin'
 	img3_name = elf_name + '.img3'
 
+	# Add Sentinel
+	sources = sources + ['#sentinel.c']
+
+	# Add Targets
 	elf = env.Program(elf_name, sources)
 	bin = env.Make8900Image(bin_name, elf)
 	if img3template is not None:
@@ -60,6 +66,7 @@ env.AddMethod(build_target, 'OpenIBootTarget')
 # Base Target Sources
 base_src = env.Localize([
 	'entry.S',
+	'init.c', # Must be linked BEFORE any modules with init functions
 	'acm.c',
 	'actions.c',
 	'commands.c',

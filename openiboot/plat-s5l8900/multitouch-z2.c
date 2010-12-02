@@ -1,6 +1,7 @@
 #include "openiboot.h"
 #include "openiboot-asmhelpers.h"
 #include "multitouch.h"
+#include "commands.h"
 #include "hardware/multitouch.h"
 #include "gpio.h"
 #include "timer.h"
@@ -1058,3 +1059,18 @@ int multitouch_ispoint_inside_region(uint16_t x, uint16_t y, int w, int h)
     
     return FALSE;
 }
+
+void cmd_multitouch_setup(int argc, char** argv)
+{
+	if(argc < 3)
+	{
+		bufferPrintf("%s <constructed fw> <constructed fw len>\r\n", argv[0]);
+		return;
+	}
+
+	uint8_t* constructedFW = (uint8_t*) parseNumber(argv[1]);
+	uint32_t constructedFWLen = parseNumber(argv[2]);
+
+	multitouch_setup(constructedFW, constructedFWLen);
+}
+COMMAND("multitouch_setup", "set up the multitouch chip", cmd_multitouch_setup);	

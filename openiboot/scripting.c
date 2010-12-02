@@ -14,21 +14,7 @@ int scriptCommand(char* command){
     int argc;
 	char** argv = tokenize(command, &argc);
 
-	OPIBCommand* curCommand = CommandList;
-
-	int success = FALSE;
-	while(curCommand->name != NULL) {
-		if(strcmp(argv[0], curCommand->name) == 0) {
-			curCommand->routine(argc, argv);
-			success = TRUE;
-			break;
-		}
-		curCommand++;
-	}
-
-	if(!success) {
-		bufferPrintf("unknown command: %s\r\n", command);
-	}
+	int success = (command_run(argc, argv) == 0)? TRUE: FALSE;
 
 	free(argv);
 	return success;

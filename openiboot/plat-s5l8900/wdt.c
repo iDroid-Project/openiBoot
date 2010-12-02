@@ -1,6 +1,7 @@
 #include "openiboot.h"
 #include "openiboot-asmhelpers.h"
 #include "wdt.h"
+#include "commands.h"
 #include "interrupt.h"
 #include "hardware/s5l8900.h"
 #include "util.h"
@@ -84,3 +85,9 @@ int wdt_counter()
 {
 	return count;
 }
+
+void cmd_wdt(int argc, char** argv)
+{
+	bufferPrintf("counter: %d\r\n", wdt_counter());
+}
+COMMAND("wdt", "display the current wdt stats", cmd_wdt);

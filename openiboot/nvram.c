@@ -1,4 +1,5 @@
 #include "openiboot.h"
+#include "commands.h"
 #include "nvram.h"
 #include "util.h"
 #include "nor.h"
@@ -280,5 +281,28 @@ int nvram_setup() {
 
 	return 0;
 }
+
+void cmd_printenv(int argc, char** argv) {
+	nvram_listvars();
+}
+COMMAND("printenv", "list the environment variables in nvram", cmd_printenv);
+
+void cmd_setenv(int argc, char** argv) {
+	if(argc < 3) {
+		bufferPrintf("Usage: %s <name> <value>\r\n", argv[0]);
+		return;
+	}
+
+	nvram_setvar(argv[1], argv[2]);
+	bufferPrintf("Set %s = %s\r\n", argv[1], argv[2]);
+}
+COMMAND("setenv", "sets an environment variable", cmd_setenv);
+
+void cmd_saveenv(int argc, char** argv) {
+	bufferPrintf("Saving environment, this may take awhile...\r\n");
+	nvram_save();
+	bufferPrintf("Environment saved\r\n");
+}
+COMMAND("saveenv", "saves the environment variables in nvram", cmd_saveenv);
 
 #endif //CONFIG_A4

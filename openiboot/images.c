@@ -1,4 +1,5 @@
 #include "openiboot.h"
+#include "commands.h"
 #include "images.h"
 #include "nor.h"
 #include "util.h"
@@ -770,5 +771,82 @@ int images_verify(Image* image) {
 
 	return retVal;
 }
+
+void cmd_install(int argc, char** argv) {
+	if((argc > 2 && argc < 4) || argc > 4)
+	{
+		bufferPrintf("Usage: %s <address> <len>\n", argv[0]);
+		return;
+	}
+
+	if(argc == 4)
+	{
+		uint32_t offset = parseNumber(argv[1]);
+		uint32_t len = parseNumber(argv[2]);
+		bufferPrintf("Installing OIB from 0x%08x:%d.\n", offset, len);
+		images_install((void*)offset, len, fourcc("ibot"), fourcc("ibox"));
+	}
+	else
+	{
+		bufferPrintf("Starting Install/Upgrade...\r\n");
+		images_install(&_start, (uint32_t)&OpenIBootEnd - (uint32_t)&_start, fourcc("ibot"), fourcc("ibox"));  
+	}
+}
+COMMAND("install", "install openiboot onto the device", cmd_install);
+
+void cmd_uninstall(int argc, char** argv) {
+    images_uninstall(fourcc("ibot"), fourcc("ibox"));
+}
+COMMAND("uninstall", "uninstall openiboot from the device", cmd_uninstall);
+
+void cmd_images_list(int argc, char** argv) {
+	images_list();
+}
+COMMAND("images_list", "list the images available on NOR", cmd_images_list);
+
+void cmd_images_read(int argc, char** argv) {
+	if(argc < 3) {
+		bufferPrintf("Usage: %s <type> <address>\r\n", argv[0]);
+		return;
+	}
+
+	Image* image = images_get(fourcc(argv[1]));
+	void* imageData;
+	size_t length = images_read(image, &imageData);
+	uint32_t address = parseNumber(argv[2]);
+	memcpy((void*)address, imageData, length);
+	free(imageData);
+	bufferPrintf("Read %d of %s to 0x%x - 0x%x\r\n", length, argv[1], address, address + length);
+}
+COMMAND("images_read", "read an image on NOR", cmd_images_read);
+
+void cmd_images_install(int argc, char** argv) {
+	if(argc < 4) {
+		bufferPrintf("Usage: %s <tag> <address> <len>\r\n", argv[0]);
+		return;
+	}
+
+	uint32_t tag = fourcc(argv[1]);
+	uint32_t address = parseNumber(argv[2]);
+	uint32_t len = parseNumber(argv[3]);
+
+	bufferPrintf("Installing image %s to 0x%08x:%d.\n", argv[1], address, len);
+	images_install((void*)address, len, tag, tag);
+	bufferPrintf("Done.\r\n");
+}
+COMMAND("images_install", "install a nor image", cmd_images_install);
+
+void cmd_images_uninstall(int argc, char** argv) {
+	if(argc < 4) {
+		bufferPrintf("Usage: %s <tag>\r\n", argv[0]);
+		return;
+	}
+
+	uint32_t tag = fourcc(argv[1]);
+	bufferPrintf("Uninstalling image %s.\n", argv[1]);
+	images_uninstall(tag, tag);
+	bufferPrintf("Done.\r\n");
+}
+COMMAND("images_uninstall", "uninstall a nor image", cmd_images_uninstall);
 
 #endif // CONFIG_A4

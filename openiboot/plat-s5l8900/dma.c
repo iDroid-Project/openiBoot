@@ -1,4 +1,5 @@
 #include "openiboot.h"
+#include "commands.h"
 #include "dma.h"
 #include "util.h"
 #include "hardware/dma.h"
@@ -375,3 +376,20 @@ static void dispatchRequest(volatile DMARequest *request, int controller, int ch
 		request->handler(1, controller, channel);
 }
 
+void cmd_dma(int argc, char** argv) {
+	if(argc < 4) {
+		bufferPrintf("Usage: %s <source> <dest> <size>\r\n", argv[0]);
+		return;
+	}
+
+	uint32_t source = parseNumber(argv[1]);
+	uint32_t dest = parseNumber(argv[2]);
+	uint32_t size = parseNumber(argv[3]);
+
+	int controller = 0;
+	int channel = 0;
+	bufferPrintf("dma_request: %d\r\n", dma_request(DMA_MEMORY, 4, 8, DMA_MEMORY, 4, 8, &controller, &channel, NULL));
+	bufferPrintf("dma_perform(controller: %d, channel %d): %d\r\n", controller, channel, dma_perform(source, dest, size, FALSE, &controller, &channel));
+	bufferPrintf("dma_finish(controller: %d, channel %d): %d\r\n", controller, channel, dma_finish(controller, channel, 500));
+}
+COMMAND("dma", "perform a DMA transfer", cmd_dma);

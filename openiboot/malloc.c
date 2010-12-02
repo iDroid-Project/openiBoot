@@ -1,9 +1,15 @@
 #include "openiboot.h"
+#include "commands.h"
 #include "hardware/platform.h"
 #include "util.h"
 #include "timer.h"
 #include "wdt.h"
 #include "openiboot-asmhelpers.h"
+
+void cmd_malloc_stats(int argc, char** argv) {
+	malloc_stats();
+}
+COMMAND("malloc_stats", "display malloc stats", cmd_malloc_stats);
 
 #define HAVE_MMAP 0
 #define MALLOC_FAILURE_ACTION { bufferPrintf("malloc failed!\r\n"); while(1); }

@@ -1,4 +1,5 @@
 #include "openiboot.h"
+#include "commands.h"
 #include "framebuffer.h"
 #include "lcd.h"
 #include "util.h"
@@ -365,3 +366,40 @@ void framebuffer_draw_rect_hgradient(int starting, int ending, int x, int y, int
 		level += step;
 	}
 }
+
+void cmd_text(int argc, char** argv) {
+	if(argc < 2) {
+		bufferPrintf("Usage: %s <on|off>\r\n", argv[0]);
+		return;
+	}
+
+	if(strcmp(argv[1], "on") == 0) {
+		framebuffer_setdisplaytext(ON);
+		bufferPrintf("Text display ON\r\n");
+	} else if(strcmp(argv[1], "off") == 0) {
+		framebuffer_setdisplaytext(OFF);
+		bufferPrintf("Text display OFF\r\n");
+	} else {
+		bufferPrintf("Unrecognized option: %s\r\n", argv[1]);
+	}
+}
+COMMAND("text", "turns text display on or off", cmd_text);
+
+void cmd_bgcolor(int argc, char** argv) {
+	if(argc < 4) {
+		bufferPrintf("Usage: %s <red> <green> <blue>\r\n", argv[0]);
+		return;
+	}
+
+	uint8_t red = parseNumber(argv[1]);
+	uint8_t green = parseNumber(argv[2]);
+	uint8_t blue = parseNumber(argv[3]);
+
+	lcd_fill((red << 16) | (green << 8) | blue);
+}
+COMMAND("bgcolor", "fill the framebuffer with a color", cmd_bgcolor);
+
+void cmd_clear(int argc, char** argv) {
+	framebuffer_clear();
+}
+COMMAND("clear", "clears the screen", cmd_clear);

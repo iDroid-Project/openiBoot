@@ -25,6 +25,7 @@
 #include "ftl.h"
 #include "scripting.h"
 #include "multitouch.h"
+#include "nvram.h"
 
 int globalFtlHasBeenRestored; /* global variable to tell wether a ftl_restore has been done*/
 
@@ -69,6 +70,49 @@ typedef enum MenuSelection {
 static MenuSelection Selection;
 
 volatile uint32_t* OtherFramebuffer;
+
+static int load_multitouch_images()
+{
+    #ifdef CONFIG_IPHONE_2G
+        Image* image = images_get(fourcc("mtza"));
+        if (image == NULL) {
+            return 0;
+        }
+        void* aspeedData;
+        size_t aspeedLength = images_read(image, &aspeedData);
+        
+        image = images_get(fourcc("mtzm"));
+        if(image == NULL) {
+            return 0;
+        }
+        
+        void* mainData;
+        size_t mainLength = images_read(image, &mainData);
+        
+        multitouch_setup(aspeedData, aspeedLength, mainData,mainLength);
+        free(aspeedData);
+        free(mainData);
+    #else
+        Image* image = images_get(fourcc("mtz2"));
+        if(image == NULL) {
+            return 0;
+        }
+        void* imageData;
+        size_t length = images_read(image, &imageData);
+        
+        multitouch_setup(imageData, length);
+        free(imageData);
+    #endif
+    return 1;
+}
+
+static void reset_tempos()
+{
+	framebuffer_setdisplaytext(FALSE);
+	nvram_setvar("opib-temp-os","0");
+	nvram_save();
+	framebuffer_setdisplaytext(TRUE);
+}
 
 static void drawSelectionBox() {
 	volatile uint32_t* oldFB = CurFramebuffer;
@@ -315,6 +359,83 @@ int menu_setup(int timeout, int defaultOS) {
 
 	return 0;
 }
+
+void menu_init()
+{
+	framebuffer_setdisplaytext(TRUE);
+	framebuffer_clear();
+	bufferPrintf("Loading openiBoot...");
+#ifndef SMALL
+#ifndef NO_STBIMAGE
+	int defaultOS = 0;
+	int tempOS = 0;
+	const char* hideMenu = nvram_getvar("opib-hide-menu");
+	const char* sDefaultOS = nvram_getvar("opib-default-os");
+	const char* sTempOS = nvram_getvar("opib-temp-os");
+	if(sDefaultOS)
+		defaultOS = parseNumber(sDefaultOS);
+	if(sTempOS)
+		tempOS = parseNumber(sTempOS);
+	if(tempOS>0) {	
+		switch (tempOS) {
+			case 1:
+				framebuffer_clear();
+				bufferPrintf("Loading iOS...\r\n");
+				reset_tempos();
+				Image* image = images_get(fourcc("ibox"));
+				if(image == NULL)
+					image = images_get(fourcc("ibot"));
+				void* imageData;
+				images_read(image, &imageData);
+				chainload((uint32_t)imageData);
+				break;
+			
+			case 2:
+				framebuffer_clear();
+				bufferPrintf("Loading iDroid...\r\n");
+				reset_tempos();
+#ifndef NO_HFS
+#ifndef CONFIG_IPOD
+				radio_setup();
+#endif
+				nand_setup();
+				fs_setup();
+				if(globalFtlHasBeenRestored) {
+					if(ftl_sync()) {
+						bufferPrintf("ftl synced successfully\r\n");
+					} else {
+						bufferPrintf("error syncing ftl\r\n");
+					}
+				}	
+				pmu_set_iboot_stage(0);
+				//startScripting("linux"); //start script mode if there is a script file
+				boot_linux_from_files();
+#endif
+				break;
+				
+			case 3:
+				framebuffer_clear();
+				bufferPrintf("Loading Console...\r\n");
+				reset_tempos();
+				hideMenu = "1";
+				break;
+		}
+	} else if(hideMenu && (strcmp(hideMenu, "1") == 0 || strcmp(hideMenu, "true") == 0)) {
+		bufferPrintf("Boot menu hidden. Use 'setenv opib-hide-menu false' and then 'saveenv' to unhide.\r\n");
+	} else {
+        	framebuffer_setdisplaytext(FALSE);
+        	isMultitouchLoaded = load_multitouch_images();
+		framebuffer_clear();
+		const char* sMenuTimeout = nvram_getvar("opib-menu-timeout");
+		int menuTimeout = -1;
+		if(sMenuTimeout)
+			menuTimeout = parseNumber(sMenuTimeout);
+		menu_setup(menuTimeout, defaultOS);
+	}
+#endif
+#endif
+}
+MODULE_INIT_BOOT(menu_init);
 
 #endif
 #endif

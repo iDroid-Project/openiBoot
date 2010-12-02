@@ -1,4 +1,5 @@
 #include "openiboot.h"
+#include "commands.h"
 #include "util.h"
 #include "accel.h"
 #include "i2c.h"
@@ -35,19 +36,19 @@ int accel_write_reg(int reg, int data, int verify) {
 		return -1;
 }
 
-int accel_setup()
+void accel_init()
 {
 	int whoami = accel_get_reg(ACCEL_WHOAMI);
 	if(whoami != ACCEL_WHOAMI_VALUE)
 	{
 		bufferPrintf("accel: incorrect whoami value\n");
-		return -1;
+		return;
 	}
 
 	accel_write_reg(ACCEL_CTRL_REG2, ACCEL_CTRL_REG2_BOOT, FALSE);
 	accel_write_reg(ACCEL_CTRL_REG1, ACCEL_CTRL_REG1_PD | ACCEL_CTRL_REG1_XEN | ACCEL_CTRL_REG1_YEN | ACCEL_CTRL_REG1_ZEN, FALSE);
-	return 0;
 }
+MODULE_INIT(accel_init);
 
 int accel_get_x()
 {
@@ -64,4 +65,11 @@ int accel_get_z()
 	return (signed char)(accel_get_reg(ACCEL_OUTZ));
 }
 
-
+void cmd_accel(int argc, char** argv) {
+	int x = accel_get_x();
+	int y = accel_get_y();
+	int z = accel_get_z();
+	
+	bufferPrintf("x: %d, y: %d, z: %d\r\n", x, y, z);
+}
+COMMAND("accel", "display accelerometer data", cmd_accel);

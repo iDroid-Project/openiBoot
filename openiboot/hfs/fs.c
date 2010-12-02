@@ -1,4 +1,5 @@
 #include "openiboot.h"
+#include "commands.h"
 #include "hfs/common.h"
 #include "hfs/bdev.h"
 #include "hfs/fs.h"
@@ -176,6 +177,7 @@ void fs_cmd_ls(int argc, char** argv) {
 	closeVolume(volume);
 	CLOSE(io);
 }
+COMMAND("fs_ls", "list files and folders", fs_cmd_ls);
 
 void fs_cmd_cat(int argc, char** argv) {
 	Volume* volume;
@@ -222,6 +224,7 @@ void fs_cmd_cat(int argc, char** argv) {
 	closeVolume(volume);
 	CLOSE(io);
 }
+COMMAND("fs_cat", "display a file", fs_cmd_cat);
 
 int fs_extract(int partition, const char* file, void* location) {
 	Volume* volume;
@@ -310,6 +313,7 @@ void fs_cmd_extract(int argc, char** argv) {
 	closeVolume(volume);
 	CLOSE(io);
 }
+COMMAND("fs_extract", "extract a file into memory", fs_cmd_extract);
 
 void fs_cmd_add(int argc, char** argv) {
 	Volume* volume;
@@ -352,6 +356,7 @@ void fs_cmd_add(int argc, char** argv) {
 		bufferPrintf("FTL sync error!\r\n");
 	}
 }
+COMMAND("fs_add", "store a file from memory", fs_cmd_add);
 
 ExtentList* fs_get_extents(int partition, const char* fileName) {
 	Volume* volume;
@@ -438,4 +443,10 @@ int fs_setup() {
 
 	return 0;
 }
+
+static void fs_init()
+{
+	fs_setup();
+}
+MODULE_INIT(fs_init);
 

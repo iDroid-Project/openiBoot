@@ -12,6 +12,7 @@ iphone_2g_src = [base_src,
 	'als.c',
 	'multitouch.c',
 	'wm8958.c',
+	'vibrator.c',
 	])]
 Export('iphone_2g_src')
 

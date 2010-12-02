@@ -1,4 +1,5 @@
 #include "openiboot.h"
+#include "commands.h"
 #include "nand.h"
 #include "hardware/nand.h"
 #include "timer.h"
@@ -371,6 +372,12 @@ int nand_setup() {
 
 	return 0;
 }
+
+static void nand_init()
+{
+	nand_setup();
+}
+MODULE_INIT(nand_init);
 
 static int transferFromFlash(void* buffer, int size) {
 	int controller = 0;
@@ -875,3 +882,113 @@ int nand_read_alternate_ecc(int bank, int page, uint8_t* buffer) {
 	return 0;
 }
 
+void cmd_nand_read(int argc, char** argv) {
+	if(argc < 4) {
+		bufferPrintf("Usage: %s <address> <bank> <page> [pages]\r\n", argv[0]);
+		return;
+	}
+
+	uint32_t address = parseNumber(argv[1]);
+	uint32_t bank = parseNumber(argv[2]);
+	uint32_t page = parseNumber(argv[3]);
+	uint32_t pages = 1;
+	if(argc >= 5) {
+		pages = parseNumber(argv[4]);
+	}
+
+	bufferPrintf("reading bank %d, pages %d - %d into %x\r\n", bank, page, page + pages - 1, address);
+	NANDData* Data = nand_get_geometry();
+	
+	while(pages > 0) {	
+		int ret = nand_read(bank, page, (uint8_t*) address, NULL, TRUE, FALSE);
+		if(ret != 0)
+			bufferPrintf("nand_read: %x\r\n", ret);
+
+		pages--;
+		page++;
+		address += Data->bytesPerPage;
+	}
+
+	bufferPrintf("done!\r\n");
+}
+COMMAND("nand_read", "read a page of NAND into RAM", cmd_nand_read);
+
+void cmd_nand_ecc(int argc, char** argv) {
+	if(argc < 3) {
+		bufferPrintf("Usage: %s <data> <ecc>\r\n", argv[0]);
+		return;
+	}
+
+	uint32_t address = parseNumber(argv[1]);
+	uint32_t ecc = parseNumber(argv[2]);
+
+	bufferPrintf("nand_calculate_ecc(%x, %x) = %d\r\n", address, ecc, nand_calculate_ecc((uint8_t*) address, (uint8_t*) ecc));
+}
+COMMAND("nand_ecc", "hardware ECC a page", cmd_nand_ecc);
+
+void cmd_nand_write(int argc, char** argv) {
+	if(argc < 6) {
+		bufferPrintf("Usage: %s <data> <spare> <bank> <page> <ecc>\r\n", argv[0]);
+		return;
+	}
+
+	uint32_t address = parseNumber(argv[1]);
+	uint32_t spare = parseNumber(argv[2]);
+	uint32_t bank = parseNumber(argv[3]);
+	uint32_t page = parseNumber(argv[4]);
+	uint32_t ecc = parseNumber(argv[5]);
+
+	bufferPrintf("nand_write(%d, %d, %x, %x, %d) = %d\r\n", bank, page, address, spare, ecc, nand_write(bank, page, (uint8_t*) address, (uint8_t*) spare, ecc));
+}
+COMMAND("nand_write", "write a page of NAND", cmd_nand_write);
+
+void cmd_nand_read_spare(int argc, char** argv) {
+	if(argc < 4) {
+		bufferPrintf("Usage: %s <address> <bank> <page> [pages]\r\n", argv[0]);
+		return;
+	}
+
+	uint32_t address = parseNumber(argv[1]);
+	uint32_t bank = parseNumber(argv[2]);
+	uint32_t page = parseNumber(argv[3]);
+	uint32_t pages = 1;
+	if(argc >= 5) {
+		pages = parseNumber(argv[4]);
+	}
+
+	bufferPrintf("reading bank %d, pages %d - %d spare into %x\r\n", bank, page, page + pages - 1, address);
+	NANDData* Data = nand_get_geometry();
+	
+	while(pages > 0) {	
+		int ret = nand_read(bank, page, NULL, (uint8_t*) address, FALSE, FALSE);
+		if(ret != 0)
+			bufferPrintf("nand_read: %x\r\n", ret);
+
+		pages--;
+		page++;
+		address += Data->bytesPerSpare;
+	}
+
+	bufferPrintf("done!\r\n");
+}
+COMMAND("nand_read_spare", "read a page of NAND's spare into RAM", cmd_nand_read_spare);
+
+void cmd_nand_erase(int argc, char** argv)
+{
+	if(argc < 3) {
+		bufferPrintf("Usage: %s <bank> <block> -- You probably don't want to do this.\r\n", argv[0]);
+		return;
+	}
+
+	uint32_t bank = parseNumber(argv[1]);
+	uint32_t block = parseNumber(argv[2]);
+
+	bufferPrintf("Erasing bank %d, block %d...\r\n", bank, block);
+	bufferPrintf("nand_erase: %d\r\n", nand_erase(bank, block));
+}
+COMMAND("nand_erase", "erase a NAND block", cmd_nand_erase);
+
+void cmd_nand_status(int agc, char** argv) {
+	bufferPrintf("nand status: %x\r\n", nand_read_status());
+}
+COMMAND("nand_status", "read NAND status", cmd_nand_status);

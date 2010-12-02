@@ -1,4 +1,5 @@
 #include "openiboot.h"
+#include "commands.h"
 #include "clock.h"
 #include "util.h"
 #include "hardware/clock.h"
@@ -283,3 +284,14 @@ void clock_set_sdiv(int sdiv) {
 	}
 }
 
+void cmd_frequency(int argc, char** argv) {
+	bufferPrintf("Clock frequency: %d Hz\r\n", clock_get_frequency(FrequencyBaseClock));
+	bufferPrintf("Memory frequency: %d Hz\r\n", clock_get_frequency(FrequencyBaseMemory));
+	bufferPrintf("Bus frequency: %d Hz\r\n", clock_get_frequency(FrequencyBaseBus));
+	bufferPrintf("Unknown frequency: %d Hz\r\n", clock_get_frequency(FrequencyBaseUnknown));
+	bufferPrintf("Peripheral frequency: %d Hz\r\n", clock_get_frequency(FrequencyBasePeripheral));
+	bufferPrintf("Display frequency: %d Hz\r\n", clock_get_frequency(FrequencyBaseDisplay));
+	bufferPrintf("Fixed frequency: %d Hz\r\n", clock_get_frequency(FrequencyBaseFixed));
+	bufferPrintf("Timebase frequency: %d Hz\r\n", clock_get_frequency(FrequencyBaseTimebase));
+}
+COMMAND("frequency", "display clock frequencies", cmd_frequency);

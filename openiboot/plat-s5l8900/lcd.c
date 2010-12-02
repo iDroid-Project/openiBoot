@@ -1,4 +1,5 @@
 #include "openiboot.h"
+#include "commands.h"
 #include "lcd.h"
 #include "power.h"
 #include "clock.h"
@@ -1288,3 +1289,14 @@ void lcd_set_backlight_level(int level) {
 	}
 }
 
+void cmd_backlight(int argc, char** argv) {
+	if(argc < 2) {
+		bufferPrintf("Usage: %s <0-45>\r\n", argv[0]);
+		return;
+	}
+
+	uint32_t level = parseNumber(argv[1]);
+	lcd_set_backlight_level(level);
+	bufferPrintf("backlight set to %d\r\n", level);
+}
+COMMAND("backlight", "set the backlight level", cmd_backlight);
