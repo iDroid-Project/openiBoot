@@ -43,10 +43,40 @@ OPIBCommand *command_get_next(OIBCommandIterator *_it)
 	return **_it;
 }
 
+char **command_parse(char *str, int *argc)
+{
+	while((*str == '\t') 
+		||(*str == ' '))
+		str++;
+
+	int len = strlen(str);
+	char *end = str + len;
+	char *ptr = str;
+	int quote = 0;
+	while(ptr < end)
+	{
+		if(*ptr == '"')
+			quote = !quote;
+		else if(*ptr == '#' && !quote)
+		{
+			*ptr = 0;
+			break;
+		}
+
+		ptr++;
+	}
+
+	return tokenize(str, argc);	
+}
+
 int command_run(int argc, char **argv)
 {
 	OIBCommandIterator cmdIt = NULL;
 	OPIBCommand *cmd;
+
+	if(*argv[0] == 0)
+		return 0; // Hack to prevent empty lines erroring out.
+
 	while((cmd = command_get_next(&cmdIt)))
 	{
 		if(strcmp(argv[0], cmd->name) == 0) {

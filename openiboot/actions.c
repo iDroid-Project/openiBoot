@@ -472,11 +472,22 @@ static void setup_init()
 {
 	memset(&rootEntry, 0, sizeof(rootEntry));
 	rootEntry.type = kBootAuto;
+	rootEntry.title = "";
 	rootEntry.list_ptr.next = &rootEntry;
 	rootEntry.list_ptr.prev = &rootEntry;
 	currentEntry = &rootEntry;
 }
 MODULE_INIT_BOOT(setup_init);
+
+BootEntry *setup_root()
+{
+	return &rootEntry;
+}
+
+BootEntry *setup_current()
+{
+	return currentEntry;
+}
 
 void setup_title(const char *title)
 {
@@ -491,11 +502,19 @@ void setup_title(const char *title)
 				return;
 			}
 		}
+
+		entry = entry->list_ptr.next;
 	}
+
+	BootEntry *prev = rootEntry.list_ptr.prev;
 
 	entry = malloc(sizeof(BootEntry));
 	memset(entry, 0, sizeof(BootEntry));
 	entry->title = strdup(title);
+	entry->list_ptr.prev = prev;
+	entry->list_ptr.next = &rootEntry;
+	rootEntry.list_ptr.prev = entry;
+	prev->list_ptr.next = entry;
 	currentEntry = entry;
 }
 

@@ -145,7 +145,7 @@ char **script_split_file(char *_data, uint32_t _sz, uint32_t *_count)
 int script_run_command(char* command)
 {
     int argc;
-	char** argv = tokenize(command, &argc);
+	char** argv = command_parse(command, &argc);
 	int success = command_run(argc, argv);
 	free(argv);
 	return success;
@@ -156,6 +156,7 @@ int script_run_commands(char** cmds, uint32_t count)
 	int i;
 	for(i = 0; i < count; i++)
 	{
+		bufferPrintf("scripting: Running %s.\n", cmds[i]);
 		int ret = script_run_command(cmds[i]);
 		if(ret != 0)
 			return ret;
@@ -167,6 +168,7 @@ int script_run_commands(char** cmds, uint32_t count)
 int script_run_file(char *path)
 {
 	uint32_t size, count;
+
 	char *data = (char*)script_load_file(path, &size);
 	if(!data)
 		return -1;
@@ -179,7 +181,6 @@ int script_run_file(char *path)
 	}
 	
 	int ret = script_run_commands(cmds, count);
-
 	free(cmds);
 	free(data);
 	return ret;

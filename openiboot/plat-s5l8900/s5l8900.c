@@ -96,7 +96,6 @@ void platform_init()
 
 	audiohw_init();
 #endif
-    isMultitouchLoaded = 0;
 
 	framebuffer_setdisplaytext(TRUE);
 }

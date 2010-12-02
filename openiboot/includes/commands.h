@@ -15,6 +15,7 @@ typedef OPIBCommand **OIBCommandIterator;
 
 extern OPIBCommand *command_list_init;
 OPIBCommand *command_get_next(OIBCommandIterator*);
+char **command_parse(char *str, int *argc);
 int command_run(int argc, char **argv);
 
 #define COMMAND(_name, _desc, _fn) OPIBCommand _fn##_struct = { \
