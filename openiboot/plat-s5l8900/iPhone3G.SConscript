@@ -4,7 +4,7 @@ Import('*')
 # iPhone 3G
 #
 
-iphone_3g_src = [base_src,
+iphone_3g_src = [
 	plat_s5l8900_src,
 	radio_pmb8878_src,
 	env.Localize([

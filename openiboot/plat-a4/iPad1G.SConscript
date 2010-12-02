@@ -4,8 +4,7 @@ Import('*')
 # iPad 1G
 #
 
-ipad_1g_src = [base_src,
-			plat_a4_src,
+ipad_1g_src = [plat_a4_src,
 			env.Localize([
 			])]
 Export('ipad_1g_src')

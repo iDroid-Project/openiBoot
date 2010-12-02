@@ -1,7 +1,8 @@
-#include "hardware/arm.h"
-#include "hardware/s5l8900.h"
-#include "arm.h"
+#include "openiboot.h"
 #include "openiboot-asmhelpers.h"
+#include "hardware/arm.h"
+#include "hardware/platform.h"
+#include "arm.h"
 
 int arm_setup() {
 	CleanAndInvalidateCPUDataCache();
@@ -13,8 +14,10 @@ int arm_setup() {
 	GiveFullAccessCP10CP11();
 	EnableVFP();
 
+#ifndef CONFIG_A4
 	// Map the peripheral port of size 128 MB to 0x38000000
 	WritePeripheralPortMemoryRemapRegister(PeripheralPort | ARM11_PeripheralPortSize128MB);
+#endif
 
 	InvalidateCPUDataCache();
 	ClearCPUInstructionCache();
@@ -22,17 +25,27 @@ int arm_setup() {
 	WriteControlRegisterConfigData(ReadControlRegisterConfigData() | ARM11_Control_INSTRUCTIONCACHE);	// Enable instruction cache
 	WriteControlRegisterConfigData(ReadControlRegisterConfigData() | ARM11_Control_DATACACHE);		// Enable data cache
 
+#ifndef CONFIG_A4
 	WriteControlRegisterConfigData((ReadControlRegisterConfigData()
 		& ~(ARM11_Control_STRICTALIGNMENTCHECKING))				// Disable strict alignment fault checking
 		| ARM11_Control_UNALIGNEDDATAACCESS);					// Enable unaligned data access operations
+#else
+	WriteControlRegisterConfigData((ReadControlRegisterConfigData()
+		& ~(ARM11_Control_STRICTALIGNMENTCHECKING)));				// Disable strict alignment fault checking
+#endif
+
 
 	WriteControlRegisterConfigData(ReadControlRegisterConfigData() | ARM11_Control_BRANCHPREDICTION); 	// Enable branch prediction
 
+#ifndef CONFIG_A4
 	// Enable return stack, dynamic branch prediction, static branch prediction
 	WriteAuxiliaryControlRegister(ReadAuxiliaryControlRegister()
 		| ARM11_AuxControl_RETURNSTACK
 		| ARM11_AuxControl_DYNAMICBRANCHPREDICTION
 		| ARM11_AuxControl_STATICBRANCHPREDICTION);
+#else
+	WriteAuxiliaryControlRegister(ReadAuxiliaryControlRegister() | ARM_A8_AuxControl_SPECULATIVEACCESSAXI);
+#endif
 	return 0;
 }
 

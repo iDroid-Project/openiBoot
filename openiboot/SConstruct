@@ -25,7 +25,6 @@ env.Append(CPPDEFINES=[
 	'OPENIBOOT_VERSION_BUILD='+GetGitCommit(),
 	])
 env.Append(CPPFLAGS = ['-Wall', '-Werror', '-O3', '-Ttext=0x0'])
-env.Append(LINKFLAGS = ['-Wl,-e,_start'])
 Export('env')
 
 def localize(env, ls):
@@ -65,7 +64,6 @@ env.AddMethod(build_target, 'OpenIBootTarget')
 
 # Base Target Sources
 base_src = env.Localize([
-	'entry.S',
 	'init.c', # Must be linked BEFORE any modules with init functions
 	'acm.c',
 	'actions.c',
@@ -84,7 +82,6 @@ base_src = env.Localize([
 	'tasks.c',
 	'usb.c',
 	'util.c',
-	'openiboot-asmhelpers.S',
 	])
 Export('base_src')
 
@@ -99,6 +96,5 @@ env.SConscript([
 	'hfs/SConscript',
 	'radio-pmb8876/SConscript',
 	'radio-pmb8878/SConscript',
-	'plat-s5l8900/SConscript',
-	'plat-a4/SConscript',
+	'arch-arm/SConscript',
 	])

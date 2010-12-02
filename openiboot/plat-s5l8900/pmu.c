@@ -12,7 +12,13 @@
 static uint32_t GPMemCachedPresent = 0;
 static uint8_t GPMemCache[PMU_MAXREG + 1];
 
-void pmu_init()
+static void pmu_init_boot()
+{
+	pmu_charge_settings(TRUE, FALSE, FALSE);
+}
+MODULE_INIT_BOOT(pmu_init_boot);
+
+static void pmu_init()
 {
 	pmu_set_iboot_stage(0);
 }

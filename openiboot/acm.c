@@ -268,6 +268,7 @@ void acm_start()
 	usb_install_ep_handler(ACM_EP_RECV, USBOut, acm_received, 0);
 	usb_install_setup_handler(acm_setup);
 }
+MODULE_INIT(acm_start);
 
 void acm_stop()
 {

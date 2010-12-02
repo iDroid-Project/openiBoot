@@ -4,8 +4,7 @@ Import('*')
 # iPhone 4G
 #
 
-iphone_4_src = [base_src,
-				plat_a4_src,
+iphone_4_src = [plat_a4_src,
 				env.Localize([
 				])]
 Export('iphone_4_src')

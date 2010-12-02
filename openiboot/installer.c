@@ -2,6 +2,7 @@
 #include "commands.h"
 #include "images/installerBarEmptyPNG.h"
 #include "images/installerBarFullPNG.h"
+#include "images/installerLogoPNG.h"
 
 static uint32_t *cmd_progress_empty = NULL;
 static int cmd_progress_empty_width, cmd_progress_empty_height;
