@@ -14,7 +14,7 @@ int arm_setup() {
 	GiveFullAccessCP10CP11();
 	EnableVFP();
 
-#ifndef ARM_A8
+#ifdef ARM11
 	// Map the peripheral port of size 128 MB to 0x38000000
 	WritePeripheralPortMemoryRemapRegister(PeripheralPort | ARM11_PeripheralPortSize128MB);
 #endif
@@ -25,13 +25,13 @@ int arm_setup() {
 	WriteControlRegisterConfigData(ReadControlRegisterConfigData() | ARM11_Control_INSTRUCTIONCACHE);	// Enable instruction cache
 	WriteControlRegisterConfigData(ReadControlRegisterConfigData() | ARM11_Control_DATACACHE);		// Enable data cache
 
-#ifndef ARM_A8
+#ifdef ARM11
 	WriteControlRegisterConfigData((ReadControlRegisterConfigData()
 		& ~(ARM11_Control_STRICTALIGNMENTCHECKING))				// Disable strict alignment fault checking
 		| ARM11_Control_UNALIGNEDDATAACCESS);					// Enable unaligned data access operations
 #endif
 
-#ifdef ARM11
+#ifdef ARM_A8
 	WriteControlRegisterConfigData((ReadControlRegisterConfigData()
 		& ~(ARM11_Control_STRICTALIGNMENTCHECKING)));				// Disable strict alignment fault checking
 #endif
