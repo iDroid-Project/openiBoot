@@ -303,6 +303,7 @@ static void createFramebuffer(Framebuffer* framebuffer, uint32_t framebufferAddr
 void framebuffer_hook() {
         Window* newWindow;
         newWindow = (Window*) malloc(sizeof(Window));
+	memset(newWindow, 0, sizeof(Window));
         newWindow->created = FALSE;
 	#if defined(CONFIG_IPAD)
         newWindow->width = 1024;
