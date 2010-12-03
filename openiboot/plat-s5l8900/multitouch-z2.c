@@ -1,6 +1,7 @@
 #include "openiboot.h"
 #include "openiboot-asmhelpers.h"
 #include "multitouch.h"
+#include "commands.h"
 #include "hardware/multitouch.h"
 #include "gpio.h"
 #include "timer.h"
@@ -8,6 +9,7 @@
 #include "spi.h"
 #include "syscfg.h"
 #include "framebuffer.h"
+#include "nor.h"
 
 static void multitouch_atn(uint32_t token);
 
@@ -1058,3 +1060,53 @@ int multitouch_ispoint_inside_region(uint16_t x, uint16_t y, int w, int h)
     
     return FALSE;
 }
+
+void cmd_multitouch_setup(int argc, char** argv)
+{
+	if(argc < 3)
+	{
+		bufferPrintf("%s <constructed fw> <constructed fw len>\r\n", argv[0]);
+		return;
+	}
+
+	uint8_t* constructedFW = (uint8_t*) parseNumber(argv[1]);
+	uint32_t constructedFWLen = parseNumber(argv[2]);
+
+	multitouch_setup(constructedFW, constructedFWLen);
+}
+COMMAND("multitouch_setup", "set up the multitouch chip", cmd_multitouch_setup);
+
+void cmd_multitouch_fw_install(int argc, char** argv)
+{
+    if(argc < 3)
+    {
+        bufferPrintf("%s <constructed fw> <constructed fw len>\r\n", argv[0]);
+        return;
+    }
+    
+    uint8_t* fwData = (uint8_t*) parseNumber(argv[1]);
+    uint32_t fwLen = parseNumber(argv[2]);
+    
+    //get latest apple image
+    Image* image = images_get_last_apple_image();
+    if (image == NULL) {
+        bufferPrintf("**ABORTED** Last image position cannot be read\r\n");
+        return;
+    }
+    uint32_t offset = image->offset+image->padded;
+    
+    if(offset >= 0xfc000 || (offset + fwLen) >= 0xfc000) {
+        bufferPrintf("**ABORTED** Image of size %d at %x would overflow NOR!\r\n", fwLen, offset);
+        return;
+    }    
+    
+    bufferPrintf("Writing 0x%x - 0x%x to 0x%x...\r\n", fwData, fwData + fwLen, offset);
+    nor_write((void*)fwData, offset, fwLen);
+    bufferPrintf("Zephyr2 firmware installed.\r\n");
+}
+COMMAND("multitouch_fw_install", "install multitouch firmware", cmd_multitouch_fw_install);
+
+void cmd_multitouch_fw_uninstall(int argc, char** argv) {
+	images_uninstall(fourcc("mtz2"), fourcc("mtz2"));
+}
+COMMAND("multitouch_fw_uninstall","uninstall multitouch firmware", cmd_multitouch_fw_uninstall);

@@ -1,4 +1,5 @@
 #include "openiboot.h"
+#include "commands.h"
 #include "nor.h"
 #include "hardware/nor.h"
 #include "util.h"
@@ -57,16 +58,16 @@ static NorInfo* probeNOR() {
 	spi_tx(0, wrsrCommand, 2, TRUE, 0);
 	gpio_pin_output(GPIO_SPI0_CS0, 1);
 #else
-	SET_REG16(NOR + COMMAND, COMMAND_UNLOCK);
+	SET_REG16(NOR + NOR_COMMAND, COMMAND_UNLOCK);
 	SET_REG16(NOR + LOCK, LOCK_UNLOCK);
 
-	SET_REG16(NOR + COMMAND, COMMAND_IDENTIFY);
+	SET_REG16(NOR + NOR_COMMAND, COMMAND_IDENTIFY);
 	GET_REG16(NOR);
 	GET_REG16(NOR);
 	uint16_t vendor = GET_REG16(NOR + VENDOR);
 	uint16_t device = GET_REG16(NOR + DEVICE);
 
-	SET_REG16(NOR + COMMAND, COMMAND_LOCK);
+	SET_REG16(NOR + NOR_COMMAND, COMMAND_LOCK);
 	SET_REG16(NOR, DATA_MODE);
 	GET_REG16(NOR);
 	GET_REG16(NOR);
@@ -243,10 +244,10 @@ int nor_write_word(uint32_t offset, uint16_t data) {
 		nor_serial_write_byte(offset + 1, (data >> 8) & 0xFF);
 	}
 #else
-	SET_REG16(NOR + COMMAND, COMMAND_UNLOCK);
+	SET_REG16(NOR + NOR_COMMAND, COMMAND_UNLOCK);
 	SET_REG16(NOR + LOCK, LOCK_UNLOCK);
 
-	SET_REG16(NOR + COMMAND, COMMAND_WRITE);
+	SET_REG16(NOR + NOR_COMMAND, COMMAND_WRITE);
 	SET_REG16(NOR + offset, data);
 
 	while(TRUE) {
@@ -311,12 +312,12 @@ int nor_erase_sector(uint32_t offset) {
 
 	nor_write_disable();
 #else
-	SET_REG16(NOR + COMMAND, COMMAND_UNLOCK);
+	SET_REG16(NOR + NOR_COMMAND, COMMAND_UNLOCK);
 	SET_REG16(NOR + LOCK, LOCK_UNLOCK);
 
-	SET_REG16(NOR + COMMAND, COMMAND_ERASE);
+	SET_REG16(NOR + NOR_COMMAND, COMMAND_ERASE);
 
-	SET_REG16(NOR + COMMAND, COMMAND_UNLOCK);
+	SET_REG16(NOR + NOR_COMMAND, COMMAND_UNLOCK);
 	SET_REG16(NOR + LOCK, LOCK_UNLOCK);
 
 	SET_REG16(NOR + offset, ERASE_DATA);
@@ -433,4 +434,54 @@ int nor_setup() {
 
 	return 0;
 }
+
+void cmd_nor_read(int argc, char** argv) {
+    if(argc < 4) {
+        bufferPrintf("Usage: %s <address> <offset> <len>\r\n", argv[0]);
+        return;
+    }
+    
+    uint32_t address = parseNumber(argv[1]);
+    uint32_t offset = parseNumber(argv[2]);
+    uint32_t len = parseNumber(argv[3]);
+    bufferPrintf("Reading 0x%x - 0x%x to 0x%x...\r\n", offset, offset + len, address);
+    nor_read((void*)address, offset, len);
+    bufferPrintf("Done.\r\n");
+}
+COMMAND("nor_read", "read a block of NOR into RAM", cmd_nor_read);
+
+void cmd_nor_write(int argc, char** argv) {
+	if(argc < 4) {
+		bufferPrintf("Usage: %s <address> <offset> <len>\r\n", argv[0]);
+		return;
+	}
+
+	uint32_t address = parseNumber(argv[1]);
+	uint32_t offset = parseNumber(argv[2]);
+	uint32_t len = parseNumber(argv[3]);
+	bufferPrintf("Writing 0x%x - 0x%x to 0x%x...\r\n", address, address + len, offset);
+	nor_write((void*)address, offset, len);
+	bufferPrintf("Done.\r\n");
+}
+COMMAND("nor_write", "write RAM into NOR", cmd_nor_write);
+
+void cmd_nor_erase(int argc, char** argv) {
+	if(argc < 3) {
+		bufferPrintf("Usage: %s <address> <address again for confirmation>\r\n", argv[0]);
+		return;
+	}
+	
+	uint32_t addr1 = parseNumber(argv[1]);
+	uint32_t addr2 = parseNumber(argv[2]);
+
+	if(addr1 != addr2) {
+		bufferPrintf("0x%x does not match 0x%x\r\n", addr1, addr2);
+		return;
+	}
+
+	bufferPrintf("Erasing 0x%x - 0x%x...\r\n", addr1, addr1 + getNORSectorSize());
+	nor_erase_sector(addr1);
+	bufferPrintf("Done.\r\n");
+}
+COMMAND("nor_erase", "erase a block of NOR", cmd_nor_erase);
 

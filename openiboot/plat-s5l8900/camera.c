@@ -24,7 +24,6 @@ int camera_setup() {
 
 	uint16_t modelID = camera_readw(0x3000);
 
-
 	if(modelID != 0x1580)
 	{
 		bufferPrintf("camera: unrecognized sensor model ID = 0x%x!\r\n", modelID);
@@ -35,6 +34,12 @@ int camera_setup() {
 
 	return 0;
 }
+
+static void camera_init()
+{
+	camera_setup();
+}
+MODULE_INIT(camera_init);
 
 static uint16_t camera_readw(uint16_t addr)
 {

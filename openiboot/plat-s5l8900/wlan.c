@@ -1,4 +1,5 @@
 #include "openiboot.h"
+#include "commands.h"
 #include "util.h"
 #include "sdio.h"
 #include "interrupt.h"
@@ -368,3 +369,34 @@ int wlan_setup()
 	return 0;
 }
 
+void wlan_init()
+{
+	wlan_setup();
+}
+MODULE_INIT(wlan_init);
+
+void cmd_wlan_prog_helper(int argc, char** argv) {
+	if(argc < 3) {
+		bufferPrintf("Usage: %s <address> <len>\r\n", argv[0]);
+		return;
+	}
+
+	uint32_t address = parseNumber(argv[1]);
+	uint32_t len = parseNumber(argv[2]);
+
+	wlan_prog_helper((void*) address, len);
+}
+COMMAND("wlan_prog_helper", "program wlan fw helper", cmd_wlan_prog_helper);
+
+void cmd_wlan_prog_real(int argc, char** argv) {
+	if(argc < 3) {
+		bufferPrintf("Usage: %s <address> <len>\r\n", argv[0]);
+		return;
+	}
+
+	uint32_t address = parseNumber(argv[1]);
+	uint32_t len = parseNumber(argv[2]);
+
+	wlan_prog_real((void*) address, len);
+}
+COMMAND("wlan_prog_real", "program wlan fw", cmd_wlan_prog_real);

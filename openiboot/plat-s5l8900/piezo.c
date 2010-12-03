@@ -1,4 +1,5 @@
 #include "openiboot.h"
+#include "commands.h"
 #include "piezo.h"
 #include "timer.h"
 #include "clock.h"
@@ -291,3 +292,38 @@ void piezo_play(const char* command)
 		}
 	}
 }
+
+void cmd_piezo_buzz(int argc, char** argv) {
+	if(argc < 2) {
+		bufferPrintf("Usage: %s <frequency in hertz> [duration in milliseconds]\r\n", argv[0]);
+		return;
+	}
+
+	int frequency = parseNumber(argv[1]);
+	unsigned int duration;
+
+	if(argc > 2)
+		duration = parseNumber(argv[2]) * 1000;
+	else
+		duration = 1000 * 1000;
+
+	piezo_buzz(frequency, duration);
+
+	bufferPrintf("%d hz for %u microseconds: done.\r\n", frequency, duration);
+}
+COMMAND("buzz", "use the piezo buzzer", cmd_piezo_buzz);
+
+void cmd_piezo_play(int argc, char** argv) {
+	if(argc < 2) {
+		bufferPrintf("Usage: %s <frequency in hertz> [duration in milliseconds]\r\n", argv[0]);
+		return;
+	}
+
+	bufferPrintf("playing string \"%s\"\r\n", argv[1]);
+
+	piezo_play(argv[1]);
+
+	bufferPrintf("done\r\n");
+
+}
+COMMAND("play", "play notes using piezo bytes", cmd_piezo_play);

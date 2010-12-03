@@ -23,7 +23,6 @@ typedef enum PowerSupplyType {
 #define PMU_IBOOTERRORCOUNT 0x2
 #define PMU_IBOOTERRORSTAGE 0x3
 
-int pmu_setup();
 void pmu_poweroff();
 void pmu_set_iboot_stage(uint8_t stage);
 int pmu_get_gpmem_reg(int reg, uint8_t* out);

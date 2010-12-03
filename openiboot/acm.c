@@ -108,8 +108,7 @@ static void acm_parse(int32_t _amt)
 			char *command = &acm_recv_buffer[start];
 			strcpy(safeCommand, command);
 			int argc;
-			char** argv = tokenize(command, &argc);
-			OPIBCommand* curCommand = CommandList;
+			char** argv = command_parse(command, &argc);
 
 			if(argc >= 3 && strcmp(argv[0], "sendfile") == 0)
 			{
@@ -137,21 +136,11 @@ static void acm_parse(int32_t _amt)
 			}
 			else
 			{
-				int success = FALSE;
-				while(curCommand->name != NULL) {
-					if(strcmp(argv[0], curCommand->name) == 0) {
-						bufferPrintf("ACM: Starting: %s\n", safeCommand);
-						curCommand->routine(argc, argv);
-						bufferPrintf("ACM: Done: %s\n", safeCommand);
-						success = TRUE;
-						break;
-					}
-					curCommand++;
-				}
-
-				if(!success) {
-					bufferPrintf("ACM: Unknown command: %s\r\n", safeCommand);
-				}
+				bufferPrintf("ACM: Starting %s\n", command);
+				if(command_run(argc, argv) == 0)
+					bufferPrintf("ACM: Done: %s\n", command);
+				else
+					bufferPrintf("ACM: Unknown command: %s\n", command);
 				
 				start = i+1;
 			}
@@ -262,6 +251,7 @@ void acm_start()
 	usb_install_ep_handler(ACM_EP_RECV, USBOut, acm_received, 0);
 	usb_install_setup_handler(acm_setup);
 }
+MODULE_INIT(acm_start);
 
 void acm_stop()
 {

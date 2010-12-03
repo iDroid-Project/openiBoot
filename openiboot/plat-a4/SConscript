@@ -3,10 +3,23 @@ Import("*")
 env = env.Clone()
 env.Append(CPPPATH = [Dir('includes')])
 env.Append(ASFLAGS = ['-L'+str(Dir('includes'))])
-env.Append(CPPDEFINES = ['CONFIG_A4'])
+env.Append(CPPDEFINES = ['ARM_A8', 'CONFIG_A4', 'MALLOC_NO_WDT'])
 
-plat_a4_src = env.Localize([
-	'arm.c',
+plat_a4_src = arch_arm_src + env.Localize([
+	# Include the bits of base_src we use
+	# until we implement it all
+	'#openiboot.c',
+	'#util.c',
+	'#malloc.c',
+	'#tasks.c',
+	'#printf.c',
+	'#framebuffer.c',
+	'#acm.c',
+	'#usb.c',
+	'#commands.c',
+	'#stb_image.c',
+
+	'a4.c',
 	'buttons.c',
 	'chipid.c',
 	'clock.c',

@@ -8,7 +8,7 @@
 #define NOR 0x24000000
 
 // Registers
-#define COMMAND 0xAAAA
+#define NOR_COMMAND 0xAAAA
 #define LOCK 0x5554
 #define VENDOR 0
 #define DEVICE 2

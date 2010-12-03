@@ -1,12 +1,14 @@
 #include "openiboot.h"
 #include "openiboot-asmhelpers.h"
 #include "multitouch.h"
+#include "commands.h"
 #include "hardware/multitouch.h"
 #include "gpio.h"
 #include "timer.h"
 #include "util.h"
 #include "spi.h"
 #include "framebuffer.h"
+#include "nor.h"
 
 static void multitouch_atn(uint32_t token);
 
@@ -722,3 +724,61 @@ int multitouch_ispoint_inside_region(uint16_t x, uint16_t y, int w, int h)
     
     return FALSE;
 }
+
+void cmd_multitouch_setup(int argc, char** argv)
+{
+	if(argc < 5)
+	{
+		bufferPrintf("%s <a-speed fw> <a-speed fw len> <main fw> <main fw len>\r\n", argv[0]);
+		return;
+	}
+
+	uint8_t* aspeedFW = (uint8_t*) parseNumber(argv[1]);
+	uint32_t aspeedFWLen = parseNumber(argv[2]);
+	uint8_t* mainFW = (uint8_t*) parseNumber(argv[3]);
+	uint32_t mainFWLen = parseNumber(argv[4]);
+
+	multitouch_setup(aspeedFW, aspeedFWLen, mainFW, mainFWLen);
+}
+COMMAND("multitouch_setup", "set up the multitouch chip", cmd_multitouch_setup);	
+
+void cmd_multitouch_fw_install(int argc, char** argv)
+{
+    if(argc < 5)
+    {
+        bufferPrintf("%s <a-speed fw> <a-speed fw len> <main fw> <main fw len>\r\n", argv[0]);
+        return;
+    }
+    
+    uint8_t* aspeedFW = (uint8_t*) parseNumber(argv[1]);
+    uint32_t aspeedFWLen = parseNumber(argv[2]);
+    uint8_t* mainFW = (uint8_t*) parseNumber(argv[3]);
+    uint32_t mainFWLen = parseNumber(argv[4]);
+    
+    //get latest apple image
+    Image* image = images_get_last_apple_image();
+    uint32_t offset = image->offset+image->padded;
+    
+    //write aspeed first
+    if(offset >= 0xfc000 || (offset + aspeedFWLen + mainFWLen) >= 0xfc000) {
+        bufferPrintf("**ABORTED** Image of size %d at 0x%x would overflow NOR!\r\n", aspeedFWLen+mainFWLen, offset);
+        return;
+    }    
+    
+    bufferPrintf("Writing aspeed 0x%x - 0x%x to 0x%x...\r\n", aspeedFW, aspeedFW + aspeedFWLen, offset);
+    nor_write((void*)aspeedFW, offset, aspeedFWLen);
+    
+    offset += aspeedFWLen;
+    
+    bufferPrintf("Writing main 0x%x - 0x%x to 0x%x...\r\n", mainFW, mainFW + mainFWLen, offset);
+    nor_write((void*)mainFW, offset, mainFWLen);
+    
+    bufferPrintf("Zephyr firmware installed.\r\n");
+}
+COMMAND("multitouch_fw_install", "install multitouch firmware", cmd_multitouch_fw_install);
+
+void cmd_multitouch_fw_uninstall(int argc, char** argv) {
+	images_uninstall(fourcc("mtza"), fourcc("mtza"));
+	images_uninstall(fourcc("mtzm"), fourcc("mtzm"));
+}
+COMMAND("multitouch_fw_uninstall","uninstall multitouch firmware", cmd_multitouch_fw_uninstall);

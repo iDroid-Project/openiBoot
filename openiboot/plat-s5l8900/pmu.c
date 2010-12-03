@@ -1,4 +1,5 @@
 #include "openiboot.h"
+#include "commands.h"
 #include "pmu.h"
 #include "hardware/pmu.h"
 #include "hardware/radio.h"
@@ -6,13 +7,22 @@
 #include "timer.h"
 #include "gpio.h"
 #include "lcd.h"
+#include "util.h"
 
 static uint32_t GPMemCachedPresent = 0;
 static uint8_t GPMemCache[PMU_MAXREG + 1];
 
-int pmu_setup() {
-	return 0;
+static void pmu_init_boot()
+{
+	pmu_charge_settings(TRUE, FALSE, FALSE);
 }
+MODULE_INIT_BOOT(pmu_init_boot);
+
+static void pmu_init()
+{
+	pmu_set_iboot_stage(0);
+}
+MODULE_INIT(pmu_init);
 
 void pmu_write_oocshdwn(int data) {
 	uint8_t registers[1];
@@ -28,6 +38,8 @@ void pmu_write_oocshdwn(int data) {
 }
 
 void pmu_poweroff() {
+	OpenIBootShutdown();
+
 	lcd_shutdown();
 
 	//pmu_write_oocshdwn(PMU_OOCSHDWN_GOSTBY);
@@ -397,3 +409,95 @@ int pmu_gpio(int gpio, int is_output, int value)
 
 	return 0;
 }
+
+void cmd_time(int argc, char** argv) {
+	int day;
+	int month;
+	int year;
+	int hour;
+	int minute;
+	int second;
+	int day_of_week;
+	pmu_date(&year, &month, &day, &day_of_week, &hour, &minute, &second);
+	bufferPrintf("Current time: %02d:%02d:%02d, %s %02d/%02d/%02d GMT\r\n", hour, minute, second, get_dayofweek_str(day_of_week), month, day, year);
+	//bufferPrintf("Current time: %02d:%02d:%02d, %s %02d/%02d/20%02d\r\n", pmu_get_hours(), pmu_get_minutes(), pmu_get_seconds(), pmu_get_dayofweek_str(), pmu_get_month(), pmu_get_day(), pmu_get_year());
+	//bufferPrintf("Current time: %llu\n", pmu_get_epoch());
+}
+COMMAND("time", "display the current time according to the RTC", cmd_time);
+
+void cmd_poweroff(int argc, char** argv) {
+	pmu_poweroff();
+}
+COMMAND("poweroff", "power off the device", cmd_poweroff);
+
+void cmd_pmu_voltage(int argc, char** argv) {
+	bufferPrintf("battery voltage: %d mV\r\n", pmu_get_battery_voltage());
+}
+COMMAND("pmu_voltage", "get the battery voltage", cmd_pmu_voltage);
+
+void cmd_pmu_powersupply(int argc, char** argv) {
+	PowerSupplyType power = pmu_get_power_supply();
+	bufferPrintf("power supply type: ");
+	switch(power) {
+		case PowerSupplyTypeError:
+			bufferPrintf("Unknown");
+			break;
+			
+		case PowerSupplyTypeBattery:
+			bufferPrintf("Battery");
+			break;
+			
+		case PowerSupplyTypeFirewire:
+			bufferPrintf("Firewire");
+			break;
+			
+		case PowerSupplyTypeUSBHost:
+			bufferPrintf("USB host");
+			break;
+			
+		case PowerSupplyTypeUSBBrick500mA:
+			bufferPrintf("500 mA brick");
+			break;
+			
+		case PowerSupplyTypeUSBBrick1000mA:
+			bufferPrintf("1000 mA brick");
+			break;
+	}
+	bufferPrintf("\r\n");
+}
+COMMAND("pmu_powersupply", "get the power supply type", cmd_pmu_powersupply);
+
+void cmd_pmu_charge(int argc, char** argv) {
+	if(argc < 2) {
+		bufferPrintf("Usage: %s <on|off>\r\n", argv[0]);
+		return;
+	}
+
+	if(strcmp(argv[1], "on") == 0) {
+		pmu_charge_settings(TRUE, FALSE, FALSE);
+		bufferPrintf("Charger on\r\n");
+	} else if(strcmp(argv[1], "off") == 0) {
+		pmu_charge_settings(FALSE, FALSE, TRUE);
+		bufferPrintf("Charger off\r\n");
+	} else {
+		bufferPrintf("Usage: %s <on|off>\r\n", argv[0]);
+		return;
+	}
+}
+COMMAND("pmu_charge", "turn on and off the power charger", cmd_pmu_charge);
+
+void cmd_pmu_nvram(int argc, char** argv) {
+	uint8_t reg;
+
+	pmu_get_gpmem_reg(PMU_IBOOTSTATE, &reg);
+	bufferPrintf("0: [iBootState] %02x\r\n", reg);
+	pmu_get_gpmem_reg(PMU_IBOOTDEBUG, &reg);
+	bufferPrintf("1: [iBootDebug] %02x\r\n", reg);
+	pmu_get_gpmem_reg(PMU_IBOOTSTAGE, &reg);
+	bufferPrintf("2: [iBootStage] %02x\r\n", reg);
+	pmu_get_gpmem_reg(PMU_IBOOTERRORCOUNT, &reg);
+	bufferPrintf("3: [iBootErrorCount] %02x\r\n", reg);
+	pmu_get_gpmem_reg(PMU_IBOOTERRORSTAGE, &reg);
+	bufferPrintf("4: [iBootErrorStage] %02x\r\n", reg);
+}
+COMMAND("pmu_nvram", "list powernvram registers", cmd_pmu_nvram);

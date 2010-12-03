@@ -4,7 +4,7 @@ Import('*')
 # iPhone 3G
 #
 
-iphone_3g_src = [base_src,
+iphone_3g_src = [
 	plat_s5l8900_src,
 	radio_pmb8878_src,
 	env.Localize([
@@ -12,8 +12,10 @@ iphone_3g_src = [base_src,
 	'multitouch-z2.c',
 	'wm8991.c',
 	'alsISL29003.c',
+	'vibrator-3G.c',
 	])]
 Export('iphone_3g_src')
 
-elf, bin, img3 = env.OpenIBootTarget('iPhone3G', 'iphone_3g', 'CONFIG_IPHONE_3G', iphone_3g_src, 'template-3g')
+elf, bin, img3 = env.OpenIBootTarget('iPhone3G', 'iphone_3g_openiboot', 'CONFIG_IPHONE_3G', iphone_3g_src+menu_src, 'template-3g')
+env.OpenIBootTarget('iPhone3G-Installer', 'iphone_3g_installer', 'CONFIG_IPHONE_3G', iphone_3g_src+installer_src, 'template-3g')
 Default(img3)

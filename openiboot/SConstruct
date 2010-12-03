@@ -36,10 +36,15 @@ def build_target(env, name, fname, flag, sources, img3template=None):
 	env['OBJPREFIX'] = name + '_'	
 	env.Append(CPPDEFINES=[flag])
 
-	elf_name = fname + '_openiboot'
+	# Work out filenames
+	elf_name = '#' + fname
 	bin_name = elf_name + '.bin'
 	img3_name = elf_name + '.img3'
 
+	# Add Sentinel
+	sources = sources[:1] + ['#init.c'] + sources[1:] + ['#sentinel.c']
+
+	# Add Targets
 	elf = env.Program(elf_name, sources)
 	bin = env.Make8900Image(bin_name, elf)
 	if img3template is not None:
@@ -57,16 +62,27 @@ def build_target(env, name, fname, flag, sources, img3template=None):
 	return elf, bin, img3
 env.AddMethod(build_target, 'OpenIBootTarget')
 
+# Sources for menu
+menu_src = env.Localize([
+	'menu.c',
+	])
+Export('menu_src')
+
+# Sources for installer image
+installer_src = env.Localize([
+	'installer.c',
+	])
+Export('installer_src')
+
 # Base Target Sources
 base_src = env.Localize([
-	'entry.S',
 	'acm.c',
+	'audiohw.c',
 	'actions.c',
 	'commands.c',
 	'framebuffer.c',
 	'images.c',
 	'malloc.c',
-	'menu.c',
 	'nvram.c',
 	'openiboot.c',
 	'printf.c',
@@ -77,7 +93,6 @@ base_src = env.Localize([
 	'tasks.c',
 	'usb.c',
 	'util.c',
-	'openiboot-asmhelpers.S',
 	])
 Export('base_src')
 
@@ -92,6 +107,5 @@ env.SConscript([
 	'hfs/SConscript',
 	'radio-pmb8876/SConscript',
 	'radio-pmb8878/SConscript',
-	'plat-s5l8900/SConscript',
-	'plat-a4/SConscript',
+	'arch-arm/SConscript',
 	])

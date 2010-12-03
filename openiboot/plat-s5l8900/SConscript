@@ -3,12 +3,12 @@ Import("*")
 env = env.Clone()
 env.Append(CPPPATH = [Dir('includes')])
 env.Append(ASFLAGS = ['-L'+str(Dir('includes'))])
-env.Append(CPPDEFINES = ['CONFIG_S5L8900'])
+env.Append(CPPDEFINES = ['ARM11', 'CONFIG_S5L8900'])
 
-plat_s5l8900_src = env.Localize([
+plat_s5l8900_src = arch_arm_src + base_src + env.Localize([
+	's5l8900.c',
 	'accel.c',
 	'aes.c',
-	'arm.c',
 	'buttons.c',
 	'chipid.c',
 	'clock.c',
@@ -29,7 +29,6 @@ plat_s5l8900_src = env.Localize([
 	'spi.c',
 	'timer.c',
 	'uart.c',
-	'vibrator.c',
 	'wdt.c',
 	'wlan.c',
 	]) + hfs_src

@@ -138,4 +138,28 @@ extern TaskDescriptor* CurrentRunning;
 #define SET_REG8(x, y) (*((volatile uint8_t*)(x)) = (y))
 #define GET_BITS(x, start, length) ((((uint32_t)(x)) << (32 - ((start) + (length)))) >> (32 - (length)))
 
+//
+// Module support
+//
+
+typedef void (*initfn_t)(void);
+typedef void (*exitfn_t)(void);
+typedef void (*mainfn_t)(void);
+
+#define BOOT_MODULE_INIT_SECTION	".init_modules_boot"
+#define MODULE_INIT_SECTION			".init_modules"
+#define MODULE_EXIT_SECTION			".exit_modules"
+
+#define MODULE_INIT_BOOT(fn) initfn_t fn##_init __attribute__((section(BOOT_MODULE_INIT_SECTION))) = &fn;
+#define MODULE_INIT(fn) initfn_t fn##_init __attribute__((section(MODULE_INIT_SECTION))) = &fn;
+#define MODULE_EXIT(fn) exitfn_t fn##_exit __attribute__((section(MODULE_EXIT_SECTION))) = &fn;
+
+void init_boot_modules();
+void init_modules();
+void exit_modules();
+
+void OpenIBootShutdown();
+void OpenIBootConsole();
+extern mainfn_t OpenIBootMain;
+
 #endif

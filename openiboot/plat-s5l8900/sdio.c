@@ -1,5 +1,6 @@
 #include "openiboot.h"
 #include "openiboot-asmhelpers.h"
+#include "commands.h"
 #include "util.h"
 #include "sdio.h"
 #include "clock.h"
@@ -262,6 +263,12 @@ int sdio_setup()
 
 	return 0;
 }
+
+void sdio_init()
+{
+	sdio_setup();
+}
+MODULE_INIT(sdio_init);
 
 int sdio_read_cis(int function)
 {
@@ -963,3 +970,12 @@ void sdio_status()
 	bufferPrintf("OCR: 0x%x\r\n", GET_REG(SDIO + SDIO_RESP0) >> 7);
 }
 
+void cmd_sdio_status(int argc, char** argv) {
+	sdio_status();
+}
+COMMAND("sdio_status", "display sdio registers", cmd_sdio_status);
+
+void cmd_sdio_setup(int argc, char** argv) {
+	sdio_setup();
+}
+COMMAND("sdio_setup", "restart SDIO stuff", cmd_sdio_setup);

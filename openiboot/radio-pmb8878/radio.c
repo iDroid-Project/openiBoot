@@ -1,4 +1,5 @@
 #include "openiboot.h"
+#include "commands.h"
 #include "radio.h"
 #include "gpio.h"
 #include "timer.h"
@@ -58,6 +59,12 @@ int radio_setup()
 
 	return 0;
 }
+
+static void radio_init()
+{
+	radio_setup();
+}
+MODULE_INIT(radio_init);
 
 int radio_nvram_get(int type_in, uint8_t** data_out)
 {
@@ -485,3 +492,57 @@ void speaker_vol(int vol)
 	sprintf(buf, "at+xdrv=0,1,%d,0\r\n", vol);
 	radio_cmd(buf, 10);
 }
+
+void cmd_radio_send(int argc, char** argv) {
+	if(argc < 2) {
+		bufferPrintf("Usage: %s <command>\r\n", argv[0]);
+		return;
+	}
+
+	radio_write(argv[1]);
+	radio_write("\r\n");
+	
+	char* buf = malloc(0x1000);
+	int c = radio_read(buf, 0x1000);
+	printf("radio reply: %s", buf);
+
+	while(c == (0x1000 - 1))
+	{
+		c = radio_read(buf, 0x1000);
+		printf("%s", buf);
+	}
+
+	printf("\n");
+
+	free(buf);
+}
+COMMAND("radio_send", "send a command to the baseband", cmd_radio_send);
+
+void cmd_radio_nvram_list(int argc, char** argv) {
+	radio_nvram_list();
+}
+COMMAND("radio_nvram_list", "list entries in baseband NVRAM", cmd_radio_nvram_list);
+
+void cmd_radio_register(int argc, char** argv) {
+	bufferPrintf("Registering with cellular network...\r\n");
+	if(radio_register(10 * 1000) != 0)
+		bufferPrintf("Failed.\r\n");
+}
+COMMAND("radio_register", "register with a cellular network", cmd_radio_register);
+
+void cmd_radio_call(int argc, char** argv) {
+	if(argc < 2) {
+		bufferPrintf("Usage: %s <phone number>\r\n", argv[0]);
+		return;
+	}
+
+	bufferPrintf("Calling %s...\r\n", argv[1]);
+
+	radio_call(argv[1]);
+}
+COMMAND("radio_call", "make a call", cmd_radio_call);
+
+void cmd_radio_hangup(int argc, char** argv) {
+	radio_hangup(argv[1]);
+}
+COMMAND("radio_hangup", "hang up", cmd_radio_hangup);
