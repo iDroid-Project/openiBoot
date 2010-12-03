@@ -47,7 +47,7 @@ ArmReset:						// This function will setup the processor and kick off execution
 
 	// We need to get the MIU settings right. First we have to setup the peripheral remap register
 
-#if !defined(CONFIG_IPHONE_4) && !defined(CONFIG_IPAD)
+#ifdef ARM11
 	MOV	R1, #0x38000000				// Peripheral port at 0x38000000
 	ADD	R1, #0x12				// Peripheral port size 128 MB
 	MCR     p15, 0, R1, c15, c2, 4			// Write peripheral port settings
@@ -58,7 +58,9 @@ ArmReset:						// This function will setup the processor and kick off execution
 	BIC	R2, #0x7				// Mask out current MIU setting
 	ORR	R2, #1					// Change setting so 0x0 is physical memory
 	STR	R2, [R1]				// Set MIU settings
-#else
+#endif
+
+#ifdef ARM_A8
 	// There's no peripheral remap register. Need to change the base addresses for each A4 device.
 	// If you find it though, feel free to fix it.
 
@@ -81,9 +83,11 @@ ArmReset_relocate:
 
 	MOV	R0, #0					// reset caches, since we're about to do a jump to where there wasn't any
 							// data or instructions just moments ago
-#if !defined(CONFIG_IPHONE_4) && !defined(CONFIG_IPAD)
+#ifdef ARM11
 	MCR	p15, 0,	R0,c7,c10			// clean entire data cache
-#else
+#endif
+
+#ifdef ARM_A8
 	MOV	R2, #0x2000
 CleanCPUDataCache_1:
 	SUB	R2, R2, #0x40
@@ -147,12 +151,14 @@ ArmReset_loopForever:					// shouldn't reach here
 DebugReboot:						// Write to the WDT register without memory access
 							// This ought to cause a reboot same as the normal
 							// Reboot function
-#if !defined(CONFIG_IPHONE_4) && !defined(CONFIG_IPAD)
+#ifdef ARM11
 	MOV	R1, #0x3E000000
 	ADD	R1, #0x00300000
 	MOV	R0, #0x100000
 	STR	R0, [R1]
-#else
+#endif
+
+#ifdef ARM_A8
 	LDR     R1, =0xBF10202C
 	LDR     R3, =0xBF102024
 	MOVS    R0, #0
@@ -214,14 +220,16 @@ HandleIRQ:
 	LDR	R5, =(VIC0 + VICADDRESS)
 	B	HandleIRQ_lookupHandler
 
-#if !defined(CONFIG_IPHONE_4) && !defined(CONFIG_IPAD)
+#ifdef ARM11
 HandleIRQ_checkVIC1:
 	LDR	R3, =(VIC1 + VICIRQSTATUS)	// Check if the interrupt was on VIC1, if it wasn't on VIC0
 	LDR	R3, [R3]
 	CMP	R3, #0
 	BEQ	HandleIRQ_return
 	LDR	R5, =(VIC1 + VICADDRESS)
-#else
+#endif
+
+#ifdef ARM_A8
 HandleIRQ_checkVIC1:
 	LDR	R3, =(VIC1 + VICIRQSTATUS)	// Check if the interrupt was on VIC1, if it wasn't on VIC0
 	LDR	R3, [R3]

@@ -14,10 +14,9 @@
 #include "syscfg.h"
 #include "scripting.h"
 #include "images.h"
+#include "multitouch.h"
 
 #define MACH_APPLE_IPHONE 1506
-
-#ifndef CONFIG_A4 // TODO: FS required for A4
 
 /* this code is adapted from http://www.simtec.co.uk/products/SWLINUX/files/booting_article.html, which is distributed under the BSD license */
 
@@ -396,9 +395,49 @@ static void setup_tags(struct atag* parameters, const char* commandLine)
 	setup_end_tag();                    /* end of tags */
 }
 
+static int load_multitouch_images()
+{
+#ifdef CONFIG_IPHONE_2G
+        Image* image = images_get(fourcc("mtza"));
+        if (image == NULL) {
+            return 0;
+        }
+        void* aspeedData;
+        size_t aspeedLength = images_read(image, &aspeedData);
+        
+        image = images_get(fourcc("mtzm"));
+        if(image == NULL) {
+            return 0;
+        }
+        
+        void* mainData;
+        size_t mainLength = images_read(image, &mainData);
+        
+        multitouch_setup(aspeedData, aspeedLength, mainData,mainLength);
+        free(aspeedData);
+        free(mainData);
+#endif
+
+#if defined(CONFIG_IPHONE_3G) || defined(CONFIG_IPOD)
+        Image* image = images_get(fourcc("mtz2"));
+        if(image == NULL) {
+            return 0;
+        }
+        void* imageData;
+        size_t length = images_read(image, &imageData);
+        
+        multitouch_setup(imageData, length);
+        free(imageData);
+#endif
+    return 1;
+}
+
 void boot_linux(const char* args) {
 	uint32_t exec_at = (uint32_t) kernel;
 	uint32_t param_at = exec_at - 0x2000;
+
+	load_multitouch_images();
+
 	setup_tags((struct atag*) param_at, args);
 
 	uint32_t mach_type = MACH_APPLE_IPHONE;
@@ -467,6 +506,7 @@ void boot_linux_from_files()
 
 static BootEntry rootEntry;
 static BootEntry *currentEntry;
+static BootEntry *defaultEntry;
 
 static void setup_init()
 {
@@ -476,6 +516,7 @@ static void setup_init()
 	rootEntry.list_ptr.next = &rootEntry;
 	rootEntry.list_ptr.prev = &rootEntry;
 	currentEntry = &rootEntry;
+	defaultEntry = &rootEntry;
 }
 MODULE_INIT_BOOT(setup_init);
 
@@ -487,6 +528,11 @@ BootEntry *setup_root()
 BootEntry *setup_current()
 {
 	return currentEntry;
+}
+
+BootEntry *setup_default()
+{
+	return defaultEntry;
 }
 
 void setup_title(const char *title)
@@ -516,6 +562,9 @@ void setup_title(const char *title)
 	rootEntry.list_ptr.prev = entry;
 	prev->list_ptr.next = entry;
 	currentEntry = entry;
+
+	if(defaultEntry == &rootEntry)
+		defaultEntry = currentEntry;
 }
 
 void setup_entry(BootEntry *entry)
@@ -647,6 +696,15 @@ static void cmd_setup_title(int argc, char **argv)
 }
 COMMAND("title", "Select a boot entry by title.", cmd_setup_title);
 
+static void cmd_setup_default(int argc, char **argv)
+{
+	if(argc > 1)
+		bufferPrintf("Usage: %s\n", argv[0]);
+	else
+		defaultEntry = setup_current();
+}
+COMMAND("default", "Set the current entry as the default.", cmd_setup_default);
+
 static void cmd_setup_auto(int argc, char **argv)
 {
 	if(argc > 1)
@@ -716,4 +774,36 @@ static void cmd_setup_boot(int argc, char **argv)
 }
 COMMAND("boot", "Boot the current boot entry.", cmd_setup_boot);
 
-#endif // CONFIG_A4
+void cmd_go(int argc, char** argv) {
+	uint32_t address;
+
+	if(argc < 2) {
+		address = 0x09000000;
+	} else {
+		address = parseNumber(argv[1]);
+	}
+
+	bufferPrintf("Jumping to 0x%x (interrupts disabled)\r\n", address);
+
+	// make as if iBoot was called from ROM
+	pmu_set_iboot_stage(0x1F);
+
+	udelay(100000);
+
+	chainload(address);
+}
+COMMAND("go", "jump to a specified address (interrupts disabled)", cmd_go);
+
+void cmd_jump(int argc, char** argv) {
+	if(argc < 2) {
+		bufferPrintf("Usage: %s <address>\r\n", argv[0]);
+		return;
+	}
+
+	uint32_t address = parseNumber(argv[1]);
+	bufferPrintf("Jumping to 0x%x\r\n", address);
+	udelay(100000);
+
+	CallArm(address);
+}
+COMMAND("jump", "jump to a specified address (interrupts enabled)", cmd_jump);

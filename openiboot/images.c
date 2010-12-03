@@ -10,8 +10,6 @@
 #include "hfs/bdev.h"
 #include "ftl.h"
 
-#ifndef CONFIG_A4
-
 static const uint32_t NOREnd = 0xFC000;
 
 Image* imageList = NULL;
@@ -849,4 +847,3 @@ void cmd_images_uninstall(int argc, char** argv) {
 }
 COMMAND("images_uninstall", "uninstall a nor image", cmd_images_uninstall);
 
-#endif // CONFIG_A4

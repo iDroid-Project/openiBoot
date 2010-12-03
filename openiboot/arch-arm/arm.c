@@ -14,7 +14,7 @@ int arm_setup() {
 	GiveFullAccessCP10CP11();
 	EnableVFP();
 
-#ifndef CONFIG_A4
+#ifndef ARM_A8
 	// Map the peripheral port of size 128 MB to 0x38000000
 	WritePeripheralPortMemoryRemapRegister(PeripheralPort | ARM11_PeripheralPortSize128MB);
 #endif
@@ -25,11 +25,13 @@ int arm_setup() {
 	WriteControlRegisterConfigData(ReadControlRegisterConfigData() | ARM11_Control_INSTRUCTIONCACHE);	// Enable instruction cache
 	WriteControlRegisterConfigData(ReadControlRegisterConfigData() | ARM11_Control_DATACACHE);		// Enable data cache
 
-#ifndef CONFIG_A4
+#ifndef ARM_A8
 	WriteControlRegisterConfigData((ReadControlRegisterConfigData()
 		& ~(ARM11_Control_STRICTALIGNMENTCHECKING))				// Disable strict alignment fault checking
 		| ARM11_Control_UNALIGNEDDATAACCESS);					// Enable unaligned data access operations
-#else
+#endif
+
+#ifdef ARM11
 	WriteControlRegisterConfigData((ReadControlRegisterConfigData()
 		& ~(ARM11_Control_STRICTALIGNMENTCHECKING)));				// Disable strict alignment fault checking
 #endif
@@ -37,13 +39,15 @@ int arm_setup() {
 
 	WriteControlRegisterConfigData(ReadControlRegisterConfigData() | ARM11_Control_BRANCHPREDICTION); 	// Enable branch prediction
 
-#ifndef CONFIG_A4
+#ifdef ARM11
 	// Enable return stack, dynamic branch prediction, static branch prediction
 	WriteAuxiliaryControlRegister(ReadAuxiliaryControlRegister()
 		| ARM11_AuxControl_RETURNSTACK
 		| ARM11_AuxControl_DYNAMICBRANCHPREDICTION
 		| ARM11_AuxControl_STATICBRANCHPREDICTION);
-#else
+#endif
+
+#ifdef ARM_A8
 	WriteAuxiliaryControlRegister(ReadAuxiliaryControlRegister() | ARM_A8_AuxControl_SPECULATIVEACCESSAXI);
 #endif
 	return 0;

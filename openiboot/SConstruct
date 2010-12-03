@@ -42,7 +42,7 @@ def build_target(env, name, fname, flag, sources, img3template=None):
 	img3_name = elf_name + '.img3'
 
 	# Add Sentinel
-	sources = sources + ['#sentinel.c']
+	sources = sources[:1] + ['#init.c'] + sources[1:] + ['#sentinel.c']
 
 	# Add Targets
 	elf = env.Program(elf_name, sources)
@@ -76,7 +76,6 @@ Export('installer_src')
 
 # Base Target Sources
 base_src = env.Localize([
-	'init.c', # Must be linked BEFORE any modules with init functions
 	'acm.c',
 	'audiohw.c',
 	'actions.c',

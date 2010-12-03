@@ -8,8 +8,6 @@
 #include "printf.h"
 #include "util.h"
 
-#ifndef CONFIG_A4 // TODO: Sort out FTL/NAND for A4
-
 uint8_t *script_load_hfs_file(int part, char *path, uint32_t *size)
 {
 	Volume* volume;
@@ -156,7 +154,7 @@ int script_run_commands(char** cmds, uint32_t count)
 	int i;
 	for(i = 0; i < count; i++)
 	{
-		bufferPrintf("scripting: Running %s.\n", cmds[i]);
+		bufferPrintf("scripting: %s\n", cmds[i]);
 		int ret = script_run_command(cmds[i]);
 		if(ret != 0)
 			return ret;
@@ -186,4 +184,3 @@ int script_run_file(char *path)
 	return ret;
 }
 
-#endif //CONFIG_A4

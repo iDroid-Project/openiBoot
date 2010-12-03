@@ -27,50 +27,6 @@
 int globalFtlHasBeenRestored; /* global variable to tell wether a ftl_restore has been done*/
 static TaskDescriptor menu_task;
 
-/*
-static int load_multitouch_images()
-{
-#ifdef CONFIG_IPHONE_2G
-        Image* image = images_get(fourcc("mtza"));
-        if (image == NULL) {
-            return 0;
-        }
-        void* aspeedData;
-        size_t aspeedLength = images_read(image, &aspeedData);
-        
-        image = images_get(fourcc("mtzm"));
-        if(image == NULL) {
-            return 0;
-        }
-        
-        void* mainData;
-        size_t mainLength = images_read(image, &mainData);
-        
-        multitouch_setup(aspeedData, aspeedLength, mainData,mainLength);
-        free(aspeedData);
-        free(mainData);
-#endif
-
-#if defined(CONFIG_IPHONE_3G) || defined(CONFIG_IPOD)
-        Image* image = images_get(fourcc("mtz2"));
-        if(image == NULL) {
-            return 0;
-        }
-        void* imageData;
-        size_t length = images_read(image, &imageData);
-        
-        multitouch_setup(imageData, length);
-        free(imageData);
-#endif
-    return 1;
-}
-
-static void reset_tempos()
-{
-	nvram_setvar("opib-temp-os","");
-	nvram_save();
-}*/
-
 void menu_draw()
 {
 	framebuffer_clear();
@@ -108,7 +64,7 @@ static void menu_run(uint32_t _V)
 	{
 #ifdef BUTTONS_VOLDOWN
 		if(buttons_is_pushed(BUTTONS_HOLD)
-				|| buttons_is_pushed(BUTTONS_VOLDOWN))
+				|| !buttons_is_pushed(BUTTONS_VOLDOWN))
 #else
 		if(buttons_is_pushed(BUTTONS_HOLD))
 #endif
@@ -121,7 +77,7 @@ static void menu_run(uint32_t _V)
 		}
 
 #ifdef BUTTONS_VOLUP
-		if(buttons_is_pushed(BUTTONS_VOLUP))
+		if(!buttons_is_pushed(BUTTONS_VOLUP))
 		{
 			setup_entry(setup_current()->list_ptr.prev);
 
@@ -140,6 +96,7 @@ static void menu_run(uint32_t _V)
 			if(setup_current() == setup_root())
 			{
 				OpenIBootConsole();
+				task_stop();
 				return;
 			}
 
@@ -163,17 +120,18 @@ void menu_main()
 		return;
 	}
 
-	// TODO: Reimplement TempOS -- Ricky26
-	//const char* sTempOS = nvram_getvar("opib-temp-os");
-	
-	/*BootEntry *entry = setup_root()->list_ptr.next;
-	for(;entry != setup_root(); entry = entry->list_ptr.next)
+	const char* sTempOS = nvram_getvar("opib-temp-os");
+	if(sTempOS && *sTempOS)
 	{
-		bufferPrintf("%s\n", entry->title);
+		nvram_setvar("opib-temp-os","");
+		nvram_save();
+
+		setup_title(sTempOS);
+		setup_boot();
 	}
 
-	OpenIBootConsole();*/
-
+	setup_entry(setup_default());
+	
 	pmu_set_iboot_stage(0);
 
     framebuffer_setdisplaytext(FALSE);

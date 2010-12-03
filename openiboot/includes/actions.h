@@ -35,6 +35,7 @@ void boot_linux_from_files();
 
 BootEntry *setup_root();
 BootEntry *setup_current();
+BootEntry *setup_default();
 
 void setup_title(const char *title);
 void setup_entry(BootEntry *entry);

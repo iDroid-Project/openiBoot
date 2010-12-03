@@ -102,84 +102,6 @@ void cmd_reboot(int argc, char** argv) {
 }
 COMMAND("reboot", "reboot the device", cmd_reboot);
 
-#ifndef CONFIG_A4 // TODO: Fix A4 stuff. :P
-
-#ifdef CONFIG_IPHONE_2G
-void cmd_multitouch_fw_install(int argc, char** argv)
-{
-    if(argc < 5)
-    {
-        bufferPrintf("%s <a-speed fw> <a-speed fw len> <main fw> <main fw len>\r\n", argv[0]);
-        return;
-    }
-    
-    uint8_t* aspeedFW = (uint8_t*) parseNumber(argv[1]);
-    uint32_t aspeedFWLen = parseNumber(argv[2]);
-    uint8_t* mainFW = (uint8_t*) parseNumber(argv[3]);
-    uint32_t mainFWLen = parseNumber(argv[4]);
-    
-    //get latest apple image
-    Image* image = images_get_last_apple_image();
-    uint32_t offset = image->offset+image->padded;
-    
-    //write aspeed first
-    if(offset >= 0xfc000 || (offset + aspeedFWLen + mainFWLen) >= 0xfc000) {
-        bufferPrintf("**ABORTED** Image of size %d at 0x%x would overflow NOR!\r\n", aspeedFWLen+mainFWLen, offset);
-        return;
-    }    
-    
-    bufferPrintf("Writing aspeed 0x%x - 0x%x to 0x%x...\r\n", aspeedFW, aspeedFW + aspeedFWLen, offset);
-    nor_write((void*)aspeedFW, offset, aspeedFWLen);
-    
-    offset += aspeedFWLen;
-    
-    bufferPrintf("Writing main 0x%x - 0x%x to 0x%x...\r\n", mainFW, mainFW + mainFWLen, offset);
-    nor_write((void*)mainFW, offset, mainFWLen);
-    
-    bufferPrintf("Zephyr firmware installed.\r\n");
-}
-#else
-void cmd_multitouch_fw_install(int argc, char** argv)
-{
-    if(argc < 3)
-    {
-        bufferPrintf("%s <constructed fw> <constructed fw len>\r\n", argv[0]);
-        return;
-    }
-    
-    uint8_t* fwData = (uint8_t*) parseNumber(argv[1]);
-    uint32_t fwLen = parseNumber(argv[2]);
-    
-    //get latest apple image
-    Image* image = images_get_last_apple_image();
-    if (image == NULL) {
-        bufferPrintf("**ABORTED** Last image position cannot be read\r\n");
-        return;
-    }
-    uint32_t offset = image->offset+image->padded;
-    
-    if(offset >= 0xfc000 || (offset + fwLen) >= 0xfc000) {
-        bufferPrintf("**ABORTED** Image of size %d at %x would overflow NOR!\r\n", fwLen, offset);
-        return;
-    }    
-    
-    bufferPrintf("Writing 0x%x - 0x%x to 0x%x...\r\n", fwData, fwData + fwLen, offset);
-    nor_write((void*)fwData, offset, fwLen);
-    bufferPrintf("Zephyr2 firmware installed.\r\n");
-}
-#endif
-COMMAND("multitouch_fw_install", "install multitouch firmware", cmd_multitouch_fw_install);
-
-void cmd_multitouch_fw_uninstall(int argc, char** argv) {
-#ifdef CONFIG_IPHONE_2G	
-	images_uninstall(fourcc("mtza"), fourcc("mtza"));
-	images_uninstall(fourcc("mtzm"), fourcc("mtzm"));
-#else
-	images_uninstall(fourcc("mtz2"), fourcc("mtz2"));
-#endif	
-}
-COMMAND("multitouch_fw_uninstall","uninstall multitouch firmware", cmd_multitouch_fw_uninstall);
-
 void cmd_md(int argc, char** argv) {
 	if(argc < 3) {
 		bufferPrintf("Usage: %s <address> <len>\r\n", argv[0]);
@@ -217,40 +139,6 @@ void cmd_cat(int argc, char** argv) {
 	addToBuffer((char*) address, len);
 }
 COMMAND("cat", "dumps a block of memory", cmd_cat);
-
-void cmd_go(int argc, char** argv) {
-	uint32_t address;
-
-	if(argc < 2) {
-		address = 0x09000000;
-	} else {
-		address = parseNumber(argv[1]);
-	}
-
-	bufferPrintf("Jumping to 0x%x (interrupts disabled)\r\n", address);
-
-	// make as if iBoot was called from ROM
-	pmu_set_iboot_stage(0x1F);
-
-	udelay(100000);
-
-	chainload(address);
-}
-COMMAND("go", "jump to a specified address (interrupts disabled)", cmd_go);
-
-void cmd_jump(int argc, char** argv) {
-	if(argc < 2) {
-		bufferPrintf("Usage: %s <address>\r\n", argv[0]);
-		return;
-	}
-
-	uint32_t address = parseNumber(argv[1]);
-	bufferPrintf("Jumping to 0x%x\r\n", address);
-	udelay(100000);
-
-	CallArm(address);
-}
-COMMAND("jump", "jump to a specified address (interrupts enabled)", cmd_jump);
 
 void cmd_mwb(int argc, char** argv) {
 	if(argc < 3) {
@@ -304,4 +192,3 @@ void cmd_version(int argc, char** argv) {
 }
 COMMAND("version", "display the version string", cmd_version);
 
-#endif //CONFIG_A4

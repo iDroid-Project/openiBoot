@@ -72,8 +72,6 @@ void platform_init()
 
 	LeaveCriticalSection();
 
-    isMultitouchLoaded = 0;
-	
 	framebuffer_hook(); // TODO: Remove once LCD implemented -- Ricky26
 	framebuffer_setdisplaytext(TRUE);
 }

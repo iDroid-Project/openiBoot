@@ -4,8 +4,6 @@
 #include "util.h"
 #include "nor.h"
 
-#ifndef CONFIG_A4 // More stuff needed for A4
-
 static uint8_t* bank1Data;
 static uint8_t* bank2Data;
 
@@ -305,4 +303,3 @@ void cmd_saveenv(int argc, char** argv) {
 }
 COMMAND("saveenv", "saves the environment variables in nvram", cmd_saveenv);
 
-#endif //CONFIG_A4
