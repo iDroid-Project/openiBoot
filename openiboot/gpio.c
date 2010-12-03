@@ -102,6 +102,13 @@ int gpio_setup() {
 
 	return 0;
 #else
+	// Reset everything
+	int i;
+	for (i = 0; i < 0xB0; i++) {
+		SET_REG(GPIO + i * sizeof(uint32_t), gpio_reset_table[i]);
+	}
+
+	// Initialise it
 	uint8_t v[8];
 	if (!(GET_REG(POWER + POWER_ID) & 1)) {
 		gpio_set(0x502, 0);
