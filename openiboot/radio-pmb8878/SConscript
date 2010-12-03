@@ -1,0 +1,6 @@
+Import("*")
+
+radio_pmb8878_src = env.Localize([
+	'radio.c'
+	])
+Export('radio_pmb8878_src')

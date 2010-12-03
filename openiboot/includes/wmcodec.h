@@ -36,12 +36,8 @@ void audiohw_resume();
 uint32_t audiohw_get_position();
 uint32_t audiohw_get_total();
 void audiohw_mute(int mute);
-
 void audiohw_switch_normal_call(int in_call);
-
-#ifdef CONFIG_IPHONE_3G
 void audiohw_set_speaker_vol(int vol);
-#endif
 
 
 extern const struct sound_settings_info audiohw_settings[];

@@ -1,4 +1,6 @@
 #include "actions.h"
+#include "commands.h"
+#include "hardware/platform.h"
 #include "openiboot-asmhelpers.h"
 #include "arm.h"
 #include "lcd.h"
@@ -10,6 +12,9 @@
 #include "dma.h"
 #include "radio.h"
 #include "syscfg.h"
+#include "scripting.h"
+#include "images.h"
+#include "multitouch.h"
 
 #define MACH_APPLE_IPHONE 1506
 
@@ -147,6 +152,18 @@ void chainload(uint32_t address) {
 	arm_disable_caches();
 	mmu_disable();
 	CallArm(address);
+}
+
+int chainload_image(char* name)
+{
+	Image* image = images_get(fourcc(name));
+	if(image == NULL)
+		return -1;
+
+	void* imageData;
+	images_read(image, &imageData);
+	chainload((uint32_t)imageData);
+	return 0;
 }
 
 #define tag_next(t)     ((struct atag *)((uint32_t *)(t) + (t)->hdr.size))
@@ -378,9 +395,49 @@ static void setup_tags(struct atag* parameters, const char* commandLine)
 	setup_end_tag();                    /* end of tags */
 }
 
+static int load_multitouch_images()
+{
+#ifdef CONFIG_IPHONE_2G
+        Image* image = images_get(fourcc("mtza"));
+        if (image == NULL) {
+            return 0;
+        }
+        void* aspeedData;
+        size_t aspeedLength = images_read(image, &aspeedData);
+        
+        image = images_get(fourcc("mtzm"));
+        if(image == NULL) {
+            return 0;
+        }
+        
+        void* mainData;
+        size_t mainLength = images_read(image, &mainData);
+        
+        multitouch_setup(aspeedData, aspeedLength, mainData,mainLength);
+        free(aspeedData);
+        free(mainData);
+#endif
+
+#if defined(CONFIG_IPHONE_3G) || defined(CONFIG_IPOD)
+        Image* image = images_get(fourcc("mtz2"));
+        if(image == NULL) {
+            return 0;
+        }
+        void* imageData;
+        size_t length = images_read(image, &imageData);
+        
+        multitouch_setup(imageData, length);
+        free(imageData);
+#endif
+    return 1;
+}
+
 void boot_linux(const char* args) {
 	uint32_t exec_at = (uint32_t) kernel;
 	uint32_t param_at = exec_at - 0x2000;
+
+	load_multitouch_images();
+
 	setup_tags((struct atag*) param_at, args);
 
 	uint32_t mach_type = MACH_APPLE_IPHONE;
@@ -446,3 +503,307 @@ void boot_linux_from_files()
 	boot_linux("console=tty root=/dev/ram0 init=/init rw");
 }
 #endif
+
+static BootEntry rootEntry;
+static BootEntry *currentEntry;
+static BootEntry *defaultEntry;
+
+static void setup_init()
+{
+	memset(&rootEntry, 0, sizeof(rootEntry));
+	rootEntry.type = kBootAuto;
+	rootEntry.title = "";
+	rootEntry.list_ptr.next = &rootEntry;
+	rootEntry.list_ptr.prev = &rootEntry;
+	currentEntry = &rootEntry;
+	defaultEntry = &rootEntry;
+}
+MODULE_INIT_BOOT(setup_init);
+
+BootEntry *setup_root()
+{
+	return &rootEntry;
+}
+
+BootEntry *setup_current()
+{
+	return currentEntry;
+}
+
+BootEntry *setup_default()
+{
+	return defaultEntry;
+}
+
+void setup_title(const char *title)
+{
+	BootEntry *entry = rootEntry.list_ptr.next;
+	while(entry != &rootEntry)
+	{
+		if(entry->title != NULL)
+		{
+			if(strcmp(entry->title, title) == 0)
+			{
+				currentEntry = entry;
+				return;
+			}
+		}
+
+		entry = entry->list_ptr.next;
+	}
+
+	BootEntry *prev = rootEntry.list_ptr.prev;
+
+	entry = malloc(sizeof(BootEntry));
+	memset(entry, 0, sizeof(BootEntry));
+	entry->title = strdup(title);
+	entry->list_ptr.prev = prev;
+	entry->list_ptr.next = &rootEntry;
+	rootEntry.list_ptr.prev = entry;
+	prev->list_ptr.next = entry;
+	currentEntry = entry;
+
+	if(defaultEntry == &rootEntry)
+		defaultEntry = currentEntry;
+}
+
+void setup_entry(BootEntry *entry)
+{
+	currentEntry = entry;
+}
+
+void setup_auto()
+{
+	currentEntry->type = kBootAuto;
+}
+
+void setup_kernel(const char *kernel, const char *args)
+{
+	if(currentEntry->kernel != NULL)
+		free(currentEntry->kernel);
+
+	if(currentEntry->path != NULL)
+		free(currentEntry->path);
+
+	currentEntry->type = kBootLinux;
+
+	if(kernel == NULL)
+		currentEntry->kernel = NULL;
+	else
+		currentEntry->kernel = strdup(kernel);
+
+	if(args == NULL)
+		currentEntry->path = NULL;
+	else
+		currentEntry->path = strdup(args);
+}
+
+void setup_initrd(const char *initrd)
+{
+	if(currentEntry->ramdisk != NULL)
+		free(currentEntry->ramdisk);
+
+	if(initrd == NULL)
+		currentEntry->ramdisk = NULL;
+	else
+		currentEntry->ramdisk = strdup(initrd);
+}
+
+void setup_image(const char *image)
+{
+	if(currentEntry->path != NULL)
+		free(currentEntry->path);
+
+	currentEntry->type = kBootImage;
+	currentEntry->path = strdup(image);
+}
+
+int setup_boot()
+{
+	switch(currentEntry->type)
+	{
+	case kBootAuto:
+		// This should be the default node,
+		// try and boot ibox, failing that
+		// boot ibot.
+		if(chainload_image("ibox") != 0)
+			return chainload_image("ibot");
+		return 0;
+
+	case kBootImage:
+		return chainload_image(currentEntry->path);
+
+	case kBootLinux:
+		{
+			if(currentEntry->kernel == NULL)
+			{
+				bufferPrintf("setup: Can't boot linux without a kernel!\n");
+				return -1;
+			}
+
+			uint32_t size;
+			uint8_t *data = script_load_file(currentEntry->kernel, &size);
+			if(data == NULL)
+			{
+				bufferPrintf("setup: Failed to load kernel!\n");
+				return -1;
+			}
+
+			bufferPrintf("setup: Loaded kernel at 0x%08x.\n", data);
+			set_kernel(data, size);
+			free(data);
+
+			if(currentEntry->ramdisk != NULL)
+			{
+				data = script_load_file(currentEntry->ramdisk, &size);
+				if(data == NULL)
+				{
+					bufferPrintf("setup: Failed to load ramdisk.\n");
+					return -1;
+				}
+
+				bufferPrintf("setup: Loaded ramdisk at 0x%08x.\n", data);
+				set_ramdisk(data, size);
+				free(data);
+			}
+
+			if(currentEntry->path == NULL)
+				boot_linux("console=tty root=/dev/ram0 init=/init rw");
+			else
+				boot_linux(currentEntry->path);
+
+			return 0;
+		}
+
+	case kBootChainload:
+		{
+			uint32_t addr = parseNumber(currentEntry->path);
+			chainload(addr);
+			return 0;
+		}
+	}
+
+	bufferPrintf("setup: Invalid boot entry selected.\n");
+	return -1;
+}
+
+static void cmd_setup_title(int argc, char **argv)
+{
+	if(argc != 2)
+		bufferPrintf("Usage: %s [title]\n", argv[0]);
+	else
+		setup_title(argv[1]);
+}
+COMMAND("title", "Select a boot entry by title.", cmd_setup_title);
+
+static void cmd_setup_default(int argc, char **argv)
+{
+	if(argc > 1)
+		bufferPrintf("Usage: %s\n", argv[0]);
+	else
+		defaultEntry = setup_current();
+}
+COMMAND("default", "Set the current entry as the default.", cmd_setup_default);
+
+static void cmd_setup_auto(int argc, char **argv)
+{
+	if(argc > 1)
+		bufferPrintf("Usage: %s\n", argv[0]);
+	else
+		setup_auto();
+}
+COMMAND("auto", "Set current boot entry to boot fallback bootloader.\n", cmd_setup_auto);
+
+static void cmd_setup_kernel(int argc, char **argv)
+{
+	if(argc <= 1)
+	{
+		// No arguments, just use the last sent file, with no command line
+		// TODO: This leaks memory, fix it. -- Ricky26
+		char *ptr = malloc(received_file_size);
+		memcpy(ptr, (void*)0x09000000, received_file_size);
+		char buff[128];
+		sprintf(buff, "%d+%d", (uint32_t)ptr, received_file_size);
+		setup_kernel(buff, NULL);
+	}
+	else if(argc == 2)
+	{
+		char *ptr = malloc(received_file_size);
+		memcpy(ptr, (void*)0x09000000, received_file_size);
+		char buff[128];
+		sprintf(buff, "%d+%d", (uint32_t)ptr, received_file_size);
+		setup_kernel(buff, argv[1]);
+	}
+	else if(argc == 3)
+		setup_kernel(argv[1], argv[2]);
+	else
+		bufferPrintf("Usage: %s [kernel] [command line]\n", argv[0]);
+}
+COMMAND("kernel", "Set the kernel of the current boot entry.", cmd_setup_kernel);
+
+static void cmd_setup_initrd(int argc, char **argv)
+{
+	if(argc <= 1)
+	{
+		char buff[128];
+		sprintf(buff, "0x09000000+%d", received_file_size);
+		setup_initrd(buff);
+	}
+	else if(argc == 2)
+		setup_initrd(argv[1]);
+	else
+		bufferPrintf("Usage: %s [initrd]\n", argv[0]);
+}
+COMMAND("initrd", "Set the ramdisk for the current boot entry.", cmd_setup_initrd);
+
+static void cmd_setup_image(int argc, char **argv)
+{
+	if(argc != 2)
+		bufferPrintf("Usage: %s [image]\n", argv[0]);
+	else
+		setup_image(argv[1]);
+}
+COMMAND("image", "Set the image to chainload for the current boot entry.", cmd_setup_image);
+
+static void cmd_setup_boot(int argc, char **argv)
+{
+	if(argc > 1)
+		bufferPrintf("Usage: %s\n", argv[0]);
+	else
+		setup_boot();
+}
+COMMAND("boot", "Boot the current boot entry.", cmd_setup_boot);
+
+void cmd_go(int argc, char** argv) {
+	uint32_t address;
+
+	if(argc < 2) {
+		address = 0x09000000;
+	} else {
+		address = parseNumber(argv[1]);
+	}
+
+	bufferPrintf("Jumping to 0x%x (interrupts disabled)\r\n", address);
+
+	// make as if iBoot was called from ROM
+	pmu_set_iboot_stage(0x1F);
+
+	udelay(100000);
+
+	chainload(address);
+}
+COMMAND("go", "jump to a specified address (interrupts disabled)", cmd_go);
+
+void cmd_jump(int argc, char** argv) {
+	if(argc < 2) {
+		bufferPrintf("Usage: %s <address>\r\n", argv[0]);
+		return;
+	}
+
+	uint32_t address = parseNumber(argv[1]);
+	bufferPrintf("Jumping to 0x%x\r\n", address);
+	udelay(100000);
+
+	CallArm(address);
+}
+COMMAND("jump", "jump to a specified address (interrupts enabled)", cmd_jump);
