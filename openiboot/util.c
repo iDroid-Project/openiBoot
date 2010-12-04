@@ -21,6 +21,20 @@ void panic() {
 	while(TRUE);
 }
 
+void system_panic(const char* format, ...) {
+	static char buffer[1000];
+	EnterCriticalSection();
+	buffer[0] = '\0';
+
+	va_list args;
+	va_start(args, format);
+	vsprintf(buffer, format, args);
+	va_end(args);
+	bufferPrint(buffer);
+	LeaveCriticalSection();
+	panic();
+}
+
 void* memset(void* x, int fill, uint32_t size) {
 	uint32_t i;
 	for(i = 0; i < size; i++) {

@@ -30,8 +30,11 @@ void WriteTranslationTableBaseRegister0(void* translationTableBase);
 uint32_t ReadTranslationTableBaseRegister0();
 
 void InvalidateUnifiedTLBUnlockedEntries();
+void DataSynchronizationBarrier();
 void ClearCPUInstructionCache();
 void CleanDataCacheLineMVA();
+void InvalidateDataCacheLineMVA();
+void CleanAndInvalidateDataCacheLineMVA();
 void CleanCPUDataCache();
 void InvalidateCPUDataCache();
 void CleanAndInvalidateCPUDataCache();

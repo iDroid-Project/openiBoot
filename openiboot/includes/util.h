@@ -11,6 +11,7 @@
 #endif
 
 void panic();
+void system_panic(const char* format, ...);
 
 void __assert(const char* file, int line, const char* m);
 void* memset(void* x, int fill, uint32_t size);

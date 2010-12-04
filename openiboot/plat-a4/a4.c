@@ -70,6 +70,8 @@ void platform_init()
 	uart_setup();
 	i2c_setup();
 
+	dma_setup();
+
 	LeaveCriticalSection();
 
 	framebuffer_hook(); // TODO: Remove once LCD implemented -- Ricky26
