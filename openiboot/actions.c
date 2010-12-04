@@ -15,6 +15,8 @@
 #include "scripting.h"
 #include "images.h"
 #include "multitouch.h"
+#include "pmu.h"
+#include "timer.h"
 
 #define MACH_APPLE_IPHONE 1506
 

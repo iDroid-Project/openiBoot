@@ -5,7 +5,7 @@
 #define USB_NUM_ENDPOINTS	6
 #define USB_NUM_FIFOS		15
 
-#if defined(CONFIG_IPHONE_4)||defined(CONFIG_IPAD)
+#if defined(CONFIG_A4)||defined(CONFIG_S5L8920)
 #define USB_PHY_A4
 #elif defined(CONFIG_IPOD2G)
 #define USB_PHY_2G

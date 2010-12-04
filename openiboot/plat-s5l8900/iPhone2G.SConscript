@@ -16,6 +16,9 @@ iphone_2g_src = [
 	])]
 Export('iphone_2g_src')
 
+env = env.Clone()
+env.Append(CPPDEFINES=['OPENIBOOT_VERSION_CONFIG=\\"for iPhone 2G\\"'])
+
 elf, bin, img3 = env.OpenIBootTarget('iPhone2G', 'iphone_2g_openiboot', 'CONFIG_IPHONE_2G', iphone_2g_src+menu_src, 'template')
 env.OpenIBootTarget('iPhone2G-Installer', 'iphone_2g_installer', 'CONFIG_IPHONE_2G', iphone_2g_src+installer_src, 'template')
 Default(img3)

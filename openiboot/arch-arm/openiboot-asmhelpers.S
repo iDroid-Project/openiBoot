@@ -238,10 +238,12 @@ CleanDataCacheLineMVA:
 	BX	LR
 
 CleanCPUDataCache:
-#if !defined(CONFIG_IPHONE_4) && !defined(CONFIG_IPAD)
+#ifdef ARM11
 	MOV	R0, #0
 	MCR	p15, 0,	R0, c7, c10
-#else
+#endif
+
+#ifdef ARM_A8
 	MOV	R2, #0x2000
 CleanCPUDataCache_1:
 	SUB	R2, R2, #0x40
@@ -259,10 +261,12 @@ CleanCPUDataCache_2:
 	BX	LR
 
 InvalidateCPUDataCache:
-#if !defined(CONFIG_IPHONE_4) && !defined(CONFIG_IPAD)
+#ifdef ARM11
 	MOV	R0, #0
 	MCR	p15, 0,	R0, c7, c6
-#else
+#endif
+
+#ifdef ARM_A8
 	MOV	R2, #0x2000
 InvalidateCPUDataCache_1:
 	SUB	R2, R2, #0x40
@@ -275,13 +279,16 @@ InvalidateCPUDataCache_2:
 	CMP	R2, #0
 	BNE	InvalidateCPUDataCache_1
 #endif
+
 	BX	LR
 
 CleanAndInvalidateCPUDataCache:
-#if !defined(CONFIG_IPHONE_4) && !defined(CONFIG_IPAD)
+#ifdef ARM11
 	MOV	R0, #0
 	MCR	p15, 0,	R0, c7, c14
-#else
+#endif
+
+#ifdef ARM_A8
 	MOV	R2, #0x2000
 CleanAndInvalidateCPUDataCache_1:
 	SUB	R2, R2, #0x40
@@ -295,6 +302,7 @@ CleanAndInvalidateCPUDataCache_2:
 	BNE	CleanAndInvalidateCPUDataCache_1
 	MOV	R0, #0
 #endif
+
 	MCR	p15, 0,	R0, c7, c10, 4	@ Data synchronization barrier
 	BX	LR
 
@@ -305,12 +313,26 @@ ClearCPUCaches:
 	LDMFD	SP!, {LR}
 	BX	LR
 
+// These two are used by the 3GS,
+// clearly for demonic purposes. -- Ricky26
+.global GetC9C012
+GetC9C012:
+	MRC p15, 1, R0, c9, c0, 2
+	BX LR
+
+.global SetC9C012
+SetC9C012:
+	MCR p15, 1, R0, c9, c0, 2
+	BX LR
+
 Reboot:
-#if !defined(CONFIG_IPHONE_4) && !defined(CONFIG_IPAD)
+#ifdef CONFIG_S5L8900
 	LDR	R0, =WDT_CTRL
 	MOV	R1, #WDT_ENABLE
 	STR	R1, [R0]
-#else
+#endif
+
+#ifdef CONFIG_A4
 	LDR     R1, =0xBF10202C
 	LDR     R3, =0xBF102024
 	MOVS    R0, #0
@@ -324,6 +346,23 @@ Reboot:
 	STR     R3, [R1]
 	STR     R0, [R2]
 #endif
+
+#ifdef CONFIG_S5L8920
+	LDR     R1, =0xBF10021C
+	LDR     R3, =0xBF100214
+	MOVS    R0, #0
+	MOVS    R2, #1
+	STR     R0, [R1]
+	STR     R2, [R3]
+	LDR     R2, =0xBF100210
+	MOV	R3, #0x80000000
+	STR     R3, [R2]
+	MOVS    R3, #4
+	STR     R3, [R1]
+	STR     R0, [R2]
+#endif
+
+	// If all else fails, loop forever
 	B	Reboot
 
 @
