@@ -11,7 +11,7 @@ ifeq ($(PLATFORM),IPOD)
 endif
 
 ifeq ($(PLATFORM),IPHONE_4)
-	TARGET = iphone_4g_openiboot.bin
+	TARGET = iphone_4_openiboot.bin
 endif
 
 ifeq ($(PLATFORM),IPAD)
