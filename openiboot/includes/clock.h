@@ -39,24 +39,11 @@ typedef enum FrequencyBase {
 	FrequencyBaseUsbPhy,
 } FrequencyBase;
 
-#ifdef CONFIG_S5L8900
 int clock_set_base_divisor(ClockDivisorCode code);
 int clock_setup();
 void clock_gate_switch(uint32_t gate, OnOff on_off);
 uint32_t clock_get_frequency(FrequencyBase freqBase);
-uint32_t clock_calculate_frequency(uint32_t pdiv, uint32_t mdiv, FrequencyBase freqBase);
 void clock_set_sdiv(int sdiv);
-#elif defined(CONFIG_A4)
-uint32_t CalculatedFrequencyTable[55];
-int clock_setup();
-void clock_gate_switch(uint32_t gate, OnOff on_off);
-uint32_t clock_get_frequency(FrequencyBase freqBase);
-#elif defined(CONFIG_S5L8720)
-int clock_set_base_divisor(ClockDivisorCode code);
-int clock_setup();
-void clock_gate_switch(uint32_t gate, OnOff on_off);
-uint32_t clock_get_frequency(FrequencyBase freqBase);
 unsigned int clock_get_base_frequency();
-#endif
 
 #endif
