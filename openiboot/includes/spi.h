@@ -13,6 +13,11 @@ typedef struct SPIRegister {
 	uint32_t clkDivider;
 	uint32_t cnt;
 	uint32_t idd;
+	uint32_t unkReg4;
+	uint32_t unkReg5;
+	uint32_t unkReg6;
+	uint32_t unkReg7;
+	uint32_t txBufferLen;
 } SPIRegister;
 
 typedef enum SPIClockSource {
@@ -41,6 +46,7 @@ typedef struct SPIInfo {
 	volatile int rxCurrentLen;
 	volatile int rxTotalLen;
 	volatile int counter;
+	int setupOptions;
 	volatile int txDone;
 	volatile int rxDone;
 } SPIInfo;

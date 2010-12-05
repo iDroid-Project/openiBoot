@@ -3,15 +3,14 @@
 #include "clock.h"
 #include "hardware/power.h"
 #include "util.h"
+#include "chipid.h"
 
 int miu_setup() {
-	if(POWER_ID_EPOCH(*((uint8_t*)(POWER + POWER_ID))) != 3) {
+	if(POWER_ID_EPOCH(GET_REG(POWER + POWER_ID)) != chipid_get_power_epoch()) {
 		// Epoch mismatch
 		bufferPrintf("miu: epoch mismatch\r\n");
 		return -1;
 	}
-
-	clock_set_base_divisor(ClockDivisorCode1);
 
 	return 0;
 }

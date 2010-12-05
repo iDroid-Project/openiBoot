@@ -251,7 +251,10 @@ void acm_start()
 	usb_install_ep_handler(ACM_EP_RECV, USBOut, acm_received, 0);
 	usb_install_setup_handler(acm_setup);
 }
+//TODO: remove
+#ifndef CONFIG_S5L8720
 MODULE_INIT(acm_start);
+#endif
 
 void acm_stop()
 {

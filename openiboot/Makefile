@@ -10,6 +10,10 @@ ifeq ($(PLATFORM),IPOD)
 	TARGET = ipod_1g_openiboot.img3
 endif
 
+ifeq ($(PLATFORM),IPOD_2G)
+	TARGET = ipod_2g_openiboot.img3
+endif
+
 ifeq ($(PLATFORM),IPHONE_4)
 	TARGET = iphone_4g_openiboot.bin
 endif

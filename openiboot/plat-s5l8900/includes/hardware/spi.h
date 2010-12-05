@@ -11,12 +11,17 @@
 #define CONTROL 0x0
 #define SETUP 0x4
 #define STATUS 0x8
-#define PIN 0xC
+#define SPIPIN 0xC
 #define TXDATA 0x10
 #define RXDATA 0x20
 #define CLKDIVIDER 0x30
 #define SPCNT 0x34
 #define SPIDD 0x38
+#define UNKREG4 0x3C
+#define UNKREG5 0x40
+#define UNKREG6 0x44
+#define UNKREG7 0x48
+#define TXBUFFERLEN 0x4C
 
 // Values
 #define MAX_TX_BUFFER 8

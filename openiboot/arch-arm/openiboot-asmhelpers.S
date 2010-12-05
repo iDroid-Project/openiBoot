@@ -326,7 +326,7 @@ SetC9C012:
 	BX LR
 
 Reboot:
-#ifdef CONFIG_S5L8900
+#if defined(CONFIG_S5L8900) || defined(CONFIG_S5L8720)
 	LDR	R0, =WDT_CTRL
 	MOV	R1, #WDT_ENABLE
 	STR	R1, [R0]
