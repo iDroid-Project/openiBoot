@@ -1,9 +1,15 @@
 #include "openiboot.h"
-#include "hardware/s5l8900.h"
+#include "commands.h"
+#include "hardware/platform.h"
 #include "util.h"
 #include "timer.h"
 #include "wdt.h"
 #include "openiboot-asmhelpers.h"
+
+void cmd_malloc_stats(int argc, char** argv) {
+	malloc_stats();
+}
+COMMAND("malloc_stats", "display malloc stats", cmd_malloc_stats);
 
 #define HAVE_MMAP 0
 #define MALLOC_FAILURE_ACTION { bufferPrintf("malloc failed!\r\n"); while(1); }
@@ -1440,8 +1446,13 @@ static int win32munmap(void* ptr, size_t size) {
 // FIXME: hack alert! We might spend a long time with interrupts disabled so wdt has to be disabled.
 // This might be fixed with proper mutexes, but then we would need to ensure no mallocs occur in
 // interrupt contexts
+#ifndef MALLOC_NO_WDT // TODO: Implement WDT for A4
 #define ACQUIRE_LOCK(l)      (wdt_disable(), EnterCriticalSection(), 0)
 #define RELEASE_LOCK(l)      (LeaveCriticalSection(), wdt_enable(), 0)
+#else
+#define ACQUIRE_LOCK(l)		(EnterCriticalSection(), 0)
+#define RELEASE_LOCK(l)		(LeaveCriticalSection(), 0)
+#endif
 #define PTHREAD_MUTEX_INITIALIZER 0
 
 #if HAVE_MORECORE

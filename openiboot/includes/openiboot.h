@@ -18,24 +18,9 @@ typedef signed int intptr_t;
 #define OPENIBOOT_VERSION_DEBUG ""
 #endif
 
-#ifdef CONFIG_IPHONE_2G
-#define OPENIBOOT_VERSION_CONFIG " for iPhone 2G"
+#ifndef OPENIBOOT_VERSION_CONFIG
+#define OPENIBOOT_VERSION_CONFIG ""
 #endif
-#ifdef CONFIG_IPOD
-#define OPENIBOOT_VERSION_CONFIG " for iPod touch 1G"
-#endif
-#ifdef CONFIG_IPHONE_3G
-#define OPENIBOOT_VERSION_CONFIG " for iPhone 3G"
-#endif
-#ifdef CONFIG_IPHONE_4
-#ifndef CONFIG_IPAD
-#define OPENIBOOT_VERSION_CONFIG " for iPhone 4G"
-#endif
-#endif
-#ifdef CONFIG_IPAD
-#define OPENIBOOT_VERSION_CONFIG " for iPad"
-#endif
-
 
 #define XSTRINGIFY(s) STRINGIFY(s)
 #define STRINGIFY(s) #s
@@ -139,5 +124,29 @@ extern TaskDescriptor* CurrentRunning;
 #define GET_REG8(x) (*((volatile uint8_t*)(x)))
 #define SET_REG8(x, y) (*((volatile uint8_t*)(x)) = (y))
 #define GET_BITS(x, start, length) ((((uint32_t)(x)) << (32 - ((start) + (length)))) >> (32 - (length)))
+
+//
+// Module support
+//
+
+typedef void (*initfn_t)(void);
+typedef void (*exitfn_t)(void);
+typedef void (*mainfn_t)(void);
+
+#define BOOT_MODULE_INIT_SECTION	".init_modules_boot"
+#define MODULE_INIT_SECTION			".init_modules"
+#define MODULE_EXIT_SECTION			".exit_modules"
+
+#define MODULE_INIT_BOOT(fn) initfn_t fn##_init __attribute__((section(BOOT_MODULE_INIT_SECTION))) = &fn;
+#define MODULE_INIT(fn) initfn_t fn##_init __attribute__((section(MODULE_INIT_SECTION))) = &fn;
+#define MODULE_EXIT(fn) exitfn_t fn##_exit __attribute__((section(MODULE_EXIT_SECTION))) = &fn;
+
+void init_boot_modules();
+void init_modules();
+void exit_modules();
+
+void OpenIBootShutdown();
+void OpenIBootConsole();
+extern mainfn_t OpenIBootMain;
 
 #endif

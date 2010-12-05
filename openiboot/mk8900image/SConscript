@@ -1,0 +1,28 @@
+Import("*")
+
+import platform
+
+libs = []
+if platform.system() == 'Linux':
+	if platform.machine() == 'x86_64':
+		libs += ["x86_64/libxpwn.a", "x86_64/libcommon.a"]
+	else:
+		libs += ["x86/libxpwn.a", "x86/libcommon.a"]
+
+if platform.system() == 'Mac':
+	libs += ["mac-x86/libxpwn.a", "mac-x86/libcommon.a"]
+
+mk8900image = henv.Program('mk8900image', ['mk8900image.c'] + libs, LIBPATH='.', LIBS=['m', 'dl', 'png', 'crypto', 'z'])
+
+def generate_actions(source, target, env, for_sig=False, **kw):
+	Depends(target, mk8900image)
+
+	if len(source) > 2:
+		return "%s %s %s %s %s" % (str(mk8900image[0]), source[0], target[0], source[1], source[2])
+
+	if len(source) > 1:
+		return "%s %s %s %s" % (str(mk8900image[0]), source[0], target[0], source[1])
+	
+	return "%s %s %s" % (str(mk8900image[0]), source[0], target[0])
+
+env.Append(BUILDERS = {'Make8900Image': Builder(generator=generate_actions)})

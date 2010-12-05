@@ -4,6 +4,7 @@
 #include "util.h"
 #include "hardware/power.h"
 #include "hardware/usb.h"
+#include "hardware/platform.h"
 #include "timer.h"
 #include "clock.h"
 #include "tasks.h"
@@ -87,271 +88,6 @@ static int continueMessageQueue(int _ep);
 USBState usb_state()
 {
 	return gUsbState;
-}
-
-#if defined(USB_PHY_A4)||defined(USB_PHY_2G)
-static inline void init_phy()
-{
-#if defined(USB_PHY_A4)
-	SET_REG(USB_PHY + OPHYUNK4, OPHYUNK4_START);
-	SET_REG(USB_PHY + OPHYPWR, OPHYPWR_PLLPOWERDOWN | OPHYPWR_XOPOWERDOWN); // Please tell me this turns the PHY ON, not OFF. -- Ricky26
-#else
-	// power on PHY
-	SET_REG(USB_PHY + OPHYPWR, OPHYPWR_POWERON);
-#endif
-
-	udelay(USB_PHYPWRPOWERON_DELAYUS);
-
-	SET_REG(USB_PHY + OPHYUNK1, OPHYUNK1_START);
-	SET_REG(USB_PHY + OPHYUNK2, OPHYUNK2_START);
-	
-	// select clock
-	uint32_t phyClockBits;
-	switch (clock_get_frequency(FrequencyBaseUsbPhy))
-	{
-		case OPHYCLK_SPEED_12MHZ:
-			phyClockBits = OPHYCLK_CLKSEL_12MHZ;
-			break;
-
-		case OPHYCLK_SPEED_24MHZ:
-			phyClockBits = OPHYCLK_CLKSEL_24MHZ;
-			break;
-
-		case OPHYCLK_SPEED_48MHZ:
-			phyClockBits = OPHYCLK_CLKSEL_48MHZ;
-			break;
-
-		default:
-			phyClockBits = OPHYCLK_CLKSEL_OTHER;
-			break;
-	}
-	SET_REG(USB_PHY + OPHYCLK, (GET_REG(USB_PHY + OPHYCLK) & ~OPHYCLK_CLKSEL_MASK) | phyClockBits);
-
-	// reset phy
-	SET_REG(USB_PHY + ORSTCON, GET_REG(USB_PHY + ORSTCON) | ORSTCON_PHYSWRESET);
-	udelay(USB_RESET2_DELAYUS);
-	SET_REG(USB_PHY + ORSTCON, GET_REG(USB_PHY + ORSTCON) & (~ORSTCON_PHYSWRESET));
-	udelay(USB_RESET_DELAYUS);
-}
-#else
-void init_phy()
-{
-	// power on PHY
-	SET_REG(USB_PHY + OPHYPWR, OPHYPWR_POWERON);
-	udelay(USB_PHYPWRPOWERON_DELAYUS);
-
-	// select clock
-	SET_REG(USB_PHY + OPHYCLK, (GET_REG(USB_PHY + OPHYCLK) & (~OPHYCLK_CLKSEL_MASK)) | OPHYCLK_CLKSEL_48MHZ);
-
-	// reset phy
-	SET_REG(USB_PHY + ORSTCON, GET_REG(USB_PHY + ORSTCON) | ORSTCON_PHYSWRESET);
-	udelay(USB_RESET2_DELAYUS);
-	SET_REG(USB_PHY + ORSTCON, GET_REG(USB_PHY + ORSTCON) & (~ORSTCON_PHYSWRESET));
-	udelay(USB_RESET_DELAYUS);
-}
-#endif
-
-int usb_setup() {
-	int i;
-
-	// This is not relevant to the hardware,
-	// and usb_setup is called when setting up a new
-	// USB protocol. So we should reset the EP
-	// handlers here! -- Ricky26
-	memset(endpoint_handlers, 0, sizeof(endpoint_handlers));
-	startHandler = NULL;
-	enumerateHandler = NULL;
-	setupHandler = NULL;
-
-	if(usb_inited) {
-		return 0;
-	}
-
-#ifdef USB_PHY_1G
-	// Power on hardware
-	power_ctrl(POWER_USB, ON);
-	udelay(USB_START_DELAYUS);
-#else
-	// Wait for USB hardware to come alive
-	udelay(10000);
-#endif
-
-	InEPRegs = (USBEPRegisters*)(USB + USB_INREGS);
-	OutEPRegs = (USBEPRegisters*)(USB + USB_OUTREGS);
-
-	change_state(USBStart);
-
-	// Initialize our data structures
-	memset(usb_message_queue, 0, sizeof(usb_message_queue));
-
-	// Set up the hardware
-	clock_gate_switch(USB_OTGCLOCKGATE, ON);
-	clock_gate_switch(USB_PHYCLOCKGATE, ON);
-
-#ifndef USB_PHY_A4
-	clock_gate_switch(EDRAM_CLOCKGATE, ON);
-#endif
-
-	// power on OTG
-	SET_REG(USB + USB_ONOFF, GET_REG(USB + USB_ONOFF) & (~USB_ONOFF_OFF));
-	udelay(USB_ONOFFSTART_DELAYUS);
-
-	// Generate a soft disconnect on host
-	SET_REG(USB + DCTL, GET_REG(USB + DCTL) | DCTL_SFTDISCONNECT);
-	udelay(USB_SFTDISCONNECT_DELAYUS);
-
-	// Initialise PHY
-	init_phy();
-
-	SET_REG(USB + GRSTCTL, GRSTCTL_CORESOFTRESET);
-
-	// wait until reset takes
-	while((GET_REG(USB + GRSTCTL) & GRSTCTL_CORESOFTRESET) == GRSTCTL_CORESOFTRESET);
-
-	// wait until reset completes
-	while((GET_REG(USB + GRSTCTL) & ~GRSTCTL_AHBIDLE) != 0);
-
-	udelay(USB_RESETWAITFINISH_DELAYUS);
-
-	if(GET_REG(USB+GHWCFG4) & GHWCFG4_DED_FIFO_EN)
-		usb_fifo_mode = FIFODedicated;
-	else
-		usb_fifo_mode = FIFOShared;
-	bufferPrintf("USB: FIFO Mode %d.\n", usb_fifo_mode);
-
-	int hwcfg2 = GET_REG(USB+GHWCFG2);
-	int num_eps = (hwcfg2 >> GHWCFG2_NUM_ENDPOINTS_SHIFT) & GHWCFG2_NUM_ENDPOINTS_MASK;
-	bufferPrintf("USB: %d endpoints.\n", num_eps);
-	if(num_eps > USB_NUM_ENDPOINTS)
-	{
-		bufferPrintf("USB: Only using %d EPs, as that is all OIB was compiled to use.\n", USB_NUM_ENDPOINTS);
-		num_eps = USB_NUM_ENDPOINTS;
-	}
-
-	usb_num_endpoints = num_eps;
-
-	// flag all interrupts as positive, maybe to disable them
-
-	// Set 7th EP? This is what iBoot does
-	InEPRegs[USB_NUM_ENDPOINTS].interrupt = USB_EPINT_INEPNakEff | USB_EPINT_INTknEPMis | USB_EPINT_INTknTXFEmp
-		| USB_EPINT_TimeOUT | USB_EPINT_AHBErr | USB_EPINT_EPDisbld | USB_EPINT_XferCompl;
-	OutEPRegs[USB_NUM_ENDPOINTS].interrupt = USB_EPINT_OUTTknEPDis
-		| USB_EPINT_SetUp | USB_EPINT_AHBErr | USB_EPINT_EPDisbld | USB_EPINT_XferCompl;
-
-	for(i = 0; i < USB_NUM_ENDPOINTS; i++) {
-		InEPRegs[i].interrupt = USB_EPINT_INEPNakEff | USB_EPINT_INTknEPMis | USB_EPINT_INTknTXFEmp
-			| USB_EPINT_TimeOUT | USB_EPINT_AHBErr | USB_EPINT_EPDisbld | USB_EPINT_XferCompl;
-		OutEPRegs[i].interrupt = USB_EPINT_OUTTknEPDis
-			| USB_EPINT_SetUp | USB_EPINT_AHBErr | USB_EPINT_EPDisbld | USB_EPINT_XferCompl;
-
-		InEPRegs[i].control = 0;
-		OutEPRegs[i].control = 0;
-	}
-
-	// disable all interrupts until endpoint descriptors and configuration structures have been setup
-	SET_REG(USB + GINTMSK, GINTMSK_NONE);
-	SET_REG(USB + DIEPMSK, USB_EPINT_NONE);
-	SET_REG(USB + DOEPMSK, USB_EPINT_NONE);
-
-	// allow host to reconnect
-	SET_REG(USB + DCTL, GET_REG(USB + DCTL) & (~DCTL_SFTDISCONNECT));
-	udelay(USB_SFTCONNECT_DELAYUS);
-
-	bufferPrintf("USB: Hardware Configuration\n"
-		"    HWCFG1 = 0x%08x\n"
-		"    HWCFG2 = 0x%08x\n"
-		"    HWCFG3 = 0x%08x\n"
-		"    HWCFG4 = 0x%08x\n",
-		GET_REG(USB+GHWCFG1),
-		GET_REG(USB+GHWCFG2),
-		GET_REG(USB+GHWCFG3),
-		GET_REG(USB+GHWCFG4));
-
-	interrupt_install(USB_INTERRUPT, usbIRQHandler, 0);
-
-	usb_inited = TRUE;
-
-	return 0;
-}
-
-int usb_start(USBEnumerateHandler hEnumerate, USBStartHandler hStart) {
-	enumerateHandler = hEnumerate;
-	startHandler = hStart;
-
-	initializeDescriptors();
-
-	if(controlSendBuffer == NULL)
-		controlSendBuffer = memalign(DMA_ALIGN, CONTROL_SEND_BUFFER_LEN);
-
-	if(controlRecvBuffer == NULL)
-		controlRecvBuffer = memalign(DMA_ALIGN, CONTROL_RECV_BUFFER_LEN);
-
-	SET_REG(USB + GAHBCFG, GAHBCFG_DMAEN | GAHBCFG_BSTLEN_INCR8 | GAHBCFG_MASKINT);
-	SET_REG(USB + GUSBCFG, GUSBCFG_PHYIF16BIT | GUSBCFG_SRPENABLE | GUSBCFG_HNPENABLE | ((USB_TURNAROUND & GUSBCFG_TURNAROUND_MASK) << GUSBCFG_TURNAROUND_SHIFT));
-
-	SET_REG(USB + DCFG, DCFG_HISPEED | DCFG_NZSTSOUTHSHK); // some random setting. See specs
-	SET_REG(USB + DCFG, GET_REG(USB + DCFG) & ~(DCFG_DEVICEADDRMSK));
-
-	InEPRegs[0].control = USB_EPCON_ACTIVE;
-	OutEPRegs[0].control = USB_EPCON_ACTIVE;
-
-	SET_REG(USB + GRXFSIZ, RX_FIFO_DEPTH);
-	SET_REG(USB + GNPTXFSIZ, (TX_FIFO_DEPTH << FIFO_DEPTH_SHIFT) | TX_FIFO_STARTADDR);
-
-	int i;
-	for(i = 0; i < USB_NUM_ENDPOINTS; i++) {
-		InEPRegs[i].interrupt = USB_EPINT_INEPNakEff | USB_EPINT_INTknEPMis | USB_EPINT_INTknTXFEmp
-			| USB_EPINT_TimeOUT | USB_EPINT_AHBErr | USB_EPINT_EPDisbld | USB_EPINT_XferCompl;
-		OutEPRegs[i].interrupt = USB_EPINT_OUTTknEPDis
-			| USB_EPINT_SetUp | USB_EPINT_AHBErr | USB_EPINT_EPDisbld | USB_EPINT_XferCompl;
-	
-		InEPRegs[i].control = (InEPRegs[i].control & ~(USB_EPCON_NEXTEP_MASK << USB_EPCON_NEXTEP_SHIFT));
-	}
-
-	SET_REG(USB + GINTMSK, GINTMSK_OTG | GINTMSK_SUSPEND | GINTMSK_RESET | GINTMSK_ENUMDONE | GINTMSK_INEP | GINTMSK_OEP | GINTMSK_DISCONNECT | GINTMSK_EPMIS);
-	SET_REG(USB + DAINTMSK, DAINTMSK_ALL);
-
-	SET_REG(USB + DOEPMSK, USB_EPINT_XferCompl | USB_EPINT_SetUp | USB_EPINT_Back2BackSetup);
-	SET_REG(USB + DIEPMSK, USB_EPINT_XferCompl | USB_EPINT_AHBErr | USB_EPINT_TimeOUT);
-
-	InEPRegs[0].interrupt = USB_EPINT_ALL;
-	OutEPRegs[0].interrupt = USB_EPINT_ALL;
-
-	SET_REG(USB + DCTL, DCTL_PROGRAMDONE + DCTL_CGOUTNAK + DCTL_CGNPINNAK); // This clears active EP count
-	udelay(USB_PROGRAMDONE_DELAYUS);
-	SET_REG(USB + GOTGCTL, GET_REG(USB + GOTGCTL) | GOTGCTL_SESSIONREQUEST);
-
-	usb_enable_endpoint(0, USBBiDir, USBControl, 0x80);
-	usb_receive_control(controlRecvBuffer, sizeof(USBSetupPacket));
-
-	change_state(USBPowered);
-
-	interrupt_enable(USB_INTERRUPT);
-
-	bufferPrintf("USB: EP Directions\n");
-	int guah = GET_REG(USB+GHWCFG1);
-	for(i = 0; i < USB_NUM_ENDPOINTS; i++)
-	{
-		USBDirection dir = (USBDirection)(2-(guah & 0x3));
-		guah >>= 2;
-
-		switch(dir)
-		{
-			case USBIn:
-				bufferPrintf("%d: IN\n", i);
-				break;
-
-			case USBOut:
-				bufferPrintf("%d: OUT\n", i);
-				break;
-
-			case USBBiDir:
-				bufferPrintf("%d: BI\n", i);
-				break;
-		}
-	}
-
-	return 0;
 }
 
 static void usb_set_global_out_nak()
@@ -449,6 +185,241 @@ static void usb_flush_fifo(int _fifo)
 {
 	usb_flush_fifo(0x10);
 }*/
+
+#if defined(USB_PHY_A4)||defined(USB_PHY_2G)
+static inline void init_phy()
+{
+#if defined(USB_PHY_A4)
+	SET_REG(USB_PHY + OPHYUNK4, OPHYUNK4_START);
+	SET_REG(USB_PHY + OPHYPWR, OPHYPWR_PLLPOWERDOWN | OPHYPWR_XOPOWERDOWN); // Please tell me this turns the PHY ON, not OFF. -- Ricky26
+#else
+	// power on PHY
+	SET_REG(USB_PHY + OPHYPWR, OPHYPWR_POWERON);
+#endif
+
+	udelay(USB_PHYPWRPOWERON_DELAYUS);
+
+	SET_REG(USB_PHY + OPHYUNK1, OPHYUNK1_START);
+	SET_REG(USB_PHY + OPHYUNK2, OPHYUNK2_START);
+	
+	// select clock
+	uint32_t phyClockBits;
+	switch (clock_get_frequency(FrequencyBaseUsbPhy))
+	{
+		case OPHYCLK_SPEED_12MHZ:
+			phyClockBits = OPHYCLK_CLKSEL_12MHZ;
+			break;
+
+		case OPHYCLK_SPEED_24MHZ:
+			phyClockBits = OPHYCLK_CLKSEL_24MHZ;
+			break;
+
+		case OPHYCLK_SPEED_48MHZ:
+			phyClockBits = OPHYCLK_CLKSEL_48MHZ;
+			break;
+
+		default:
+			phyClockBits = OPHYCLK_CLKSEL_OTHER;
+			break;
+	}
+	SET_REG(USB_PHY + OPHYCLK, (GET_REG(USB_PHY + OPHYCLK) & ~OPHYCLK_CLKSEL_MASK) | phyClockBits);
+
+	// reset phy
+	SET_REG(USB_PHY + ORSTCON, GET_REG(USB_PHY + ORSTCON) | ORSTCON_PHYSWRESET);
+	udelay(USB_RESET2_DELAYUS);
+	SET_REG(USB_PHY + ORSTCON, GET_REG(USB_PHY + ORSTCON) & (~ORSTCON_PHYSWRESET));
+	udelay(USB_RESET_DELAYUS);
+}
+#else
+void init_phy()
+{
+	// power on PHY
+	SET_REG(USB_PHY + OPHYPWR, OPHYPWR_POWERON);
+	udelay(USB_PHYPWRPOWERON_DELAYUS);
+
+	// select clock
+	SET_REG(USB_PHY + OPHYCLK, (GET_REG(USB_PHY + OPHYCLK) & (~OPHYCLK_CLKSEL_MASK)) | OPHYCLK_CLKSEL_48MHZ);
+
+	// reset phy
+	SET_REG(USB_PHY + ORSTCON, GET_REG(USB_PHY + ORSTCON) | ORSTCON_PHYSWRESET);
+	udelay(USB_RESET2_DELAYUS);
+	SET_REG(USB_PHY + ORSTCON, GET_REG(USB_PHY + ORSTCON) & (~ORSTCON_PHYSWRESET));
+	udelay(USB_RESET_DELAYUS);
+}
+#endif
+
+int usb_setup(USBEnumerateHandler hEnumerate, USBStartHandler hStart)
+{
+	// This is not relevant to the hardware,
+	// and usb_setup is called when setting up a new
+	// USB protocol. So we should reset the EP
+	// handlers here! -- Ricky26
+	memset(endpoint_handlers, 0, sizeof(endpoint_handlers));
+	startHandler = hStart;
+	enumerateHandler = hEnumerate;
+	setupHandler = NULL;
+
+	if(usb_inited)
+		return 0;
+
+	if(controlSendBuffer == NULL)
+		controlSendBuffer = memalign(DMA_ALIGN, CONTROL_SEND_BUFFER_LEN);
+
+	if(controlRecvBuffer == NULL)
+		controlRecvBuffer = memalign(DMA_ALIGN, CONTROL_RECV_BUFFER_LEN);
+
+	InEPRegs = (USBEPRegisters*)(USB + USB_INREGS);
+	OutEPRegs = (USBEPRegisters*)(USB + USB_OUTREGS);
+
+	change_state(USBStart);
+
+	initializeDescriptors();
+
+	// Initialize our data structures
+	memset(usb_message_queue, 0, sizeof(usb_message_queue));
+
+#ifdef USB_PHY_1G
+	// Power on hardware
+	power_ctrl(POWER_USB, ON);
+	udelay(USB_START_DELAYUS);
+#else
+	// Wait for USB hardware to come alive
+	udelay(10000);
+#endif
+
+	// Set up the hardware
+	clock_gate_switch(USB_OTGCLOCKGATE, ON);
+	clock_gate_switch(USB_PHYCLOCKGATE, ON);
+
+#ifndef USB_PHY_A4
+	clock_gate_switch(EDRAM_CLOCKGATE, ON);
+#endif
+
+	// power on OTG
+	SET_REG(USB + USB_ONOFF, GET_REG(USB + USB_ONOFF) & (~USB_ONOFF_OFF));
+	udelay(USB_ONOFFSTART_DELAYUS);
+
+	// Generate a soft disconnect on host
+	//SET_REG(USB + DCTL, GET_REG(USB + DCTL) | DCTL_SFTDISCONNECT);
+	//udelay(USB_SFTDISCONNECT_DELAYUS);
+
+	// Initialise PHY
+	init_phy();
+
+	bufferPrintf("USB: Hardware Configuration\n"
+		"    HWCFG1 = 0x%08x\n"
+		"    HWCFG2 = 0x%08x\n"
+		"    HWCFG3 = 0x%08x\n"
+		"    HWCFG4 = 0x%08x\n",
+		GET_REG(USB+GHWCFG1),
+		GET_REG(USB+GHWCFG2),
+		GET_REG(USB+GHWCFG3),
+		GET_REG(USB+GHWCFG4));
+	
+	usb_inited = TRUE;
+	interrupt_install(USB_INTERRUPT, usbIRQHandler, 0);
+
+	// Start USB
+	usb_start();
+	return 0;
+}
+
+int usb_start()
+{
+	if(GET_REG(USB+GHWCFG4) & GHWCFG4_DED_FIFO_EN)
+		usb_fifo_mode = FIFODedicated;
+	else
+		usb_fifo_mode = FIFOShared;
+	bufferPrintf("USB: FIFO Mode %d.\n", usb_fifo_mode);
+
+	// Do a core reset
+	SET_REG(USB + GRSTCTL, GRSTCTL_CORESOFTRESET);
+
+	// wait until reset takes
+	while((GET_REG(USB + GRSTCTL) & GRSTCTL_CORESOFTRESET) == GRSTCTL_CORESOFTRESET);
+
+	// wait until reset completes
+	while((GET_REG(USB + GRSTCTL) & ~GRSTCTL_AHBIDLE) != 0);
+
+	udelay(USB_RESETWAITFINISH_DELAYUS);
+
+	int hwcfg2 = GET_REG(USB+GHWCFG2);
+	int num_eps = (hwcfg2 >> GHWCFG2_NUM_ENDPOINTS_SHIFT) & GHWCFG2_NUM_ENDPOINTS_MASK;
+	bufferPrintf("USB: %d endpoints.\n", num_eps);
+	if(num_eps > USB_NUM_ENDPOINTS)
+	{
+		bufferPrintf("USB: Only using %d EPs, as that is all OIB was compiled to use.\n", USB_NUM_ENDPOINTS);
+		num_eps = USB_NUM_ENDPOINTS;
+	}
+
+	usb_num_endpoints = num_eps;
+
+	SET_REG(USB + GAHBCFG, GAHBCFG_DMAEN | GAHBCFG_BSTLEN_INCR8 | GAHBCFG_MASKINT);
+	SET_REG(USB + GUSBCFG, GUSBCFG_PHYIF16BIT | GUSBCFG_SRPENABLE | GUSBCFG_HNPENABLE | ((USB_TURNAROUND & GUSBCFG_TURNAROUND_MASK) << GUSBCFG_TURNAROUND_SHIFT));
+	SET_REG(USB + DCFG, DCFG_HISPEED | DCFG_NZSTSOUTHSHK); // some random setting. See specs
+
+	if(usb_fifo_mode == FIFOShared)
+		usb_set_epmis(1);
+
+	// disable all interrupts until endpoint descriptors and configuration structures have been setup
+	SET_REG(USB + GINTMSK, GINTMSK_NONE);
+	SET_REG(USB + DIEPMSK, USB_EPINT_NONE);
+	SET_REG(USB + DOEPMSK, USB_EPINT_NONE);
+	SET_REG(USB + DAINT, DAINT_ALL);
+	SET_REG(USB + DAINTMSK, DAINTMSK_NONE);
+
+	int i;
+	for(i = 0; i < USB_NUM_ENDPOINTS; i++) {
+		InEPRegs[i].interrupt = USB_EPINT_INEPNakEff | USB_EPINT_INTknEPMis | USB_EPINT_INTknTXFEmp
+			| USB_EPINT_TimeOUT | USB_EPINT_AHBErr | USB_EPINT_EPDisbld | USB_EPINT_XferCompl;
+		OutEPRegs[i].interrupt = USB_EPINT_OUTTknEPDis
+			| USB_EPINT_SetUp | USB_EPINT_AHBErr | USB_EPINT_EPDisbld | USB_EPINT_XferCompl;
+	}
+
+	// allow host to reconnect
+	SET_REG(USB + DCTL, GET_REG(USB + DCTL) & (~DCTL_SFTDISCONNECT));
+	udelay(USB_SFTCONNECT_DELAYUS);
+
+	SET_REG(USB+GOTGCTL, GET_REG(USB+GOTGCTL) | GOTGCTL_SESSIONREQUEST);
+
+	//SET_REG(USB + GRXFSIZ, RX_FIFO_DEPTH);
+	//SET_REG(USB + GNPTXFSIZ, (TX_FIFO_DEPTH << FIFO_DEPTH_SHIFT) | TX_FIFO_STARTADDR);
+
+	SET_REG(USB + GINTMSK, GINTMSK_RESET | GINTMSK_ENUMDONE);
+	//SET_REG(USB + DAINTMSK, DAINTMSK_ALL);
+
+	//SET_REG(USB + DOEPMSK, USB_EPINT_XferCompl | USB_EPINT_SetUp | USB_EPINT_Back2BackSetup);
+	//SET_REG(USB + DIEPMSK, USB_EPINT_XferCompl | USB_EPINT_AHBErr | USB_EPINT_TimeOUT);
+
+	change_state(USBPowered);
+
+	interrupt_enable(USB_INTERRUPT);
+
+	bufferPrintf("USB: EP Directions\n");
+	int guah = GET_REG(USB+GHWCFG1);
+	for(i = 0; i < USB_NUM_ENDPOINTS; i++)
+	{
+		USBDirection dir = (USBDirection)(2-(guah & 0x3));
+		guah >>= 2;
+
+		switch(dir)
+		{
+			case USBIn:
+				bufferPrintf("%d: IN\n", i);
+				break;
+
+			case USBOut:
+				bufferPrintf("%d: OUT\n", i);
+				break;
+
+			case USBBiDir:
+				bufferPrintf("%d: BI\n", i);
+				break;
+		}
+	}
+
+	return 0;
+}
 
 static void usb_add_ep_to_queue(int _ep)
 {
@@ -792,23 +763,21 @@ static void usb_txrx(int endpoint, USBDirection direction, void* buffer, int buf
 
 static int resetUSB()
 {
+	//usb_disable_all_endpoints();
+	usb_disable_endpoint(0);
+	usb_flush_fifo(0);
+
 	SET_REG(USB + DCFG, GET_REG(USB + DCFG) & ~DCFG_DEVICEADDRMSK);
+	SET_REG(USB + GINTMSK, GINTMSK_RESET | GINTMSK_ENUMDONE | GINTMSK_INEP | GINTMSK_OEP | GINTMSK_DISCONNECT | GINTMSK_EPMIS);
+	SET_REG(USB + GRXFSIZ, RX_FIFO_DEPTH);
+	SET_REG(USB + GNPTXFSIZ, (TX_FIFO_DEPTH << FIFO_DEPTH_SHIFT) | TX_FIFO_STARTADDR);
 	
-	usb_disable_all_endpoints();
-	//usb_flush_all_fifos();
-
-	if(usb_fifo_mode == FIFOShared)
-		usb_set_epmis(0);
-
 	usb_fifos_used = 0;
 	usb_fifo_start = PERIODIC_TX_FIFO_STARTADDR;
 
 	int i;
 	for(i = 0; i < USB_NUM_ENDPOINTS; i++)
 	{
-		InEPRegs[i].control = 0;
-		OutEPRegs[i].control = 0;
-
 		InEPRegs[i].interrupt = USB_EPINT_INEPNakEff | USB_EPINT_INTknEPMis | USB_EPINT_INTknTXFEmp
 			| USB_EPINT_TimeOUT | USB_EPINT_AHBErr | USB_EPINT_EPDisbld | USB_EPINT_XferCompl;
 		OutEPRegs[i].interrupt = USB_EPINT_OUTTknEPDis
@@ -823,7 +792,6 @@ static int resetUSB()
 	usb_clear_global_out_nak();
 
 	SET_REG(USB + DAINTMSK, (1 << DAINTMSK_IN_SHIFT) | (1 << DAINTMSK_OUT_SHIFT));
-
 	SET_REG(USB + DOEPMSK, USB_EPINT_XferCompl | USB_EPINT_SetUp | USB_EPINT_Back2BackSetup);
 	SET_REG(USB + DIEPMSK, USB_EPINT_XferCompl | USB_EPINT_AHBErr | USB_EPINT_TimeOUT);
 
@@ -1194,6 +1162,7 @@ void usb_receive_interrupt(uint8_t endpoint, void* buffer, int bufferLen)
 
 static void usbIRQHandler(uint32_t token)
 {
+	//bufferPrintf("USB: Interrupt 0x%08x\n", GET_REG(USB+GINTSTS));
 	// we need to mask because GINTSTS is set for a particular interrupt even if it's masked in GINTMSK (GINTMSK just prevents an interrupt being generated)
 	uint32_t status = GET_REG(USB + GINTSTS) & GET_REG(USB + GINTMSK);
 	int process = FALSE;
@@ -1206,9 +1175,15 @@ static void usbIRQHandler(uint32_t token)
 
 	while(process) {
 		if((status & GINTMSK_OTG) == GINTMSK_OTG) {
-			// acknowledge OTG interrupt (these bits are all R_SS_WC which means Write Clear, a write of 1 clears the bits)
-			SET_REG(USB + GOTGINT, GET_REG(USB + GOTGINT));
+			int gotg = GET_REG(USB+GOTGINT);
 
+			if(gotg & GOTGINT_SESENDDET)
+			{
+				usb_disable_all_endpoints();
+				usb_start();
+			}
+
+			SET_REG(USB + GOTGINT, gotg);
 			// acknowledge interrupt (this bit is actually RO, but should've been cleared when we cleared GOTGINT. Still, iBoot pokes it as if it was WC, so we will too)
 			SET_REG(USB + GINTSTS, GINTMSK_OTG);
 

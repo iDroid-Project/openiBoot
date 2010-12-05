@@ -50,5 +50,7 @@ int spi_tx(int port, const uint8_t* buffer, int len, int block, int unknown);
 int spi_rx(int port, uint8_t* buffer, int len, int block, int noTransmitJunk);
 int spi_txrx(int port, const uint8_t* outBuffer, int outLen, uint8_t* inBuffer, int inLen, int block);
 void spi_set_baud(int port, int baud, SPIWordSize wordSize, int isMaster, int isActiveLow, int lastClockEdgeMissing);
+void spi_on_off(uint8_t spi, OnOff on_off);
+int spi_status(uint8_t spi);
 
 #endif

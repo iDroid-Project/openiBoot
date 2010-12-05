@@ -4,9 +4,7 @@
 #include "openiboot.h"
 
 int chipid_spi_clocktype();
-
-#ifdef CONFIG_IPHONE_4
 unsigned int chipid_get_power_epoch();
-#endif
+unsigned int chipid_get_gpio();
 
 #endif

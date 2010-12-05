@@ -97,3 +97,4 @@ uint8_t* syscfg_get_entry(uint32_t type, int* size)
 
 	return NULL;
 }
+
