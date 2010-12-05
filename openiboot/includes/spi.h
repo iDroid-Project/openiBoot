@@ -3,23 +3,6 @@
 
 #include "openiboot.h"
 
-typedef struct SPIRegister {
-	uint32_t control;
-	uint32_t setup;
-	uint32_t status;
-	uint32_t pin;
-	uint32_t txData;
-	uint32_t rxData;
-	uint32_t clkDivider;
-	uint32_t cnt;
-	uint32_t idd;
-	uint32_t unkReg4;
-	uint32_t unkReg5;
-	uint32_t unkReg6;
-	uint32_t unkReg7;
-	uint32_t txBufferLen;
-} SPIRegister;
-
 typedef enum SPIClockSource {
 	PCLK = 0,
 	NCLK = 1

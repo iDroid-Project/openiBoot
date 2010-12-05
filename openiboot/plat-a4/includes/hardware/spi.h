@@ -11,7 +11,7 @@
 #define CONTROL 0x0
 #define SETUP 0x4
 #define STATUS 0x8
-#define SPIPIN 0xC
+#define PIN 0xC
 #define TXDATA 0x10
 #define RXDATA 0x20
 #define CLKDIVIDER 0x30
@@ -69,6 +69,18 @@
 #endif
 
 #define NUM_SPIPORTS 3
+
+typedef struct SPIRegister {
+	uint32_t control;
+	uint32_t setup;
+	uint32_t status;
+	uint32_t pin;
+	uint32_t txData;
+	uint32_t rxData;
+	uint32_t clkDivider;
+	uint32_t cnt;
+	uint32_t idd;
+} SPIRegister;
 
 #endif
 
