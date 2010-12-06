@@ -36,9 +36,7 @@ typedef enum FrequencyBase {
 	FrequencyBaseDisplay,
 	FrequencyBaseFixed,
 	FrequencyBaseTimebase,
-	#if defined(CONFIG_IPHONE_4) || defined(CONFIG_IPAD)
 	FrequencyBaseUsbPhy,
-	#endif
 } FrequencyBase;
 
 #if !defined(CONFIG_IPHONE_4) && !defined(CONFIG_IPAD)

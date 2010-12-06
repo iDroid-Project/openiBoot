@@ -64,24 +64,19 @@ void platform_init()
 	// For scheduling/sleeping niceties
 	timer_setup();
 	event_setup();
-#if !defined(CONFIG_IPHONE_4) && !defined(CONFIG_IPAD)
 	wdt_setup();
-#endif
 
 	// Other devices
 	usb_shutdown();
 	uart_setup();
 	i2c_setup();
 
-#if !defined(CONFIG_IPHONE_4) && !defined(CONFIG_IPAD)
 	dma_setup();
 
 	spi_setup();
-#endif
 
 	LeaveCriticalSection();
 
-#if !defined(CONFIG_IPHONE_4) && !defined(CONFIG_IPAD)
 	clock_set_sdiv(0);
 
 	aes_setup();
@@ -95,7 +90,6 @@ void platform_init()
 	framebuffer_setup();
 
 	audiohw_init();
-#endif
 
 	framebuffer_setdisplaytext(TRUE);
 }
