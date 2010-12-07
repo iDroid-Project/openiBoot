@@ -1304,7 +1304,7 @@ void lcd_set_backlight_level(int level) {
 
 void cmd_backlight(int argc, char** argv) {
 	if(argc < 2) {
-		bufferPrintf("Usage: %s <0-45>\r\n", argv[0]);
+		bufferPrintf("Usage: %s <0-245>\r\n", argv[0]);
 		return;
 	}
 

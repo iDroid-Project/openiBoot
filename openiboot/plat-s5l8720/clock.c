@@ -177,7 +177,7 @@ ClockGate ClockGateTable[29] = {
 	{0x1C,	0x00000220,	0x0,		0x0,		0x0,		0x0		}
 };
 
-void clock_gate_switch(uint32_t gate, OnOff on_off) {		// S5L8720
+void clock_gate_switch(uint32_t gate, OnOff on_off) {
 	uint32_t gate_register;
 	uint32_t gate_register_bits;
 	uint32_t reg_num;
@@ -217,7 +217,7 @@ void clock_gate_switch(uint32_t gate, OnOff on_off) {		// S5L8720
 	}
 }
 
-int clock_set_base_clock_divisor(ClockDivisorCode code) {		// S5L8720
+int clock_set_base_clock_divisor(ClockDivisorCode code) {
 	int baseDivisor;
 	
 	switch(code) {
@@ -284,6 +284,6 @@ void cmd_frequency(int argc, char** argv) {
 	bufferPrintf("Display frequency: %d Hz\r\n", clock_get_frequency(FrequencyBaseDisplay));
 	bufferPrintf("Fixed frequency: %d Hz\r\n", clock_get_frequency(FrequencyBaseFixed));
 	bufferPrintf("Timebase frequency: %d Hz\r\n", clock_get_frequency(FrequencyBaseTimebase));
-	bufferPrintf("Usbphy frequency: %d Hz\r\n", clock_get_frequency(UsbPhyFrequency));
+	bufferPrintf("Usbphy frequency: %d Hz\r\n", clock_get_frequency(FrequencyBaseUsbPhy));
 }
 COMMAND("frequency", "display clock frequencies", cmd_frequency);

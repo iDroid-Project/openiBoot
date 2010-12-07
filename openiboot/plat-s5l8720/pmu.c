@@ -9,21 +9,14 @@
 #include "gpio.h"
 #include "lcd.h"
 #include "util.h"
+#include "usb.h"
 
 static uint32_t GPMemCachedPresent = 0;
 static uint8_t GPMemCache[PMU_MAXREG + 1];
 
-//TODO: remove, hax
-typedef enum USBChargerIdentificationMode {
-	USBChargerIdentificationDN,
-	USBChargerIdentificationDP,
-	USBChargerIdentificationNone,
-} USBChargerIdentificationMode;
-void usb_set_charger_identification_mode(USBChargerIdentificationMode mode) {}
-
 static void pmu_init_boot()
 {
-	pmu_charge_settings(TRUE, FALSE, FALSE);
+	//pmu_charge_settings(TRUE, FALSE, FALSE);
 }
 MODULE_INIT_BOOT(pmu_init_boot);
 

@@ -172,7 +172,7 @@ int spi_tx(int port, const uint8_t* buffer, int len, int block, int unknown) {
 	SET_REG(SPIRegs[port].control, 1);
 
 	if(block) {
-		while(!spi_info[port].txDone || GET_BITS(GET_REG(SPIRegs[port].status), 4, 4) != 0) {
+		while(!spi_info[port].txDone || TX_BUFFER_LEFT(GET_REG(SPIRegs[port].status)) != 0) {
 			// yield
 		}
 		return len;
@@ -304,9 +304,9 @@ void spi_set_baud(int port, int baud, SPIWordSize wordSize, int isMaster, int is
 	uint32_t clockFrequency;
 
 	if(spi_info[port].clockSource == PCLK) {
-		clockFrequency = PeripheralFrequency;
+		clockFrequency = clock_get_frequency(FrequencyBasePeripheral);
 	} else {
-		clockFrequency = FixedFrequency;
+		clockFrequency = clock_get_frequency(FrequencyBaseFixed);
 	}
 
 	uint32_t divider;

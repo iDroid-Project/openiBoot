@@ -6,12 +6,6 @@
 #include "hardware/gpio.h"
 #include "clock.h"
 #include "util.h"
-#if defined(CONFIG_IPHONE_4) || defined(CONFIG_IPAD)
-#include "timer.h"
-#include "spi.h"
-#include "chipid.h"
-#include "hardware/power.h"
-#endif
 
 static GPIORegisters* GPIORegs;
 

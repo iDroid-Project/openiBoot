@@ -546,7 +546,8 @@ void images_install(void* newData, size_t newDataLen, uint32_t newFourcc, uint32
 	images_setup();
 
     bufferPrintf("Configuring openiBoot settings...\r\n");
-    
+
+#ifndef CONFIG_S5L8720	//TODO: add this back in once FTL is up and running
     Volume* volume;
     io_func* io;
 
@@ -561,7 +562,8 @@ void images_install(void* newData, size_t newDataLen, uint32_t newFourcc, uint32
     CLOSE(io);
 
     ftl_sync();
-    
+#endif
+
     if(!nvram_getvar("opib-temp-os")) {
     	nvram_setvar("opib-temp-os", "0");
     }
