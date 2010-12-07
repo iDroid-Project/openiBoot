@@ -27,6 +27,7 @@ int gpio_pin_state(int port);
 void gpio_custom_io(int port, int bits);
 void gpio_pin_use_as_input(int port);
 void gpio_pin_output(int port, int bit);
+void gpio_pin_reset(int port);
 
 void gpio_register_interrupt(uint32_t interrupt, int type, int level, int autoflip, InterruptServiceRoutine handler, uint32_t token);
 void gpio_interrupt_enable(uint32_t interrupt);

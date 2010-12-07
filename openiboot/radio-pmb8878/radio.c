@@ -25,23 +25,35 @@ int radio_setup()
 {
 	response_buf = malloc(RESPONSE_BUF_SIZE);
 
+#ifdef RADIO_BB_PULLDOWN
 	gpio_pulldown_configure(RADIO_BB_PULLDOWN, GPIOPDDown);
+#endif
 
+#ifdef RADIO_GPIO_BB_ON
 	pmu_gpio(RADIO_GPIO_BB_ON, TRUE, OFF);
 	udelay(100000);
+#endif
+
+#ifdef RADIO_GPIO_RADIO_ON
 	gpio_pin_output(RADIO_GPIO_RADIO_ON, ON);
 	udelay(100000);
+#endif
+
+#ifdef RADIO_GPIO_BB_RESET
 	gpio_pin_output(RADIO_GPIO_BB_RESET, ON);
 	udelay(100000);
 	gpio_pin_output(RADIO_GPIO_BB_RESET, OFF);
 	udelay(100000);
+#endif
 
+#ifdef RADIO_GPIO_RESET_DETECT
 	gpio_pin_use_as_input(RADIO_GPIO_RESET_DETECT);
 	if(gpio_pin_state(RADIO_GPIO_RESET_DETECT) != 1)
 	{
 		bufferPrintf("radio: comm board not present, powered on, or at+xdrv=10,2 had been issued.\r\n");
 		return -1;
 	}
+#endif
 
 	bufferPrintf("radio: comm board detected.\r\n");
 
