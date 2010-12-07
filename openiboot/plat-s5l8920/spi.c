@@ -265,9 +265,9 @@ void spi_set_baud(int port, int baud, SPIWordSize wordSize, int isMaster, int is
 	uint32_t clockFrequency;
 
 	if(spi_info[port].clockSource == PCLK) {
-		clockFrequency = PeripheralFrequency;
+		clockFrequency = clock_get_frequency(FrequencyBasePeripheral);
 	} else {
-		clockFrequency = FixedFrequency;
+		clockFrequency = clock_get_frequency(FrequencyBaseFixed);
 	}
 
 	uint32_t divider;
