@@ -1,0 +1,58 @@
+Import("*")
+
+env = env.Clone()
+env.Append(CPPPATH = [Dir('includes')])
+env.Append(ASFLAGS = ['-L'+str(Dir('includes'))])
+env.Append(CPPDEFINES = ['ARM11', 'CONFIG_S5L8720'])
+
+plat_s5l8720_src = arch_arm_src + env.Localize([
+	# Include the bits of base_src we use
+	# until we implement it all
+	'#acm.c',
+#	'#audiohw.c',
+#	'#actions.c',
+	'#commands.c',
+	'#framebuffer.c',
+	'#images.c',
+	'#malloc.c',
+	'#nvram.c',
+	'#openiboot.c',
+	'#printf.c',
+#	'#scripting.c',
+	'#sha1.c',
+	'#stb_image.c',
+	'#syscfg.c',
+	'#tasks.c',
+	'#usb.c',
+	'#util.c',
+
+	's5l8720.c',
+	'accel.c',
+	'aes.c',
+	'buttons.c',
+	'chipid.c',
+	'clock.c',
+#	'dma.c',
+	'event.c',
+	'gpio.c',
+	'i2c.c',
+	'interrupt.c',
+	'lcd.c',
+	'miu.c',
+	'mmu.c',
+#	'nand.c',
+#	'ftl.c',
+	'nor.c',
+	'pmu.c',
+	'power.c',
+#	'sdio.c',
+	'spi.c',
+	'timer.c',
+	'uart.c',
+	'usbphy.c',
+	'wdt.c',
+#	'wlan.c',
+	])# + hfs_src
+Export('plat_s5l8720_src')
+
+env.SConscript('iPod2G.SConscript', 'env')

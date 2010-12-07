@@ -52,8 +52,14 @@ ArmReset:						// This function will setup the processor and kick off execution
 	ADD	R1, #0x12				// Peripheral port size 128 MB
 	MCR     p15, 0, R1, c15, c2, 4			// Write peripheral port settings
 
+#ifdef CONFIG_S5L8900
 	MOV	R1, #0x38000000				// MIU register
 	ADD	R1, #0x00100000
+#elif defined(CONFIG_S5L8720)
+	MOV	R1, #0x3E000000
+	ADD	R1, #0xC
+#endif 
+
 	LDR	R2, [R1]				// Get current settings
 	BIC	R2, #0x7				// Mask out current MIU setting
 	ORR	R2, #1					// Change setting so 0x0 is physical memory
@@ -165,6 +171,12 @@ DebugReboot:						// Write to the WDT register without memory access
 #ifdef CONFIG_S5L8900
 	MOV	R1, #0x3E000000
 	ADD	R1, #0x00300000
+	MOV	R0, #0x100000
+	STR	R0, [R1]
+#endif
+
+#ifdef CONFIG_S5L8720
+	MOV	R1, #0x3C800000
 	MOV	R0, #0x100000
 	STR	R0, [R1]
 #endif

@@ -11,7 +11,7 @@ int miu_setup() {
 		return -1;
 	}
 
-	clock_set_bottom_bits_38100000(1);
+	clock_set_base_divisor(ClockDivisorCode1);
 
 	return 0;
 }

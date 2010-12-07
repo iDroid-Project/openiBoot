@@ -7,7 +7,7 @@
 
 #if defined(CONFIG_A4)||defined(CONFIG_S5L8920)
 #define USB_PHY_A4
-#elif defined(CONFIG_IPOD2G)
+#elif defined(CONFIG_IPOD_2G)
 #define USB_PHY_2G
 #else
 #define USB_PHY_1G
@@ -16,10 +16,8 @@
 // Hardware configuration
 #if defined(USB_PHY_A4)
 #define USB 0x86100000
-#define USB_PHY 0x86000000
 #else
 #define USB 0x38400000
-#define USB_PHY 0x3C400000
 #endif
 
 #if defined(USB_PHY_A4)
@@ -53,26 +51,7 @@
 #define PERIODIC_TX_FIFO_DEPTH		0x100
 #endif
 
-#if defined(USB_PHY_2G)
-#define OPHYUNK1_START 0x6
-#define OPHYUNK1_STOP_MASK 0x2
-#define OPHYUNK2_START 0xE3F
-#elif defined(USB_PHY_A4)
-#define OPHYUNK4_START 0x200
-#define OPHYUNK1_START 0x6
-#define OPHYUNK1_STOP_MASK 0x2
-#define OPHYUNK2_START 0x733
-#endif
-
 // Registers
-#define OPHYPWR		0
-#define OPHYCLK		0x4
-#define ORSTCON		0x8
-#define OPHYUNK1	0x1C
-#define OPHYUNK2	0x44
-#define OPHYUNK3	0x48
-#define OPHYUNK4	0x60
-
 #define GOTGCTL		0x0
 #define GOTGINT		0x4
 #define GAHBCFG		0x8
@@ -87,7 +66,7 @@
 #define GHWCFG2		0x48
 #define GHWCFG3		0x4C
 #define GHWCFG4		0x50
-#define DIEPTXF(x)	(0x104 + (4*(x)))
+#define DIEPTXF(x)	(0x100 + (4*(x)))
 #define DCFG		0x800
 #define DCTL		0x804
 #define DSTS		0x808
@@ -102,41 +81,14 @@
 #define USB_INREGS	0x900
 #define USB_OUTREGS	0xB00
 
-#define USB_ONOFF 0xE00
+#define PCGCCTL     0xE00
 
-#define USB_ONOFF_OFF 3	// bits 0, 1
-
-#define OPHYPWR_FORCESUSPEND 0x1
-#define OPHYPWR_PLLPOWERDOWN 0x2
-#define OPHYPWR_XOPOWERDOWN 0x4
-#define OPHYPWR_ANALOGPOWERDOWN 0x8
-#define OPHYPWR_UNKNOWNPOWERDOWN 0x10
-#define OPHYPWR_POWERON 0x0	// all the previous flags are off
-
-#define OPHYCLK_CLKSEL_MASK 0x3
-
-#define OPHYCLK_SPEED_48MHZ 48000000
-#define OPHYCLK_SPEED_12MHZ 12000000
-#define OPHYCLK_SPEED_24MHZ 24000000
-
-#if defined(USB_PHY_2G) || defined(USB_PHY_A4)
-#define OPHYCLK_CLKSEL_12MHZ 0x0
-#define OPHYCLK_CLKSEL_24MHZ 0x1
-#define OPHYCLK_CLKSEL_48MHZ 0x2
-#define OPHYCLK_CLKSEL_OTHER 0x3
-#else
-// TODO: these values are off according to iboot 3.1.3. Look into this.
-#define OPHYCLK_CLKSEL_48MHZ 0x0
-#define OPHYCLK_CLKSEL_12MHZ 0x2
-#define OPHYCLK_CLKSEL_24MHZ 0x3
-#endif
+#define PCGCCTL_ONOFF_MASK  3   // bits 0, 1
+#define PCGCCTL_ON          0
+#define PCGCCTL_OFF         1
 
 #define GOTGCTL_BSESSIONVALID (1 << 19)
 #define GOTGCTL_SESSIONREQUEST (1 << 1)
-
-#define ORSTCON_PHYSWRESET 0x1
-#define ORSTCON_LINKSWRESET 0x2
-#define ORSTCON_PHYLINKSWRESET 0x4
 
 #define GAHBCFG_DMAEN (1 << 5)
 #define GAHBCFG_BSTLEN_SINGLE (0 << 1)
@@ -167,18 +119,19 @@
 #define GRSTCTL_CORESOFTRESET	0x1
 #define GRSTCTL_TKNFLUSH		3
 
-#define GINTMSK_NONE 0x0
-#define GINTMSK_OTG (1 << 2)
-#define GINTMSK_SOF (1 << 3)
-#define GINTMSK_GINNAKEFF (1 << 6)
-#define GINTMSK_GOUTNAKEFF (1 << 7)
-#define GINTMSK_SUSPEND (1 << 11)
-#define GINTMSK_RESET (1 << 12)
-#define GINTMSK_ENUMDONE (1 << 13)
-#define GINTMSK_EPMIS (1 << 17)
-#define GINTMSK_INEP (1 << 18)
-#define GINTMSK_OEP (1 << 19)
-#define GINTMSK_DISCONNECT (1 << 29)
+#define GINTMSK_NONE        0x0
+#define GINTMSK_OTG         (1 << 2)
+#define GINTMSK_SOF         (1 << 3)
+#define GINTMSK_GINNAKEFF   (1 << 6)
+#define GINTMSK_GOUTNAKEFF  (1 << 7)
+#define GINTMSK_SUSPEND     (1 << 11)
+#define GINTMSK_RESET       (1 << 12)
+#define GINTMSK_ENUMDONE    (1 << 13)
+#define GINTMSK_EPMIS       (1 << 17)
+#define GINTMSK_INEP        (1 << 18)
+#define GINTMSK_OEP         (1 << 19)
+#define GINTMSK_DISCONNECT  (1 << 29)
+#define GINTMSK_RESUME      (1 << 31)
 
 #define GOTGINT_SESENDDET	(1 << 2)
 
@@ -234,11 +187,8 @@
 #define USB_ENDPOINT_DIRECTIONS_OUT 2
 
 #define USB_START_DELAYUS 10000
-#define USB_RESET_DELAYUS 1000
 #define USB_SFTDISCONNECT_DELAYUS 4000
 #define USB_ONOFFSTART_DELAYUS 100
-#define USB_PHYPWRPOWERON_DELAYUS 10
-#define USB_RESET2_DELAYUS 20
 #define USB_RESETWAITFINISH_DELAYUS 1000
 #define USB_SFTCONNECT_DELAYUS 250
 #define USB_PROGRAMDONE_DELAYUS 10
