@@ -1,0 +1,40 @@
+Import("*")
+
+env = env.Clone()
+env.Append(CPPPATH = [Dir('includes')])
+env.Append(ASFLAGS = ['-L'+str(Dir('includes'))])
+env.Append(CPPDEFINES = ['ARM_A8', 'CONFIG_S5L8920', 'MALLOC_NO_WDT'])
+
+plat_s5l8920_src = arch_arm_src + env.Localize([
+	# Include the bits of base_src we use
+	# until we implement it all
+	'#openiboot.c',
+	'#util.c',
+	'#malloc.c',
+	'#tasks.c',
+	'#printf.c',
+	'#framebuffer.c',
+	'#acm.c',
+	'#usb.c',
+	'#commands.c',
+	'#stb_image.c',
+
+	's5l8920.c',
+	'buttons.c',
+	'chipid.c',
+	'clock.c',
+	'event.c',
+	'gpio.c',
+	'i2c.c',
+	'interrupt.c',
+	'lcd.c',
+	'miu.c',
+	'mmu.c',
+	'power.c',
+	'spi.c',
+	'timer.c',
+	'uart.c',
+	])# + hfs_src
+Export('plat_s5l8920_src')
+
+env.SConscript('iPhone3GS.SConscript', 'env')
