@@ -9,7 +9,7 @@
 #include "gpio.h"
 #include "lcd.h"
 #include "util.h"
-#include "usb.h"
+#include "usbphy.h"
 
 static uint32_t GPMemCachedPresent = 0;
 static uint8_t GPMemCache[PMU_MAXREG + 1];

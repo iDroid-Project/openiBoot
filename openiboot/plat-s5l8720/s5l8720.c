@@ -86,7 +86,7 @@ void platform_init()
 	wdt_setup();
 
 	// Other devices
-//	usb_shutdown();
+	usb_shutdown();
 //	uart_setup();
 	i2c_setup();
 
@@ -98,10 +98,10 @@ void platform_init()
 
 	aes_setup();
 
-//	nor_setup();
-//	syscfg_setup();
-//	images_setup();
-//	nvram_setup();
+	nor_setup();
+	syscfg_setup();
+	images_setup();
+	nvram_setup();
 
 //	lcd_setup();
 	framebuffer_hook();	// TODO: Remove once LCD implemented
