@@ -30,7 +30,7 @@ You will need a system capable of running x86 Linux binaries (Build requires lib
 
 Change into the openiboot subfolder
 
-**For iPod touch, run:**
+**For iPod Touch 1G, run:**
 `scons iPod1G`
 
 **For iPhone 2G, run:**
@@ -38,6 +38,9 @@ Change into the openiboot subfolder
 
 **For iPhone 3G, run:**
 `scons iPhone3G`
+
+**For iPod Touch 2G, run:**
+`scons iPod2G`
 
 **For iPhone 3GS, run:**
 `scons iPhone3GS`
@@ -59,11 +62,9 @@ Change into the openiboot subfolder
 2. Installing
 ---------------------------------------------------
 **If you're on linux, you'll need to install the following as /etc/udev/rules.d/51-android.rules:**
-`
-SUBSYSTEM=="usb" ID_VENDOR_ID=="0bb4", MODE="0666"
-SUBSYSTEM=="usb" ID_VENDOR_ID=="18d1", MODE="0666"
-SUBSYSTEM=="usb" ID_VENDOR_ID=="05ac", MODE="0666"
-`
+	SUBSYSTEM=="usb" ID_VENDOR_ID=="0bb4", MODE="0666"
+	SUBSYSTEM=="usb" ID_VENDOR_ID=="18d1", MODE="0666"
+	SUBSYSTEM=="usb" ID_VENDOR_ID=="05ac", MODE="0666"
 
 **Put your phone into recovery mode**: hold home whilst powering on until you see the iTunes logo.
 
