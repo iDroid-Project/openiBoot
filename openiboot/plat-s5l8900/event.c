@@ -81,6 +81,7 @@ int event_add(Event* newEvent, uint64_t timeout, EventHandler handler, void* opa
 	newEvent->handler = handler;
 	newEvent->interval = timeout;
 	newEvent->deadline = timer_get_system_microtime() + timeout;
+	newEvent->opaque = opaque;
 
 	Event* insertAt = &EventList;
 

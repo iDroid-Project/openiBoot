@@ -4,12 +4,12 @@
 #include "openiboot.h"
 #include "hardware/clock.h"
 
-typedef enum Clock0ConfigCode {
-	Clock0ConfigCode0 = 0,
-	Clock0ConfigCode1 = 1,
-	Clock0ConfigCode2 = 2,
-	Clock0ConfigCode3 = 3
-} Clock0ConfigCode;
+typedef enum ClockDivisorCode {
+	ClockDivisorCode0 = 0,
+	ClockDivisorCode1 = 1,
+	ClockDivisorCode2 = 2,
+	ClockDivisorCode3 = 3
+} ClockDivisorCode;
 
 extern uint32_t ClockPLL;
 extern uint32_t PLLFrequencies[NUM_PLL];
@@ -36,24 +36,14 @@ typedef enum FrequencyBase {
 	FrequencyBaseDisplay,
 	FrequencyBaseFixed,
 	FrequencyBaseTimebase,
-	#if defined(CONFIG_IPHONE_4) || defined(CONFIG_IPAD)
 	FrequencyBaseUsbPhy,
-	#endif
 } FrequencyBase;
 
-#if !defined(CONFIG_IPHONE_4) && !defined(CONFIG_IPAD)
-int clock_set_bottom_bits_38100000(Clock0ConfigCode code);
+int clock_set_base_divisor(ClockDivisorCode code);
 int clock_setup();
 void clock_gate_switch(uint32_t gate, OnOff on_off);
 uint32_t clock_get_frequency(FrequencyBase freqBase);
-uint32_t clock_calculate_frequency(uint32_t pdiv, uint32_t mdiv, FrequencyBase freqBase);
 void clock_set_sdiv(int sdiv);
-#else
-uint32_t CalculatedFrequencyTable[55];
-int clock_setup();
-void clock_gate_switch(uint32_t gate, OnOff on_off);
-uint32_t clock_get_frequency(FrequencyBase freqBase);
-uint32_t clock_get_frequency(FrequencyBase freqBase);
-#endif
+unsigned int clock_get_base_frequency();
 
 #endif

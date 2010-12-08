@@ -27,6 +27,7 @@ int gpio_pin_state(int port);
 void gpio_custom_io(int port, int bits);
 void gpio_pin_use_as_input(int port);
 void gpio_pin_output(int port, int bit);
+void gpio_pin_reset(int port);
 
 void gpio_register_interrupt(uint32_t interrupt, int type, int level, int autoflip, InterruptServiceRoutine handler, uint32_t token);
 void gpio_interrupt_enable(uint32_t interrupt);
@@ -36,9 +37,7 @@ void gpio_pulldown_configure(int port, GPIOPDSetting setting);
 
 int pmu_gpio(int gpio, int is_output, int value);
 
-#if defined(CONFIG_IPHONE_4) || defined(CONFIG_IPAD)
 void gpio_switch(OnOff on_off, uint32_t pinport);
 void gpio_set(uint32_t pinport, int mode);
-#endif
 
 #endif

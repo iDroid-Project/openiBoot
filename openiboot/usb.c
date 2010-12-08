@@ -1,5 +1,6 @@
 #include "openiboot.h"
 #include "usb.h"
+#include "usbphy.h"
 #include "power.h"
 #include "util.h"
 #include "hardware/power.h"
@@ -186,68 +187,6 @@ static void usb_flush_fifo(int _fifo)
 	usb_flush_fifo(0x10);
 }*/
 
-#if defined(USB_PHY_A4)||defined(USB_PHY_2G)
-static inline void init_phy()
-{
-#if defined(USB_PHY_A4)
-	SET_REG(USB_PHY + OPHYUNK4, OPHYUNK4_START);
-	SET_REG(USB_PHY + OPHYPWR, OPHYPWR_PLLPOWERDOWN | OPHYPWR_XOPOWERDOWN); // Please tell me this turns the PHY ON, not OFF. -- Ricky26
-#else
-	// power on PHY
-	SET_REG(USB_PHY + OPHYPWR, OPHYPWR_POWERON);
-#endif
-
-	udelay(USB_PHYPWRPOWERON_DELAYUS);
-
-	SET_REG(USB_PHY + OPHYUNK1, OPHYUNK1_START);
-	SET_REG(USB_PHY + OPHYUNK2, OPHYUNK2_START);
-	
-	// select clock
-	uint32_t phyClockBits;
-	switch (clock_get_frequency(FrequencyBaseUsbPhy))
-	{
-		case OPHYCLK_SPEED_12MHZ:
-			phyClockBits = OPHYCLK_CLKSEL_12MHZ;
-			break;
-
-		case OPHYCLK_SPEED_24MHZ:
-			phyClockBits = OPHYCLK_CLKSEL_24MHZ;
-			break;
-
-		case OPHYCLK_SPEED_48MHZ:
-			phyClockBits = OPHYCLK_CLKSEL_48MHZ;
-			break;
-
-		default:
-			phyClockBits = OPHYCLK_CLKSEL_OTHER;
-			break;
-	}
-	SET_REG(USB_PHY + OPHYCLK, (GET_REG(USB_PHY + OPHYCLK) & ~OPHYCLK_CLKSEL_MASK) | phyClockBits);
-
-	// reset phy
-	SET_REG(USB_PHY + ORSTCON, GET_REG(USB_PHY + ORSTCON) | ORSTCON_PHYSWRESET);
-	udelay(USB_RESET2_DELAYUS);
-	SET_REG(USB_PHY + ORSTCON, GET_REG(USB_PHY + ORSTCON) & (~ORSTCON_PHYSWRESET));
-	udelay(USB_RESET_DELAYUS);
-}
-#else
-void init_phy()
-{
-	// power on PHY
-	SET_REG(USB_PHY + OPHYPWR, OPHYPWR_POWERON);
-	udelay(USB_PHYPWRPOWERON_DELAYUS);
-
-	// select clock
-	SET_REG(USB_PHY + OPHYCLK, (GET_REG(USB_PHY + OPHYCLK) & (~OPHYCLK_CLKSEL_MASK)) | OPHYCLK_CLKSEL_48MHZ);
-
-	// reset phy
-	SET_REG(USB_PHY + ORSTCON, GET_REG(USB_PHY + ORSTCON) | ORSTCON_PHYSWRESET);
-	udelay(USB_RESET2_DELAYUS);
-	SET_REG(USB_PHY + ORSTCON, GET_REG(USB_PHY + ORSTCON) & (~ORSTCON_PHYSWRESET));
-	udelay(USB_RESET_DELAYUS);
-}
-#endif
-
 int usb_setup(USBEnumerateHandler hEnumerate, USBStartHandler hStart)
 {
 	// This is not relevant to the hardware,
@@ -291,12 +230,12 @@ int usb_setup(USBEnumerateHandler hEnumerate, USBStartHandler hStart)
 	clock_gate_switch(USB_OTGCLOCKGATE, ON);
 	clock_gate_switch(USB_PHYCLOCKGATE, ON);
 
-#ifndef USB_PHY_A4
+#ifdef USB_PHY_1G
 	clock_gate_switch(EDRAM_CLOCKGATE, ON);
 #endif
 
 	// power on OTG
-	SET_REG(USB + USB_ONOFF, GET_REG(USB + USB_ONOFF) & (~USB_ONOFF_OFF));
+	SET_REG(USB + PCGCCTL, (GET_REG(USB + PCGCCTL) & (~PCGCCTL_ONOFF_MASK)) | PCGCCTL_ON);
 	udelay(USB_ONOFFSTART_DELAYUS);
 
 	// Generate a soft disconnect on host
@@ -304,7 +243,7 @@ int usb_setup(USBEnumerateHandler hEnumerate, USBStartHandler hStart)
 	//udelay(USB_SFTDISCONNECT_DELAYUS);
 
 	// Initialise PHY
-	init_phy();
+	usb_phy_init();
 
 	bufferPrintf("USB: Hardware Configuration\n"
 		"    HWCFG1 = 0x%08x\n"
@@ -339,7 +278,7 @@ int usb_start()
 	while((GET_REG(USB + GRSTCTL) & GRSTCTL_CORESOFTRESET) == GRSTCTL_CORESOFTRESET);
 
 	// wait until reset completes
-	while((GET_REG(USB + GRSTCTL) & ~GRSTCTL_AHBIDLE) != 0);
+	while((GET_REG(USB + GRSTCTL) & GRSTCTL_AHBIDLE) != GRSTCTL_AHBIDLE);
 
 	udelay(USB_RESETWAITFINISH_DELAYUS);
 
@@ -348,14 +287,18 @@ int usb_start()
 	bufferPrintf("USB: %d endpoints.\n", num_eps);
 	if(num_eps > USB_NUM_ENDPOINTS)
 	{
-		bufferPrintf("USB: Only using %d EPs, as that is all OIB was compiled to use.\n", USB_NUM_ENDPOINTS);
+		//bufferPrintf("USB: Only using %d EPs, as that is all OIB was compiled to use.\n", USB_NUM_ENDPOINTS);
 		num_eps = USB_NUM_ENDPOINTS;
 	}
 
 	usb_num_endpoints = num_eps;
 
 	SET_REG(USB + GAHBCFG, GAHBCFG_DMAEN | GAHBCFG_BSTLEN_INCR8 | GAHBCFG_MASKINT);
+#ifdef USB_PHY_2G
+	SET_REG(USB + GUSBCFG, GUSBCFG_PHYIF16BIT | ((USB_TURNAROUND & GUSBCFG_TURNAROUND_MASK) << GUSBCFG_TURNAROUND_SHIFT));
+#else
 	SET_REG(USB + GUSBCFG, GUSBCFG_PHYIF16BIT | GUSBCFG_SRPENABLE | GUSBCFG_HNPENABLE | ((USB_TURNAROUND & GUSBCFG_TURNAROUND_MASK) << GUSBCFG_TURNAROUND_SHIFT));
+#endif
 	SET_REG(USB + DCFG, DCFG_HISPEED | DCFG_NZSTSOUTHSHK); // some random setting. See specs
 
 	if(usb_fifo_mode == FIFOShared)
@@ -860,7 +803,16 @@ static int clearMessage(int _ep)
 	if(q != NULL)
 	{
 		usb_message_queue[_ep] = q->next;
-		
+
+#ifdef USB_PHY_2G
+		//TODO: figure this out. For some reason we need to flush the control ep everytime a transfer
+		//      is completed on the 2g touch to get stuff to work. No other endpoints need this and it
+		//      isn't done in iBoot.
+		if (q->dir == USBIn && (_ep == USB_CONTROLEP)) {
+			int fnum = (InEPRegs[_ep].control >> USB_EPCON_TXFNUM_SHIFT) & USB_EPCON_TXFNUM_MASK;
+			usb_flush_fifo(fnum);
+		}
+#endif
 		//LeaveCriticalSection();
 
 		//free(q);
@@ -1464,7 +1416,6 @@ static void usbIRQHandler(uint32_t token)
 	}
 
 	//uartPrintf("<end interrupt>\r\n");
-
 }
 
 static void create_descriptors() {
@@ -1480,7 +1431,15 @@ static void create_descriptors() {
 		deviceDescriptor.idProduct = PRODUCT_IPHONE;
 		deviceDescriptor.bcdDevice = DEVICE_IPHONE;
 		deviceDescriptor.iManufacturer = usb_add_string_descriptor("Apple Inc.");
+#ifdef USB_PHY_2G
+		//TODO: messages using fifos on the control endpoint are not requeued if they are too long.
+		//      This descriptor is the only place where that happens, so a quick hack is to make it
+		//      shorter for now. This needs fixing eventually though.
+		deviceDescriptor.iProduct = usb_add_string_descriptor("Apple Mobile Device (OIB)");
+#else
 		deviceDescriptor.iProduct = usb_add_string_descriptor("Apple Mobile Device (OpenIBoot Mode)");
+#endif
+		
 		deviceDescriptor.iSerialNumber = usb_add_string_descriptor("");
 		deviceDescriptor.bNumConfigurations = 0;
 
@@ -1779,19 +1738,18 @@ int usb_shutdown()
 	clock_gate_switch(USB_OTGCLOCKGATE, ON);
 	clock_gate_switch(USB_PHYCLOCKGATE, ON);
 
-	SET_REG(USB + USB_ONOFF, GET_REG(USB + USB_ONOFF) | USB_ONOFF_OFF); // reset link
-	SET_REG(USB_PHY + OPHYPWR, OPHYPWR_FORCESUSPEND | OPHYPWR_PLLPOWERDOWN
-		| OPHYPWR_XOPOWERDOWN | OPHYPWR_ANALOGPOWERDOWN | OPHYPWR_UNKNOWNPOWERDOWN); // power down phy
+	SET_REG(USB + PCGCCTL, GET_REG(USB + PCGCCTL) | PCGCCTL_OFF); // reset link link
 
-	SET_REG(USB_PHY + ORSTCON, ORSTCON_PHYSWRESET | ORSTCON_LINKSWRESET | ORSTCON_PHYLINKSWRESET); // reset phy/link
+	usb_phy_shutdown();
 
-	udelay(USB_RESET_DELAYUS);	// wait a millisecond for the changes to stick
-	
 	SET_REG(USB + DCTL, GET_REG(USB + DCTL) | DCTL_SFTDISCONNECT);
 
 	clock_gate_switch(USB_OTGCLOCKGATE, OFF);
 	clock_gate_switch(USB_PHYCLOCKGATE, OFF);
+
+#ifndef USB_PHY_2G
 	power_ctrl(POWER_USB, OFF);
+#endif
 
 	releaseConfigurations();
 	releaseStringDescriptors();
@@ -1828,3 +1786,4 @@ USBSpeed usb_get_speed() {
 
 	return USBLowSpeed;
 }
+

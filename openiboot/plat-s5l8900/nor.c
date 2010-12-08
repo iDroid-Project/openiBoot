@@ -34,7 +34,7 @@ static void nor_unprepare() {
 	Prepared--;
 }
 
-static NorInfo* probeNOR() {
+static void probeNOR() {
 	nor_prepare();
 
 #ifdef CONFIG_IPHONE_3G
@@ -78,8 +78,6 @@ static NorInfo* probeNOR() {
 	bufferPrintf("NOR vendor=%x, device=%x\r\n", (uint32_t) vendor, (uint32_t) device);
 
 	nor_unprepare();
-
-	return NULL;
 }
 
 #ifdef CONFIG_IPHONE_3G

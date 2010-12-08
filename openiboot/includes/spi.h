@@ -3,18 +3,6 @@
 
 #include "openiboot.h"
 
-typedef struct SPIRegister {
-	uint32_t control;
-	uint32_t setup;
-	uint32_t status;
-	uint32_t pin;
-	uint32_t txData;
-	uint32_t rxData;
-	uint32_t clkDivider;
-	uint32_t cnt;
-	uint32_t idd;
-} SPIRegister;
-
 typedef enum SPIClockSource {
 	PCLK = 0,
 	NCLK = 1
@@ -41,6 +29,7 @@ typedef struct SPIInfo {
 	volatile int rxCurrentLen;
 	volatile int rxTotalLen;
 	volatile int counter;
+	int setupOptions;
 	volatile int txDone;
 	volatile int rxDone;
 } SPIInfo;
@@ -50,10 +39,7 @@ int spi_tx(int port, const uint8_t* buffer, int len, int block, int unknown);
 int spi_rx(int port, uint8_t* buffer, int len, int block, int noTransmitJunk);
 int spi_txrx(int port, const uint8_t* outBuffer, int outLen, uint8_t* inBuffer, int inLen, int block);
 void spi_set_baud(int port, int baud, SPIWordSize wordSize, int isMaster, int isActiveLow, int lastClockEdgeMissing);
-
-#if defined(CONFIG_IPHONE_4) || defined(CONFIG_IPAD)
 void spi_on_off(uint8_t spi, OnOff on_off);
 int spi_status(uint8_t spi);
-#endif
 
 #endif

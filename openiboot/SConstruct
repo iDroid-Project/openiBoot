@@ -2,6 +2,8 @@
 # The root build file for OpeniBoot.
 #
 
+import SCons
+
 #
 # Configuration, change this stuff
 #
@@ -41,7 +43,18 @@ def build_target(env, name, fname, flag, sources, img3template=None):
 	bin_name = elf_name + '.bin'
 	img3_name = elf_name + '.img3'
 
-	# Add Sentinel
+	def listify(ls):
+		ret = []
+		for e in ls:
+			if SCons.Util.is_List(e):
+				ret += listify(e)
+			else:
+				ret.append(e)
+		return ret
+	sources = listify(sources)
+
+	# Add init/sentinal, but make sure first file linked is still first
+	# (this means that _start gets run first... kinda important) -- Ricky26
 	sources = sources[:1] + ['#init.c'] + sources[1:] + ['#sentinel.c']
 
 	# Add Targets

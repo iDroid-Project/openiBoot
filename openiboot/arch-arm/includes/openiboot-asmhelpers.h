@@ -40,6 +40,9 @@ void InvalidateCPUDataCache();
 void CleanAndInvalidateCPUDataCache();
 void ClearCPUCaches();
 
+uint32_t GetC9C012();
+void SetC9C012(uint32_t _val);
+
 void CallArm(uint32_t address);
 void CallThumb(uint32_t address);
 

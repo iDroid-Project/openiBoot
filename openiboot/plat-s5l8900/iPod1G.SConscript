@@ -13,6 +13,9 @@ ipod_1g_src = [
 	])]
 Export('ipod_1g_src')
 
+env = env.Clone()
+env.Append(CPPDEFINES=['OPENIBOOT_VERSION_CONFIG=\\"for iPod 1G\\"'])
+
 elf, bin, img3 = env.OpenIBootTarget('iPod1G', 'ipod_1g_openiboot', 'CONFIG_IPOD', ipod_1g_src+menu_src, 'template-ipod')
 env.OpenIBootTarget('iPod1G-Installer', 'ipod_1g_installer', 'CONFIG_IPOD', ipod_1g_src+installer_src, 'template-ipod')
 Default(img3)

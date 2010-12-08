@@ -26,6 +26,7 @@ void init_modules()
 
 	initfn_t *fn = &init_init;
 	fn++;
+
 	while(*fn != NULL)
 	{
 		(*fn)();

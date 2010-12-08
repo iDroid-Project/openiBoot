@@ -14,5 +14,6 @@ int task_start(TaskDescriptor *_td, void *_fn, void *_arg);
 void task_stop();
 
 int task_yield();
+int task_sleep(int _ms);
 
 #endif

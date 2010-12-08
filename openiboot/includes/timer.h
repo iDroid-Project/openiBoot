@@ -2,6 +2,7 @@
 #define TIMER_H
 
 #include "openiboot.h"
+#include "hardware/timer.h"
 
 typedef void (*TimerHandler)(void);
 
@@ -24,7 +25,7 @@ typedef struct TimerInfo {
 } TimerInfo;
 
 extern const TimerRegisters HWTimers[];
-extern TimerInfo Timers[7];
+extern TimerInfo Timers[NUM_TIMERS];
 
 int timer_setup();
 int timer_stop_all();

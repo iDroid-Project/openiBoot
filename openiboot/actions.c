@@ -15,6 +15,8 @@
 #include "scripting.h"
 #include "images.h"
 #include "multitouch.h"
+#include "pmu.h"
+#include "timer.h"
 
 #define MACH_APPLE_IPHONE 1506
 
@@ -239,7 +241,7 @@ static void setup_wifi_tags()
 	uint32_t calSize;
 	uint8_t* cal;
 
-#ifdef CONFIG_IPOD
+#if defined(CONFIG_IPOD) || defined(CONFIG_IPOD_2G) 
 	return;
 #else
 	if(radio_nvram_get(2, &mac) < 0)

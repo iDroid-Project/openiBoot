@@ -184,27 +184,27 @@ void clock_gate_switch(uint32_t gate, OnOff on_off) {
 	SET_REG(gate_register, gates);
 }
 
-int clock_set_bottom_bits_38100000(Clock0ConfigCode code) {
-	int bottomValue;
+int clock_set_base_divisor(ClockDivisorCode code) {
+	int baseDivisor;
 
 	switch(code) {
-		case Clock0ConfigCode0:
-			bottomValue = CLOCK0_CONFIG_C0VALUE;
+		case ClockDivisorCode0:
+			baseDivisor = CLOCK_BASE_DIVISOR_0;
 			break;
-		case Clock0ConfigCode1:
-			bottomValue = CLOCK0_CONFIG_C1VALUE;
+		case ClockDivisorCode1:
+			baseDivisor = CLOCK_BASE_DIVISOR_1;
 			break;
-		case Clock0ConfigCode2:
-			bottomValue = CLOCK0_CONFIG_C2VALUE;
+		case ClockDivisorCode2:
+			baseDivisor = CLOCK_BASE_DIVISOR_2;
 			break;
-		case Clock0ConfigCode3:
-			bottomValue = CLOCK0_CONFIG_C3VALUE;
+		case ClockDivisorCode3:
+			baseDivisor = CLOCK_BASE_DIVISOR_3;
 			break;
 		default:
 			return -1;
 	}
 
-	SET_REG(CLOCK0 + CLOCK0_CONFIG, (GET_REG(CLOCK0 + CLOCK0_CONFIG) & (~CLOCK0_CONFIG_BOTTOMMASK)) | bottomValue);
+	SET_REG(CLOCK0 + CLOCK0_CONFIG, (GET_REG(CLOCK0 + CLOCK0_CONFIG) & (~CLOCK_BASE_DIVISOR_MASK)) | baseDivisor);
 
 	return 0;
 }
