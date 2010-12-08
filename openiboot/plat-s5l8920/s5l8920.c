@@ -67,7 +67,7 @@ void platform_init()
 
 	// For scheduling/sleeping niceties
 	timer_setup();
-	//event_setup();
+	event_setup();
 
 	// Other devices
 	usb_shutdown();
@@ -75,9 +75,9 @@ void platform_init()
 	i2c_setup();
 
 	LeaveCriticalSection();
-
 }
 
 void platform_shutdown()
 {
+	usb_shutdown();
 }

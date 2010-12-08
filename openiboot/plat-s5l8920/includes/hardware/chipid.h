@@ -2,7 +2,8 @@
 #define HW_CHIPID_H
 
 // Device
-#define CHIPID 0xBF500000
+#define CHIPID	0xBF500000
+#define POWERID	0xBF100158
 
 // Registers
 #define SPICLOCKTYPE 0x4

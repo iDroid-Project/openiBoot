@@ -1,5 +1,8 @@
-#include "tasks.h"
+#include "openiboot.h"
 #include "openiboot-asmhelpers.h"
+#include "tasks.h"
+#include "event.h"
+#include "clock.h"
 #include "util.h"
 
 const TaskDescriptor bootstrapTaskInit = {
@@ -22,7 +25,7 @@ const TaskDescriptor bootstrapTaskInit = {
 
 static TaskDescriptor bootstrapTask;
 
-/*static void task_add_after(TaskDescriptor *_a, TaskDescriptor *_b)
+static void task_add_after(TaskDescriptor *_a, TaskDescriptor *_b)
 {
 	EnterCriticalSection();
 
@@ -36,7 +39,7 @@ static TaskDescriptor bootstrapTask;
 	_a->taskList.next = next;
 
 	LeaveCriticalSection();
-}*/
+}
 
 static void task_add_before(TaskDescriptor *_a, TaskDescriptor *_b)
 {
@@ -86,7 +89,7 @@ void task_init(TaskDescriptor *_td, char *_name)
 	_td->storage = malloc(TASK_STACK_SIZE);
 	_td->storageSize = TASK_STACK_SIZE;
 
-	bufferPrintf("Tasks: Initialized %s.\n", _td->taskName);
+	bufferPrintf("tasks: Initialized %s.\n", _td->taskName);
 }
 
 void task_destroy(TaskDescriptor *_td)
@@ -114,7 +117,7 @@ int task_start(TaskDescriptor *_td, void *_fn, void *_arg)
 		
 		LeaveCriticalSection();
 
-		//bufferPrintf("Tasks: Added %s to tasks.\n", _td->taskName);
+		//bufferPrintf("tasks: Added %s to tasks.\n", _td->taskName);
 		return 1;
 	}
 		
@@ -131,7 +134,7 @@ void task_stop()
 	if(next == CurrentRunning)
 	{
 		LeaveCriticalSection();
-		bufferPrintf("Tasks: Cannot stop last task! Expect hell to break loose now!\n");
+		bufferPrintf("tasks: Cannot stop last task! Expect hell to break loose now!\n");
 		return;
 	}
 
@@ -154,9 +157,9 @@ int task_yield()
 	{
 		// We have another thread to schedule! -- Ricky26
 		TaskDescriptor *td = (TaskDescriptor*)next;
-		//bufferPrintf("Tasks: Swapping from %s to %s.\n", CurrentRunning->taskName, td->taskName);
+		//bufferPrintf("tasks: Swapping from %s to %s.\n", CurrentRunning->taskName, td->taskName);
 		SwapTask(td);
-		//bufferPrintf("Tasks: Swapped from %s to %s.\n", CurrentRunning->taskName, td->taskName);
+		//bufferPrintf("tasks: Swapped from %s to %s.\n", CurrentRunning->taskName, td->taskName);
 		LeaveCriticalSection();
 		return 1;
 	}
@@ -170,9 +173,38 @@ void tasks_run()
 	while(1)
 	{
 		if(!task_yield())
-		{
-			//__asm("wfi"); // Nothing to do, wait for an interrupt.
-			//WaitForInterrupt();
-		}
+			WaitForInterrupt(); // Nothing to do, wait for an interrupt.
 	}
+}
+
+void task_wake(Event *_evt, void *_obj)
+{
+	TaskDescriptor *task = _obj;
+	//bufferPrintf("tasks: Resuming sleeping task %p.\n", task);
+	task_add_after(task, CurrentRunning); // Add us back to the queue.
+}
+
+int task_sleep(int _ms)
+{
+	EnterCriticalSection();
+
+	TaskDescriptor *next = CurrentRunning->taskList.next;
+	if(next == CurrentRunning)
+	{
+		LeaveCriticalSection();
+		bufferPrintf("tasks: Last thread cannot sleep!\n");
+		return -1;
+	}
+
+	uint32_t ticks = _ms * 1000;
+	TaskDescriptor *task = CurrentRunning;
+
+	//bufferPrintf("tasks: Putting task %p to sleep for %d ms.\n", task, _ms);
+	task_remove(task);
+	event_add(&task->sleepEvent, ticks, &task_wake, task);
+	SwapTask(next);
+
+	LeaveCriticalSection();
+
+	return 0;
 }

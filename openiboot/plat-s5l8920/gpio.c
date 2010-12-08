@@ -76,7 +76,7 @@ const uint16_t gpio_reset_table[] = {
 
 int gpio_setup() {
 	uint8_t v[9];
-	if (!(GET_REG(POWER + POWER_ID) & 1)) {
+	if (!(GET_REG(POWERID) & 1)) {
 		gpio_pin_use_as_input(0x107);
 		gpio_pin_use_as_input(0x106);
 		gpio_pin_use_as_input(0x105);
@@ -107,7 +107,7 @@ int gpio_setup() {
 		gpio_pin_reset(0x100);
 
 		uint32_t new_status = ((v[0] << 3 | v[1] << 2 | v[2] << 1 | v[3]) << 16) | ((v[4] << 3 | v[5] << 2 | v[6] << 1 | v[7]) << 8) | 1;
-		SET_REG(POWER + POWER_ID, (GET_REG(POWER + POWER_ID) & 0xFF000000) | (new_status & 0xFFFFFF));
+		SET_REG(POWERID, (GET_REG(POWERID) & 0xFF000000) | (new_status & 0xFFFFFF));
 	}
 
 	return 0;
@@ -164,7 +164,8 @@ int gpio_pin_state(int port) {
 	port = port >> 8;
 
 	if (port == 0x2e) {
-		return spi_status(pin);
+		//return spi_status(pin);
+		return 0;
 	} else {
 		return (GET_REG(GPIO + (8 * port + pin) * sizeof(uint32_t)) & 1);
 	}
@@ -226,7 +227,9 @@ void gpio_custom_io(int pinport, int mode) {
 	uint32_t pin_register;
 
 	if (port == 0x2E)
-		spi_on_off(pin, mode);
+	{
+		//spi_on_off(pin, mode);
+	}
 	else
 	{
 		pin_register = GPIO + ((8 * port) + pin) * sizeof(uint32_t);

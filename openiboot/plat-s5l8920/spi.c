@@ -8,14 +8,71 @@
 #include "timer.h"
 #include "interrupt.h"
 
-static const SPIRegister SPIRegs[NUM_SPIPORTS] = {
-	{SPI0 + CONTROL, SPI0 + SETUP, SPI0 + STATUS, SPI0 + PIN, SPI0 + TXDATA, SPI0 + RXDATA, SPI0 + CLKDIVIDER, SPI0 + SPCNT, SPI0 + SPIDD},
-	{SPI1 + CONTROL, SPI1 + SETUP, SPI1 + STATUS, SPI1 + PIN, SPI1 + TXDATA, SPI1 + RXDATA, SPI1 + CLKDIVIDER, SPI1 + SPCNT, SPI1 + SPIDD},
-	{SPI2 + CONTROL, SPI2 + SETUP, SPI2 + STATUS, SPI2 + PIN, SPI2 + TXDATA, SPI2 + RXDATA, SPI2 + CLKDIVIDER, SPI2 + SPCNT, SPI2 + SPIDD}
+typedef struct _SPIRegisters
+{
+	uint32_t reg00;
+	uint32_t reg04;
+	uint32_t reg08;
+	uint32_t reg0C;
+	uint32_t reg10;
+	uint32_t reg14;
+	uint32_t reg18;
+	uint32_t reg1C;
+	uint32_t reg20;
+	uint32_t reg24;
+	uint32_t reg28;
+	uint32_t reg2C;
+	uint32_t reg30;
+	uint32_t reg34;
+	uint32_t gate;
+	uint32_t irq;
+} SPIRegisters;
+
+typedef struct _SPIStruct
+{
+	SPIRegisters *registers;
+} SPIStruct;
+
+SPIRegisters SPIRegs[] = {
+	{ 0x82000000, 0x82000004, 0x82000008, 0x8200000C, 0x82000010, 0x82000020, 0x82000030, 0x82000034, 0x82000038, 0x8200003C, 0x82000040, 0x82000044, 0x82000048, 0x8200004C, 0x9, 0x1D, },
+	{ 0x82100000, 0x82100004, 0x82100008, 0x8210000C, 0x82100010, 0x82100020, 0x82100030, 0x82100034, 0x82100038, 0x8210003C, 0x82100040, 0x82100044, 0x82100048, 0x8210004C, 0xA, 0x1C, },
+	{ 0x82200000, 0x82200004, 0x82200008, 0x8220000C, 0x82200010, 0x82200020, 0x82200030, 0x82200034, 0x82200038, 0x8220003C, 0x82200040, 0x82200044, 0x82200048, 0x8220004C, 0xB, 0x1B, },
+	{ 0x82300000, 0x82300004, 0x82300008, 0x8230000C, 0x82300010, 0x82300020, 0x82300030, 0x82300034, 0x82300038, 0x8230003C, 0x82300040, 0x82300044, 0x82300048, 0x8230004C, 0xC, 0x1A, },
+	{ 0x82400000, 0x82400004, 0x82400008, 0x8240000C, 0x82400010, 0x82400020, 0x82400030, 0x82400034, 0x82400038, 0x8240003C, 0x82400040, 0x82400044, 0x82400048, 0x8240004C, 0xD, 0x19, },
 };
+#define SPICount (sizeof(SPIRegs)/sizeof(SPIRegs[0]))
 
-static SPIInfo spi_info[NUM_SPIPORTS];
+SPIStruct SPIData[SPICount];
 
+static void spi_enable(SPIStruct *_spi, int _val)
+{
+	SET_REG(_spi->registers->reg00, _val != 0);
+}
+
+static void spi_irq_handler(SPIStruct *_spi)
+{
+}
+
+void spi_init()
+{
+	int i;
+	for(i = 0; i < SPICount; i++)
+	{
+		SPIRegisters *regs = &SPIRegs[i];
+		SPIStruct *data = &SPIData[i];
+		memset(data, 0, sizeof(*data));
+
+		clock_gate_switch(regs->gate, ON);
+
+		data->registers = regs;
+		spi_enable(data, 1);
+
+		interrupt_install(regs->irq, (void (*)(uint32_t))spi_irq_handler, (uint32_t)data);
+		interrupt_enable(regs->irq);
+	}
+}
+
+/*
 static void spiIRQHandler(uint32_t port);
 
 int spi_setup() {
@@ -374,3 +431,4 @@ void spi_on_off(uint8_t spi, OnOff on_off) {
 int spi_status(uint8_t spi) {
 	return ((GET_REG(SPIRegs[spi].pin) >> 1) & 1);
 }
+*/

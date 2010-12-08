@@ -1,13 +1,12 @@
 #include "openiboot.h"
-#include "clock.h"
-#include "util.h"
-#include "hardware/clock.h"
-#include "hardware/power.h"
-#include "power.h"
 #include "openiboot-asmhelpers.h"
+#include "commands.h"
+#include "clock.h"
+#include "hardware/clock.h"
+#include "util.h"
 
 uint32_t PLLFrequencies[] = PLL_FREQUENCIES;
-static uint32_t clock_ref_registers[] = CLOCK_REFERENCE;
+static uint32_t clock_pll_registers[] = CLOCK_REFERENCE;
 static uint32_t clock_frequencies[NUM_PERIPHERAL_CLOCK];
 uint32_t TicksPerSec;
 
@@ -31,10 +30,6 @@ static uint32_t clock_setup_table[] = {
 	0x101,
 };
 
-void clock_gate_switch(uint32_t gate, OnOff on_off) {
-	power_ctrl(gate, on_off);
-}
-
 uint32_t clock_get_frequency(FrequencyBase freqBase) {
 	switch(freqBase) {
 		case FrequencyBaseClock:
@@ -49,32 +44,61 @@ uint32_t clock_get_frequency(FrequencyBase freqBase) {
 			return clock_frequencies[CLOCK_FIXED];
 		case FrequencyBaseTimebase:
 			return clock_frequencies[CLOCK_TIMEBASE];
+		case FrequencyBaseUsbPhy:
+			return clock_frequencies[CLOCK_USB_PHY];
 		default:
 			return 0;
 	}
 }
 
-uint32_t clock_get_pll_freq(uint32_t val)
+void clock_gate_switch(uint32_t gate, OnOff on_off)
 {
+	if (gate > NUM_CLOCK_GATES)
+		return;
+
+	uint32_t reg = CLOCK_GATE_BASE + (sizeof(uint32_t) * gate);
+
+	if (on_off == ON)
+		SET_REG(reg, GET_REG(reg) | 0xF);
+	else
+		SET_REG(reg, GET_REG(reg) & ~0xF);
+}
+
+void clock_gate_many(uint64_t _gates, OnOff _val)
+{
+	uint32_t reg = CLOCK_GATE_BASE;
+	int num;
+	for(num = 0; num < NUM_CLOCK_GATES; num++)
+	{
+		if(_gates & 1)
+		{
+			if(_val == ON)
+				SET_REG(reg, GET_REG(reg) | 0xF);
+			else
+				SET_REG(reg, GET_REG(reg) &~ 0xF);
+		}
+
+		reg += sizeof(uint32_t);
+		_gates >>= 1;
+	}
+}
+
+uint32_t clock_get_pll_freq(uint32_t _pll)
+{
+	uint32_t val = GET_REG(clock_pll_registers[_pll]);
 	uint32_t divFactor = (val >> 1) & 0x3;
 	uint32_t div = (val >> 20) & 0x1F;
 	uint32_t mul = (val >> 8) & 0xFf;
 	return (PLLFrequencies[3] * mul) / (div << divFactor);
 }
 
-void clock_set_reference(int _ref, int _div, int _mul, int _divFactor)
+void clock_setup_pll(int _pll, int _div, int _mul, int _divFactor)
 {
-	if(_ref > 2 || _ref < 0)
-	{
-		bufferPrintf("clock: Invalid reference base %d.\n", _ref);
-		return;
-	}
-
-	uint32_t reg = clock_ref_registers[_ref];
-	uint32_t val = (_div << 20) | (_mul << 8) | (_divFactor << 1) | 0x40001;
+	uint32_t reg = clock_pll_registers[_pll];
+	uint32_t val = (_div << 20) | (_mul << 8) | (_divFactor << 1) | 0x40000001;
 	uint32_t freq = (PLLFrequencies[3] * _mul) / (_div << _divFactor);
-	PLLFrequencies[_ref] = freq;
-	bufferPrintf("clock: PLL%d, 0x%x = %d.\n", _ref, val, freq);
+	PLLFrequencies[_pll] = freq;
+	bufferPrintf("clock: PLL%d, 0x%x = %d.\n", _pll, val, freq);
 
 	SET_REG(reg, val);
 	while((GET_REG(reg) & 0x20000) == 0); // Wait for CPU to accept new reference freq.
@@ -84,8 +108,8 @@ void clock_init()
 {
 	// TODO: Actually do this when we can load up all the hardware ourselves! -- Ricky26
 	//uint64_t initPwr = 0x2103001000001LL;
-	//power_ctrl_many(initPwr, ON);
-	//power_ctrl_many(~initPwr, OFF);
+	//clock_gate_many(initPwr, ON);
+	//clock_gate_many(~initPwr, OFF);
 
 	int idx;
 	uint32_t reg = DYNAMIC_CLOCK_BASE;
@@ -105,8 +129,8 @@ void clock_init()
 			val |= 0x800;
 		}
 
-		//SET_REG(reg, val);
-		reg -= 4;
+		SET_REG(reg, val);
+		reg += 4;
 	}
 
 	// Disable reference clocks
@@ -117,11 +141,11 @@ void clock_init()
 
 int clock_setup()
 {
-	//clock_init();
+	clock_init();
 
-	clock_set_reference(0, 6, 150, 0);
-	clock_set_reference(1, 6, 81, 1);
-	clock_set_reference(2, 6, 100, 1);
+	clock_setup_pll(0, 6, 150, 0);
+	clock_setup_pll(1, 6, 81, 1);
+	clock_setup_pll(2, 6, 100, 1);
 
 	uint32_t reg = DYNAMIC_CLOCK_BASE;
 	int idx;
@@ -143,7 +167,7 @@ int clock_setup()
 		{
 			div = cfg & 0xff;
 			selector = (cfg >> 16) & 0x3;
-			ocfg = ((cfg & 0xFFFFFF00) | 0xc0000) | (div * 4);
+			ocfg = ((cfg & 0xFFFF) | 0xc0000);// | (div * 4);
 		}
 		else
 		{
@@ -162,17 +186,33 @@ int clock_setup()
 			clock_frequencies[idx] = 0;
 
 		SET_REG(reg, ocfg);
-
-		bufferPrintf("clock: Clock %d[%d], freq=%dKhz, cfg=0x%x, div=%d\n", idx, selector, clock_frequencies[idx]/1000, ocfg, div);
 		reg += 4;
 	}
 
 	clock_frequencies[25] = 0xAAAAAAAB * clock_frequencies[15];
 	clock_frequencies[26] = PLLFrequencies[3];
 	clock_frequencies[27] = PLLFrequencies[3];
-
-	TicksPerSec = 0x16E3600;
+	TicksPerSec = PLLFrequencies[3];
 
 	return 0;
 }
 
+void cmd_frequencies(int argc, char **argv)
+{
+	if(argc > 1)
+	{
+		bufferPrintf("Usage: %s\n", argv[0]);
+		return;
+	}
+
+	int i;
+	for(i = 0; i < NUM_PERIPHERAL_CLOCK; i++)
+	{
+		bufferPrintf("clock: Clock %d, frequency=%d.\n", i, clock_frequencies[i]);
+	}
+
+	bufferPrintf("clock: CPU clocked at %d.\n", clock_frequencies[CLOCK_CPU]);
+	bufferPrintf("clock: Bus clocked at %d.\n", clock_frequencies[CLOCK_BUS]);
+	bufferPrintf("clock: Memory clocked at %d.\n", clock_frequencies[CLOCK_MEMORY]);
+}
+COMMAND("frequencies", "Display the clock frequencies of the device.", cmd_frequencies);

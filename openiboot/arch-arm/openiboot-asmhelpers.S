@@ -199,8 +199,14 @@ EnableVFP:					@ FIXME: Not working yet without VFP
 	BX	LR
 
 WaitForInterrupt:
+#ifdef ARM11
 	MOV	R0, #0
 	MCR	p15, 0,	R0, c7, c0, 4
+#endif
+
+#ifdef ARM_A8
+	WFI
+#endif
 	BX	LR
 
 @
@@ -235,6 +241,10 @@ ClearCPUInstructionCache:
 
 CleanDataCacheLineMVA:
 	MCR	p15, 0,	R0, c7, c10, 1
+	BX	LR
+
+InvalidateDataCacheLineMVA:
+	MCR	p15, 0,	R0, c7, c6, 1
 	BX	LR
 
 CleanCPUDataCache:

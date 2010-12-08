@@ -31,36 +31,51 @@ You will need a system capable of running x86 Linux binaries (Build requires lib
 Change into the openiboot subfolder
 
 **For iPod touch, run:**
-`PLATFORM=IPOD make openiboot.img3`
+`scons iPod1G`
 
 **For iPhone 2G, run:**
-`PLATFORM=IPHONE_2G make openiboot.img3`
+`scons iPhone2G`
 
 **For iPhone 3G, run:**
-`PLATFORM=IPHONE_3G make openiboot.img3`
+`scons iPhone3G`
+
+**For iPhone 3GS, run:**
+`scons iPhone3GS`
 
 **For iPhone 4, run:**
-`PLATFORM=IPHONE_4 make openiboot.img3`
+`scons iPhone4`
 
 **For iPad, run:**
-`PLATFORM=IPAD make openiboot.img3`
+`scons iPad1G`
 
-**Compile all in tools/client/:**
-`cd tools/client/linux && make all && cd ..`
+**Compile syringe:**
+`cd ../utils/syringe && make && cd ../openiboot`
+
+**Compile oibc:**
+`cd ../utils/oibc && make && cd ../openiboot`
 
 - The linux client will also build on OSX with the correct libusb version installed.
 
 2. Installing
 ---------------------------------------------------
+**If you're on linux, you'll need to install the following as /etc/udev/rules.d/51-android.rules:**
+`
+SUBSYSTEM=="usb" ID_VENDOR_ID=="0bb4", MODE="0666"
+SUBSYSTEM=="usb" ID_VENDOR_ID=="18d1", MODE="0666"
+SUBSYSTEM=="usb" ID_VENDOR_ID=="05ac", MODE="0666"
+`
+
 **Put your phone into recovery mode**: hold home whilst powering on until you see the iTunes logo.
 
-**Run (From the root of the openiboot tree):** 
-`sudo tools/client/linux/loadibec openiboot/openiboot.img3`
+*NOTE: For the 3GS, iPhone4 and iPad, you must put your device into DFU mode instead.*
+
+**Run:** 
+`../utils/syringe/loadibec openiboot.img3`
 
 You should now see openiBoot on your phone, use the volume buttons to scroll to the console icon, then press home
 
 **Run the client:**
-`sudo client/linux/oibc`
+`../utils/oibc/oibc`
 
 *NOTE: If you are on a mac, you will most likely need to do this as soon as you have selected the console - Linux does not manifest this issue.*
 
