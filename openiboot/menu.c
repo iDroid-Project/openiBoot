@@ -92,15 +92,16 @@ static void menu_run(uint32_t _V)
 			framebuffer_setdisplaytext(TRUE);
 			framebuffer_clear();
 
+			init_modules();
+
 			// Special case for console
 			if(setup_current() == setup_root())
-			{
 				OpenIBootConsole();
-				task_stop();
-				return;
-			}
+			else if(setup_boot() < 0)
+				continue;
 
-			setup_boot();
+			task_stop();
+			return;
 		}
 
 		task_yield();
