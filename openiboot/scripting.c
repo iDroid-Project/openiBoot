@@ -55,7 +55,7 @@ uint8_t *script_load_file(char *id, uint32_t *size)
 {
 	if(*id == '(') // In format (hdX,Y)/some/path
 	{
-		char *ptr = strdrup(id+1);
+		char *ptr = strdup(id+1);
 		char *devEnd = strchr(ptr, ')');
 		if(devEnd)
 		{
@@ -86,7 +86,7 @@ uint8_t *script_load_file(char *id, uint32_t *size)
 	}
 	else if(*id >= '0' && *id <= '9')
 	{
-		char *ptr = strdrup(id);
+		char *ptr = strdup(id);
 		char *extent = strchr(ptr, '+');
 		uint8_t *ret = NULL;
 
