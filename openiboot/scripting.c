@@ -157,7 +157,10 @@ int script_run_commands(char** cmds, uint32_t count)
 		bufferPrintf("scripting: %s\n", cmds[i]);
 		int ret = script_run_command(cmds[i]);
 		if(ret != 0)
+		{
+			bufferPrintf("scripting: Failed to run command '%s'.\n", cmds[i]);
 			return ret;
+		}
 	}
 
 	return 0;
@@ -169,11 +172,15 @@ int script_run_file(char *path)
 
 	char *data = (char*)script_load_file(path, &size);
 	if(!data)
+	{
+		bufferPrintf("scripting: Failed to load file '%s'.\n", path);
 		return -1;
+	}
 
 	char **cmds = script_split_file(data, size, &count);
 	if(!cmds)
 	{
+		bufferPrintf("scripting: Failed to parse script '%s'.\n", path);
 		free(data);
 		return -1;
 	}
