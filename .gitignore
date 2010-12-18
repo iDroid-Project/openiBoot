@@ -28,6 +28,10 @@
 
 !.gitignore
 
+
+openiboot/.deps
+utils/syringe
+
 openiboot/*.img3
 openiboot/*.img2
 openiboot/openiboot
