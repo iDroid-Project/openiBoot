@@ -177,13 +177,11 @@ clean:
 
 install:
 	@echo Building tools...
-	@make -C ../tools/client/linux loadibec > /dev/null
-	@make -C ../tools/libirecovery $(HOSTPLATFORM) > /dev/null
 	@if test $(IMG3TEMPLATE) = "mk8900image/template-4g.img3"; then \
 		echo A4 device detected, building Syringe; \
-		make -C ../tools/syringe > /dev/null; \
+		make -C ../utils/syringe > /dev/null; \
 		echo Invoking syringe, enter DFU mode now; \
-		sudo ../tools/syringe/injectpois0n; \
+		sudo ../utils/syringe/injectpois0n; \
 		sleep 5; \
 	else \
 		read -p "Put your device into recovery mode, then press enter to continue..." tmp; \
