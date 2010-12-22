@@ -167,7 +167,7 @@ int clock_setup()
 		{
 			div = cfg & 0xff;
 			selector = (cfg >> 16) & 0x3;
-			ocfg = ((cfg & 0xFFFF) | 0xc0000);// | (div * 4);
+			ocfg = ((cfg & 0xFFFF) | 0xc0000);
 		}
 		else
 		{
