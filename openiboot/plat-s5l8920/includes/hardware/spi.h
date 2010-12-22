@@ -22,9 +22,24 @@
 
 #define NUM_SPIPORTS 5
 
-// Registers
+// Setup register
+#define SPISETUP_NO_TRANSMIT_JUNK           (1 << 0)    // 1 bit
+#define SPISETUP_LAST_CLOCK_EDGE_MISSING    (1 << 1)    // 1 bit
+#define SPISETUP_IS_ACTIVE_LOW              (1 << 2)    // 1 bit
+#define SPISETUP_IS_MASTER                  (1 << 3)    // 2 bits
+#define SPISETUP_OPTION5                    (1 << 5)    // 2 bits
+#define SPISETUP_UNKN1                      (1 << 7)    // 1 bit
+#define SPISETUP_UNKN2                      (1 << 8)    // 1 bit
+#define SPISETUP_CLOCKSOURCE                (1 << 14)   // 1 bit
+#define SPISETUP_WORDSIZE_SHIFT             15			// 2 bits
+#define SPISETUP_UNKN3                      (1 << 21)   // 1 bit
 
-#define SPI_CONTROL(x)	((x)+0x0)
+#define STATUS_RX	1
+
+#define TX_BUFFER_LEFT(x) (((x) >> 6) & 0x1f)
+#define RX_BUFFER_LEFT(x) (((x) >> 11) & 0x1f)
+
+#define MAX_TX_BUFFER 0x1f
 
 #endif
 

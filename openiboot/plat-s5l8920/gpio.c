@@ -182,7 +182,7 @@ void gpio_pin_reset(int port)
 }
 
 void gpio_pin_output(int port, int bit) {
-	gpio_custom_io(port, (bit&1)+1); // 2 = OFF/ 3 = ON
+	gpio_custom_io(port, (bit&1)+2); // 2 = OFF/ 3 = ON
 }
 
 void gpio_pulldown_configure(int port, GPIOPDSetting setting)

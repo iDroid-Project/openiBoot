@@ -35,6 +35,7 @@ plat_s5l8920_src = arch_arm_src + env.Localize([
 	'spi.c',
 	'timer.c',
 	'uart.c',
+	'nor.c',
 	])# + hfs_src
 Export('plat_s5l8920_src')
 
