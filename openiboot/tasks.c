@@ -114,6 +114,7 @@ int task_start(TaskDescriptor *_td, void *_fn, void *_arg)
 		_td->state = TASK_RUNNING;
 
 		task_add_before(_td, &bootstrapTask);
+		SwapTask(_td);
 		
 		LeaveCriticalSection();
 
@@ -156,10 +157,11 @@ int task_yield()
 	if(next != CurrentRunning)
 	{
 		// We have another thread to schedule! -- Ricky26
-		TaskDescriptor *td = (TaskDescriptor*)next;
+		
 		//bufferPrintf("tasks: Swapping from %s to %s.\n", CurrentRunning->taskName, td->taskName);
-		SwapTask(td);
+		SwapTask(next);
 		//bufferPrintf("tasks: Swapped from %s to %s.\n", CurrentRunning->taskName, td->taskName);
+
 		LeaveCriticalSection();
 		return 1;
 	}
