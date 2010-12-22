@@ -10,7 +10,7 @@ void usb_phy_init() {
 	//SET_REG(USB_PHY + OPHYUNK4, OPHYUNK4_START);
 	SET_REG(USB_PHY + OPHYPWR, 6); //OPHYPWR_PLLPOWERDOWN | OPHYPWR_XOPOWERDOWN);
 	SET_REG(USB_PHY + OPHYUNK1, 6);//OPHYUNK1_START);
-	//SET_REG(USB_PHY + OPHYUNK2, OPHYUNK2_START);
+	SET_REG(USB_PHY + OPHYUNK2, OPHYUNK2_START);
 
 	udelay(USB_PHYPWRPOWERON_DELAYUS);
 	
@@ -34,8 +34,7 @@ void usb_phy_init() {
 			phyClockBits = OPHYCLK_CLKSEL_OTHER;
 			break;
 	}
-	bufferPrintf("usb: Clock frequency=%d, bits=%d\n", clock_get_frequency(FrequencyBaseUsbPhy), phyClockBits);
-	SET_REG(USB_PHY + OPHYCLK, (GET_REG(USB_PHY + OPHYCLK) & ~OPHYCLK_CLKSEL_MASK) | 1); //phyClockBits);
+	SET_REG(USB_PHY + OPHYCLK, (GET_REG(USB_PHY + OPHYCLK) & ~OPHYCLK_CLKSEL_MASK) | phyClockBits);
 
 	// reset phy
 	SET_REG(USB_PHY + ORSTCON, GET_REG(USB_PHY + ORSTCON) | ORSTCON_PHYSWRESET);

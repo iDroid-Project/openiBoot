@@ -5,6 +5,7 @@
 #include "util.h"
 #include "hardware/power.h"
 #include "hardware/usb.h"
+#include "hardware/usbphy.h"
 #include "hardware/platform.h"
 #include "timer.h"
 #include "clock.h"
@@ -182,10 +183,10 @@ static void usb_flush_fifo(int _fifo)
 	LeaveCriticalSection();
 }
 
-/*static void usb_flush_all_fifos()
+static void usb_flush_all_fifos()
 {
 	usb_flush_fifo(0x10);
-}*/
+}
 
 int usb_setup(USBEnumerateHandler hEnumerate, USBStartHandler hStart)
 {
@@ -269,6 +270,7 @@ int usb_start()
 		usb_fifo_mode = FIFODedicated;
 	else
 		usb_fifo_mode = FIFOShared;
+
 	bufferPrintf("USB: FIFO Mode %d.\n", usb_fifo_mode);
 
 	// Do a core reset
@@ -294,11 +296,7 @@ int usb_start()
 	usb_num_endpoints = num_eps;
 
 	SET_REG(USB + GAHBCFG, GAHBCFG_DMAEN | GAHBCFG_BSTLEN_INCR8 | GAHBCFG_MASKINT);
-#ifdef USB_PHY_2G
-	SET_REG(USB + GUSBCFG, GUSBCFG_PHYIF16BIT | ((USB_TURNAROUND & GUSBCFG_TURNAROUND_MASK) << GUSBCFG_TURNAROUND_SHIFT));
-#else
 	SET_REG(USB + GUSBCFG, GUSBCFG_PHYIF16BIT | GUSBCFG_SRPENABLE | GUSBCFG_HNPENABLE | ((USB_TURNAROUND & GUSBCFG_TURNAROUND_MASK) << GUSBCFG_TURNAROUND_SHIFT));
-#endif
 	SET_REG(USB + DCFG, DCFG_HISPEED | DCFG_NZSTSOUTHSHK); // some random setting. See specs
 
 	if(usb_fifo_mode == FIFOShared)
@@ -410,6 +408,8 @@ static void usb_claim_fifo(int _ep)
 			InEPRegs[_ep].control = (InEPRegs[_ep].control & ~(USB_EPCON_TXFNUM_MASK << USB_EPCON_TXFNUM_SHIFT))
 									| ((i & USB_EPCON_TXFNUM_MASK) << USB_EPCON_TXFNUM_SHIFT);
 
+			usb_flush_fifo(i);
+
 			bufferPrintf("USB: %d claimed FIFO %d. (0x%08x/0x%08x).\n", _ep, i, GET_REG(USB+DIEPTXF(i)), InEPRegs[_ep].control);
 			break;
 		}
@@ -423,9 +423,9 @@ void usb_enable_endpoint(int _ep, USBDirection _dir, USBTransferType _type, int 
 		InEPRegs[_ep].control = USB_EPCON_ACTIVE; // MPS = default, type = control, nextep = 0
 		OutEPRegs[_ep].control = USB_EPCON_ACTIVE; // MPS = default, type = control, nextep = 0
 
-		if(usb_fifo_mode == FIFODedicated)
+		/*if(usb_fifo_mode == FIFODedicated)
 			usb_claim_fifo(_ep);
-		else if(usb_fifo_mode == FIFOShared)
+		else*/ if(usb_fifo_mode == FIFOShared)
 			usb_add_ep_to_queue(_ep);
 		
 		SET_REG(USB + DAINTMSK, GET_REG(USB + DAINTMSK) | ((1 << USB_CONTROLEP) << DAINTMSK_OUT_SHIFT) | ((1 << USB_CONTROLEP) << DAINTMSK_IN_SHIFT));
@@ -531,6 +531,7 @@ static void usb_release_fifo(int _ep)
 	{
 		usb_fifos_used &= ~(1 << (fifo-1));
 		InEPRegs[_ep].control &= ~(USB_EPCON_TXFNUM_MASK << USB_EPCON_TXFNUM_SHIFT);
+		usb_flush_fifo(fifo);
 	}
 }
 
@@ -597,12 +598,12 @@ void usb_disable_endpoint(int _ep)
 
 		usb_set_global_in_nak();
 
+		usb_cancel_in(_ep);
+
 		if(usb_fifo_mode == FIFODedicated)
 			usb_release_fifo(_ep);
 		else if(usb_fifo_mode == FIFOShared)
 			usb_remove_ep_from_queue(_ep);
-
-		usb_cancel_in(_ep);
 
 		usb_clear_global_in_nak();
 	}
@@ -706,9 +707,9 @@ static void usb_txrx(int endpoint, USBDirection direction, void* buffer, int buf
 
 static int resetUSB()
 {
-	//usb_disable_all_endpoints();
-	usb_disable_endpoint(0);
-	usb_flush_fifo(0);
+	usb_disable_all_endpoints();
+	//usb_cancel_endpoint(0);
+	usb_flush_all_fifos();
 
 	SET_REG(USB + DCFG, GET_REG(USB + DCFG) & ~DCFG_DEVICEADDRMSK);
 	SET_REG(USB + GINTMSK, GINTMSK_RESET | GINTMSK_ENUMDONE | GINTMSK_INEP | GINTMSK_OEP | GINTMSK_DISCONNECT | GINTMSK_EPMIS);
@@ -804,18 +805,9 @@ static int clearMessage(int _ep)
 	{
 		usb_message_queue[_ep] = q->next;
 
-#ifdef USB_PHY_2G
-		//TODO: figure this out. For some reason we need to flush the control ep everytime a transfer
-		//      is completed on the 2g touch to get stuff to work. No other endpoints need this and it
-		//      isn't done in iBoot.
-		if (q->dir == USBIn && (_ep == USB_CONTROLEP)) {
-			int fnum = (InEPRegs[_ep].control >> USB_EPCON_TXFNUM_SHIFT) & USB_EPCON_TXFNUM_MASK;
-			usb_flush_fifo(fnum);
-		}
-#endif
 		//LeaveCriticalSection();
 
-		//free(q);
+		free(q);
 		
 		return 1;
 	}
@@ -919,7 +911,7 @@ static void callEndpointHandlers() {
 					}
 					
 					//if(endpoint != 0)
-					//	bufferPrintf("USB: xc 0x%08x, %d, %d, %d, %d, %d\n", q, endpoint, q->dir, q->type, q->data, q->dataLen);
+					//	bufferPrintf("USB: xc 0x%08x, %d, %d, %d, %d, %d, %d\n", q, endpoint, q->dir, q->data, q->dataLen, sent, left);
 
 					endpoint_handlers[endpoint].out.handler(endpoint_handlers[endpoint].out.token, sent-left);
 				}
@@ -1144,6 +1136,13 @@ static void usbIRQHandler(uint32_t token)
 			// we only care about OTG
 			process = FALSE;
 		}
+
+#ifdef USB_PHY_4G
+		if((status & GINTMSK_SUSPEND) && !(GET_REG(USB_PHY+OPHYCON) & 1))
+		{
+			usb_start();
+		}
+#endif
 
 		if((status & GINTMSK_RESET) == GINTMSK_RESET) {
 			SET_REG(USB + GINTSTS, GINTMSK_RESET);
@@ -1431,10 +1430,11 @@ static void create_descriptors() {
 		deviceDescriptor.idProduct = PRODUCT_IPHONE;
 		deviceDescriptor.bcdDevice = DEVICE_IPHONE;
 		deviceDescriptor.iManufacturer = usb_add_string_descriptor("Apple Inc.");
-#ifdef USB_PHY_2G
+#if defined(USB_PHY_2G)||defined(USB_PHY_4G)
 		//TODO: messages using fifos on the control endpoint are not requeued if they are too long.
 		//      This descriptor is the only place where that happens, so a quick hack is to make it
 		//      shorter for now. This needs fixing eventually though.
+		//      Ricky26: (This is a hack around the 64-byte max packet size of EP0.)
 		deviceDescriptor.iProduct = usb_add_string_descriptor("Apple Mobile Device (OIB)");
 #else
 		deviceDescriptor.iProduct = usb_add_string_descriptor("Apple Mobile Device (OpenIBoot Mode)");
@@ -1747,7 +1747,7 @@ int usb_shutdown()
 	clock_gate_switch(USB_OTGCLOCKGATE, OFF);
 	clock_gate_switch(USB_PHYCLOCKGATE, OFF);
 
-#ifndef USB_PHY_2G
+#ifdef USB_PHY_1G
 	power_ctrl(POWER_USB, OFF);
 #endif
 
