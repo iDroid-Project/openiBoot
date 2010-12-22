@@ -195,6 +195,9 @@ int spi_rx(int port, uint8_t* buffer, int len, int block, int noTransmitJunk)
 	SET_REG(spi->registers->control, GET_REG(spi->registers->control) | (1 << 2));
 	SET_REG(spi->registers->control, GET_REG(spi->registers->control) | (1 << 3));
 
+	// Set len to number of words.
+	len = (len + ((1<<spi->wordSize)-1)) >> spi->wordSize;
+
 	spi->txBuffer = NULL;
 	spi->rxBuffer = buffer;
 	spi->rxDone = 0;
@@ -210,7 +213,7 @@ int spi_rx(int port, uint8_t* buffer, int len, int block, int noTransmitJunk)
 
 	//bufferPrintf("spi_rx(%d, %p, %d, %d, %d)\n", port, buffer, len, block, noTransmitJunk);
 
-	SET_REG(spi->registers->rxCount, len); //(len + ((1<<spi->wordSize)-1)) >> spi->wordSize);
+	SET_REG(spi->registers->rxCount, len);
 
 	spi->config |= 0x180;
 	SET_REG(spi->registers->config, spi->config);
@@ -237,6 +240,9 @@ int spi_tx(int port, const uint8_t* buffer, int len, int block, int unknown)
 
 	SET_REG(spi->registers->control, GET_REG(spi->registers->control) | (1 << 2));
 	SET_REG(spi->registers->control, GET_REG(spi->registers->control) | (1 << 3));
+
+	// Set len to number of words.
+	len = (len + ((1<<spi->wordSize)-1)) >> spi->wordSize;
 
 	spi->txBuffer = (void*)buffer;
 	spi->rxBuffer = NULL;
