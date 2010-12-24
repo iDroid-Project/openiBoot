@@ -73,8 +73,11 @@ void platform_init()
 	usb_shutdown();
 	uart_setup();
 	i2c_setup();
+	spi_setup();
 
 	LeaveCriticalSection();
+
+	nor_setup();
 }
 
 void platform_shutdown()

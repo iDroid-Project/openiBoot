@@ -55,16 +55,15 @@ uint8_t *script_load_file(char *id, uint32_t *size)
 {
 	if(*id == '(') // In format (hdX,Y)/some/path
 	{
-		id++;
-
-		char *devEnd = strchr(id, ')');
+		char *ptr = strdup(id+1);
+		char *devEnd = strchr(ptr, ')');
 		if(devEnd)
 		{
 			*devEnd = 0;
 			devEnd++;
 
 			int part = 0;
-			char *partStart = strchr(id, ',');
+			char *partStart = strchr(ptr, ',');
 			if(partStart)
 			{
 				*partStart = 0;
@@ -73,8 +72,12 @@ uint8_t *script_load_file(char *id, uint32_t *size)
 				part = parseNumber(partStart);
 			}
 
-			int device = parseNumber(id);
-			return script_load_hfs_file(device+part, devEnd, size); // TODO: Hahahah! I should really fix this. -- Ricky26
+			int device = parseNumber(ptr);
+			uint8_t *ret = script_load_hfs_file(device+part, devEnd, size); // TODO: Hahahah! I should really fix this. -- Ricky26
+
+			free(ptr);
+
+			return ret;
 		}
 	}
 	else if(*id == '/') // In format /some/path of the system partition
@@ -83,7 +86,10 @@ uint8_t *script_load_file(char *id, uint32_t *size)
 	}
 	else if(*id >= '0' && *id <= '9')
 	{
-		char *extent = strchr(id, '+');
+		char *ptr = strdup(id);
+		char *extent = strchr(ptr, '+');
+		uint8_t *ret = NULL;
+
 		if(extent)
 		{
 			*extent = 0;
@@ -92,8 +98,13 @@ uint8_t *script_load_file(char *id, uint32_t *size)
 			uint32_t sz = parseNumber(extent);
 			uint32_t addr = parseNumber(id);
 			*size = sz;
-			return (uint8_t*)addr;
+			ret = (uint8_t*)addr;
 		}
+		else
+			bufferPrintf("scripting: Invalid memory location, must be in the format location+size.\n");
+
+		free(ptr);
+		return ret;
 	}
 
 	bufferPrintf("scripting: Badly formatted URI, %s\n", id);
@@ -157,7 +168,10 @@ int script_run_commands(char** cmds, uint32_t count)
 		bufferPrintf("scripting: %s\n", cmds[i]);
 		int ret = script_run_command(cmds[i]);
 		if(ret != 0)
+		{
+			bufferPrintf("scripting: Failed to run command '%s'.\n", cmds[i]);
 			return ret;
+		}
 	}
 
 	return 0;
@@ -169,11 +183,15 @@ int script_run_file(char *path)
 
 	char *data = (char*)script_load_file(path, &size);
 	if(!data)
+	{
+		bufferPrintf("scripting: Failed to load file '%s'.\n", path);
 		return -1;
+	}
 
 	char **cmds = script_split_file(data, size, &count);
 	if(!cmds)
 	{
+		bufferPrintf("scripting: Failed to parse script '%s'.\n", path);
 		free(data);
 		return -1;
 	}

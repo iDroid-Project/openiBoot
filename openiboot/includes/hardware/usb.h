@@ -21,9 +21,16 @@
 #endif
 
 #if defined(USB_PHY_A4)
-#define USB_OTGCLOCKGATE 0x18
-#define USB_PHYCLOCKGATE 0x1D
-#define USB_INTERRUPT 0xD
+#ifdef CONFIG_S5L8920
+#	define USB_OTGCLOCKGATE 8
+#	define USB_PHYCLOCKGATE 8
+#	define USB_INTERRUPT 0xE
+#else
+#	define USB_OTGCLOCKGATE 0x18
+#	define USB_PHYCLOCKGATE 0x1D
+#	define USB_INTERRUPT 0xD
+#endif
+
 #define USB_TURNAROUND 0x5
 #elif defined(USB_PHY_2G)
 #define USB_OTGCLOCKGATE 0x18

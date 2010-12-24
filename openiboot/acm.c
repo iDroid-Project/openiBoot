@@ -136,9 +136,9 @@ static void acm_parse(int32_t _amt)
 			}
 			else
 			{
-				bufferPrintf("ACM: Starting %s\n", command);
+				bufferPrintf("ACM: Starting %s\n", safeCommand);
 				if(command_run(argc, argv) == 0)
-					bufferPrintf("ACM: Done: %s\n", command);
+					bufferPrintf("ACM: Done: %s\n", safeCommand);
 				else
 					bufferPrintf("ACM: Unknown command: %s\n", command);
 				
@@ -167,19 +167,20 @@ static void acm_parse(int32_t _amt)
 
 	acm_unprocessed = _amt-start;
 	usb_receive_bulk(ACM_EP_RECV, acm_recv_buffer+acm_unprocessed, acm_usb_mps);
+	task_stop();
 }
 
 static void acm_received(uint32_t _tkn, int32_t _amt)
 {
-	int attempts = 0;
-	while(attempts < 5)
+	int attempts;
+	for(attempts = 0; attempts < 5; attempts++)
 	{
 		if(task_start(&acm_parse_task, &acm_parse, (void*)_amt))
 			break;
 
-		task_yield();
-
 		bufferPrintf("ACM: Worker already running, yielding...\n");
+
+		task_yield();
 	}
 }
 
