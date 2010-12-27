@@ -798,14 +798,14 @@ static int clearMessage(int _ep)
 {
 	USBMessageQueue *q;
    
-	//EnterCriticalSection();
+	EnterCriticalSection();
 
 	q = usb_message_queue[_ep];
 	if(q != NULL)
 	{
 		usb_message_queue[_ep] = q->next;
 
-		//LeaveCriticalSection();
+		LeaveCriticalSection();
 
 		free(q);
 		
@@ -813,7 +813,7 @@ static int clearMessage(int _ep)
 	}
 	else
 	{
-		//LeaveCriticalSection();
+		LeaveCriticalSection();
 		return 0;
 	}
 }
@@ -1430,7 +1430,7 @@ static void create_descriptors() {
 		deviceDescriptor.idProduct = PRODUCT_IPHONE;
 		deviceDescriptor.bcdDevice = DEVICE_IPHONE;
 		deviceDescriptor.iManufacturer = usb_add_string_descriptor("Apple Inc.");
-#if defined(USB_PHY_2G)||defined(USB_PHY_4G)
+#if defined(USB_PHY_2G)||defined(USB_PHY_3G)
 		//TODO: messages using fifos on the control endpoint are not requeued if they are too long.
 		//      This descriptor is the only place where that happens, so a quick hack is to make it
 		//      shorter for now. This needs fixing eventually though.
