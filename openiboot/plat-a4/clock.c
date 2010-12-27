@@ -45,6 +45,8 @@ uint32_t clock_get_frequency(FrequencyBase freqBase) {
 			return FixedFrequency;
 		case FrequencyBaseTimebase:
 			return TimebaseFrequency;
+		case FrequencyBaseUsbPhy:
+			return UsbPhyFrequency;
 		default:
 			return 0;
 	}
