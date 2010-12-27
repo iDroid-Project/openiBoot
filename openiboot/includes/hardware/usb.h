@@ -6,7 +6,7 @@
 #define USB_NUM_FIFOS		15
 
 #if defined(CONFIG_A4)||defined(CONFIG_S5L8920)
-#define USB_PHY_A4
+#define USB_PHY_3G
 #elif defined(CONFIG_IPOD_2G)
 #define USB_PHY_2G
 #else
@@ -14,13 +14,13 @@
 #endif
 
 // Hardware configuration
-#if defined(USB_PHY_A4)
+#if defined(USB_PHY_3G)
 #define USB 0x86100000
 #else
 #define USB 0x38400000
 #endif
 
-#if defined(USB_PHY_A4)
+#if defined(USB_PHY_3G)
 #ifdef CONFIG_S5L8920
 #	define USB_OTGCLOCKGATE 8
 #	define USB_PHYCLOCKGATE 8
@@ -44,7 +44,7 @@
 #define USB_TURNAROUND 0x5
 #endif
 
-#if defined(USB_PHY_A4) || defined(USB_PHY_2G)
+#if defined(USB_PHY_3G) || defined(USB_PHY_2G)
 #define RX_FIFO_DEPTH				0x11B
 #define TX_FIFO_DEPTH				0x100
 #define TX_FIFO_STARTADDR			0x11B
