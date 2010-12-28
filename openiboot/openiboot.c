@@ -22,6 +22,7 @@ void OpenIBootConsole()
 void OpenIBootStart()
 {
 	platform_init();
+	init_setup();
 
 	OpenIBootMain = &OpenIBootConsole;
 	init_boot_modules();

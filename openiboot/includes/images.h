@@ -99,7 +99,6 @@ void images_release();
 void images_duplicate(Image* image, uint32_t type, int index);
 void images_duplicate_at(Image* image, uint32_t type, int index, int offset);
 void images_from_template(Image* image, uint32_t type, int index, void* dataBuffer, unsigned int len, int encrypt);
-void images_erase(Image* image);
 void images_write(Image* image, void* data, unsigned int length, int encrypt);
 unsigned int images_read(Image* image, void** data);
 int images_verify(Image* image);

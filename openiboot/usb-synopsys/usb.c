@@ -190,6 +190,8 @@ static void usb_flush_all_fifos()
 
 int usb_setup(USBEnumerateHandler hEnumerate, USBStartHandler hStart)
 {
+	usb_shutdown();
+
 	// This is not relevant to the hardware,
 	// and usb_setup is called when setting up a new
 	// USB protocol. So we should reset the EP

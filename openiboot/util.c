@@ -4,7 +4,8 @@
 #include "util.h"
 #include "openiboot-asmhelpers.h"
 #include "framebuffer.h"
-#include "acm.h"
+
+static printf_handler_t printf_handler = NULL;
 
 void __assert(const char* file, int line, const char* m) {
 	bufferPrintf("ASSERT FAILED: %s at %s:%d\r\n", m, file, line);
@@ -510,22 +511,27 @@ int addToBuffer(const char* toBuffer, int len) {
 	return 1;
 }
 
-void bufferPrint(const char* toBuffer) {
-	if(UartHasInit)
-		uartPrint(toBuffer);
-
-	if(FramebufferHasInit)
-		framebuffer_print(toBuffer);
-
+void bufferPrint(const char* toBuffer)
+{
 	int len = strlen(toBuffer);
 	addToBuffer(toBuffer, len);
 
-	if(acm_is_ready)
-		acm_buffer_notify();
+	if(printf_handler)
+		printf_handler(toBuffer);
 }
 
 void uartPrint(const char* toBuffer) {
 	uart_write(0, toBuffer, strlen(toBuffer));
+}
+
+printf_handler_t addPrintfHandler(printf_handler_t _hndl)
+{
+	EnterCriticalSection();
+	printf_handler_t ret = printf_handler;
+	printf_handler = _hndl;
+	LeaveCriticalSection();
+
+	return ret;
 }
 
 void bufferPrintf(const char* format, ...) {
@@ -561,19 +567,6 @@ void uartPrintf(const char* format, ...) {
 	vsprintf(buffer, format, args);
 	va_end(args);
 	uartPrint(buffer);
-	LeaveCriticalSection();
-}
-
-void fbPrintf(const char* format, ...) {
-	static char buffer[1000];
-	EnterCriticalSection();
-	buffer[0] = '\0';
-
-	va_list args;
-	va_start(args, format);
-	vsprintf(buffer, format, args);
-	va_end(args);
-	framebuffer_print(buffer);
 	LeaveCriticalSection();
 }
 

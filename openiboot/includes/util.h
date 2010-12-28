@@ -10,6 +10,8 @@
 #define DebugPrintf(...)
 #endif
 
+typedef void (*printf_handler_t)(const char *_str);
+
 void panic();
 
 void __assert(const char* file, int line, const char* m);
@@ -33,11 +35,9 @@ void buffer_dump_memory(uint32_t start, int length);
 void hexdump(uint32_t start, int length);
 void buffer_dump_memory2(uint32_t start, int length, int width);
 int addToBuffer(const char* toBuffer, int len);
+printf_handler_t addPrintfHandler(printf_handler_t);
 void bufferPrint(const char* toBuffer);
 void bufferPrintf(const char* format, ...);
-void uartPrint(const char* toBuffer);
-void uartPrintf(const char* format, ...);
-void fbPrintf(const char* format, ...);
 void bufferFlush(char* destination, size_t length);
 char* getScrollback();
 size_t getScrollbackLen();

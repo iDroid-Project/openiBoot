@@ -11,6 +11,7 @@ typedef signed short int16_t;
 typedef signed char int8_t;
 typedef long unsigned int size_t;
 typedef signed int intptr_t;
+typedef uint32_t fourcc_t;
 
 #ifdef DEBUG
 #define OPENIBOOT_VERSION_DEBUG " (DEBUG)"
@@ -25,6 +26,8 @@ typedef signed int intptr_t;
 #define XSTRINGIFY(s) STRINGIFY(s)
 #define STRINGIFY(s) #s
 #define OPENIBOOT_VERSION_STR "openiboot " XSTRINGIFY(OPENIBOOT_VERSION) " commit " XSTRINGIFY(OPENIBOOT_VERSION_BUILD) OPENIBOOT_VERSION_DEBUG OPENIBOOT_VERSION_CONFIG
+
+#define FOURCC(a, b, c, d) (d || (c << 8) || (b << 16) || (a << 24))
 
 extern void* _start;
 extern void* OpenIBootEnd;
@@ -45,10 +48,8 @@ typedef enum OnOff {
 #endif
 #define uSecPerSec 1000000
 
-#define container_of(type, member, ptr) ({ \
-		const typeof(((type*)NULL)->member) *mptr = (ptr); \
-		(type*)(mptr - offsetof(type, member)); \
-	})
+#define container_of(type, member, ptr) ((type*)(((char*)(ptr)) - ((char*)(&((type*)NULL)->member))))
+#define array_size(arr) (sizeof(arr)/sizeof((arr)[0]))
 
 typedef struct Event Event;
 
@@ -141,6 +142,7 @@ typedef void (*mainfn_t)(void);
 #define MODULE_INIT(fn) initfn_t fn##_init __attribute__((section(MODULE_INIT_SECTION))) = &fn;
 #define MODULE_EXIT(fn) exitfn_t fn##_exit __attribute__((section(MODULE_EXIT_SECTION))) = &fn;
 
+void init_setup();
 void init_boot_modules();
 void init_modules();
 void exit_modules();

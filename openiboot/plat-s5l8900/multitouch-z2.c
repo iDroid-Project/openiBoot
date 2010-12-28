@@ -1085,24 +1085,11 @@ void cmd_multitouch_fw_install(int argc, char** argv)
         return;
     }
     
+	// TODO: This is TOTALLY UNTESTED. Please test it someone, anyone. -- Ricky26
+
     uint8_t* fwData = (uint8_t*) parseNumber(argv[1]);
     uint32_t fwLen = parseNumber(argv[2]);
-    
-    //get latest apple image
-    Image* image = images_get_last_apple_image();
-    if (image == NULL) {
-        bufferPrintf("**ABORTED** Last image position cannot be read\r\n");
-        return;
-    }
-    uint32_t offset = image->offset+image->padded;
-    
-    if(offset >= 0xfc000 || (offset + fwLen) >= 0xfc000) {
-        bufferPrintf("**ABORTED** Image of size %d at %x would overflow NOR!\r\n", fwLen, offset);
-        return;
-    }    
-    
-    bufferPrintf("Writing 0x%x - 0x%x to 0x%x...\r\n", fwData, fwData + fwLen, offset);
-    nor_write((void*)fwData, offset, fwLen);
+	images_install(fwData, fwLen, fourcc("mtz2"), fourcc("mtz2"));
     bufferPrintf("Zephyr2 firmware installed.\r\n");
 }
 COMMAND("multitouch_fw_install", "install multitouch firmware", cmd_multitouch_fw_install);

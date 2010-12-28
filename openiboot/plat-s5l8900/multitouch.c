@@ -8,7 +8,6 @@
 #include "util.h"
 #include "spi.h"
 #include "framebuffer.h"
-#include "nor.h"
 #include "images.h"
 
 static void multitouch_atn(uint32_t token);
@@ -767,12 +766,12 @@ void cmd_multitouch_fw_install(int argc, char** argv)
     }    
     
     bufferPrintf("Writing aspeed 0x%x - 0x%x to 0x%x...\r\n", aspeedFW, aspeedFW + aspeedFWLen, offset);
-    nor_write((void*)aspeedFW, offset, aspeedFWLen);
+	images_install(aspeedFW, aspeedFWLen, fourcc("mtza"), fourcc("mtza"));
     
     offset += aspeedFWLen;
     
     bufferPrintf("Writing main 0x%x - 0x%x to 0x%x...\r\n", mainFW, mainFW + mainFWLen, offset);
-    nor_write((void*)mainFW, offset, mainFWLen);
+	images_install(mainFW, mainFWLen, fourcc("mtzm"), fourcc("mtzm"));
     
     bufferPrintf("Zephyr firmware installed.\r\n");
 }
