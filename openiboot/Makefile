@@ -16,10 +16,12 @@ endif
 
 ifeq ($(PLATFORM),IPHONE_4)
 	TARGET = iphone_4_openiboot.bin
+	DFUREQ = true
 endif
 
 ifeq ($(PLATFORM),IPAD)
 	TARGET = ipad_1g_openiboot.bin
+	DFUREQ = true
 endif
 
 ifeq ($(INSTALLER),YES)
@@ -35,19 +37,20 @@ all:
 
 clean:
 	scons -c
+	@rm *.o
 	@cd ../utils/syringe; make clean
 	@cd ../utils/oibc; make clean
 
 install:
 	@echo Building tools...
 	@make -C ../utils/syringe &> /dev/null
-	@if test $(IMG3TEMPLATE) = "mk8900image/template-4g.img3"; then \
+	@if test $(DFUREQ); then \
 		echo A4 device detected, injecting pois0n; \
 		echo Please enter DFU mode now; \
-		sudo ../utils/syringe/injectpois0n; \
+		sudo ../utils/syringe/utilities/injectpois0n; \
 	else \
 		read -p "Put your device into recovery mode, then press enter to continue..." tmp; \
 	fi
 	@echo Uploading OpeniBoot binary
-	@sudo ../utils/syringe/loadibec openiboot.bin
+	@sudo ../utils/syringe/utilities/loadibec $(TARGET)
 	@echo Done, OpeniBoot should be running

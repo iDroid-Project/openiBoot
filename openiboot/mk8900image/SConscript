@@ -10,7 +10,7 @@ if platform.system() == 'Linux':
 		libs += ["x86/libxpwn.a", "x86/libcommon.a"]
 
 if platform.system() == 'Darwin':
-	libs += ["mac-x86/libxpwn.a", "mac-x86/libcommon.a"]
+	libs += ["x86-osx/libxpwn.a", "x86-osx/libcommon.a"]
 
 mk8900image = henv.Program('mk8900image', ['mk8900image.c'] + libs, LIBPATH='.', LIBS=['m', 'dl', 'png', 'crypto', 'z'])
 
