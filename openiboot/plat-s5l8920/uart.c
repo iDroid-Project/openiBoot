@@ -3,6 +3,7 @@
 #include "clock.h"
 #include "hardware/uart.h"
 #include "timer.h"
+//#include "util.h"
 
 const UARTRegisters HWUarts[] = {
 	{UART + UART0 + UART_ULCON, UART + UART0 + UART_UCON, UART + UART0 + UART_UFCON, 0,
@@ -27,8 +28,18 @@ const UARTRegisters HWUarts[] = {
 		UART + UART4 + UART_UDIVSLOT}};
 UARTSettings UARTs[NUM_UARTS];
 
-
 int UartHasInit;
+
+/*static printf_handler_t prev_printf_handler = NULL;
+
+void uart_printf_handler(const char *_text)
+{
+	if(UartHasInit)
+		uart_write(0, _text, strlen(_text));
+
+	if(prev_printf_handler)
+		prev_printf_handler(_text);
+}*/
 
 int uart_setup() {
 	int i;
@@ -70,12 +81,10 @@ int uart_setup() {
 		UARTs[i].fifo = ON;
 	}
 
-	for(i = 0; i < NUM_UARTS; i++) {
+	for(i = 0; i < NUM_UARTS; i++)
 		uart_set_mode(i, UART_POLL_MODE);
-	}
 
-	uart_set_mode(0, UART_POLL_MODE);
-
+	//prev_printf_handler = addPrintfHandler(uart_printf_handler);
 	UartHasInit = TRUE;
 
 	return 0;

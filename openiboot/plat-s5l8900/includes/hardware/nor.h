@@ -2,6 +2,7 @@
 #define HW_NOR_H
 
 #include "hardware/s5l8900.h"
+#include "hardware/spi.h"
 
 // Device
 //#define NOR 0x54000000
@@ -47,6 +48,9 @@
 #define NOR_T_SE 25000
 
 #define NOR_CLOCKGATE 0x1E
+
+#define NOR_CS	GPIO_SPI0_CS0
+#define NOR_SPI	0
 
 #endif
 

@@ -5,9 +5,16 @@ env.Append(CPPPATH = [Dir('includes')])
 env.Append(ASFLAGS = ['-L'+str(Dir('includes'))])
 env.Append(CPPDEFINES = ['ARM_A8', 'CONFIG_A4', 'MALLOC_NO_WDT'])
 
+env.AddModules([
+	"usb-synopsys",
+	])
+
 plat_a4_src = arch_arm_src + env.Localize([
 	# Include the bits of base_src we use
 	# until we implement it all
+	'#device.c',
+	'#mtd.c',
+	'#bdev.c',
 	'#openiboot.c',
 	'#util.c',
 	'#malloc.c',
@@ -15,7 +22,6 @@ plat_a4_src = arch_arm_src + env.Localize([
 	'#printf.c',
 	'#framebuffer.c',
 	'#acm.c',
-	'#usb.c',
 	'#commands.c',
 	'#stb_image.c',
 
@@ -36,7 +42,7 @@ plat_a4_src = arch_arm_src + env.Localize([
 	'uart.c',
 #	'cdma.c',
 	'usbphy.c',
-	])# + hfs_src
+	]) + hfs_src
 Export('plat_a4_src')
 
 env.SConscript('iPhone4G.SConscript', 'env')

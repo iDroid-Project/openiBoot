@@ -22,6 +22,7 @@ static int acm_usb_mps = 0;
 static int acm_unprocessed = 0;
 static int acm_busy = FALSE;
 int acm_is_ready = 0;
+printf_handler_t acm_prev_printf_handler = NULL;
 TaskDescriptor acm_parse_task;
 
 static int acm_send()
@@ -217,6 +218,15 @@ static void acm_enumerate(USBConfiguration *conf)
 		acm_recv_buffer = memalign(DMA_ALIGN, ACM_BUFFER_SIZE);
 }
 
+static void acm_buffer_notify(const char *text)
+{
+	if(acm_is_ready && !acm_busy)
+		acm_send();
+
+	if(acm_prev_printf_handler)
+		acm_prev_printf_handler(text);
+}
+
 static void acm_started()
 {
 	acm_is_ready = 0;
@@ -251,6 +261,8 @@ void acm_start()
 	usb_install_ep_handler(ACM_EP_SEND, USBIn, acm_sent, 0);
 	usb_install_ep_handler(ACM_EP_RECV, USBOut, acm_received, 0);
 	usb_install_setup_handler(acm_setup);
+
+	acm_prev_printf_handler = addPrintfHandler(acm_buffer_notify);
 }
 MODULE_INIT(acm_start);
 
@@ -260,11 +272,5 @@ void acm_stop()
 	free(acm_recv_buffer);
 
 	task_destroy(&acm_parse_task);
-}
-
-void acm_buffer_notify()
-{
-	if(!acm_busy)
-		acm_send();
 }
 

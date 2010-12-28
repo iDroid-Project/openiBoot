@@ -9,6 +9,14 @@
 #include "pmu.h"
 #include "wmcodec.h"
 
+#ifdef RADIO_HIGH_IS_ZERO
+#define RADIO_ON OFF
+#define RADIO_OFF ON
+#else
+#define RADIO_ON ON
+#define RADIO_OFF OFF
+#endif
+
 // For the +XDRV stuff, it's usually device,function,arg1,arg2,arg3,...
 // device 4 seems to be the vibrator, device 0 seems to be the speakers,
 // 7 seems to have to do with bluetooth, and 9 is bb nvram
@@ -35,14 +43,14 @@ int radio_setup()
 #endif
 
 #ifdef RADIO_GPIO_RADIO_ON
-	gpio_pin_output(RADIO_GPIO_RADIO_ON, ON);
+	gpio_pin_output(RADIO_GPIO_RADIO_ON, RADIO_ON);
 	udelay(100000);
 #endif
 
 #ifdef RADIO_GPIO_BB_RESET
-	gpio_pin_output(RADIO_GPIO_BB_RESET, ON);
+	gpio_pin_output(RADIO_GPIO_BB_RESET, RADIO_ON);
 	udelay(100000);
-	gpio_pin_output(RADIO_GPIO_BB_RESET, OFF);
+	gpio_pin_output(RADIO_GPIO_BB_RESET, RADIO_OFF);
 	udelay(100000);
 #endif
 
@@ -194,7 +202,7 @@ int radio_read(char* buf, int len)
 		i += n;
 
 		buf[i] = '\0';
-
+	
 		if(strstr(curLine, "OK\r") != NULL)
 		{
 			break;

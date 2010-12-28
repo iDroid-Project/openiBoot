@@ -2,6 +2,7 @@
 #include "commands.h"
 #include "ftl.h"
 #include "nand.h"
+#include "mtd.h"
 #include "util.h"
 
 #define FTL_ID_V1 0x43303033
@@ -3258,6 +3259,46 @@ void ftl_printdata() {
 	}
 
 }
+
+static int ftl_read_mtd(mtd_t *_dev, void *_dest, uint32_t _off, int _amt)
+{
+	return ftl_read(_dest, _off, _amt);
+}
+
+static int ftl_write_mtd(mtd_t *_dev, void *_src, uint32_t _off, int _amt)
+{
+	return ftl_write(_src, _off, _amt);
+}
+
+static int ftl_block_size(mtd_t *_dev)
+{
+	NANDData* Data = nand_get_geometry();
+	return Data->bytesPerPage;
+}
+
+static mtd_t ftl_mtd = {
+	.device = {
+		.fourcc = FOURCC('F', 'T', 'L', '\0'),
+		.name = "Apple FTL Layer",
+	},
+
+	.read = ftl_read_mtd,
+	.write = ftl_write_mtd,
+
+	.block_size = ftl_block_size,
+
+	.usage = mtd_filesystem,
+};
+
+void ftl_init()
+{
+	if(!ftl_setup())
+	{
+		if(!mtd_init(&ftl_mtd))
+			mtd_register(&ftl_mtd);
+	}
+}
+MODULE_INIT(ftl_init);
 
 void cmd_vfl_read(int argc, char** argv) {
 	if(argc < 3) {

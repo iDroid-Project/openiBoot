@@ -1,12 +1,13 @@
 #include "openiboot.h"
 #include "syscfg.h"
-#include "nor.h"
+#include "mtd.h"
 #include "util.h"
 
 #define SCFG_MAGIC 0x53436667
 #define CNTB_MAGIC 0x434e5442
 #define SCFG_LOCATION 0x4000
 
+#ifdef S5L8900
 typedef struct SCfgHeader
 {
 	uint32_t magic;
@@ -16,6 +17,16 @@ typedef struct SCfgHeader
 	uint32_t unknown;
 	uint32_t entries;
 } SCfgHeader;
+#else
+typedef struct SCfgHeader
+{
+	uint32_t magic;
+	uint32_t bytes_total;
+	uint32_t bytes_used;
+	uint32_t version;
+	uint32_t entries;
+} SCfgHeader;
+#endif
 
 typedef struct SCfgEntry
 {
@@ -40,15 +51,41 @@ typedef struct OIBSyscfgEntry
 static SCfgHeader header;
 static OIBSyscfgEntry* entries;
 
+static mtd_t *syscfg_dev = NULL;
+
+static mtd_t *syscfg_device()
+{
+	if(!syscfg_dev)
+	{
+		mtd_t *ptr = NULL;
+		while((ptr = mtd_find(ptr)))
+		{
+			if(ptr->usage == mtd_boot_images)
+			{
+				syscfg_dev = ptr;
+				break;
+			}
+		}
+	}
+
+	return syscfg_dev;
+}
+
 int syscfg_setup()
 {
 	int i;
 	SCfgEntry curEntry;
 	uint32_t cursor;
 
-	nor_read(&header, SCFG_LOCATION, sizeof(header));
+	mtd_t *dev = syscfg_device();
+	if(!dev)
+		return -1;
+
+	mtd_prepare(dev);
+	mtd_read(dev, &header, SCFG_LOCATION, sizeof(header));
 	if(header.magic != SCFG_MAGIC)
 	{
+		mtd_finish(dev);
 		bufferPrintf("syscfg: cannot find readable syscfg partition!\r\n");
 		return -1;
 	}
@@ -60,7 +97,7 @@ int syscfg_setup()
 	cursor = SCFG_LOCATION + sizeof(header);
 	for(i = 0; i < header.entries; ++i)
 	{
-		nor_read(&curEntry, cursor, sizeof(curEntry));
+		mtd_read(dev, &curEntry, cursor, sizeof(curEntry));
 
 		if(curEntry.magic != CNTB_MAGIC)
 		{
@@ -73,11 +110,13 @@ int syscfg_setup()
 			entries[i].type = curEntry.cntb.type;
 			entries[i].size = curEntry.cntb.size;
 			entries[i].data = (uint8_t*) malloc(curEntry.cntb.size);
-			nor_read(entries[i].data, SCFG_LOCATION + curEntry.cntb.offset, curEntry.cntb.size);
+			mtd_read(dev, entries[i].data, SCFG_LOCATION + curEntry.cntb.offset, curEntry.cntb.size);
 		}
 
 		cursor += sizeof(curEntry);
 	}
+
+	mtd_finish(dev);
 
 	return 0;
 }

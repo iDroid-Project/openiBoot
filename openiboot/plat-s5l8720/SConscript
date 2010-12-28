@@ -5,9 +5,16 @@ env.Append(CPPPATH = [Dir('includes')])
 env.Append(ASFLAGS = ['-L'+str(Dir('includes'))])
 env.Append(CPPDEFINES = ['ARM11', 'CONFIG_S5L8720'])
 
+env.AddModules([
+	"usb-synopsys",
+	])
+
 plat_s5l8720_src = arch_arm_src + env.Localize([
 	# Include the bits of base_src we use
 	# until we implement it all
+	'#device.c',
+	'#mtd.c',
+	'#bdev.c',
 	'#acm.c',
 #	'#audiohw.c',
 #	'#actions.c',
@@ -23,7 +30,6 @@ plat_s5l8720_src = arch_arm_src + env.Localize([
 	'#stb_image.c',
 	'#syscfg.c',
 	'#tasks.c',
-	'#usb.c',
 	'#util.c',
 
 	's5l8720.c',
@@ -52,7 +58,7 @@ plat_s5l8720_src = arch_arm_src + env.Localize([
 	'usbphy.c',
 	'wdt.c',
 #	'wlan.c',
-	])# + hfs_src
+	]) + hfs_src
 Export('plat_s5l8720_src')
 
 env.SConscript('iPod2G.SConscript', 'env')

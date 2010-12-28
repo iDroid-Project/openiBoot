@@ -15,6 +15,7 @@ static int THeight;
 static int X;
 static int Y;
 static OpenIBootFont* Font;
+static printf_handler_t prev_printf_handler = NULL;
 
 static uint32_t FBWidth;
 static uint32_t FBHeight;
@@ -45,6 +46,15 @@ inline volatile uint16_t* PixelFromCoords565(register uint32_t x, register uint3
 	return ((uint16_t*)CurFramebuffer) + (y * FBWidth) + x;
 }
 
+void framebuffer_printf_handler(const char *text)
+{
+	if(FramebufferHasInit)
+		framebuffer_print(text);
+
+	if(prev_printf_handler)
+		prev_printf_handler(text);
+}
+
 int framebuffer_setup() {
 	Font = (OpenIBootFont*)fontData; //(OpenIBootFont*) malloc(sizeof(OpenIBootFont)); // Someone explain why Bluerise did this -- Ricky26
 	BackgroundColor = COLOR_BLACK;
@@ -54,6 +64,7 @@ int framebuffer_setup() {
 	TWidth = FBWidth / fontWidth;
 	THeight = FBHeight / fontHeight;
 	framebuffer_clear();
+	prev_printf_handler = addPrintfHandler(framebuffer_printf_handler);
 	FramebufferHasInit = TRUE;
 	return 0;
 }
