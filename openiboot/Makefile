@@ -46,8 +46,7 @@ install:
 	@make -C ../utils/syringe &> /dev/null
 	@if test $(DFUREQ); then \
 		echo A4 device detected, injecting pois0n; \
-		echo Please enter DFU mode now; \
-		sudo ../utils/syringe/utilities/injectpois0n; \
+		read -p "Put your device into DFU mode, then press enter to continue..." tmp; \
 	else \
 		read -p "Put your device into recovery mode, then press enter to continue..." tmp; \
 	fi
