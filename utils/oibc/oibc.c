@@ -36,7 +36,7 @@
 
 #define MAX_TO_SEND 512
 #define SEND_EP		2
-#define RECV_EP		1
+#define RECV_EP		0x81
 #define FILE_START_MAGIC "ACM: Starting File: "
 
 #define USB_APPLE_ID		0x0525
@@ -173,25 +173,10 @@ void* doOutput(void* threadid)
 					}
 				}
 			}
-
-			oibc_log(ptr);
 		}
-		else if(err != 0)
+		else if(ret == LIBUSB_ERROR_TIMEOUT)
 		{
-			if(err == LIBUSB_ERROR_TIMEOUT)
 				printf("libusb: timeout\n");
-			
-			if(err == LIBUSB_ERROR_PIPE)
-                                printf("libusb: endpoint failure\n");
-
-			if(err == LIBUSB_ERROR_OVERFLOW)
-                                printf("libusb: overflow error\n");
-
-			if(err == LIBUSB_ERROR_NO_DEVICE)
-                                printf("libusb: device disconnected\n");
-
-			if(err > 4)
-				printf("libusb: unknown error\n");
 		}
 		else
 		{
