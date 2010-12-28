@@ -35,7 +35,7 @@
 #include <getopt.h>
 
 #define MAX_TO_SEND 512
-#define SEND_EP		2
+#define SEND_EP		0x2
 #define RECV_EP		0x81
 #define FILE_START_MAGIC "ACM: Starting File: "
 
@@ -111,7 +111,7 @@ void* doOutput(void* threadid)
 	while(1)
 	{
 		err = libusb_bulk_transfer(dev_handle, RECV_EP, buffer, sizeof(buffer)-1, &ret, 1000);
-		if(ret >= 0)
+		if(ret >= 0 && err == 0)
 		{
 			buffer[ret] = 0;
 
@@ -174,13 +174,16 @@ void* doOutput(void* threadid)
 				}
 			}
 		}
-		else if(ret == LIBUSB_ERROR_TIMEOUT)
+		else if(err == 0) {
+			//no data, no error, do nothing
+		}
+		else if(err == LIBUSB_ERROR_TIMEOUT)
 		{
-				printf("libusb: timeout\n");
+			//timeout
 		}
 		else
 		{
-			fprintf(stderr, "Failed to read: %s\n", strerror(-ret));
+			fprintf(stderr, "Failed to read: %s\n", strerror(-err));
 			break;
 		}
 	}
@@ -223,6 +226,8 @@ void* doInput(void* threadid) {
 
 	rl_basic_word_break_characters = " \t\n\"\\'`@$><=;|&{(~!:";
 	rl_completion_append_character = '\0';
+
+	sendBuffer(NULL, 0);
 
 	while(1) {
 		if(commandBuffer != NULL)
