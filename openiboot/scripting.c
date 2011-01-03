@@ -8,19 +8,12 @@
 #include "printf.h"
 #include "util.h"
 
-uint8_t *script_load_hfs_file(int part, char *path, uint32_t *size)
+uint8_t *script_load_hfs_file(int disk, int part, char *path, uint32_t *size)
 {
-	Volume* volume;
-	io_func* io;
-	io = bdev_open(part);
-	if(io == NULL) {
-		bufferPrintf("fs: cannot read partition!\r\n");
-		return NULL;
-	}
-
-	volume = openVolume(io);
-	if(volume == NULL) {
-		bufferPrintf("fs: cannot openHFS volume!\r\n");
+	bdevfs_device_t *dev = bdevfs_open(disk, part);
+	if(!dev)
+	{
+		bufferPrintf("fs: Cannot open partition hd%d,%d.\n", disk, part);
 		return NULL;
 	}
 
@@ -28,19 +21,18 @@ uint8_t *script_load_hfs_file(int part, char *path, uint32_t *size)
 	char *name;
 	uint8_t *address;
 	uint32_t sz = 0;
-	record = getRecordFromPath(path, volume, &name, NULL);
+	record = getRecordFromPath(path, dev->volume, &name, NULL);
 	if(record != NULL)
 	{
 		if(record->recordType == kHFSPlusFolderRecord)
 			bufferPrintf("scripting: That path leads to a directory!\n");
 		else
-			sz = readHFSFile((HFSPlusCatalogFile*)record, &address, volume);
+			sz = readHFSFile((HFSPlusCatalogFile*)record, &address, dev->volume);
 	}
 	else
 		bufferPrintf("scripting: No such file or directory %s.\n", path);
 
-	closeVolume(volume);
-	CLOSE(io);
+	bdevfs_close(dev);
 
 	if(address)
 	{
@@ -55,7 +47,11 @@ uint8_t *script_load_file(char *id, uint32_t *size)
 {
 	if(*id == '(') // In format (hdX,Y)/some/path
 	{
-		char *ptr = strdup(id+1);
+		char *dupe = strdup(id+1);
+		char *ptr = dupe;
+		if(ptr[0] == 'h' && ptr[1] == 'd')
+			ptr += 2;
+
 		char *devEnd = strchr(ptr, ')');
 		if(devEnd)
 		{
@@ -73,16 +69,16 @@ uint8_t *script_load_file(char *id, uint32_t *size)
 			}
 
 			int device = parseNumber(ptr);
-			uint8_t *ret = script_load_hfs_file(device+part, devEnd, size); // TODO: Hahahah! I should really fix this. -- Ricky26
+			uint8_t *ret = script_load_hfs_file(device, part, devEnd, size); // TODO: Hahahah! I should really fix this. -- Ricky26
 
-			free(ptr);
+			free(dupe);
 
 			return ret;
 		}
 	}
 	else if(*id == '/') // In format /some/path of the system partition
 	{
-		return script_load_hfs_file(0, id, size);
+		return script_load_hfs_file(0, 0, id, size);
 	}
 	else if(*id >= '0' && *id <= '9')
 	{

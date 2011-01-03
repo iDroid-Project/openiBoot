@@ -2,7 +2,7 @@
 #include "commands.h"
 #include "nvram.h"
 #include "util.h"
-#include "nor.h"
+#include "mtd.h"
 
 static uint8_t* bank1Data;
 static uint8_t* bank2Data;
@@ -14,6 +14,26 @@ static NVRamAtom* newestBank;
 static uint8_t* newestBankData;
 
 static EnvironmentVar* variables;
+
+static mtd_t *nvram_dev = NULL;
+
+static mtd_t *nvram_device()
+{
+	if(!nvram_dev)
+	{
+		mtd_t *ptr = NULL;
+		while((ptr = mtd_find(ptr)))
+		{
+			if(ptr->usage == mtd_boot_images)
+			{
+				nvram_dev = ptr;
+				break;
+			}
+		}
+	}
+
+	return nvram_dev;
+}
 
 static uint8_t checkNVRamInfo(NVRamInfo* info) {
 	uint32_t c = info->ckByteSeed;
@@ -102,7 +122,14 @@ static void releaseEnvironment(EnvironmentVar* vars) {
 	}
 }
 
-void nvram_save() {
+void nvram_save()
+{
+	mtd_t *dev = nvram_device();
+	if(!dev)
+		return;
+
+	mtd_prepare(dev);
+
 	NVRamAtom* commonAtom = findAtom(newestBank, "common");
 	EnvironmentVar* var = variables;
 	memset(commonAtom->data, 0, commonAtom->size - sizeof(NVRamInfo));
@@ -126,9 +153,9 @@ void nvram_save() {
 	NVRamAtom* atom = newestBank;
 	uint32_t offset = oldestBank;
 	while(atom != NULL) {
-		nor_write(atom->info, offset, sizeof(NVRamInfo));
+		mtd_write(dev, atom->info, offset, sizeof(NVRamInfo));
 		offset += sizeof(NVRamInfo);
-		nor_write(atom->data, offset, atom->size - sizeof(NVRamInfo));
+		mtd_write(dev, atom->data, offset, atom->size - sizeof(NVRamInfo));
 		offset += atom->size - sizeof(NVRamInfo);
 		atom = atom->next;
 	}
@@ -139,6 +166,8 @@ void nvram_save() {
 
 	free(bank1Data);
 	free(bank2Data);
+
+	mtd_finish(dev);
 
 	nvram_setup();
 }
@@ -232,11 +261,20 @@ static EnvironmentVar* loadEnvironment(NVRamAtom* atoms) {
 	return toRet;
 }
 
-int nvram_setup() {
+int nvram_setup()
+{
+	mtd_t *dev = nvram_device();
+	if(!dev)
+		return -1;
+
+	mtd_prepare(dev);
+
 	bank1Data = (uint8_t*) malloc(NVRAM_SIZE);
 	bank2Data = (uint8_t*) malloc(NVRAM_SIZE);
-	nor_read(bank1Data, NVRAM_START, NVRAM_SIZE);	
-	nor_read(bank2Data, NVRAM_START + NVRAM_SIZE, NVRAM_SIZE);
+	mtd_read(dev, bank1Data, NVRAM_START, NVRAM_SIZE);	
+	mtd_read(dev, bank2Data, NVRAM_START + NVRAM_SIZE, NVRAM_SIZE);
+
+	mtd_finish(dev);
 
 	bank1Atoms = readAtoms(bank1Data);
 	bank2Atoms = readAtoms(bank2Data);

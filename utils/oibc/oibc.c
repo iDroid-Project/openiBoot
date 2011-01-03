@@ -1,8 +1,9 @@
 /*
- * oib.c - OpeniBoot Console for Linux (and other UNiXes).
+ * oibc.c - OpeniBoot Console for Linux (and other UNiXes).
  *
  * Copyright (C) 2008 Yiduo Wang
  * Portions Copyright (C) 2010 Ricky Taylor
+ * Portions Copyright (C) 2010 Liam McLoughlin
  *
  * This file is part of iDroid. An android distribution for Apple products.
  * For more information, please visit http://www.idroidproject.org/.
@@ -26,21 +27,58 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <string.h>
-#include <usb.h>
+#include <stdlib.h>
+#include <libusb-1.0/libusb.h>
 #include <pthread.h>
 #include <readline/readline.h>
 #include <errno.h>
 #include <getopt.h>
 
 #define MAX_TO_SEND 512
-#define SEND_EP		2
-#define RECV_EP		1
+#define SEND_EP		0x2
+#define RECV_EP		0x81
 #define FILE_START_MAGIC "ACM: Starting File: "
+
+#define USB_APPLE_ID		0x0525
+#define USB_OIB_CONSOLE		0x1280
 
 static int getFile(char *commandBuffer);
 static int sendFile(char *commandBuffer);
 
-usb_dev_handle* device;
+struct libusb_device_handle* dev_handle;
+
+struct libusb_device_handle* open_device(int devid) {
+        int configuration = 0;
+        struct libusb_device_handle* handle = NULL;
+        
+        libusb_init(NULL);
+        handle = libusb_open_device_with_vid_pid(NULL, USB_APPLE_ID, devid);
+        if (handle == NULL) {
+                printf("open_device: unable to connect to device.\n");
+                return NULL;
+        }
+                
+        if (libusb_claim_interface(handle, 0) < 0) {
+                printf("open_device: error claiming interface.");
+                return NULL;
+        }
+
+        return handle;
+}
+
+int close_device(struct libusb_device_handle* handle) {
+        if (handle == NULL) {
+                printf("close_device: device has not been initialized yet.\n");
+                return -1;
+        }
+        
+        libusb_release_interface(handle, 0);
+        libusb_release_interface(handle, 1);
+        libusb_close(handle);
+        libusb_exit(NULL);
+        return 0;
+}
+
 FILE* outputFile = NULL;
 volatile size_t readAmt = 0;
 volatile size_t currReadAmt = 0;
@@ -67,16 +105,18 @@ void oibc_log(const char *format, ...)
 void* doOutput(void* threadid)
 {
 	int ret;
+	int err;
 	static char buffer[513];
 
 	while(1)
 	{
-		int ret = usb_bulk_read(device, RECV_EP, buffer, sizeof(buffer)-1, 5000);
-		if(ret >= 0)
+		err = libusb_bulk_transfer(dev_handle, RECV_EP, buffer, sizeof(buffer)-1, &ret, 1000);
+		if(ret >= 0 && err == 0)
 		{
 			buffer[ret] = 0;
 
 			char *ptr = buffer;
+			printf("%s",buffer);
 			if(currReadAmt > 0)
 			{
 				int amt = currReadAmt;
@@ -133,16 +173,17 @@ void* doOutput(void* threadid)
 					}
 				}
 			}
-
-			printf("%s", ptr);
 		}
-		else if(ret == -ETIMEDOUT)
+		else if(err == 0) {
+			//no data, no error, do nothing
+		}
+		else if(err == LIBUSB_ERROR_TIMEOUT)
 		{
-			// Do something? -- Ricky26
+			//timeout
 		}
 		else
 		{
-			fprintf(stderr, "Failed to read: %s\n", strerror(-ret));
+			fprintf(stderr, "Failed to read: %s\n", strerror(-err));
 			break;
 		}
 	}
@@ -156,12 +197,12 @@ void sendBuffer(char* buffer, size_t size) {
 	int ret = 0;
 
 	if(size == 0)
-		ret = usb_bulk_write(device, SEND_EP, buffer, size, 10000);
+		libusb_bulk_transfer(dev_handle, SEND_EP, buffer, size, &ret, 1000);
 	else
 	{
 		while(size > USB_BYTES_AT_A_TIME)
 		{
-			ret = usb_bulk_write(device, SEND_EP, buffer, USB_BYTES_AT_A_TIME, 10000);
+			libusb_bulk_transfer(dev_handle, SEND_EP, buffer, USB_BYTES_AT_A_TIME, &ret, 1000);
 			if(ret >= 0)
 			{
 				buffer += ret;
@@ -172,7 +213,7 @@ void sendBuffer(char* buffer, size_t size) {
 		}
 
 		if(size > 0 && ret >= 0)
-			ret = usb_bulk_write(device, SEND_EP, buffer, size, 10000);
+			libusb_bulk_transfer(dev_handle, SEND_EP, buffer, size, &ret, 1000);
 	}
 
 	if(ret < 0)
@@ -186,7 +227,6 @@ void* doInput(void* threadid) {
 	rl_basic_word_break_characters = " \t\n\"\\'`@$><=;|&{(~!:";
 	rl_completion_append_character = '\0';
 
-	// Hack for strange Synopsys bug -- Ricky26
 	sendBuffer(NULL, 0);
 
 	while(1) {
@@ -263,11 +303,11 @@ int sendFile(char *commandBuffer)
 	fclose(file);
 
 	if(atLoc != NULL)
-		sprintf(toSendBuffer, "sendfile %s %d\n", atLoc + 1, len);
+		sprintf(toSendBuffer, "sendfile %s %zu\n", atLoc + 1, len);
 	else
-		sprintf(toSendBuffer, "sendfile 0x09000000 %d\n", len);
+		sprintf(toSendBuffer, "sendfile 0x09000000 %zu\n", len);
 	
-	fprintf(stderr, "File length %d.\n", len);
+	fprintf(stderr, "File length %zu.\n", len);
 
 	sendBuffer(toSendBuffer, strlen(toSendBuffer));
 	sendBuffer(fileBuffer, len);
@@ -319,98 +359,55 @@ int getFile(char *commandBuffer)
     return 0;
 }
 
-int main(int argc, char* argv[])
-{
+int main(int argc, char* argv[]) {
 	static struct option program_options[] = {
-		{"silent",	no_argument,	NULL,	's'},
-	};
-	
-	while(1)
-	{
-		int option_index = 0;
-		int c = getopt_long(argc, argv, "s", program_options, &option_index);
-		if(c == -1)
-			break;
+                {"silent",      no_argument,    NULL,   's'},
+        };
 
-		switch(c)
-		{
-		case 's':
-			silent = 1;
-			break;
-		};
-	}
+        while(1)
+        {
+                int option_index = 0;
+                int c = getopt_long(argc, argv, "s", program_options, &option_index);
+                if(c == -1)
+                        break;
+        
+                switch(c)
+                {
+                case 's':
+                        silent = 1;
+                        break;
+                };
+        }
+     
+        read_history(".oibc-history");
 
-	read_history(".oibc-history");
-
-	usb_init();
-	usb_find_busses();
-	usb_find_devices();
-
-	struct usb_bus *busses;
-	struct usb_bus *bus;
-	struct usb_device *dev;
-
-	busses = usb_get_busses();
-
-	int found = 0;
-	int c, i, a;
-	for(bus = busses; bus; bus = bus->next) {
-    		for (dev = bus->devices; dev; dev = dev->next) {
-    			/* Check if this device is a printer */
-    			//if (dev->descriptor.idVendor != 0x05ac || dev->descriptor.idProduct != 0x1280) {
-    			if (dev->descriptor.idVendor != 0x0525 || dev->descriptor.idProduct != 0x1280) {
-    				continue;
-    			}
-    
-			/* Loop through all of the interfaces */
-			for (i = 0; i < dev->config[0].bNumInterfaces; i++) {
-				for (a = 0; a < dev->config[0].interface[i].num_altsetting; a++) {
-					if(dev->config[0].interface[i].altsetting[a].bInterfaceClass == 0xa
-						&& dev->config[0].interface[i].altsetting[a].bInterfaceSubClass == 0x0
-						&& dev->config[0].interface[i].altsetting[a].bInterfaceProtocol == 0x0) {
-						goto done;
-					}
-    				}
-    			}
-    		}
-	}
-
-	oibc_log("Failed to find a device in OpeniBoot mode.\n");
-	return 1;
-
-done:
-
-	device = usb_open(dev);
-	if(!device) {
-		oibc_log("Failed to open OpeniBoot device.\n");
-		return 2;
-	}
-
-	if(usb_claim_interface(device, i) != 0) {
-		oibc_log("Failed to claim OpeniBoot device.\n");
-		return 3;
+	dev_handle = open_device(USB_OIB_CONSOLE);
+	if (dev_handle == NULL) {
+		printf("your device must be in openiboot mode.\n");
+		return -1;
 	}
 
 	pthread_t inputThread;
-	pthread_t outputThread;
+        pthread_t outputThread;
 
-	oibc_log("OiB client connected:\n");
-    oibc_log("!<filename>[@<address>] to send a file, ~<filename>[@<address>]:<len> to receive a file\n");
-	oibc_log("---------------------------------------------------------------------------------------------------------\n");
+        oibc_log("OiB client connected:\n");
+	oibc_log("!<filename>[@<address>] to send a file, ~<filename>[@<address>]:<len> to receive a file\n");
+        oibc_log("---------------------------------------------------------------------------------------------------------\n");
 
-	pthread_create(&outputThread, NULL, doOutput, NULL);
-	pthread_create(&inputThread, NULL, doInput, NULL);
+        pthread_create(&outputThread, NULL, doOutput, NULL);
+        pthread_create(&inputThread, NULL, doInput, NULL);
+ 
+        pthread_mutex_lock(&exitLock);
+        pthread_cond_wait(&exitCond, &exitLock);
+        pthread_mutex_unlock(&exitLock);
 
-	pthread_mutex_lock(&exitLock);
-	pthread_cond_wait(&exitCond, &exitLock);
-	pthread_mutex_unlock(&exitLock);
+        pthread_cancel(inputThread);
+        pthread_cancel(outputThread);
 
-	pthread_cancel(inputThread);
-	pthread_cancel(outputThread);
+        rl_deprep_terminal(); // If we cancel readline, we must call this to not fsck up the terminal.
+        fflush(stdin); // Prevent madness
 
-	rl_deprep_terminal(); // If we cancel readline, we must call this to not fsck up the terminal.
-	fflush(stdin); // Prevent madness
-
-	usb_release_interface(device, i);
-	usb_close(device);
+	close_device(dev_handle);
+	
+	return 0;
 }

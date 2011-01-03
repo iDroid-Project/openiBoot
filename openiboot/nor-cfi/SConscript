@@ -1,0 +1,8 @@
+Import("*")
+
+nor_cfi_src = env.Localize([
+	'nor.c'
+	])
+
+nor_cfi = env.CreateModule('nor-cfi', nor_cfi_src)
+nor_cfi.Append(CPPPATH=[Dir('includes')])

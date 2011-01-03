@@ -37,6 +37,7 @@
 #include "hfs/fs.h"
 #include "scripting.h"
 #include "actions.h"
+#include "usb.h"
 
 #include "radio.h"
 #include "wmcodec.h"
@@ -70,17 +71,21 @@ void platform_init()
 	event_setup();
 
 	// Other devices
-	usb_shutdown();
+	//usb_shutdown();
 	uart_setup();
 	i2c_setup();
 	spi_setup();
 
 	LeaveCriticalSection();
-
-	nor_setup();
 }
 
 void platform_shutdown()
 {
-	usb_shutdown();
+	//dma_shutdown();
+	arm_disable_caches();
+	mmu_disable();
 }
+
+// NYI -- Ricky26
+void pmu_set_iboot_stage(uint8_t stage)
+{}

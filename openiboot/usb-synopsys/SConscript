@@ -1,0 +1,8 @@
+Import('*')
+
+usb_synopsys_src = env.Localize([
+	'usb.c',
+	])
+
+usb_synopsys = env.CreateModule('usb-synopsys', usb_synopsys_src)
+usb_synopsys.Append(CPPPATH = [Dir('includes')])

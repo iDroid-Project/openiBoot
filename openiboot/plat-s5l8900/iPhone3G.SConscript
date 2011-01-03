@@ -6,7 +6,6 @@ Import('*')
 
 iphone_3g_src = [
 	plat_s5l8900_src,
-	radio_pmb8878_src,
 	env.Localize([
 	'camera.c',
 	'multitouch-z2.c',
@@ -17,7 +16,12 @@ iphone_3g_src = [
 Export('iphone_3g_src')
 
 env = env.Clone()
-env.Append(CPPDEFINES=['OPENIBOOT_VERSION_CONFIG=\\"for iPhone 3G\\"'])
+env.Append(CPPDEFINES=['OPENIBOOT_VERSION_CONFIG=\\" for iPhone 3G\\"'])
+
+env.AddModules([
+	"radio-pmb8878",
+	"nor-spi",
+	])
 
 elf, bin, img3 = env.OpenIBootTarget('iPhone3G', 'iphone_3g_openiboot', 'CONFIG_IPHONE_3G', iphone_3g_src+menu_src, 'template-3g')
 env.OpenIBootTarget('iPhone3G-Installer', 'iphone_3g_installer', 'CONFIG_IPHONE_3G', iphone_3g_src+installer_src, 'template-3g')

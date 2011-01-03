@@ -1,18 +1,17 @@
 #include "openiboot.h"
 #include "commands.h"
 #include "images.h"
-#include "nor.h"
 #include "util.h"
 #include "aes.h"
 #include "sha1.h"
 #include "nvram.h"
-#include "hfs/fs.h"
-#include "hfs/bdev.h"
+#include "mtd.h"
 #include "ftl.h"
 
 static const uint32_t NOREnd = 0xFC000;
 
 Image* imageList = NULL;
+mtd_t *imagesDevice = NULL;
 
 static uint32_t MaxOffset = 0;
 static uint32_t ImagesStart = 0;
@@ -29,14 +28,32 @@ static int IsImg3 = FALSE;
 static void calculateHash(Img2Header* header, uint8_t* hash);
 static void calculateDataHash(void* buffer, int len, uint8_t* hash);
 
-static int img3_setup() {
+static mtd_t *images_device()
+{
+	if(!imagesDevice)
+	{
+		mtd_t *dev = NULL;
+		while((dev = mtd_find(dev)))
+		{
+			if(dev->usage == mtd_boot_images)
+			{
+				imagesDevice = dev;
+				break;
+			}
+		}
+	}
+
+	return imagesDevice;
+}
+
+static int img3_setup(mtd_t *_dev) {
 	Image* curImage = NULL;
 	AppleImg3RootHeader* rootHeader = (AppleImg3RootHeader*) malloc(sizeof(AppleImg3RootHeader));
 
 	uint32_t offset = ImagesStart;
 	uint32_t index = 0;
 	while(offset < NOREnd) {
-		nor_read(rootHeader, offset, sizeof(AppleImg3RootHeader));
+		mtd_read(_dev, rootHeader, offset, sizeof(AppleImg3RootHeader));
 		if(rootHeader->base.magic != IMG3_MAGIC)
 			break;
 
@@ -73,6 +90,11 @@ int images_setup() {
 	IMG2* header;
 	Img2Header* curImg2;
 	uint8_t hash[0x20];
+	mtd_t *dev = images_device();
+	if(!dev)
+		return -1;
+
+	mtd_prepare(dev);
 
 	MaxOffset = 0;
 
@@ -80,7 +102,7 @@ int images_setup() {
 
 	uint32_t IMG2Offset = 0x0;
 	for(IMG2Offset = 0; IMG2Offset < NOREnd; IMG2Offset += 4096) {
-		nor_read(header, IMG2Offset, sizeof(IMG2));
+		mtd_read(dev, header, IMG2Offset, sizeof(IMG2));
 		if(header->signature == IMG2Signature) {
 			break;
 		}
@@ -90,9 +112,10 @@ int images_setup() {
 	ImagesStart = (header->imagesStart + header->dataStart) * SegmentSize;
 
 	AppleImg3Header* img3Header = (AppleImg3Header*) malloc(sizeof(AppleImg3Header));
-	nor_read(img3Header, ImagesStart, sizeof(AppleImg3Header));
+	mtd_read(dev, img3Header, ImagesStart, sizeof(AppleImg3Header));
 	if(img3Header->magic == IMG3_MAGIC) {
-		img3_setup();
+		img3_setup(dev);
+		mtd_finish(dev);
 		free(img3Header);
 		free(header);
 		IsImg3 = TRUE;
@@ -108,7 +131,7 @@ int images_setup() {
 
 	uint32_t curOffset;
 	for(curOffset = ImagesStart; curOffset < NOREnd; curOffset += SegmentSize) {
-		nor_read(curImg2, curOffset, sizeof(Img2Header));
+		mtd_read(dev, curImg2, curOffset, sizeof(Img2Header));
 		if(curImg2->signature != Img2Signature)
 			continue;
 
@@ -154,11 +177,18 @@ int images_setup() {
 	free(curImg2);
 	free(header);
 
+	mtd_finish(dev);
+
 	return 0;
 }
 
 void images_list() {
 	Image* curImage = imageList;
+	if(curImage == NULL)
+	{
+		bufferPrintf("images: No boot images.\n");
+		return;
+	}
 
 	while(curImage != NULL) {
 		print_fourcc(curImage->type);
@@ -197,19 +227,28 @@ Image* images_get_last_apple_image()
 }
 
 void images_append(void* data, int len) {
+	mtd_t *dev = images_device();
+	if(!dev)
+		return;
+
+	mtd_prepare(dev);
+
 	if(MaxOffset >= 0xfc000 || (MaxOffset + len) >= 0xfc000) {
 		bufferPrintf("**ABORTED** Writing image of size %d at %x would overflow NOR!\r\n", len, MaxOffset);
 	} else {
-		nor_write(data, MaxOffset, len);
+		mtd_write(dev, data, MaxOffset, len);
 
 		// Destroy any following image
 		if((MaxOffset + len) < 0xfc000) {
 			uint8_t zero = 0;
-			nor_write(&zero, MaxOffset + len, 1);
+			mtd_write(dev, &zero, MaxOffset + len, 1);
 		}
+
 		images_release();
 		images_setup();
 	}
+
+	mtd_finish(dev);
 }
 
 void images_rewind() {
@@ -231,12 +270,18 @@ void images_duplicate(Image* image, uint32_t type, int index) {
 	if(image == NULL)
 		return;
 
+	mtd_t *dev = images_device();
+	if(!dev)
+		return;
+
+	mtd_prepare(dev);
+
 	uint32_t offset = MaxOffset + (SegmentSize - (MaxOffset % SegmentSize));
 
 	uint32_t totalLen = sizeof(Img2Header) + image->padded;
 	uint8_t* buffer = (uint8_t*) malloc(totalLen);
 
-	nor_read(buffer, image->offset, totalLen);
+	mtd_read(dev, buffer, image->offset, totalLen);
 	Img2Header* header = (Img2Header*) buffer;
 	header->imageType = type;
 
@@ -251,9 +296,11 @@ void images_duplicate(Image* image, uint32_t type, int index) {
 
 	calculateHash(header, header->hash);
 
-	nor_write(buffer, offset, totalLen);
+	mtd_write(dev, buffer, offset, totalLen);
 
 	free(buffer);
+
+	mtd_finish(dev);
 
 	images_release();
 	images_setup();
@@ -263,10 +310,16 @@ void images_duplicate_at(Image* image, uint32_t type, int index, int offset) {
 	if(image == NULL)
 		return;
 
+	mtd_t *dev = images_device();
+	if(!dev)
+		return;
+
+	mtd_prepare(dev);
+
 	uint32_t totalLen = sizeof(Img2Header) + image->padded;
 	uint8_t* buffer = (uint8_t*) malloc(totalLen);
 
-	nor_read(buffer, image->offset, totalLen);
+	mtd_read(dev, buffer, image->offset, totalLen);
 	Img2Header* header = (Img2Header*) buffer;
 	header->imageType = type;
 
@@ -281,9 +334,11 @@ void images_duplicate_at(Image* image, uint32_t type, int index, int offset) {
 
 	calculateHash(header, header->hash);
 
-	nor_write(buffer, offset, totalLen);
+	mtd_write(dev, buffer, offset, totalLen);
 
 	free(buffer);
+
+	mtd_finish(dev);
 
 	images_release();
 	images_setup();
@@ -292,6 +347,12 @@ void images_duplicate_at(Image* image, uint32_t type, int index, int offset) {
 void images_from_template(Image* image, uint32_t type, int index, void* dataBuffer, unsigned int len, int encrypt) {
 	if(image == NULL)
 		return;
+
+	mtd_t *dev = images_device();
+	if(!dev)
+		return;
+
+	mtd_prepare(dev);
 
 	uint32_t offset = MaxOffset + (SegmentSize - (MaxOffset % SegmentSize));
 	uint32_t padded = len;
@@ -302,7 +363,7 @@ void images_from_template(Image* image, uint32_t type, int index, void* dataBuff
 	uint32_t totalLen = sizeof(Img2Header) + padded;
 	uint8_t* buffer = (uint8_t*) malloc(totalLen);
 
-	nor_read(buffer, image->offset, sizeof(Img2Header));
+	mtd_read(dev, buffer, image->offset, sizeof(Img2Header));
 	Img2Header* header = (Img2Header*) buffer;
 	header->imageType = type;
 
@@ -324,20 +385,11 @@ void images_from_template(Image* image, uint32_t type, int index, void* dataBuff
 
 	calculateHash(header, header->hash);
 
-	nor_write(buffer, offset, totalLen);
+	mtd_write(dev, buffer, offset, totalLen);
 
 	free(buffer);
 
-	images_release();
-	images_setup();
-}
-
-
-void images_erase(Image* image) {
-	if(image == NULL)
-		return;
-
-	nor_erase_sector(image->offset);
+	mtd_finish(dev);
 
 	images_release();
 	images_setup();
@@ -347,6 +399,12 @@ void images_write(Image* image, void* data, unsigned int length, int encrypt) {
 	bufferPrintf("images_write(%x, %x, %x)\r\n", image, data, length);
 	if(image == NULL)
 		return;
+
+	mtd_t *dev = images_device();
+	if(!dev)
+		return;
+
+	mtd_prepare(dev);
 
 	uint32_t padded = length;
 	if((length & 0xF) != 0) {
@@ -361,7 +419,7 @@ void images_write(Image* image, void* data, unsigned int length, int encrypt) {
 	uint32_t totalLen = sizeof(Img2Header) + padded;
 	uint8_t* writeBuffer = (uint8_t*) malloc(totalLen);
 
-	nor_read(writeBuffer, image->offset, sizeof(Img2Header));
+	mtd_read(dev, writeBuffer, image->offset, sizeof(Img2Header));
 
 	memcpy(writeBuffer + sizeof(Img2Header), data, length);
 
@@ -380,13 +438,15 @@ void images_write(Image* image, void* data, unsigned int length, int encrypt) {
 
 	calculateHash(header, header->hash);
 
-	bufferPrintf("nor_write(%x, %x, %x)\r\n", writeBuffer, image->offset, totalLen);
+	bufferPrintf("mtd_write(0x%p, %x, %x, %x)\r\n", dev, writeBuffer, image->offset, totalLen);
 
-	nor_write(writeBuffer, image->offset, totalLen);
+	mtd_write(dev, writeBuffer, image->offset, totalLen);
 
-	bufferPrintf("nor_write(%x, %x, %x) done\r\n", writeBuffer, image->offset, totalLen);
+	bufferPrintf("mtd_write(0x%p, %x, %x, %x) done\r\n", dev, writeBuffer, image->offset, totalLen);
 
 	free(writeBuffer);
+
+	mtd_finish(dev);
 
 	images_release();
 	images_setup();
@@ -399,13 +459,23 @@ unsigned int images_read(Image* image, void** data) {
 		return 0;
 	}
 
+	mtd_t *dev = images_device();
+	if(!dev)
+	{
+		*data = NULL;
+		return 0;
+	}
+
+	mtd_prepare(dev);
+
 	*data = malloc(image->padded);
 	if(!IsImg3) {
-		nor_read(*data, image->offset + sizeof(Img2Header), image->length);
+		mtd_read(dev, *data, image->offset + sizeof(Img2Header), image->length);
 		aes_838_decrypt(*data, image->length, NULL);
+		mtd_finish(dev);
 		return image->length;
 	} else {
-		nor_read(*data, image->offset, image->padded);
+		mtd_read(dev, *data, image->offset, image->padded);
 
 		uint32_t dataOffset = 0;
 		uint32_t dataLength = 0;
@@ -427,19 +497,20 @@ unsigned int images_read(Image* image, void** data) {
 
 		AppleImg3KBAGHeader* kbag = (AppleImg3KBAGHeader*) kbagOffset;
 
-    if(kbag != 0) {
-      if(kbag->key_modifier == 1) {
-        aes_decrypt((void*)(kbagOffset + sizeof(AppleImg3KBAGHeader)), 16 + (kbag->key_bits / 8), AESGID, NULL, NULL);
-      }
+		if(kbag != 0) {
+		  if(kbag->key_modifier == 1) {
+			aes_decrypt((void*)(kbagOffset + sizeof(AppleImg3KBAGHeader)), 16 + (kbag->key_bits / 8), AESGID, NULL, NULL);
+		  }
 
-      aes_decrypt((void*)dataOffset, (dataLength / 16) * 16, AESCustom, (uint8_t*)(kbagOffset + sizeof(AppleImg3KBAGHeader) + 16), (uint8_t*)(kbagOffset + sizeof(AppleImg3KBAGHeader)));
-    }
+		  aes_decrypt((void*)dataOffset, (dataLength / 16) * 16, AESCustom, (uint8_t*)(kbagOffset + sizeof(AppleImg3KBAGHeader) + 16), (uint8_t*)(kbagOffset + sizeof(AppleImg3KBAGHeader)));
+		}
 
 		uint8_t* newBuf = malloc(dataLength);
 		memcpy(newBuf, (void*)dataOffset, dataLength);
 		free(*data);
 		*data = newBuf;
 
+		mtd_finish(dev);
 		return dataLength;
 	}
 }
@@ -452,6 +523,12 @@ void images_install(void* newData, size_t newDataLen, uint32_t newFourcc, uint32
     
 	int isReplace = (replaceFourcc != newFourcc) ? TRUE : FALSE;
 	int isUpgrade = FALSE;
+
+	mtd_t *dev = images_device();
+	if(!dev)
+		return;
+
+	mtd_prepare(dev);
 
 	Image* curImage = imageList;
     
@@ -470,7 +547,7 @@ void images_install(void* newData, size_t newDataLen, uint32_t newFourcc, uint32
 		cur->type = curImage->type;
 		cur->next = NULL;
 		cur->data = malloc(curImage->padded);
-		nor_read(cur->data, curImage->offset, curImage->padded);
+		mtd_read(dev, cur->data, curImage->offset, curImage->padded);
 
 		if(isReplace && cur->type == replaceFourcc) {
 			isUpgrade = TRUE;
@@ -480,6 +557,8 @@ void images_install(void* newData, size_t newDataLen, uint32_t newFourcc, uint32
 
 		curImage = curImage->next;
 	}
+
+	mtd_finish(dev);
 
 	if(!isUpgrade) {
 		bufferPrintf("Performing installation... (%d bytes)\r\n", newDataLen);
@@ -522,7 +601,7 @@ void images_install(void* newData, size_t newDataLen, uint32_t newFourcc, uint32
         images_setup();
         return;
     }
-    
+	
 	bufferPrintf("Flashing...\r\n");
 
 	images_rewind();
@@ -545,9 +624,9 @@ void images_install(void* newData, size_t newDataLen, uint32_t newFourcc, uint32
 	images_release();
 	images_setup();
 
-    bufferPrintf("Configuring openiBoot settings...\r\n");
+    //bufferPrintf("Configuring openiBoot settings...\r\n");
 
-#ifndef CONFIG_S5L8720	//TODO: add this back in once FTL is up and running
+/*#ifndef CONFIG_S5L8720	//TODO: add this back in once FTL is up and running
     Volume* volume;
     io_func* io;
 
@@ -562,9 +641,9 @@ void images_install(void* newData, size_t newDataLen, uint32_t newFourcc, uint32
     CLOSE(io);
 
     ftl_sync();
-#endif
+#endif*/ // TODO: This is broken now, move into menu.c for next release -- Ricky26
 
-    if(!nvram_getvar("opib-temp-os")) {
+  /*  if(!nvram_getvar("opib-temp-os")) {
     	nvram_setvar("opib-temp-os", "0");
     }
     
@@ -576,14 +655,21 @@ void images_install(void* newData, size_t newDataLen, uint32_t newFourcc, uint32
 		nvram_setvar("opib-menu-timeout", "10000");
     }
 
-    nvram_save();
-    bufferPrintf("openiBoot installation complete.\r\n");
+    nvram_save();*/ // TODO: The defaults should NOT be written to NVRAM. -- Ricky26
+
+    //bufferPrintf("openiBoot installation complete.\r\n");
 }
 
 void images_uninstall(uint32_t _fourcc, uint32_t _unreplace) {
 	ImageDataList* list = NULL;
 	ImageDataList* cur = NULL;
 	ImageDataList* oldImage = NULL;
+
+	mtd_t *dev = images_device();
+	if(!dev)
+		return;
+
+	mtd_prepare(dev);
 
 	Image* curImage = imageList;
 
@@ -603,7 +689,7 @@ void images_uninstall(uint32_t _fourcc, uint32_t _unreplace) {
 			cur->type = curImage->type;
 			cur->next = NULL;
 			cur->data = malloc(curImage->padded);
-			nor_read(cur->data, curImage->offset, curImage->padded);
+			mtd_read(dev, cur->data, curImage->offset, curImage->padded);
 
 			if(_fourcc != _unreplace && cur->type == _unreplace) {
 				oldImage = cur;
@@ -616,6 +702,8 @@ void images_uninstall(uint32_t _fourcc, uint32_t _unreplace) {
 
 		curImage = curImage->next;
 	}
+
+	mtd_finish(dev);
 
 	if(_fourcc != _unreplace && oldImage == NULL) {
 		bufferPrintf("No openiBoot installation was found.\n");
@@ -758,16 +846,26 @@ int images_verify(Image* image) {
 		return 1;
 	}
 
+	mtd_t *dev = images_device();
+	if(!dev)
+	{
+		return 1;
+	}
+
+	mtd_prepare(dev);
+
 	if(!image->hashMatch)
 		retVal |= 1 << 2;
 
 	void* data = malloc(image->padded);
-	nor_read(data, image->offset + sizeof(Img2Header), image->padded);
+	mtd_read(dev, data, image->offset + sizeof(Img2Header), image->padded);
 	calculateDataHash(data, image->padded, hash);
 	free(data);
 
 	if(memcmp(hash, image->dataHash, 0x40) != 0)
 		retVal |= 1 << 3;
+
+	mtd_finish(dev);
 
 	return retVal;
 }
@@ -834,7 +932,7 @@ void cmd_images_install(int argc, char** argv) {
 	images_install((void*)address, len, tag, tag);
 	bufferPrintf("Done.\r\n");
 }
-COMMAND("images_install", "install a nor image", cmd_images_install);
+COMMAND("images_install", "install a boot image", cmd_images_install);
 
 void cmd_images_uninstall(int argc, char** argv) {
 	if(argc < 4) {
@@ -847,5 +945,5 @@ void cmd_images_uninstall(int argc, char** argv) {
 	images_uninstall(tag, tag);
 	bufferPrintf("Done.\r\n");
 }
-COMMAND("images_uninstall", "uninstall a nor image", cmd_images_uninstall);
+COMMAND("images_uninstall", "uninstall a boot image", cmd_images_uninstall);
 

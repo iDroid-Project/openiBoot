@@ -86,7 +86,6 @@ void platform_init()
 	wdt_setup();
 
 	// Other devices
-	usb_shutdown();
 //	uart_setup();
 	i2c_setup();
 
@@ -124,4 +123,8 @@ void platform_init()
 
 void platform_shutdown()
 {
+	//dma_shutdown();
+	wdt_disable();
+	arm_disable_caches();
+	mmu_disable();
 }

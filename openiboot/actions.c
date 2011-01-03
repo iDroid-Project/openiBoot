@@ -16,6 +16,7 @@
 #include "images.h"
 #include "multitouch.h"
 #include "pmu.h"
+#include "platform.h"
 #include "timer.h"
 
 #define MACH_APPLE_IPHONE 1506
@@ -150,7 +151,11 @@ struct atag {
 
 void chainload(uint32_t address) {
 	EnterCriticalSection();
+
+#ifndef MALLOC_NO_WDT
 	wdt_disable();
+#endif
+
 	arm_disable_caches();
 	mmu_disable();
 	CallArm(address);
@@ -306,37 +311,6 @@ static void setup_mt_tag()
 #endif
 }
 
-static int rootfs_partition = 0;
-static char* rootfs_filename = NULL;
-
-#ifndef NO_HFS
-static void setup_iphone_nand_tag()
-{
-	int i;
-
-	if(!rootfs_filename)
-		return;
-
-	ExtentList* extentList = fs_get_extents(rootfs_partition, rootfs_filename);
-	if(!extentList)
-		return;
-
-	params->u.nand.nandID = (nand_get_geometry())->DeviceID;
-	params->u.nand.numBanks = (nand_get_geometry())->banksTotal;
-	memcpy(&params->u.nand.banksTable, (nand_get_geometry())->banksTable, sizeof(params->u.nand.banksTable));
-	params->u.nand.extentList.numExtents = extentList->numExtents;
-	for(i = 0; i < extentList->numExtents; i++) {
-		params->u.nand.extentList.extents[i].startBlock = extentList->extents[i].startBlock;
-		params->u.nand.extentList.extents[i].blockCount = extentList->extents[i].blockCount;
-	}
-	free(extentList);
-
-	params->hdr.tag = ATAG_IPHONE_NAND;         /* iPhone NAND tag */
-	params->hdr.size = tag_size(atag_iphone_nand);
-	params = tag_next(params);              /* move pointer to next tag */
-}
-#endif
-
 static void setup_end_tag()
 {
 	params->hdr.tag = ATAG_NONE;            /* Empty tag ends list */
@@ -370,13 +344,6 @@ void set_kernel(void* location, int size) {
 	memcpy(kernel, location, size);
 }
 
-void set_rootfs(int partition, const char* fileName) {
-	rootfs_partition = partition;
-	if(rootfs_filename)
-		free(rootfs_filename);
-	rootfs_filename = strdup(fileName);
-}
-
 #define INITRD_LOAD 0x06000000
 
 static void setup_tags(struct atag* parameters, const char* commandLine)
@@ -391,9 +358,6 @@ static void setup_tags(struct atag* parameters, const char* commandLine)
 	setup_prox_tag();
 	setup_mt_tag();
 	setup_wifi_tags();
-#ifndef NO_HFS
-	setup_iphone_nand_tag();
-#endif
 	setup_end_tag();                    /* end of tags */
 }
 
@@ -445,10 +409,7 @@ void boot_linux(const char* args) {
 	uint32_t mach_type = MACH_APPLE_IPHONE;
 
 	EnterCriticalSection();
-	dma_shutdown();
-	wdt_disable();
-	arm_disable_caches();
-	mmu_disable();
+	platform_shutdown();
 
 	/* FIXME: This overwrites openiboot! We make the semi-reasonable assumption
 	 * that this function's own code doesn't reside in 0x0100-0x1100 */
@@ -472,39 +433,6 @@ void boot_linux(const char* args) {
 		: "r"(exec_at), "r"(mach_type), "r"(0x100)
 	    );
 }
-
-#ifndef NO_HFS
-void boot_linux_from_files()
-{
-	int size;
-
-	bufferPrintf("Loading kernel...\r\n");
-
-	size = fs_extract(1, "/idroid/zImage", (void*) 0x09000000);
-	if(size < 0)
-	{
-		bufferPrintf("Cannot find kernel.\r\n");
-		return;
-	}
-
-	set_kernel((void*) 0x09000000, size);
-
-	bufferPrintf("Loading android image...\r\n");
-
-	size = fs_extract(1, "/idroid/android.img.gz", (void*) 0x09000000);
-	if(size < 0)
-	{
-		bufferPrintf("Cannot find android.img.gz.\r\n");
-		return;
-	}
-
-	set_ramdisk((void*) 0x09000000, size);
-
-	bufferPrintf("Booting...\r\n");
-
-	boot_linux("console=tty root=/dev/ram0 init=/init rw");
-}
-#endif
 
 static BootEntry rootEntry;
 static BootEntry *currentEntry;
