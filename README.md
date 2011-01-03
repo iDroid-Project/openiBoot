@@ -51,6 +51,9 @@ Change into the openiboot subfolder
 **For iPad, run:**
 `scons iPad1G`
 
+**For Apple TV 2G, run:**
+`scons aTV2G`
+
 **Compile syringe:**
 `cd ../utils/syringe && make && cd ../openiboot`
 
@@ -68,7 +71,7 @@ Change into the openiboot subfolder
 
 **Put your phone into recovery mode**: hold home whilst powering on until you see the iTunes logo.
 
-*NOTE: For the 3GS, iPhone4 and iPad, you must put your device into DFU mode instead.*
+*NOTE: For the 3GS, iPhone4, iPad and Apple TV 2G, you must put your device into DFU mode instead.*
 
 **Run:** 
 `../utils/syringe/loadibec openiboot.img3`

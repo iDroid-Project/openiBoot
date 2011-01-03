@@ -41,3 +41,4 @@ Export('plat_a4_src')
 
 env.SConscript('iPhone4G.SConscript', 'env')
 env.SConscript('iPad1G.SConscript', 'env')
+env.SConscript('aTV2G.SConscript', 'env')
