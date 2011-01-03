@@ -32,8 +32,8 @@ typedef struct {
 
 GPIOInterruptGroup InterruptGroups[GPIO_NUMINTGROUPS];
 
-void gpio_switch(OnOff on_off, uint32_t pinport);
-void gpio_set(uint32_t pinport, int mode);
+void gpio_switch(OnOff on_off, int pinport);
+void gpio_custom_io(int pinport, int mode);
 
 const uint16_t gpio_reset_table[] = {
 	0x210, 0x210, 0x390, 0x390, 0x210, 0x290, 0x213, 0x212,
@@ -61,18 +61,29 @@ const uint16_t gpio_reset_table[] = {
 };
 
 int gpio_setup() {
+/*	When resetting the GPIO Interrupts we'll also fuck the framebuffer hook.
+	Once LCD is ported we can enable this again.
+
+	// Reset everything
+	int i;
+	for (i = 0; i < 0xB0; i++) {
+		SET_REG(GPIO + i * sizeof(uint32_t), gpio_reset_table[i]);
+	}
+*/
+
+	// Initialise it
 	uint8_t v[8];
 	if (!(GET_REG(POWER + POWER_ID) & 1)) {
-		gpio_set(0x502, 0);
-		gpio_set(0x503, 0);
-		gpio_set(0x504, 0);
+		gpio_custom_io(0x502, 0);
+		gpio_custom_io(0x503, 0);
+		gpio_custom_io(0x504, 0);
 		gpio_switch(0x502, ON);
 		gpio_switch(0x503, ON);
 		gpio_switch(0x504, ON);
-		gpio_set(0x202, 0);
-		gpio_set(0x301, 0);
-		gpio_set(0x304, 0);
-		gpio_set(0x305, 0);
+		gpio_custom_io(0x202, 0);
+		gpio_custom_io(0x301, 0);
+		gpio_custom_io(0x304, 0);
+		gpio_custom_io(0x305, 0);
 		gpio_switch(0x202, ON);
 		gpio_switch(0x301, ON);
 		gpio_switch(0x304, ON);
@@ -86,13 +97,13 @@ int gpio_setup() {
 		v[5] = gpio_pin_state(0x304);
 		v[6] = gpio_pin_state(0x301);
 		v[7] = gpio_pin_state(0x202);
-		gpio_set(0x502, 4);
-		gpio_set(0x503, 4);
-		gpio_set(0x504, 4);
-		gpio_set(0x202, 4);
-		gpio_set(0x301, 4);
-		gpio_set(0x304, 4);
-		gpio_set(0x305, 4);
+		gpio_custom_io(0x502, 4);
+		gpio_custom_io(0x503, 4);
+		gpio_custom_io(0x504, 4);
+		gpio_custom_io(0x202, 4);
+		gpio_custom_io(0x301, 4);
+		gpio_custom_io(0x304, 4);
+		gpio_custom_io(0x305, 4);
 		uint32_t new_status = ((v[0] << 3 | v[1] << 2 | v[2] << 1 | v[3]) << 16) | ((v[4] << 3 | v[5] << 2 | v[6] << 1 | v[7]) << 8) | 1;
 		SET_REG(POWER + POWER_ID, (GET_REG(POWER + POWER_ID) & 0xFF000000) | (new_status & 0xFFFFFF));
 	}
@@ -157,18 +168,18 @@ int gpio_pin_state(int port) {
 	}
 }
 
-void gpio_custom_io(int port, int bits) {
-	SET_REG(GPIO + GPIO_FSEL, ((GET_BITS(port, 8, 5) & GPIO_FSEL_MAJMASK) << GPIO_FSEL_MAJSHIFT)
-				| ((GET_BITS(port, 0, 3) & GPIO_FSEL_MINMASK) << GPIO_FSEL_MINSHIFT)
-				| ((bits & GPIO_FSEL_UMASK) << GPIO_FSEL_USHIFT));
-}
-
 void gpio_pin_use_as_input(int port) {
 	gpio_custom_io(port, 0);
 }
 
-void gpio_pin_output(int port, int bit) {
-	gpio_custom_io(port, 0xE | bit); // 0b111U, where U is the argument
+void gpio_pin_output(int pinport, int bit) {
+	uint8_t port = (pinport >> 8) & 0xFF;
+
+	if (port == 0x16) {
+//		sub_5FF0EF38(pinport, bit); // SPI related, not yet, sorry.
+	} else {
+		gpio_custom_io(pinport, (bit&1)+2);
+	}
 }
 
 void gpio_pulldown_configure(int port, GPIOPDSetting setting)
@@ -194,7 +205,7 @@ void gpio_pulldown_configure(int port, GPIOPDSetting setting)
 	}
 }
 
-void gpio_switch(OnOff on_off, uint32_t pinport) {
+void gpio_switch(OnOff on_off, int pinport) {
 	uint32_t pin_register = GPIO + (((pinport >> 5) & 0x7F8) + ((pinport & 0x7)<<2));
 
 	if (on_off == ON) {
@@ -205,7 +216,7 @@ void gpio_switch(OnOff on_off, uint32_t pinport) {
 	// There would be a third state when (state > 0), setting 0x3, but iBoot didn't ever do that.
 }
 
-void gpio_set(uint32_t pinport, int mode) {
+void gpio_custom_io(int pinport, int mode) {
 	uint8_t pin = pinport & 0x7;
 	uint8_t port = (pinport >> 8) & 0xFF;
 	uint16_t bitmask;

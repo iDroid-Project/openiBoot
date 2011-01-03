@@ -69,6 +69,9 @@ void platform_init()
 	uart_setup();
 	i2c_setup();
 
+	// DMA currently fucks up. Need to check why. -- Bluerise
+	// dma_setup();
+
 	LeaveCriticalSection();
 
 	framebuffer_hook(); // TODO: Remove once LCD implemented -- Ricky26

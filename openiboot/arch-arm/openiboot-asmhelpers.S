@@ -32,8 +32,11 @@
 .global ReadTranslationTableBaseRegister0
 
 .global InvalidateUnifiedTLBUnlockedEntries
+.global DataSynchronizationBarrier
 .global ClearCPUInstructionCache
 .global CleanDataCacheLineMVA
+.global InvalidateDataCacheLineMVA
+.global CleanAndInvalidateDataCacheLineMVA
 .global CleanCPUDataCache
 .global InvalidateCPUDataCache
 .global CleanAndInvalidateCPUDataCache
@@ -230,6 +233,11 @@ InvalidateUnifiedTLBUnlockedEntries:
 @	Cache management
 @
 
+DataSynchronizationBarrier:
+	MOV	R0, #0
+	MCR	p15, 0,	R0, c7, c10, 4	@ Data synchronization barrier
+	BX	LR
+
 ClearCPUInstructionCache:
 	MOV	R0, #0
 	MCR	p15, 0,	R0, c7, c5
@@ -244,7 +252,11 @@ CleanDataCacheLineMVA:
 	BX	LR
 
 InvalidateDataCacheLineMVA:
-	MCR	p15, 0,	R0, c7, c6, 1
+	MCR	p15, 0, R0, c7, c6, 1
+	BX	LR
+
+CleanAndInvalidateDataCacheLineMVA:
+	MCR	p15, 0, R0, c7, c14, 1
 	BX	LR
 
 CleanCPUDataCache:

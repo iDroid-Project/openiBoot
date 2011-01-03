@@ -30,16 +30,16 @@ int i2c_setup() {
 static void init_i2c(I2CInfo* i2c) {
 	clock_gate_switch(i2c->clockgate, ON);
 
-	gpio_set(i2c->iic_sda_gpio, 2); // pull sda low?
+	gpio_custom_io(i2c->iic_sda_gpio, 2); // pull sda low?
 
 	int i;
 	for (i = 0; i < 19; i++) {
-		gpio_set(i2c->iic_scl_gpio, (i % 2) ? 2 : 0);
+		gpio_custom_io(i2c->iic_scl_gpio, (i % 2) ? 2 : 0);
 		udelay(5);
 	}
 
-	gpio_set(i2c->iic_scl_gpio, 5); // generate stop condition?
-	gpio_set(i2c->iic_sda_gpio, 5);
+	gpio_custom_io(i2c->iic_scl_gpio, 5); // generate stop condition?
+	gpio_custom_io(i2c->iic_sda_gpio, 5);
 
 	SET_REG(i2c->register_8, 0x30);
 	SET_REG(i2c->register_C, 0x37);
