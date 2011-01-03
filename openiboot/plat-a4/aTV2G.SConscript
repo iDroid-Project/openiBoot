@@ -4,7 +4,7 @@ Import('*')
 # Apple TV 2G
 #
 
-iphone_4_src = [plat_a4_src,
+atv_2g_src = [plat_a4_src,
 				env.Localize([
 				'#audiohw-null.c',
 				])]
