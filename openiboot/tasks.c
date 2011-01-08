@@ -4,6 +4,9 @@
 #include "event.h"
 #include "clock.h"
 #include "util.h"
+#include "timer.h"
+
+static uint64_t startTime = 0;
 
 const TaskDescriptor bootstrapTaskInit = {
 	TaskDescriptorIdentifier1,
@@ -194,8 +197,18 @@ int task_sleep(int _ms)
 	if(next == CurrentRunning)
 	{
 		LeaveCriticalSection();
-		bufferPrintf("tasks: Last thread cannot sleep!\n");
-		return -1;
+
+		if (!startTime) {
+			bufferPrintf("tasks: Last thread cannot sleep!\n");
+			startTime = timer_get_system_microtime();
+		}
+
+		if (!has_elapsed(startTime, (_ms * 1000)))
+			task_sleep(_ms);
+
+		startTime = 0;
+
+		return 0;
 	}
 
 	uint32_t ticks = _ms * 1000;
