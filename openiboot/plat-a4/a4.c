@@ -75,7 +75,8 @@ void platform_init()
 
 	LeaveCriticalSection();
 
-	framebuffer_hook(); // TODO: Remove once LCD implemented -- Ricky26
+	displaypipe_init();
+	framebuffer_setup();
 	framebuffer_setdisplaytext(TRUE);
 }
 
