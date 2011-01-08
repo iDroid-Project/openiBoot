@@ -22,6 +22,8 @@
 
 #if defined(CONFIG_IPHONE_4)
 #define DISPLAYID 0
+#elif defined(CONFIG_IPAD)
+#define DISPLAYID 1
 #endif
 
 #endif
