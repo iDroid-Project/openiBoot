@@ -2,6 +2,7 @@
 #include "openiboot-asmhelpers.h"
 #include "commands.h"
 #include "clock.h"
+#include "timer.h"
 #include "hardware/clock.h"
 #include "util.h"
 
@@ -62,6 +63,21 @@ void clock_gate_switch(uint32_t gate, OnOff on_off)
 		SET_REG(reg, GET_REG(reg) | 0xF);
 	else
 		SET_REG(reg, GET_REG(reg) & ~0xF);
+}
+
+void clock_gate_reset(uint32_t gate)
+{
+	uint32_t pin = gate-35;
+	if(pin >= 11)
+		return;
+
+	if((1 << pin) & 0x819)
+	{
+		uint32_t reg = CLOCK_GATE_BASE + (sizeof(uint32_t) * gate);
+		SET_REG(reg, GET_REG(reg) | 0x80000000);
+		udelay(1);
+		SET_REG(reg, GET_REG(reg) &~ 0x80000000);
+	}
 }
 
 void clock_gate_many(uint64_t _gates, OnOff _val)

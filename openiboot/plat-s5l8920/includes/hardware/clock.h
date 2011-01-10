@@ -24,6 +24,7 @@
 #define CLOCK_TIMEBASE		26
 #define CLOCK_PERIPHERAL	2
 #define CLOCK_FIXED			19
+#define CLOCK_NAND			3
 
 #define CLOCK_GATE_BASE		0xBF100078
 #define NUM_CLOCK_GATES		52

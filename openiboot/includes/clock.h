@@ -41,7 +41,10 @@ typedef enum FrequencyBase {
 
 int clock_set_base_divisor(ClockDivisorCode code);
 int clock_setup();
+
 void clock_gate_switch(uint32_t gate, OnOff on_off);
+void clock_gate_reset(uint32_t gate);
+
 uint32_t clock_get_frequency(FrequencyBase freqBase);
 void clock_set_sdiv(int sdiv);
 unsigned int clock_get_base_frequency();
