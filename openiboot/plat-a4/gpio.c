@@ -229,19 +229,19 @@ void gpio_custom_io(int pinport, int mode) {
 		switch(mode) {
 			default:
 				return;
-		case 0:
+		case 0: // use_as_input
 			value = 0x210;
 			bitmask = 0x27E;
 			break;
-		case 1:
+		case 1: // use_as_output
 			value = 0x212;
 			bitmask = 0x27E;
 			break;
-		case 2: // set pin state
+		case 2: // clear_output
 			value = 0x212;
 			bitmask = 0x27F;
 			break;
-		case 3: // set pin state
+		case 3: // set_output
 			value = 0x213;
 			bitmask = 0x27F;
 			break;

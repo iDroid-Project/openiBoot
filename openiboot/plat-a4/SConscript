@@ -33,14 +33,15 @@ plat_a4_src = arch_arm_src + env.Localize([
 	'gpio.c',
 	'i2c.c',
 	'interrupt.c',
-	'lcd.c',
+	'mipi_dsim.c',
+	'clcd.c',
 	'miu.c',
 	'mmu.c',
 	'power.c',
 	'spi.c',
 	'timer.c',
 	'uart.c',
-#	'cdma.c',
+	'cdma.c',
 	'usbphy.c',
 	]) + hfs_src
 Export('plat_a4_src')
