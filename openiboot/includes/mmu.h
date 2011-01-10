@@ -23,7 +23,7 @@ void mmu_disable();
 void mmu_map_section(uint32_t section, uint32_t target, Boolean cacheable, Boolean bufferable);
 void mmu_map_section_range(uint32_t rangeStart, uint32_t rangeEnd, uint32_t target, Boolean cacheable, Boolean bufferable);
 
-#if defined(CONFIG_IPHONE_4) || defined(CONFIG_IPAD) || defined(CONFIG_ATV_2G)
+#if defined(CONFIG_A4)
 typedef struct PhysicalAddressMap {
 	uint32_t logicalStart;
 	uint32_t logicalEnd;
