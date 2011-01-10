@@ -24,6 +24,10 @@
 #define DISPLAYID 0
 #elif defined(CONFIG_IPAD)
 #define DISPLAYID 1
+#elif defined(CONFIG_IPOD_4G)
+#define DISPLAYID 2
+#elif defined(CONFIG_IPOD_2G)
+#define DISPLAYID 3
 #endif
 
 #endif
