@@ -19,8 +19,8 @@
 #define VIDTCON2_LINEVALSHIFT 0
 #define VIDTCON2_HOZVALMASK 0x3FF
 #define VIDTCON2_HOZVALSHIFT 16
-
-#if defined(CONFIG_IPHONE_4)
+// nickp666 - TODO: FUCKING FIX THIS - This is completely wrong (atv2)
+#if defined(CONFIG_IPHONE_4) || defined(CONFIG_ATV_2G)
 #define DISPLAYID 0
 #elif defined(CONFIG_IPAD)
 #define DISPLAYID 1
