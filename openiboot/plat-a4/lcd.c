@@ -309,18 +309,17 @@ void framebuffer_hook() {
         newWindow->width = 1024;
         newWindow->height = 768;
 	#elif defined(CONFIG_ATV_2G)
-		// I HAVE NO FUCKING IDEA WHAT THIS SHOULD BE OR HOW I SHOULD CALCULATE IT - SO RESORTING TO LAME STEALING FROM ABOVE
-		newWindow->width = 1024;
-	    newWindow->height = 768;
+	newWindow->width = 1280;
+	newWindow->height = 720;
 	#else
         newWindow->width = 640;
         newWindow->height = 960;
 	#endif
         newWindow->lineBytes = (newWindow->width + calculateStrideLen(RGB888, 0, newWindow->width))*4;
-    #if defined(CONFIG_ATV_2G)
-   		createFramebuffer(&newWindow->framebuffer, 0x4F700000, newWindow->width, newWindow->height, newWindow->lineBytes/4, RGB888);
+	#if defined(CONFIG_ATV_2G)
+   	createFramebuffer(&newWindow->framebuffer, 0x4F700000, newWindow->width, newWindow->height, newWindow->lineBytes/4, RGB888);
 	#else
-		createFramebuffer(&newWindow->framebuffer, 0x5F700000, newWindow->width, newWindow->height, newWindow->lineBytes/4, RGB888);
+	createFramebuffer(&newWindow->framebuffer, 0x5F700000, newWindow->width, newWindow->height, newWindow->lineBytes/4, RGB888);
 	#endif
 	newWindow->created = TRUE;
         currentWindow = newWindow;
