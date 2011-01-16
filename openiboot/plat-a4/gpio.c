@@ -205,7 +205,7 @@ void gpio_pulldown_configure(int port, GPIOPDSetting setting)
 	}
 }
 
-void gpio_switch(OnOff on_off, int pinport) {
+void gpio_switch(int pinport, OnOff on_off) {
 	uint32_t pin_register = GPIO + (((pinport >> 5) & 0x7F8) + ((pinport & 0x7)<<2));
 
 	if (on_off == ON) {

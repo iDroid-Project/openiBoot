@@ -401,7 +401,7 @@ int pinot_init(LCDInfo* LCDTable, ColorSpace colorspace, uint32_t* panelID, Wind
 	displaytime_sleep(7);
 	mipi_dsim_write_data(5, 0x29, 0);
 	displaytime_sleep(7);
-	gpio_switch(0x207, 0);
+	gpio_switch(0x207, OFF);
 	*panelID = pinot_panel_id;
 
 	if (!dword_5FF3AE0C)
