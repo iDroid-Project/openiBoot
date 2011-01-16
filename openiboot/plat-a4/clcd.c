@@ -114,6 +114,7 @@ static LCDInfo LCDInfoTable[] = {
 };
 
 volatile uint32_t* CurFramebuffer;
+uint32_t* FRAMEBUFFER;
 
 static LCDInfo* LCDTable;
 static uint32_t TimePerMillionFrames = 0;
@@ -238,7 +239,11 @@ int displaypipe_init() {
 	int result = 0;
 	uint32_t clcd_reg;
 	uint32_t panelID;
-	memset((void*)CLCD_FRAMEBUFFER, 0, 0x800000);
+
+	FRAMEBUFFER = malloc(0x800000);
+	memset((void*)FRAMEBUFFER, 0, 0x800000);
+
+	bufferPrintf("displaypipe_init: framebuffer address: 0x%08x\n", (uint32_t)FRAMEBUFFER);
 
 	if (!LCDTable)
 		LCDTable = &LCDInfoTable[DISPLAYID];
@@ -622,7 +627,7 @@ static Window* createWindow(int zero0, int zero2, int width, int height, ColorSp
 	newWindow->height = height;
 	newWindow->lineBytes = width * (bitsPerPixel / 8);
 
-	createFramebuffer(&newWindow->framebuffer, CLCD_FRAMEBUFFER, width, height, width, colorSpace);
+	createFramebuffer(&newWindow->framebuffer, (uint32_t)FRAMEBUFFER, width, height, width, colorSpace);
 
 	SET_REG(CLCD + 0x4040, (reg_bit << 8) | 1);
 	SET_REG(CLCD + 0x4044, (uint32_t)newWindow->framebuffer.buffer);
