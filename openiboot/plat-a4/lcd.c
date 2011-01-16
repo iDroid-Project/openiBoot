@@ -301,28 +301,28 @@ static void createFramebuffer(Framebuffer* framebuffer, uint32_t framebufferAddr
 }*/
 
 void framebuffer_hook() {
-        Window* newWindow;
-        newWindow = (Window*) malloc(sizeof(Window));
+	Window* newWindow;
+	newWindow = (Window*) malloc(sizeof(Window));
 	memset(newWindow, 0, sizeof(Window));
-        newWindow->created = FALSE;
+	newWindow->created = FALSE;
 	#if defined(CONFIG_IPAD)
-        newWindow->width = 1024;
-        newWindow->height = 768;
+	newWindow->width = 1024;
+	newWindow->height = 768;
 	#elif defined(CONFIG_ATV_2G)
 	newWindow->width = 1280;
 	newWindow->height = 720;
 	#else
-        newWindow->width = 640;
-        newWindow->height = 960;
+	newWindow->width = 640;
+	newWindow->height = 960;
 	#endif
-        newWindow->lineBytes = (newWindow->width + calculateStrideLen(RGB888, 0, newWindow->width))*4;
-	#if defined(CONFIG_ATV_2G)
-   	createFramebuffer(&newWindow->framebuffer, 0x4F700000, newWindow->width, newWindow->height, newWindow->lineBytes/4, RGB888);
+	newWindow->lineBytes = (newWindow->width + calculateStrideLen(RGB888, 0, newWindow->width))*4;
+	#if defined(CONFIG_ATV_2G) || defined(CONFIG_IPAD)
+	createFramebuffer(&newWindow->framebuffer, 0x4F700000, newWindow->width, newWindow->height, newWindow->lineBytes/4, RGB888);
 	#else
 	createFramebuffer(&newWindow->framebuffer, 0x5F700000, newWindow->width, newWindow->height, newWindow->lineBytes/4, RGB888);
 	#endif
 	newWindow->created = TRUE;
-        currentWindow = newWindow;
+	currentWindow = newWindow;
 	CurFramebuffer = currentWindow->framebuffer.buffer;
 
 	framebuffer_setup();
