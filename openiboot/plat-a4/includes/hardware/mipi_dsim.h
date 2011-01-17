@@ -51,6 +51,18 @@
 #define NUM_DATA_LANES 4
 #endif
 
+// TODO: Find out why calculating it from LCDTable->unkn18 does fuck everything up
+#if defined(CONFIG_S5L8720)
+#define DATA_LANES_ENABLED_WTF (DATA_0 | DATA_1)
+#define NUM_DATA_LANES_WTF 2
+#elif defined(CONFIG_IPAD)
+#define DATA_LANES_ENABLED_WTF (DATA_0 | DATA_1 | DATA_2 | DATA_3)
+#define NUM_DATA_LANES_WTF 4
+#elif defined(CONFIG_A4)
+#define DATA_LANES_ENABLED_WTF (DATA_0 | DATA_1 | DATA_2)
+#define NUM_DATA_LANES_WTF 3
+#endif
+
 #define STATUS_STOP                 (1 << 8)
 #define STATUS_ULPS                 (1 << 9)
 #define STATUS_HS_READY             (1 << 10)
