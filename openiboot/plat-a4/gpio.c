@@ -32,7 +32,7 @@ typedef struct {
 
 GPIOInterruptGroup InterruptGroups[GPIO_NUMINTGROUPS];
 
-void gpio_switch(OnOff on_off, int pinport);
+void gpio_switch(int pinport, OnOff on_off);
 void gpio_custom_io(int pinport, int mode);
 
 const uint16_t gpio_reset_table[] = {
