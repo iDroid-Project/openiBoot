@@ -69,7 +69,7 @@ void platform_init()
 	uart_setup();
 	i2c_setup();
 
-	dma_setup();
+//	dma_setup();
 
 	LeaveCriticalSection();
 
