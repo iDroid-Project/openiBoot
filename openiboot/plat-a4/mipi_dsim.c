@@ -76,12 +76,13 @@ int mipi_dsim_init(LCDInfo* LCDTable) {
 	uint32_t mashFest;
 
 	uint32_t numDataLines = LCDTable->unkn18 & 0xF;
-	uint32_t dataLinesEnabled = (1 << numDataLines) - 1;
+	uint32_t dataLinesEnabled = (1 << numDataLines) - 1; // ToDo: This breaks compiler optimisation. Figure out why.
 
 	bufferPrintf("mipi_dsim_init()\r\n");
 
 	clock_gate_switch(MIPI_DSIM_CLOCKGATE, ON);
-	mashFest = (GET_BITS(LCDTable->unkn18, 26, 6) << 13) | (GET_BITS(LCDTable->unkn18, 16, 9) << 4) | ((GET_BITS(LCDTable->unkn18, 11, 4) << 1));
+//	mashFest = (GET_BITS(LCDTable->unkn18, 26, 6) << 13) | (GET_BITS(LCDTable->unkn18, 16, 9) << 4) | ((GET_BITS(LCDTable->unkn18, 11, 4) << 1));
+	mashFest = (GET_BITS(LCDTable->unkn18, 26, 6) << 13) | (GET_BITS(LCDTable->unkn18, 16, 9) << 4) | ((GET_BITS(LCDTable->unkn18, 11, 4) & 0xE));
 #if defined(CONFIG_IPAD)
 	if (mashFest) {
 		SET_REG(MIPI_DSIM + CLKCTRL, CLKCTRL_ESC_PRESCALER(LCDTable->unkn18 >> 4) | CLKCTRL_ESC_CLKEN);
