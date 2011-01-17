@@ -73,10 +73,7 @@ int mipi_dsim_read_write(int a1, uint8_t* buffer, uint32_t* read) {
 
 int mipi_dsim_init(LCDInfo* LCDTable) {
 	int result;
-	uint32_t value = 0;
 	uint32_t mashFest;
-	uint32_t frequency;
-	int lower_than_6;
 
 	uint32_t numDataLines = LCDTable->unkn18 & 0xF;
 	uint32_t dataLinesEnabled = (1 << numDataLines) - 1;
@@ -87,18 +84,23 @@ int mipi_dsim_init(LCDInfo* LCDTable) {
 	mashFest = (GET_BITS(LCDTable->unkn18, 26, 6) << 13) | (GET_BITS(LCDTable->unkn18, 16, 9) << 4) | ((GET_BITS(LCDTable->unkn18, 11, 4) << 1));
 #if defined(CONFIG_IPAD)
 	if (mashFest) {
-		SET_REG(MIPI_DSIM + CLKCTRL, CLKCTRL_ESC_PRESCALER(info->unkn18 >> 4) | CLKCTRL_ESC_CLKEN);
-		SET_REG(MIPI_DSIM + PLLCTRL, PLL_FREQ_BAND(info->unkn18 >> 8));
+		SET_REG(MIPI_DSIM + CLKCTRL, CLKCTRL_ESC_PRESCALER(LCDTable->unkn18 >> 4) | CLKCTRL_ESC_CLKEN);
+		SET_REG(MIPI_DSIM + PLLCTRL, (LCDTable->unkn18 << 10) & 0xF000000);
 		SET_REG(MIPI_DSIM + PLLTMR, PLL_STABLE_TIME);
-		SET_REG(MIPI_DSIM + PLLCTRL, GET_REG(MIPI_DSIM + PLLCTRL) | mashFest | PLLCTRL_PLL_EN);
-		while (GET_REG(MIPI_DSIM + STATUS) & STATUS_PLL_STABLE != STATUS_PLL_STABLE);
+		SET_REG(MIPI_DSIM + PLLCTRL, GET_REG(MIPI_DSIM + PLLCTRL) | mashFest);
+		SET_REG(MIPI_DSIM + PLLCTRL, GET_REG(MIPI_DSIM + PLLCTRL) | PLLCTRL_PLL_EN);
+		while ((GET_REG(MIPI_DSIM + STATUS) & STATUS_PLL_STABLE) != STATUS_PLL_STABLE);
 	} else {
-		SET_REG(MIPI_DSIM + CLKCTRL, CLKCTRL_ESC_PRESCALER(info->unkn18 >> 4) | CLKCTRL_ESC_CLKEN
+		SET_REG(MIPI_DSIM + CLKCTRL, CLKCTRL_ESC_PRESCALER(LCDTable->unkn18 >> 4) | CLKCTRL_ESC_CLKEN
 			| CLKCTRL_PLL_BYPASS | CLKCTRL_BYTE_CLK_SRC);
-		SET_REG(MIPI_DSIM + PLLCTRL, PLL_FREQ_BAND(info->unkn18 >> 8));
+		SET_REG(MIPI_DSIM + PLLCTRL, (LCDTable->unkn18 << 10) & 0xF000000);
 	}
 	SET_REG(MIPI_DSIM + SWRST, SWRST_RESET);
 #else
+	uint32_t value = 0;
+	uint32_t frequency;
+	int lower_than_6;
+
 	if (mashFest) {
 		SET_REG(MIPI_DSIM + CLKCTRL, CLKCTRL_ESC_PRESCALER(LCDTable->unkn18 >> 4) | CLKCTRL_ESC_CLKEN);
 		SET_REG(MIPI_DSIM + PLLCTRL, (LCDTable->unkn18 << 16) & 0xF000000);
