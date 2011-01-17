@@ -26,7 +26,7 @@ env.Append(CPPDEFINES=[
 	'OPENIBOOT_VERSION='+version,
 	'OPENIBOOT_VERSION_BUILD='+GetGitCommit(),
 	])
-env.Append(CPPFLAGS = ['-Wall', '-Werror', '-O3', '-Ttext=0x0'])
+env.Append(CPPFLAGS = ['-Wall', '-Werror', '-Ttext=0x0'])
 Export('env')
 
 def localize(env, ls):
