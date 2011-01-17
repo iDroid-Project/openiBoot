@@ -241,6 +241,9 @@ int displaypipe_init() {
 	uint32_t panelID;
 
 	FRAMEBUFFER = malloc(0x800000);
+	if (!FRAMEBUFFER)
+		FRAMEBUFFER = (uint32_t*)CLCD_FRAMEBUFFER;
+
 	memset((void*)FRAMEBUFFER, 0, 0x800000);
 
 	bufferPrintf("displaypipe_init: framebuffer address: 0x%08x\n", (uint32_t)FRAMEBUFFER);

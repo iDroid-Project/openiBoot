@@ -172,7 +172,11 @@
 
 
 // Other settings
+#if defined(CONFIG_IPAD)
+#define PLL_STABLE_TIME             200000
+#else
 #define PLL_STABLE_TIME             150000
+#endif
 
 #define AFC_CTL(x)			(((x) & 0x7) << 5)
 #define AFC_ENABLE			(1 << 14)
