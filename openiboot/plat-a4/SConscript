@@ -41,10 +41,12 @@ plat_a4_src = arch_arm_src + env.Localize([
 	'spi.c',
 	'timer.c',
 	'uart.c',
-	'cdma.c',
+#	'cdma.c',
 	'usbphy.c',
 	]) + hfs_src
 Export('plat_a4_src')
 
 env.SConscript('iPhone4G.SConscript', 'env')
 env.SConscript('iPad1G.SConscript', 'env')
+env.SConscript('aTV2G.SConscript', 'env')
+env.SConscript('iPodTouch4G.SConscript', 'env')

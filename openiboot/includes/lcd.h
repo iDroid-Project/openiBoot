@@ -106,5 +106,7 @@ int displaypipe_init();
 void pinot_quiesce();
 void lcd_fill_switch(OnOff on_off, uint32_t color);
 
+void framebuffer_hook();
+
 #endif
 

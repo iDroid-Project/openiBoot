@@ -9,8 +9,13 @@ uint32_t* CurrentPageTable;
 static void initialize_pagetable();
 
 static PhysicalAddressMap PhysicalAddressMapping[] = {
+#if defined(CONFIG_IPHONE_4)
 	{0x0,        0xFFFFFFFF, 0x40000000, 0x20000000},
 	{0x40000000, 0xFFFFFFFF, 0x40000000, 0x20000000},
+#else
+	{0x0,        0xFFFFFFFF, 0x40000000, 0x10000000},
+	{0x40000000, 0xFFFFFFFF, 0x40000000, 0x10000000},
+#endif
 	{0x84000000, 0xFFFFFFFF, 0x84000000, 0x400000},
 	{0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0},
 };

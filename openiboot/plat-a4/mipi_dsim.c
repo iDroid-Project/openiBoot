@@ -73,19 +73,36 @@ int mipi_dsim_read_write(int a1, uint8_t* buffer, uint32_t* read) {
 
 int mipi_dsim_init(LCDInfo* LCDTable) {
 	int result;
-	uint32_t value = 0;
-	uint32_t some_value;
-	uint32_t frequency;
-	int lower_than_6;
-
-//	See next XXX -- Bluerise
-//	dataLinesEnabled = (1 << (LCDTable->unkn18 & 0xF)) - 1
+	uint32_t mashFest;
 
 	bufferPrintf("mipi_dsim_init()\r\n");
 
-	some_value = (GET_BITS(LCDTable->unkn18, 26, 6) << 13) | (GET_BITS(LCDTable->unkn18, 16, 9) << 4) | (GET_BITS(LCDTable->unkn18, 11, 4) & 0xE);
+	uint32_t numDataLanes = LCDTable->unkn18 & 0xF;
+	uint32_t dataLanesEnabled = (1 << numDataLanes) - 1;
+
 	clock_gate_switch(MIPI_DSIM_CLOCKGATE, ON);
-	if (some_value) {
+//	mashFest = (GET_BITS(LCDTable->unkn18, 26, 6) << 13) | (GET_BITS(LCDTable->unkn18, 16, 9) << 4) | ((GET_BITS(LCDTable->unkn18, 11, 4) << 1));
+	mashFest = (GET_BITS(LCDTable->unkn18, 26, 6) << 13) | (GET_BITS(LCDTable->unkn18, 16, 9) << 4) | ((GET_BITS(LCDTable->unkn18, 11, 4) & 0xE));
+#if defined(CONFIG_IPAD)
+	if (mashFest) {
+		SET_REG(MIPI_DSIM + CLKCTRL, CLKCTRL_ESC_PRESCALER(LCDTable->unkn18 >> 4) | CLKCTRL_ESC_CLKEN);
+		SET_REG(MIPI_DSIM + PLLCTRL, (LCDTable->unkn18 << 10) & 0xF000000);
+		SET_REG(MIPI_DSIM + PLLTMR, PLL_STABLE_TIME);
+		SET_REG(MIPI_DSIM + PLLCTRL, GET_REG(MIPI_DSIM + PLLCTRL) | mashFest);
+		SET_REG(MIPI_DSIM + PLLCTRL, GET_REG(MIPI_DSIM + PLLCTRL) | PLLCTRL_PLL_EN);
+		while ((GET_REG(MIPI_DSIM + STATUS) & STATUS_PLL_STABLE) != STATUS_PLL_STABLE);
+	} else {
+		SET_REG(MIPI_DSIM + CLKCTRL, CLKCTRL_ESC_PRESCALER(LCDTable->unkn18 >> 4) | CLKCTRL_ESC_CLKEN
+			| CLKCTRL_PLL_BYPASS | CLKCTRL_BYTE_CLK_SRC);
+		SET_REG(MIPI_DSIM + PLLCTRL, (LCDTable->unkn18 << 10) & 0xF000000);
+	}
+	SET_REG(MIPI_DSIM + SWRST, SWRST_RESET);
+#else
+	uint32_t value = 0;
+	uint32_t frequency;
+	int lower_than_6;
+
+	if (mashFest) {
 		SET_REG(MIPI_DSIM + CLKCTRL, CLKCTRL_ESC_PRESCALER(LCDTable->unkn18 >> 4) | CLKCTRL_ESC_CLKEN);
 		SET_REG(MIPI_DSIM + PLLCTRL, (LCDTable->unkn18 << 16) & 0xF000000);
 		frequency = TicksPerSec / (1000000 * (LCDTable->unkn18 >> 26)) - 6;
@@ -120,7 +137,7 @@ int mipi_dsim_init(LCDInfo* LCDTable) {
 			SET_REG(MIPI_DSIM + PHYACCHR, value << 5 | (1 << 14));
 		}
 		SET_REG(MIPI_DSIM + PLLTMR, 300000);
-		SET_REG(MIPI_DSIM + PLLCTRL, GET_REG(MIPI_DSIM + PLLCTRL) | some_value);
+		SET_REG(MIPI_DSIM + PLLCTRL, GET_REG(MIPI_DSIM + PLLCTRL) | mashFest);
 		SET_REG(MIPI_DSIM + PLLCTRL, GET_REG(MIPI_DSIM + PLLCTRL) | 0x800000);
 		while ((GET_REG(MIPI_DSIM + STATUS) & STATUS_PLL_STABLE) != STATUS_PLL_STABLE);
 		SET_REG(MIPI_DSIM + SWRST, SWRST_RESET);
@@ -135,6 +152,7 @@ int mipi_dsim_init(LCDInfo* LCDTable) {
 		SET_REG(MIPI_DSIM + PLLCTRL, (LCDTable->unkn18 << 16) & 0xF000000);
 		SET_REG(MIPI_DSIM + SWRST, SWRST_RESET);
 	}
+#endif
 	while((GET_REG(MIPI_DSIM + STATUS) & STATUS_SWRST) != STATUS_SWRST);
 	SET_REG(MIPI_DSIM + PHYACCHR, GET_REG(MIPI_DSIM + PHYACCHR) | AFC_ENABLE);
 	SET_REG(MIPI_DSIM + MDRESOL, DRESOL_VRESOL(LCDTable->height) | DRESOL_HRESOL(LCDTable->width) | DRESOL_STAND_BY);
@@ -164,30 +182,21 @@ int mipi_dsim_init(LCDInfo* LCDTable) {
 		& ~((CONFIG_EN_DATA_MASK << CONFIG_EN_DATA_SHIFT)
 			| (CONFIG_NUM_DATA_MASK << CONFIG_NUM_DATA_SHIFT)));
 
-//XXX:	This is weird. This is the first time DATA_LINES_ENABLED gets used.
-//	But there are only 3 lines, not 4, as kleemajo thought. -- Bluerise
-
-//	SET_REG(MIPI_DSIM + CONFIG, GET_REG(MIPI_DSIM + CONFIG) | CONFIG_EN_DATA(DATA_LANES_ENABLED)
-//		| CONFIG_NUM_DATA(NUM_DATA_LANES));
-	SET_REG(MIPI_DSIM + CONFIG, GET_REG(MIPI_DSIM + CONFIG) | CONFIG_EN_DATA(0x7)
-		| CONFIG_NUM_DATA(3));
+	SET_REG(MIPI_DSIM + CONFIG, GET_REG(MIPI_DSIM + CONFIG) | CONFIG_EN_DATA(dataLanesEnabled)
+		| CONFIG_NUM_DATA(numDataLanes));
 
 	SET_REG(MIPI_DSIM + CLKCTRL, GET_REG(MIPI_DSIM + CLKCTRL)
 		& ~(CLKCTRL_ESC_EN_DATA_MASK << CLKCTRL_ESC_EN_DATA_SHIFT));
-//	SET_REG(MIPI_DSIM + CLKCTRL, GET_REG(MIPI_DSIM + CLKCTRL) | CLKCTRL_ESC_EN_DATA(DATA_LANES_ENABLED));
-	SET_REG(MIPI_DSIM + CLKCTRL, GET_REG(MIPI_DSIM + CLKCTRL) | CLKCTRL_ESC_EN_DATA(0x7));
+	SET_REG(MIPI_DSIM + CLKCTRL, GET_REG(MIPI_DSIM + CLKCTRL) | CLKCTRL_ESC_EN_DATA(dataLanesEnabled));
 
 	SET_REG(MIPI_DSIM + ESCMODE, GET_REG(MIPI_DSIM + ESCMODE) | ESCMODE_TX_UIPS_EXIT | ESCMODE_TX_UIPS_CLK_EXIT);
 
-//	while((GET_REG(MIPI_DSIM + STATUS) & (STATUS_ULPS | STATUS_DATA_ULPS(DATA_LANES_ENABLED))));
-	while((GET_REG(MIPI_DSIM + STATUS) & (STATUS_ULPS | STATUS_DATA_ULPS(0x7))));
+	while((GET_REG(MIPI_DSIM + STATUS) & (STATUS_ULPS | STATUS_DATA_ULPS(dataLanesEnabled))));
 	SET_REG(MIPI_DSIM + ESCMODE, GET_REG(MIPI_DSIM + ESCMODE) & (~0x5));
 	udelay(1000);
 	SET_REG(MIPI_DSIM + ESCMODE, GET_REG(MIPI_DSIM + ESCMODE) & (~0xA));
-//	while((GET_REG(MIPI_DSIM + STATUS) & (STATUS_STOP | STATUS_DATA_STOP(DATA_LANES_ENABLED)))
-//		!= (STATUS_STOP | STATUS_DATA_STOP(DATA_LANES_ENABLED)));
-	while((GET_REG(MIPI_DSIM + STATUS) & (STATUS_STOP | STATUS_DATA_STOP(0x7)))
-		!= (STATUS_STOP | STATUS_DATA_STOP(0x7)));
+	while((GET_REG(MIPI_DSIM + STATUS) & (STATUS_STOP | STATUS_DATA_STOP(dataLanesEnabled)))
+		!= (STATUS_STOP | STATUS_DATA_STOP(dataLanesEnabled)));
 
 	result = 0;
 	mipi_dsim_has_init = 1;

@@ -37,6 +37,6 @@ void gpio_pulldown_configure(int port, GPIOPDSetting setting);
 
 int pmu_gpio(int gpio, int is_output, int value);
 
-void gpio_switch(OnOff on_off, int pinport);
+void gpio_switch(int pinport, OnOff on_off);
 
 #endif

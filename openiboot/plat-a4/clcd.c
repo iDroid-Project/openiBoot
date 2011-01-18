@@ -114,6 +114,7 @@ static LCDInfo LCDInfoTable[] = {
 };
 
 volatile uint32_t* CurFramebuffer;
+uint32_t* FRAMEBUFFER;
 
 static LCDInfo* LCDTable;
 static uint32_t TimePerMillionFrames = 0;
@@ -238,7 +239,14 @@ int displaypipe_init() {
 	int result = 0;
 	uint32_t clcd_reg;
 	uint32_t panelID;
-	memset((void*)CLCD_FRAMEBUFFER, 0, 0x800000);
+
+	FRAMEBUFFER = malloc(0x800000);
+	if (!FRAMEBUFFER)
+		FRAMEBUFFER = (uint32_t*)CLCD_FRAMEBUFFER;
+
+	memset((void*)FRAMEBUFFER, 0, 0x800000);
+
+	bufferPrintf("displaypipe_init: framebuffer address: 0x%08x\n", (uint32_t)FRAMEBUFFER);
 
 	if (!LCDTable)
 		LCDTable = &LCDInfoTable[DISPLAYID];
@@ -358,10 +366,18 @@ int pinot_init(LCDInfo* LCDTable, ColorSpace colorspace, uint32_t* panelID, Wind
 
 	bufferPrintf("pinot_init()\r\n");
 	DotPitch = LCDTable->DotPitch;
+#if defined(CONFIG_IPAD)
+	gpio_pin_output(0x1404, 0);
+#else
 	gpio_pin_output(0x206, 0);
+#endif
 	task_sleep(10);
 	mipi_dsim_init(LCDTable);
+#if defined(CONFIG_IPAD)
+	gpio_pin_output(0x1404, 1);
+#else
 	gpio_pin_output(0x206, 1);
+#endif
 	task_sleep(6);
 	mipi_dsim_write_data(5, 0, 0);
 	udelay(10);
@@ -396,7 +412,9 @@ int pinot_init(LCDInfo* LCDTable, ColorSpace colorspace, uint32_t* panelID, Wind
 	displaytime_sleep(7);
 	mipi_dsim_write_data(5, 0x29, 0);
 	displaytime_sleep(7);
-	gpio_switch(0x207, 0);
+#if defined(CONFIG_IPHONE_4)
+	gpio_switch(0x207, OFF);
+#endif
 	*panelID = pinot_panel_id;
 
 	if (!dword_5FF3AE0C)
@@ -622,7 +640,7 @@ static Window* createWindow(int zero0, int zero2, int width, int height, ColorSp
 	newWindow->height = height;
 	newWindow->lineBytes = width * (bitsPerPixel / 8);
 
-	createFramebuffer(&newWindow->framebuffer, CLCD_FRAMEBUFFER, width, height, width, colorSpace);
+	createFramebuffer(&newWindow->framebuffer, (uint32_t)FRAMEBUFFER, width, height, width, colorSpace);
 
 	SET_REG(CLCD + 0x4040, (reg_bit << 8) | 1);
 	SET_REG(CLCD + 0x4044, (uint32_t)newWindow->framebuffer.buffer);
