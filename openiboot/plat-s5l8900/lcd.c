@@ -15,6 +15,24 @@
 #include "nvram.h"
 #include "framebuffer.h"
 
+typedef struct LCDInfo {
+	FrequencyBase freqBase;
+	uint32_t pixelsPerSecond;
+	uint32_t width;
+	uint32_t horizontalBackPorch;
+	uint32_t horizontalFrontPorch;
+	uint32_t horizontalSyncPulseWidth;
+	uint32_t height;
+	uint32_t verticalBackPorch;
+	uint32_t verticalFrontPorch;
+	uint32_t verticalSyncPulseWidth;
+	uint32_t IVClk;
+	uint32_t IHSync;
+	uint32_t IVSync;
+	uint32_t IVDen;
+	uint32_t OTFClockDivisor;
+} LCDInfo;
+
 static int lcd_has_init = FALSE;
 static int lcd_init_attempted = FALSE;
 

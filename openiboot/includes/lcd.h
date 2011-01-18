@@ -9,48 +9,6 @@ typedef enum ColorSpace {
 	RGB888 = 6
 } ColorSpace;
 
-#if !defined(CONFIG_A4)
-typedef struct LCDInfo {
-	FrequencyBase freqBase;
-	uint32_t pixelsPerSecond;
-	uint32_t width;
-	uint32_t horizontalBackPorch;
-	uint32_t horizontalFrontPorch;
-	uint32_t horizontalSyncPulseWidth;
-	uint32_t height;
-	uint32_t verticalBackPorch;
-	uint32_t verticalFrontPorch;
-	uint32_t verticalSyncPulseWidth;
-	uint32_t IVClk;
-	uint32_t IHSync;
-	uint32_t IVSync;
-	uint32_t IVDen;
-	uint32_t OTFClockDivisor;
-} LCDInfo;
-#else
-typedef struct LCDInfo {
-	char name[4];
-	uint32_t unkn1;
-	uint32_t DrivingClockFrequency;
-	uint32_t DotPitch;
-	uint32_t width;
-	uint32_t horizontalBackPorch;
-	uint32_t horizontalFrontPorch;
-	uint32_t horizontalSyncPulseWidth;
-	uint32_t height;
-	uint32_t verticalBackPorch;
-	uint32_t verticalFrontPorch;
-	uint32_t verticalSyncPulseWidth;
-	uint32_t IVClk;
-	uint32_t IHSync;
-	uint32_t IVSync;
-	uint32_t IVDen;
-	uint32_t bitsPerPixel;
-	uint32_t unkn17;
-	uint32_t unkn18;
-} LCDInfo;
-#endif
-
 struct Framebuffer;
 
 typedef void (*HLineFunc)(struct Framebuffer* framebuffer, int start, int line_no, int length, int fill);
