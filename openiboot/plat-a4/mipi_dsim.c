@@ -81,7 +81,6 @@ int mipi_dsim_init(LCDInfo* LCDTable) {
 	uint32_t dataLanesEnabled = (1 << numDataLanes) - 1;
 
 	clock_gate_switch(MIPI_DSIM_CLOCKGATE, ON);
-//	mashFest = (GET_BITS(LCDTable->unkn18, 26, 6) << 13) | (GET_BITS(LCDTable->unkn18, 16, 9) << 4) | ((GET_BITS(LCDTable->unkn18, 11, 4) << 1));
 	mashFest = (GET_BITS(LCDTable->unkn18, 26, 6) << 13) | (GET_BITS(LCDTable->unkn18, 16, 9) << 4) | ((GET_BITS(LCDTable->unkn18, 11, 4) & 0xE));
 #if defined(CONFIG_IPAD)
 	if (mashFest) {
