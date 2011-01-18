@@ -134,10 +134,10 @@
 
 #define MHPORCH_HBP_SHIFT           0
 #define MHPORCH_HBP_MASK            0xffff
-#define MHPORCH_HBP(x)              (((x) & MVPORCH_HBP_MASK) << MVPORCH_HBP_SHIFT)
+#define MHPORCH_HBP(x)              (((x) & MHPORCH_HBP_MASK) << MHPORCH_HBP_SHIFT)
 #define MHPORCH_HFP_SHIFT           16
 #define MHPORCH_HFP_MASK            0xffff
-#define MHPORCH_HFP(x)              (((x) & MVPORCH_HFP_MASK) << MVPORCH_HFP_SHIFT)
+#define MHPORCH_HFP(x)              (((x) & MHPORCH_HFP_MASK) << MHPORCH_HFP_SHIFT)
 
 #define MSYNC_HSPW_SHIFT            0
 #define MSYNC_HSPW_MASK             0xffff
