@@ -4,6 +4,28 @@
 #include "openiboot.h"
 #include "lcd.h"
 
+typedef struct LCDInfo {
+	char name[4];
+	uint32_t unkn1;
+	uint32_t DrivingClockFrequency;
+	uint32_t DotPitch;
+	uint32_t width;
+	uint32_t horizontalBackPorch;
+	uint32_t horizontalFrontPorch;
+	uint32_t horizontalSyncPulseWidth;
+	uint32_t height;
+	uint32_t verticalBackPorch;
+	uint32_t verticalFrontPorch;
+	uint32_t verticalSyncPulseWidth;
+	uint32_t IVClk;
+	uint32_t IHSync;
+	uint32_t IVSync;
+	uint32_t IVDen;
+	uint32_t bitsPerPixel;
+	uint32_t unkn17;
+	uint32_t unkn18;
+} LCDInfo;
+
 int mipi_dsim_init(LCDInfo* LCDTable);
 void mipi_dsim_quiesce();
 void mipi_dsim_framebuffer_on_off(OnOff on_off);
