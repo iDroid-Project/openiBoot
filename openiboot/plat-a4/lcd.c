@@ -316,7 +316,7 @@ void framebuffer_hook() {
 	newWindow->height = 960;
 	#endif
 	newWindow->lineBytes = (newWindow->width + calculateStrideLen(RGB888, 0, newWindow->width))*4;
-	#if defined(CONFIG_ATV_2G) || defined(CONFIG_IPAD)
+	#if defined(CONFIG_ATV_2G)
 	createFramebuffer(&newWindow->framebuffer, 0x4F700000, newWindow->width, newWindow->height, newWindow->lineBytes/4, RGB888);
 	#else
 	createFramebuffer(&newWindow->framebuffer, 0x5F700000, newWindow->width, newWindow->height, newWindow->lineBytes/4, RGB888);
