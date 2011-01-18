@@ -279,7 +279,7 @@ int displaypipe_init() {
 		SET_REG(0x89200004, 3);
 		SET_REG(0x89200014, 0x80000001);
 		SET_REG(0x89200018, 0x20408);
-		if (LCDTable->bitsPerPixel <= 0x12)
+		if (LCDTable->bitsPerPixel <= 18)
 			SET_REG(0x89200014, GET_REG(0x89200014) | 0x1110000);
 		SET_REG(0x89200050, 0);
 		SET_REG(0x89200054, (LCDTable->IVClk << VIDCON1_IVCLKSHIFT) | (LCDTable->IHSync << VIDCON1_IHSYNCSHIFT) | (LCDTable->IVSync << VIDCON1_IVSYNCSHIFT) | (LCDTable->IVDen << VIDCON1_IVDENSHIFT));
@@ -300,7 +300,10 @@ int displaypipe_init() {
 
 	ColorSpace colorSpace;
 //XXX:	It normally grabs it from nvram var "display-color-space" as string. -- Bluerise
-	colorSpace = RGB888;
+	if (LCDTable->bitsPerPixel <= 18)
+		colorSpace = RGB565;
+	else
+		colorSpace = RGB888;
 
 	currentWindow = createWindow(0, 0, LCDTable->width, LCDTable->height, colorSpace);
 	if (!currentWindow)

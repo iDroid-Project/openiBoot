@@ -159,11 +159,13 @@ int mipi_dsim_init(LCDInfo* LCDTable) {
 	SET_REG(MIPI_DSIM + MDRESOL, DRESOL_VRESOL(LCDTable->height) | DRESOL_HRESOL(LCDTable->width) | DRESOL_STAND_BY);
 	SET_REG(MIPI_DSIM + MVPORCH, MVPORCH_VFP(LCDTable->verticalFrontPorch) | MVPORCH_VBP(LCDTable->verticalBackPorch)
 		| MVPORCH_CMD_ALLOW(0xD)); //TODO: figure out what the 0xD does, or at least make a constant for it
-	SET_REG(MIPI_DSIM + MHPORCH, MVPORCH_VFP(0xF) | MVPORCH_VBP(0xE));
-//XXX:	Actually those should be working... Weird.
-//	SET_REG(MIPI_DSIM + MHPORCH, MHPORCH_HFP(LCDTable->horizontalFrontPorch) | MHPORCH_HBP(LCDTable->horizontalBackPorch));
+#if defined(CONFIG_IPHONE_4)
+	SET_REG(MIPI_DSIM + MHPORCH, MHPORCH_HFP(0xF) | MHPORCH_HBP(0xE));
 	SET_REG(MIPI_DSIM + MSYNC, MSYNC_VSPW(LCDTable->verticalSyncPulseWidth) | MSYNC_HSPW(1)); // WTF?
-//	SET_REG(MIPI_DSIM + MSYNC, MSYNC_VSPW(LCDTable->verticalSyncPulseWidth) | MSYNC_HSPW(LCDTable->horizontalSyncPulseWidth));
+#else
+	SET_REG(MIPI_DSIM + MHPORCH, MHPORCH_HFP(LCDTable->horizontalFrontPorch) | MHPORCH_HBP(LCDTable->horizontalBackPorch));
+	SET_REG(MIPI_DSIM + MSYNC, MSYNC_VSPW(LCDTable->verticalSyncPulseWidth) | MSYNC_HSPW(LCDTable->horizontalSyncPulseWidth));
+#endif
 	SET_REG(MIPI_DSIM + SDRESOL, DRESOL_VRESOL(0) | DRESOL_HRESOL(10));     //TODO: does this just turn the sub display resolution off (enable bit isn't set)?
 	SET_REG(MIPI_DSIM + CONFIG, CONFIG_EN_DATA(DATA_LANES_ENABLED) | CONFIG_MAIN_PXL_FMT(LCDTable->bitsPerPixel <= 18?5:7) | CONFIG_HSE_MODE | CONFIG_AUTO_MODE | CONFIG_VIDEO_MODE | CONFIG_BURST_MODE | 1);
 	SET_REG(MIPI_DSIM + CLKCTRL, GET_REG(MIPI_DSIM + CLKCTRL) | CLKCTRL_BYTE_CLKEN | CLKCTRL_ESC_EN_CLK
