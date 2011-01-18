@@ -122,10 +122,9 @@ void clock_setup_pll(int _pll, int _div, int _mul, int _divFactor)
 
 void clock_init()
 {
-	// TODO: Actually do this when we can load up all the hardware ourselves! -- Ricky26
-	//uint64_t initPwr = 0x2103001000001LL;
-	//clock_gate_many(initPwr, ON);
-	//clock_gate_many(~initPwr, OFF);
+	uint64_t initPwr = 0x2103001000001LL;
+	clock_gate_many(initPwr, ON);
+	clock_gate_many(~initPwr, OFF);
 
 	int idx;
 	uint32_t reg = DYNAMIC_CLOCK_BASE;
