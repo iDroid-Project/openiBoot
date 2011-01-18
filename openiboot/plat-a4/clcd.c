@@ -420,8 +420,12 @@ int pinot_init(LCDInfo* LCDTable, ColorSpace colorspace, uint32_t* panelID, Wind
 	if (!dword_5FF3AE0C)
 		return dword_5FF3AE0C;
 
+#if defined(CONFIG_IPAD)
+	return -1;
+#else
 	sub_5FF08870(dword_5FF3AE0C);
 	return 0;
+#endif
 }
 
 void pinot_quiesce() {
