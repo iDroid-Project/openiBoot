@@ -56,8 +56,8 @@ void platform_init()
 	miu_setup();
 	power_setup();
 
-	framebuffer_hook(); // TODO: Remove once LCD implemented -- Ricky26
-	framebuffer_setdisplaytext(TRUE);
+	//framebuffer_hook(); // TODO: Remove once LCD implemented -- Ricky26
+	//framebuffer_setdisplaytext(TRUE);
 
 	clock_setup();
 
