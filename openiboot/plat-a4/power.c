@@ -18,21 +18,3 @@ int power_setup() {
 #endif
 	return 0;
 }
-
-int power_ctrl(uint32_t device, OnOff on_off) {
-	if (device > POWER_STATE_MAX) {
-		return -1;
-	}
-	uint32_t device_register = POWER + POWER_STATE + (device << 2);
-
-	if (on_off == ON) {
-		SET_REG(device_register, GET_REG(device_register) | 0xF);
-	} else {
-		SET_REG(device_register, GET_REG(device_register) & ~0xF);
-	}
-	
-	/* wait for the new state to take effect */
-	while ((GET_REG(device_register) & 0xF) != ((GET_REG(device_register) >> 4) & 0xF));
-
-	return 0;
-}

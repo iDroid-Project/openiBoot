@@ -17,8 +17,6 @@
 #define POWER_ONCTRL 0xC
 #define POWER_OFFCTRL 0x10
 #define POWER_SETSTATE 0x8
-#define POWER_STATE 0x1010
-#define POWER_STATE_MAX 0x3F
 #define POWER_ID 0x6000
 #define POWER_ID_EPOCH(x) ((x) >> 24)
 

@@ -2,7 +2,7 @@
 #include "clock.h"
 #include "util.h"
 #include "hardware/clock.h"
-#include "power.h"
+#include "timer.h"
 #include "openiboot-asmhelpers.h"
 
 uint32_t ClockPLL;
@@ -24,8 +24,34 @@ uint32_t clock_freq_multiplier;
 uint32_t TicksPerSec;
 
 void clock_gate_switch(uint32_t gate, OnOff on_off) {
-	power_ctrl(gate, on_off);
+	if (gate > CLOCK_GATE_MAX)
+		return;
+
+	uint32_t reg = CLOCK_GATE_BASE + (gate << 2);
+
+	if (on_off == ON) {
+		SET_REG(reg, GET_REG(reg) | 0xF);
+	} else {
+		SET_REG(reg, GET_REG(reg) & ~0xF);
+	}
+	
+	/* wait for the new state to take effect */
+	while ((GET_REG(reg) & 0xF) != ((GET_REG(reg) >> 4) & 0xF));
 }
+
+void clock_reset(uint32_t gate) {
+	uint32_t pin = gate-22;
+	if(pin > 19)
+		return;
+
+	if ((1 << pin) & 0xA4001) {
+		uint32_t reg = CLOCK_GATE_BASE + (sizeof(uint32_t) * gate);
+		SET_REG(reg, GET_REG(reg) | 0x80000000);
+		udelay(1);
+		SET_REG(reg, GET_REG(reg) &~ 0x80000000);
+	}
+}
+
 
 uint32_t clock_get_frequency(FrequencyBase freqBase) {
 	switch(freqBase) {

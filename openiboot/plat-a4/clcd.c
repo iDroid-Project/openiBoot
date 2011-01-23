@@ -418,17 +418,16 @@ int pinot_init(LCDInfo* LCDTable, ColorSpace colorspace, uint32_t* panelID, Wind
 #if defined(CONFIG_IPHONE_4)
 	gpio_switch(0x207, OFF);
 #endif
+
 	*panelID = pinot_panel_id;
 
+#if !defined(CONFIG_IPAD)
 	if (!dword_5FF3AE0C)
 		return dword_5FF3AE0C;
 
-#if defined(CONFIG_IPAD)
-	return -1;
-#else
 	sub_5FF08870(dword_5FF3AE0C);
-	return 0;
 #endif
+	return 0;
 }
 
 void pinot_quiesce() {
