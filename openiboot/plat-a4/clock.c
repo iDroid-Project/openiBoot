@@ -39,7 +39,7 @@ void clock_gate_switch(uint32_t gate, OnOff on_off) {
 	while ((GET_REG(reg) & 0xF) != ((GET_REG(reg) >> 4) & 0xF));
 }
 
-void clock_reset(uint32_t gate) {
+void clock_gate_reset(uint32_t gate) {
 	uint32_t pin = gate-22;
 	if(pin > 19)
 		return;
