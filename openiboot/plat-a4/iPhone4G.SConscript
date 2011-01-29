@@ -13,4 +13,4 @@ Export('iphone_4_src')
 env = env.Clone()
 env.Append(CPPDEFINES=['OPENIBOOT_VERSION_CONFIG=\\" for iPhone 4\\"'])
 
-env.OpenIBootTarget('iPhone4', 'iphone_4_openiboot', 'CONFIG_IPHONE_4', iphone_4_src, 'template-4g')
+env.OpenIBootTarget('iPhone4', 'iphone_4_openiboot', 'CONFIG_IPHONE_4', iphone_4_src, None)
