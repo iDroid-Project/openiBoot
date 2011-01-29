@@ -3,6 +3,10 @@
 #include "clock.h"
 #include "hardware/uart.h"
 #include "timer.h"
+#include "interrupt.h"
+#include "tasks.h"
+#include "commands.h"
+#include "openiboot-asmhelpers.h"
 #include "util.h"
 
 const UARTRegisters HWUarts[] = {
@@ -40,6 +44,46 @@ static printf_handler_t prev_printf_handler = NULL;
 
 int UartHasInit;
 
+uint32_t UartCommandBufferSize = 256;
+char* UartCommandBuffer;
+char* curUartCommandBuffer;
+
+static TaskDescriptor uart_task;
+
+void uart_run(uint32_t _V) {
+	while(TRUE) {
+		uint32_t read = uart_read(_V, curUartCommandBuffer, UartCommandBufferSize-strlen(UartCommandBuffer), 10000);
+		curUartCommandBuffer = UartCommandBuffer+read;
+		int i;
+		for (i = 0; i < strlen(UartCommandBuffer); i++) {
+			if (UartCommandBuffer[i] == '\n') {
+				EnterCriticalSection();
+				char *safeCommand = malloc(i+1);
+				memcpy(safeCommand, UartCommandBuffer, i+1);
+				memset(UartCommandBuffer, 0, UartCommandBufferSize);
+				curUartCommandBuffer = UartCommandBuffer;
+				LeaveCriticalSection();
+				int argc;
+				char** argv = command_parse(safeCommand, &argc);
+				bufferPrintf("UART: Starting %s\n", safeCommand);
+				if(command_run(argc, argv) == 0)
+					bufferPrintf("UART: Done: %s\n", safeCommand);
+				else
+					bufferPrintf("UART: Unknown command: %s\n", safeCommand);
+				break;
+			}
+		}
+		task_sleep(500);
+	}
+}
+
+void uartIRQHandler(uint32_t token) {
+	SET_REG(HWUarts[token].UTRSTAT, GET_REG(HWUarts[token].UTRSTAT));
+	SET_REG(HWUarts[token].UERSTAT, GET_REG(HWUarts[token].UERSTAT));
+	uint32_t read = uart_read(token, curUartCommandBuffer, UartCommandBufferSize-strlen(UartCommandBuffer), 10000);
+	curUartCommandBuffer = UartCommandBuffer+read;
+}
+
 void uart_printf_handler(const char *_text)
 {
 	if(UartHasInit)
@@ -55,6 +99,12 @@ int uart_setup() {
 	if(UartHasInit) {
 		return 0;
 	}
+
+	task_init(&uart_task, "uart reader");
+
+	UartCommandBuffer = malloc(UartCommandBufferSize);
+	memset(UartCommandBuffer, 0, UartCommandBufferSize);
+	curUartCommandBuffer = UartCommandBuffer;
 
 	for(i = 0; i < NUM_UARTS; i++) {
 		clock_gate_switch(UART_CLOCKGATE+i, ON);
@@ -99,10 +149,14 @@ int uart_setup() {
 		uart_set_mode(i, UART_POLL_MODE);
 	}
 
-	uart_set_mode(0, UART_POLL_MODE);
-
 	prev_printf_handler = addPrintfHandler(uart_printf_handler);
 	UartHasInit = TRUE;
+
+	// Enabling an interrupt and running a new task for handling UART commands
+	uart_set_mode(0, UART_IRQ_MODE);
+	interrupt_install(UART_INTERRUPT, uartIRQHandler, 0);
+	interrupt_enable(UART_INTERRUPT);
+	task_start(&uart_task, &uart_run, 0);
 
 	return 0;
 }
@@ -203,6 +257,18 @@ int uart_set_mode(int ureg, uint32_t mode) {
 			(GET_REG(HWUarts[ureg].UCON) & (~UART_UCON_RXMODE_MASK) & (~UART_UCON_TXMODE_MASK))
 			| (UART_UCON_MODE_IRQORPOLL << UART_UCON_RXMODE_SHIFT)
 			| (UART_UCON_MODE_IRQORPOLL << UART_UCON_TXMODE_SHIFT));
+	} else if(mode == UART_IRQ_MODE) {
+		// Setup some defaults, like no loopback mode
+		SET_REG(HWUarts[ureg].UCON, 
+			GET_REG(HWUarts[ureg].UCON) & (~UART_UCON_UNKMASK) & (~UART_UCON_UNKMASK) & (~UART_UCON_LOOPBACKMODE));
+
+		// Use polling mode
+		SET_REG(HWUarts[ureg].UCON, 
+			(GET_REG(HWUarts[ureg].UCON) & (~UART_UCON_RXMODE_MASK) & (~UART_UCON_TXMODE_MASK))
+			| (UART_UCON_MODE_IRQORPOLL << UART_UCON_RXMODE_SHIFT)
+			| (UART_UCON_MODE_IRQORPOLL << UART_UCON_TXMODE_SHIFT));
+
+		SET_REG(HWUarts[ureg].UCON, GET_REG(HWUarts[ureg].UCON) | UART_UCON_MODE_IRQ);
 	}
 
 	return 0;
@@ -219,7 +285,7 @@ int uart_write(int ureg, const char *buffer, uint32_t length) {
 	const UARTRegisters* uart = &HWUarts[ureg];
 	UARTSettings* settings = &UARTs[ureg];
 
-	if(settings->mode != UART_POLL_MODE)
+	if(settings->mode != UART_POLL_MODE && settings->mode != UART_IRQ_MODE)
 		return -1; // unhandled uart mode
 
 	int written = 0;
@@ -259,7 +325,7 @@ int uart_read(int ureg, char *buffer, uint32_t length, uint64_t timeout) {
 	const UARTRegisters* uart = &HWUarts[ureg];
 	UARTSettings* settings = &UARTs[ureg];
 
-	if(settings->mode != UART_POLL_MODE)
+	if(settings->mode != UART_POLL_MODE && settings->mode != UART_IRQ_MODE)
 		return -1; // unhandled uart mode
 
 	uint64_t startTime = timer_get_system_microtime();

@@ -4,6 +4,7 @@
 #include "openiboot.h"
 
 #define UART_POLL_MODE 0
+#define UART_IRQ_MODE 1
 
 typedef struct UARTSettings {
 	uint32_t ureg;
