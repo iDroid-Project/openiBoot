@@ -52,8 +52,8 @@ static TaskDescriptor uart_task;
 
 void uart_run(uint32_t _V) {
 	while(TRUE) {
-		bufferPrintf("one run\n");
-		uart_read(_V, curUartCommandBuffer, UartCommandBufferSize-strlen(UartCommandBuffer), 10000);
+		uint32_t read = uart_read(_V, curUartCommandBuffer, UartCommandBufferSize-strlen(UartCommandBuffer), 10000);
+		curUartCommandBuffer = UartCommandBuffer+read;
 		int i;
 		for (i = 0; i < strlen(UartCommandBuffer); i++) {
 			if (UartCommandBuffer[i] == '\n') {
@@ -73,15 +73,15 @@ void uart_run(uint32_t _V) {
 				break;
 			}
 		}
-		task_yield();
-//		task_sleep(5000);
+		task_sleep(500);
 	}
 }
 
 void uartIRQHandler(uint32_t token) {
 	SET_REG(HWUarts[token].UTRSTAT, GET_REG(HWUarts[token].UTRSTAT));
 	SET_REG(HWUarts[token].UERSTAT, GET_REG(HWUarts[token].UERSTAT));
-	uart_read(token, curUartCommandBuffer, UartCommandBufferSize-strlen(UartCommandBuffer), 10000);
+	uint32_t read = uart_read(token, curUartCommandBuffer, UartCommandBufferSize-strlen(UartCommandBuffer), 10000);
+	curUartCommandBuffer = UartCommandBuffer+read;
 }
 
 void uart_printf_handler(const char *_text)
@@ -152,11 +152,10 @@ int uart_setup() {
 	prev_printf_handler = addPrintfHandler(uart_printf_handler);
 	UartHasInit = TRUE;
 
-	// This is gonna be fun!
+	// Enabling an interrupt and running a new task for handling UART commands
 	uart_set_mode(0, UART_IRQ_MODE);
 	interrupt_install(UART_INTERRUPT, uartIRQHandler, 0);
 	interrupt_enable(UART_INTERRUPT);
-
 	task_start(&uart_task, &uart_run, 0);
 
 	return 0;
