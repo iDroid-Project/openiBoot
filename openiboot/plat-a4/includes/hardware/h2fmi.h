@@ -1,0 +1,35 @@
+#ifndef  HW_H2FMI_H
+#define  HW_H2FMI_H
+
+#define H2FMI0_BASE	0x81200000
+#define H2FMI1_BASE	0x81300000
+
+#define H2FMI0_CLOCK_GATE	0x27
+#define H2FMI1_CLOCK_GATE	0x29
+#define H2FMI0_INTERRUPT	0x22
+#define H2FMI1_INTERRUPT	0x23
+
+#define H2FMI_CHIP_COUNT	16
+#define H2FMI_CHIPID_LENGTH	8
+
+#define H2FMI_REG(x, y)		(((x)->base_address)+(y))
+#define H2FMI_UNKREG1(x)	(H2FMI_REG(x, 0x40008))
+#define H2FMI_UNKREG2(x)	(H2FMI_REG(x, 0x40000))
+#define H2FMI_UNKREG3(x)	(H2FMI_REG(x, 0x80014))
+#define H2FMI_UNKREG4(x)	(H2FMI_REG(x, 0x40014))
+#define H2FMI_UNKREG5(x)	(H2FMI_REG(x, 0x40010))
+#define H2FMI_UNKREG6(x)	(H2FMI_REG(x, 0x40044))
+#define H2FMI_CHIP_MASK(x)	(H2FMI_REG(x, 0x4000C))
+#define H2FMI_UNKREG8(x)	(H2FMI_REG(x, 0x424))
+#define H2FMI_DATA(x)		(H2FMI_REG(x, 0x448))
+#define H2FMI_UNKREG9(x)	(H2FMI_REG(x, 0x40018))
+#define H2FMI_UNKREG10(x)	(H2FMI_REG(x, 0x40020))
+#define H2FMI_UNKREG11(x)	(H2FMI_REG(x, 0x4))
+#define H2FMI_UNKREG12(x)	(H2FMI_REG(x, 0x40040))
+#define H2FMI_UNKREG13(x)	(H2FMI_REG(x, 0x10))
+#define H2FMI_UNKREG14(x)	(H2FMI_REG(x, 0xC))
+#define H2FMI_UNKREG15(x)	(H2FMI_REG(x, 0x34))
+#define H2FMI_UNKREG16(x)	(H2FMI_REG(x, 0x1C))
+#define H2FMI_UNKREG17(x)	(H2FMI_REG(x, 0x14))
+
+#endif //HW_H2FMI_H
