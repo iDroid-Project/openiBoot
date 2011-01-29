@@ -13,4 +13,4 @@ Export('ipt_4g_src')
 env = env.Clone()
 env.Append(CPPDEFINES=['OPENIBOOT_VERSION_CONFIG=\\"for iPod Touch 4G\\"'])
 
-env.OpenIBootTarget('iPodTouch4G', 'ipt_4g_openiboot', 'CONFIG_IPOD_4G', ipt_4g_src, 'template-4g')
+env.OpenIBootTarget('iPodTouch4G', 'ipt_4g_openiboot', 'CONFIG_IPOD_4G', ipt_4g_src, None)
