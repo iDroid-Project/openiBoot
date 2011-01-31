@@ -76,12 +76,12 @@ int mipi_dsim_read_write(int a1, uint8_t* buffer, uint32_t* read) {
 int mipi_dsim_init(LCDInfo* LCDTable) {
 	int result;
 	uint32_t some_value;
-	uint8_t dataLinesEnabled = LCDTable->unkn18 & 0xF;
-	uint32_t dataLinesMask = (1 << dataLinesEnabled) - 1;
+	uint8_t numDataLanes = LCDTable->unkn18 & 0xF;
+	uint32_t dataLanesEnabled = (1 << numDataLanes) - 1;
 
-	uint32_t colourMode = (LCDTable->bitsPerPixel >= 18) ? 7 : 5;
+	uint32_t colourMode = (LCDTable->bitsPerPixel > 18) ? 7 : 5;
 
-	bufferPrintf("mipi: data lines %d 0x%08x.\r\n", dataLinesEnabled, dataLinesMask);
+	bufferPrintf("mipi: data lines %d 0x%08x.\r\n", numDataLanes, dataLanesEnabled);
 
 	bufferPrintf("mipi_dsim_init()\r\n");
 
@@ -165,18 +165,18 @@ int mipi_dsim_init(LCDInfo* LCDTable) {
 		& ~((CONFIG_EN_DATA_MASK << CONFIG_EN_DATA_SHIFT)
 			| (CONFIG_NUM_DATA_MASK << CONFIG_NUM_DATA_SHIFT)));
 
-	SET_REG(MIPI_DSIM + CONFIG, GET_REG(MIPI_DSIM + CONFIG) | CONFIG_EN_DATA(dataLinesMask)
-		| CONFIG_NUM_DATA(dataLinesEnabled));
+	SET_REG(MIPI_DSIM + CONFIG, GET_REG(MIPI_DSIM + CONFIG) | CONFIG_EN_DATA(dataLanesEnabled)
+		| CONFIG_NUM_DATA(numDataLanes));
 
 	SET_REG(MIPI_DSIM + CLKCTRL, GET_REG(MIPI_DSIM + CLKCTRL)
 		& ~(CLKCTRL_ESC_EN_DATA_MASK << CLKCTRL_ESC_EN_DATA_SHIFT));
-	SET_REG(MIPI_DSIM + CLKCTRL, GET_REG(MIPI_DSIM + CLKCTRL) | CLKCTRL_ESC_EN_DATA(dataLinesEnabled));
+	SET_REG(MIPI_DSIM + CLKCTRL, GET_REG(MIPI_DSIM + CLKCTRL) | CLKCTRL_ESC_EN_DATA(dataLanesEnabled));
 
 	SET_REG(MIPI_DSIM + ESCMODE, GET_REG(MIPI_DSIM + ESCMODE) | ESCMODE_TX_UIPS_EXIT | ESCMODE_TX_UIPS_CLK_EXIT);
 
 	bufferPrintf("j\n");
 
-	while((GET_REG(MIPI_DSIM + STATUS) & (STATUS_ULPS | STATUS_DATA_ULPS(dataLinesMask))));
+	while((GET_REG(MIPI_DSIM + STATUS) & (STATUS_ULPS | STATUS_DATA_ULPS(dataLanesEnabled))));
 	SET_REG(MIPI_DSIM + ESCMODE, GET_REG(MIPI_DSIM + ESCMODE) & (~0x5));
 
 	udelay(1000);
@@ -184,8 +184,8 @@ int mipi_dsim_init(LCDInfo* LCDTable) {
 	bufferPrintf("k\n");
 
 	SET_REG(MIPI_DSIM + ESCMODE, GET_REG(MIPI_DSIM + ESCMODE) & (~0xA));
-	while((GET_REG(MIPI_DSIM + STATUS) & (STATUS_STOP | STATUS_DATA_STOP(dataLinesMask)))
-		!= (STATUS_STOP | STATUS_DATA_STOP(dataLinesMask)));
+	while((GET_REG(MIPI_DSIM + STATUS) & (STATUS_STOP | STATUS_DATA_STOP(dataLanesEnabled)))
+		!= (STATUS_STOP | STATUS_DATA_STOP(dataLanesEnabled)));
 
 	bufferPrintf("l\n");
 	
