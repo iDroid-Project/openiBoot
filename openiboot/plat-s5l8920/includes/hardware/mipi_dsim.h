@@ -39,7 +39,7 @@
 
 // data lines enabled (depends on platform)
 #define DATA_LANES_ENABLED (DATA_0 | DATA_1)
-#define NUM_DATA_LANES 2
+#define NUM_DATA_LANES 1 // 0-based
 
 #define STATUS_STOP                 (1 << 8)
 #define STATUS_ULPS                 (1 << 9)

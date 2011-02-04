@@ -75,51 +75,38 @@ int mipi_dsim_read_write(int a1, uint8_t* buffer, uint32_t* read) {
 
 int mipi_dsim_init(LCDInfo* LCDTable) {
 	int result;
-	uint32_t some_value;
-	uint8_t numDataLanes = LCDTable->unkn18 & 0xF;
-	uint32_t dataLanesEnabled = (1 << numDataLanes) - 1;
-
+	uint32_t x = LCDTable->unkn18;
+	uint8_t numDataLanes = x & 0xF;
+	uint32_t dataLanesEnabled = (1 << (numDataLanes+1)) - 1;
+	uint32_t some_value = (((x >> 16) & 0x3FF) << 4) | ((x >> 26) << 14) | ((x >> 11) & 0xE);
 	uint32_t colourMode = (LCDTable->bitsPerPixel > 18) ? 7 : 5;
 
 	bufferPrintf("mipi: data lines %d 0x%08x.\r\n", numDataLanes, dataLanesEnabled);
 
 	bufferPrintf("mipi_dsim_init()\r\n");
 
-	some_value = (GET_BITS(LCDTable->unkn18, 26, 6) << 13) | (GET_BITS(LCDTable->unkn18, 16, 9) << 4) | (GET_BITS(LCDTable->unkn18, 11, 4) & 0xE);
 	clock_gate_switch(MIPI_DSIM_CLOCKGATE, ON);
-
-	bufferPrintf("a\n");
 
 	if (some_value)
 	{
-		SET_REG(MIPI_DSIM + CLKCTRL, CLKCTRL_ESC_PRESCALER(LCDTable->unkn18 >> 4) | CLKCTRL_ESC_CLKEN);
-		SET_REG(MIPI_DSIM + PLLCTRL, (LCDTable->unkn18 << 16) & 0xF000000);
+		SET_REG(MIPI_DSIM + CLKCTRL, CLKCTRL_ESC_PRESCALER(x >> 4) | CLKCTRL_ESC_CLKEN);
+		SET_REG(MIPI_DSIM + PLLCTRL, (x << 16) & 0xF000000);
 		SET_REG(MIPI_DSIM + PLLTMR, 300000);
 		SET_REG(MIPI_DSIM + PLLCTRL, GET_REG(MIPI_DSIM + PLLCTRL) | some_value);
 		SET_REG(MIPI_DSIM + PLLCTRL, GET_REG(MIPI_DSIM + PLLCTRL) | 0x800000);
 
-		bufferPrintf("b\n");
-
 		while ((GET_REG(MIPI_DSIM + STATUS) & STATUS_PLL_STABLE) != STATUS_PLL_STABLE);
-		
-		bufferPrintf("c\n");
 	}
 	else
 	{
 		SET_REG(MIPI_DSIM + CLKCTRL, CLKCTRL_ESC_PRESCALER(LCDTable->unkn18 >> 4) | CLKCTRL_ESC_CLKEN
 			| CLKCTRL_PLL_BYPASS | CLKCTRL_BYTE_CLK_SRC);
 		SET_REG(MIPI_DSIM + PLLCTRL, (LCDTable->unkn18 << 16) & 0xF000000);
-	
-		bufferPrintf("d\n");
 	}
 
-	bufferPrintf("e\n");
-	
 	SET_REG(MIPI_DSIM + SWRST, SWRST_RESET);
 	while((GET_REG(MIPI_DSIM + STATUS) & STATUS_SWRST) != STATUS_SWRST);
 	
-	bufferPrintf("f\n");
-
 	SET_REG(MIPI_DSIM + MDRESOL, DRESOL_VRESOL(LCDTable->height) | DRESOL_HRESOL(LCDTable->width) | DRESOL_STAND_BY);
 
 	SET_REG(MIPI_DSIM + MVPORCH, MVPORCH_VFP(LCDTable->verticalFrontPorch) | MVPORCH_VBP(LCDTable->verticalBackPorch)
@@ -148,18 +135,12 @@ int mipi_dsim_init(LCDInfo* LCDTable) {
 	udelay(1000);
 	SET_REG(MIPI_DSIM + ESCMODE, GET_REG(MIPI_DSIM + ESCMODE) & ~(ESCMODE_FORCE_STOP));
 
-	bufferPrintf("g\n"); // I've checked up to here -- Ricky26
-
 	while((GET_REG(MIPI_DSIM + STATUS) & (STATUS_STOP | STATUS_DATA_STOP(DATA_LANES_ENABLED)))
 		!= (STATUS_STOP | STATUS_DATA_STOP(DATA_LANES_ENABLED)));
-
-	bufferPrintf("h\n");
 
 	SET_REG(MIPI_DSIM + ESCMODE, ESCMODE_CMD_LP | ESCMODE_TX_UIPS_DAT | ESCMODE_TX_UIPS_CLK);
 	while((GET_REG(MIPI_DSIM + STATUS) & (STATUS_ULPS | STATUS_DATA_ULPS(DATA_LANES_ENABLED)))
 		!= (STATUS_ULPS | STATUS_DATA_ULPS(DATA_LANES_ENABLED)));
-
-	bufferPrintf("i\n");
 
 	SET_REG(MIPI_DSIM + CONFIG, GET_REG(MIPI_DSIM + CONFIG)
 		& ~((CONFIG_EN_DATA_MASK << CONFIG_EN_DATA_SHIFT)
@@ -174,21 +155,15 @@ int mipi_dsim_init(LCDInfo* LCDTable) {
 
 	SET_REG(MIPI_DSIM + ESCMODE, GET_REG(MIPI_DSIM + ESCMODE) | ESCMODE_TX_UIPS_EXIT | ESCMODE_TX_UIPS_CLK_EXIT);
 
-	bufferPrintf("j\n");
-
 	while((GET_REG(MIPI_DSIM + STATUS) & (STATUS_ULPS | STATUS_DATA_ULPS(dataLanesEnabled))));
 	SET_REG(MIPI_DSIM + ESCMODE, GET_REG(MIPI_DSIM + ESCMODE) & (~0x5));
 
 	udelay(1000);
 	
-	bufferPrintf("k\n");
-
 	SET_REG(MIPI_DSIM + ESCMODE, GET_REG(MIPI_DSIM + ESCMODE) & (~0xA));
 	while((GET_REG(MIPI_DSIM + STATUS) & (STATUS_STOP | STATUS_DATA_STOP(dataLanesEnabled)))
 		!= (STATUS_STOP | STATUS_DATA_STOP(dataLanesEnabled)));
 
-	bufferPrintf("l\n");
-	
 	result = 0;
 	mipi_dsim_has_init = 1;
 	return result;
