@@ -132,12 +132,15 @@ void lcd_fill_switch(OnOff on_off, uint32_t color) {
 		framebuffer_fill(&currentWindow->framebuffer, 0, 0, currentWindow->framebuffer.width, currentWindow->framebuffer.height, color);
 
 		SET_REG(CLCD_BASE + 0x0, GET_REG(CLCD_BASE + 0x0) | 1);
+		SET_REG(CLCD_BASE + 0x1B10, GET_REG(CLCD_BASE + 0x1B10) | 1);
 	} else {
 		if (SyncFramebufferToDisplayActivated == OFF) // It used to return, when on_off == SyncFramebufferToDisplayActivated == ON, too -- Bluerise
 			return;
 
 		SET_REG(CLCD_BASE + 0x0, GET_REG(CLCD_BASE + 0x0) & (~1));
 		while (!(GET_REG(CLCD_BASE + 0x0) & 2)) ;
+		SET_REG(CLCD_BASE + 0x1B10, GET_REG(CLCD_BASE + 0x1B10) & (~1));
+		while (!(GET_REG(CLCD_BASE + 0x1B10) & 2)) ;
 	}
 	SyncFramebufferToDisplayActivated = on_off;
 }
@@ -149,7 +152,6 @@ void lcd_fill(uint32_t color) {
 int displaypipe_init() {
 	int result = 0;
 	uint32_t panelID;
-	memset((void*)CLCD_FRAMEBUFFER, 0, 0x800000);
 
 	if (!LCDTable)
 		LCDTable = &LCDInfoTable[DISPLAYID];
@@ -158,13 +160,9 @@ int displaypipe_init() {
 	clock_gate_switch(CLCD_CLOCKGATE_2, ON);
 	clock_gate_switch(CLCD_CLOCKGATE_3, ON);
 
-	bufferPrintf("A\n");
-
 	SET_REG(CLCD_BASE, 0x100);
 	while (GET_REG(CLCD_BASE) & 0x100); // TODO: Sort out threaded loading of boot-time modules so we can yield -- Ricky26
 	udelay(1);
-
-	bufferPrintf("B\n");
 
 	SET_REG(CLCD_BASE + 0x0, 0x20084);
 	SET_REG(CLCD_BASE + 0x300, 0x80000001);
@@ -191,13 +189,9 @@ int displaypipe_init() {
 //XXX:	It normally grabs it from nvram var "display-color-space" as string. -- Bluerise
 	colorSpace = RGB888;
 
-	bufferPrintf("C\n");
-
 	currentWindow = createWindow(0, 0, LCDTable->width, LCDTable->height, colorSpace);
 	if (!currentWindow)
 		return -1;
-	
-	bufferPrintf("D\n");
 
 //XXX:	It sets the framebuffer address into nvram var "framebuffer". -- Bluerise
 //	nvram_setvar("framebuffer", currentWindow->framebuffer.buffer, 0);
@@ -208,13 +202,9 @@ int displaypipe_init() {
 		return result;
 	}
 	
-	bufferPrintf("E\n");
-
 	if (SyncFramebufferToDisplayActivated == OFF)
 		lcd_fill_switch(ON, framebufferLastFill);
 	
-	bufferPrintf("F\n");
-
 	uint32_t* buffer1 = malloc(1028);
 	uint32_t* buffer2 = malloc(1028);
 	uint32_t* buffer3 = malloc(1028);
@@ -235,10 +225,8 @@ int displaypipe_init() {
 	setWindowBuffer(4, buffer1);
 	setWindowBuffer(5, buffer2);
 	setWindowBuffer(6, buffer3);
-	SET_REG(CLCD_BASE + 0x2C, 1);
-	SET_REG(CLCD_BASE + 0x1B38, 0x7f);
-
-	bufferPrintf("G\n");
+	SET_REG(CLCD_BASE + 0x400, 1);
+	SET_REG(CLCD_BASE + 0x1B38, 0x80);
 
 	free(buffer1);
 	free(buffer2);
@@ -510,12 +498,13 @@ static Window* createWindow(int zero0, int zero2, int width, int height, ColorSp
 	newWindow->height = height;
 	newWindow->lineBytes = width * (bitsPerPixel / 8);
 
-	createFramebuffer(&newWindow->framebuffer, CLCD_FRAMEBUFFER, width, height, width, colorSpace);
+	createFramebuffer(&newWindow->framebuffer, (uint32_t)malloc(newWindow->lineBytes*height), width, height, width, colorSpace);
+	bufferPrintf("clcd: buffer 0x%08x\r\n", newWindow->framebuffer.buffer);
 
 	SET_REG(CLCD_BASE + 0x20, (reg_bit << 8) | 0x200000);
 	SET_REG(CLCD_BASE + 0x24, (uint32_t)newWindow->framebuffer.buffer);
 	SET_REG(CLCD_BASE + 0x28, width);
-	SET_REG(CLCD_BASE + 0x2c, 0);
+	SET_REG(CLCD_BASE + 0x2C, 0);
 	SET_REG(CLCD_BASE + 0x30, (width << 16) | height);
 	SET_REG(CLCD_BASE + 0x38, 0);
 	SET_REG(CLCD_BASE + 0x3C, 0);
