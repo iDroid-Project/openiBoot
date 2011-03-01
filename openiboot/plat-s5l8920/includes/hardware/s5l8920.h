@@ -12,7 +12,7 @@
 
 #define MemoryStart 0x00000000
 #define MemoryEnd 0xFFFFFFFF
-#define LargeMemoryStart 0x60000000
+#define LargeMemoryStart 0x50000000
 
 #define RAMStart 	0x40000000
 #define RAMEnd		(RAMStart + (0x100*(MMU_SECTION_SIZE)))

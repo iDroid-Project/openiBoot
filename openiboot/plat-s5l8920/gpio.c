@@ -209,14 +209,17 @@ void gpio_pulldown_configure(int port, GPIOPDSetting setting)
 }
 
 void gpio_switch(int pinport, OnOff on_off) {
-	uint32_t pin_register = GPIO + (((pinport >> 5) & 0x7F8) + ((pinport & 0x7)<<2));
+	uint32_t pin_register = GPIO + ((((pinport >> 5) & 0x7F8) + (pinport & 0x7)) << 2);
 
-	if (on_off == ON) {
-		SET_REG(pin_register, ((GET_REG(pin_register) & (~(0x3<<7))) | (0x1<<7)));
-	} else {
-		SET_REG(pin_register, (GET_REG(pin_register) & (~(0x3<<7))));
-	}
-	// There would be a third state when (state > 0), setting 0x3, but iBoot didn't ever do that.
+	uint32_t val = on_off;
+	if(val < 0)
+		val = 0x100;
+	else if(val != 0)
+		val = 0x80;
+
+	val &= 0x180;
+
+	SET_REG(pin_register, ((GET_REG(pin_register) & 0x180) | val));
 }
 
 void gpio_custom_io(int pinport, int mode) {
