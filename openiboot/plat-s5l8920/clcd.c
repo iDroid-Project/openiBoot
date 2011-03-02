@@ -72,6 +72,7 @@ static void createFramebuffer(Framebuffer* framebuffer, uint32_t framebufferAddr
 
 void displaytime_sleep(uint32_t time)
 {
+	bufferPrintf("task_sleep %d\n", time * TimePerMillionFrames / 1000);
 	task_sleep(time * TimePerMillionFrames / 1000);
 }
 
@@ -160,8 +161,11 @@ int displaypipe_init() {
 	clock_gate_switch(CLCD_CLOCKGATE_2, ON);
 	clock_gate_switch(CLCD_CLOCKGATE_3, ON);
 
-	SET_REG(CLCD_BASE, 0x100);
-	while (GET_REG(CLCD_BASE) & 0x100); // TODO: Sort out threaded loading of boot-time modules so we can yield -- Ricky26
+
+	bufferPrintf("clcd: base=0x%08x\r\n", GET_REG(CLCD_BASE));
+
+	//SET_REG(CLCD_BASE, 0x100);
+	//while ((GET_REG(CLCD_BASE) & 0x100)); // TODO: Sort out threaded loading of boot-time modules so we can yield -- Ricky26
 	udelay(1);
 
 	SET_REG(CLCD_BASE + 0x0, 0x20084);
@@ -225,12 +229,13 @@ int displaypipe_init() {
 	setWindowBuffer(4, buffer1);
 	setWindowBuffer(5, buffer2);
 	setWindowBuffer(6, buffer3);
-	SET_REG(CLCD_BASE + 0x400, 1);
-	SET_REG(CLCD_BASE + 0x1B38, 0x80);
 
 	free(buffer1);
 	free(buffer2);
 	free(buffer3);
+
+	SET_REG(CLCD_BASE + 0x400, 1);
+	SET_REG(CLCD_BASE + 0x1B38, 0x80);
 
 	CurFramebuffer = currentWindow->framebuffer.buffer;
 	framebuffer_setup();
@@ -296,6 +301,9 @@ int pinot_init(LCDInfo* LCDTable, ColorSpace colorspace, uint32_t* panelID, Wind
 	displaytime_sleep(7);
 	mipi_dsim_write_data(5, 0x29, 0);
 	displaytime_sleep(7);
+
+	bufferPrintf("s\r\n");
+
 	gpio_switch(0x1507, 0);
 	*panelID = pinot_panel_id;
 
