@@ -37,6 +37,7 @@ typedef enum FrequencyBase {
 	FrequencyBaseFixed,
 	FrequencyBaseTimebase,
 	FrequencyBaseUsbPhy,
+	FrequencyNand,
 } FrequencyBase;
 
 int clock_set_base_divisor(ClockDivisorCode code);

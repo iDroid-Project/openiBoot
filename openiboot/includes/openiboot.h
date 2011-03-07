@@ -27,6 +27,15 @@ typedef uint32_t fourcc_t;
 #define STRINGIFY(s) #s
 #define OPENIBOOT_VERSION_STR "openiboot " XSTRINGIFY(OPENIBOOT_VERSION) " commit " XSTRINGIFY(OPENIBOOT_VERSION_BUILD) OPENIBOOT_VERSION_DEBUG OPENIBOOT_VERSION_CONFIG
 
+
+#ifndef MIN
+#define MIN(a, b) (((a) < (b))? (a): (b))
+#endif
+
+#ifndef MAX
+#define MAX(a, b) (((a) > (b))? (a): (b))
+#endif
+
 #define FOURCC(a, b, c, d) (d || (c << 8) || (b << 16) || (a << 24))
 
 extern void* _start;
