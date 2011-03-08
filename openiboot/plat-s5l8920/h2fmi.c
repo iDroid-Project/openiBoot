@@ -4,6 +4,7 @@
 #include "tasks.h"
 #include "clock.h"
 #include "util.h"
+#include "openiboot-asmhelpers.h"
 
 typedef struct _nand_chipid
 {
@@ -13,8 +14,7 @@ typedef struct _nand_chipid
 
 typedef struct _nand_smth_struct
 {
-	uint32_t unk1;
-	uint32_t unk2;
+	uint8_t some_array[8];
 	uint32_t symmetric_masks[];
 } __attribute__((__packed__)) nand_smth_struct_t;
 
@@ -67,6 +67,9 @@ typedef struct _nand_info
 	nand_chip_info_t *chip_info;
 	nand_board_info_t *board_info;
 	nand_timing_info_t *timing_info;
+
+	nand_smth_struct_t *some_mask;
+	uint32_t *some_array;
 } nand_info_t;
 
 static nand_chip_info_t nand_chip_info[] = {
@@ -165,17 +168,70 @@ static nand_timing_info_t nand_timing_info[] = {
 	{ { 2, 1, { 0x32956845, 0x0, }, 4, { 0x0, 0x0, }, 0, }, 0x19, 0xc, 0xa, 0x19, 0xc, 0xa, 0x14, 0x19, },
 };
 
+typedef struct _h2fmi_timing_setup
+{
+	uint64_t freq;
+	uint32_t c;
+	uint32_t d;
+	uint32_t e;
+	uint32_t f;
+	uint32_t g;
+	uint32_t h;
+	uint32_t i;
+	uint32_t j;
+	uint32_t k;
+	uint32_t l;
+	uint32_t m;
+	uint32_t n;
+	uint32_t o;
+	uint32_t p;
+	uint32_t q;
+	uint32_t r;
+} h2fmi_timing_setup_t;
+
+typedef struct _h2fmi_dma_state
+{
+	uint32_t signalled;
+	uint32_t b;
+	uint32_t c;
+	uint32_t d;
+} h2fmi_dma_state_t;
+
+static h2fmi_dma_state_t h2fmi_dma_state[28];
+
 static h2fmi_struct_t fmi0 = {
 	.bus_num = 0,
 	.base_address = H2FMI0_BASE,
 	.clock_gate = H2FMI0_CLOCK_GATE,
+	.dma0 = 5,
+	.dma1 = 6,
 };
 
 static h2fmi_struct_t fmi1 = {
 	.bus_num = 1,
 	.base_address = H2FMI1_BASE,
 	.clock_gate = H2FMI1_CLOCK_GATE,
+	.dma0 = 7,
+	.dma1 = 8,
 };
+
+static h2fmi_struct_t *fmi_busses[] = {
+	&fmi0,
+	&fmi1,
+};
+
+#define H2FMI_BUS_COUNT (array_size(fmi_busses))
+
+typedef struct _h2fmi_map_entry
+{
+	uint32_t bus;
+	uint16_t chip;
+	
+} h2fmi_map_entry_t;
+
+static h2fmi_map_entry_t h2fmi_map[H2FMI_CHIP_COUNT];
+
+static uint32_t h2fmi_hash_table[1024];
 
 static int compare_board_ids(nand_board_id_t *a, nand_board_id_t *b)
 {
@@ -242,7 +298,7 @@ static void h2fmi_device_reset(h2fmi_struct_t *_fmi)
 	clock_gate_reset(_fmi->clock_gate);
 
 	SET_REG(H2FMI_UNKREG2(_fmi), 1);
-	SET_REG(H2FMI_UNKREG1(_fmi), _fmi->field_38);
+	SET_REG(H2FMI_UNKREG1(_fmi), _fmi->timing_register_cache_408);
 }
 
 static void h2fmi_device_reset_814(h2fmi_struct_t *_fmi)
@@ -266,8 +322,13 @@ static void h2fmi_enable_chip(h2fmi_struct_t *_fmi, uint8_t _chip)
 static void h2fmi_disable_chip(uint8_t _chip)
 {
 	h2fmi_struct_t *fmi = (_chip & 0x8) ? &fmi1: &fmi0;
-	uint32_t maskReg = H2FMI_CHIP_MASK(fmi);
-	SET_REG(maskReg, GET_REG(maskReg) &~ (1 << (_chip & 0x7)));
+	SET_REG(H2FMI_CHIP_MASK(fmi),
+			H2FMI_CHIP_MASK(fmi) &~ (1 << (_chip & 0x7)));
+}
+
+static void h2fmi_disable_bus(h2fmi_struct_t *_fmi)
+{
+	SET_REG(H2FMI_CHIP_MASK(_fmi), 0);
 }
 
 static int h2fmi_init_bus(h2fmi_struct_t *_fmi)
@@ -277,8 +338,11 @@ static int h2fmi_init_bus(h2fmi_struct_t *_fmi)
 	_fmi->bitmap = 0;
 	_fmi->num_chips = 0;
 	
-	_fmi->field_38 = 0xFFFF;
-	SET_REG(H2FMI_UNKREG1(_fmi), _fmi->field_38);
+	bufferPrintf("fmi: bus %d, reg1 initial value = 0x%08x\r\n", _fmi->bus_num,
+			GET_REG(H2FMI_UNKREG1(_fmi)));
+
+	_fmi->timing_register_cache_408 = 0xFFFF;
+	SET_REG(H2FMI_UNKREG1(_fmi), _fmi->timing_register_cache_408);
 
 	_fmi->field_180 = 0xFFFFFFFF;
 
@@ -387,7 +451,8 @@ static int h2fmi_reset_and_read_chipids(h2fmi_struct_t *_fmi, void *_buffer, uin
 
 static nand_info_t *h2fmi_nand_find_info(char *_id, h2fmi_struct_t **_busses, int _count)
 {
-	static nand_smth_struct_t nand_smth = { 0xA010101, 0x30306, { 0xF0F, 0, 0 } };
+	static nand_smth_struct_t nand_smth = { { 1, 1, 1, 10, 6, 3, 3, 0 }, { 0xF0F, 0, 0 } };
+	static uint32_t nand_some_array[] = { 0xC, 0xA, 0 };
 
 	uint8_t chipID[H2FMI_CHIPID_LENGTH];
 	uint32_t bitmap = 0;
@@ -445,6 +510,9 @@ static nand_info_t *h2fmi_nand_find_info(char *_id, h2fmi_struct_t **_busses, in
 
 	nand_info_t *info = malloc(sizeof(*info));
 	memset(info, 0, sizeof(*info));
+
+	info->some_array = nand_some_array; 
+	info->some_mask = &nand_smth;
 
 	for(i = 0; i < array_size(nand_chip_info); i++)
 	{
@@ -505,8 +573,437 @@ static nand_info_t *h2fmi_nand_find_info(char *_id, h2fmi_struct_t **_busses, in
 	return info;
 }
 
+static int h2fmi_dma_wait(uint32_t _channel, uint32_t _timeout)
+{
+	// TODO: implement this shizz.
+	return 0;
+}
+
+static void h2fmi_dma_cancel(uint32_t _channel)
+{
+	//cdma_cancel(_channel);
+	memset(&h2fmi_dma_state[_channel], 0, sizeof(h2fmi_dma_state_t));
+}
+
+static void h2fmi_store_810(h2fmi_struct_t *_fmi)
+{
+	SET_REG(H2FMI_UNK810(_fmi), 0x68);
+}
+
+static void h2fmi_set_address_inner(h2fmi_struct_t *_fmi, uint32_t _addr)
+{
+	SET_REG(H2FMI_UNK41C(_fmi), (_addr >> 16) & 0xFF);
+	SET_REG(H2FMI_UNKREG9(_fmi), ((_addr & 0xFF) << 16) || ((_addr >> 8) << 24));
+	SET_REG(H2FMI_UNKREG10(_fmi), 4);
+}
+
+static void h2fmi_set_address(h2fmi_struct_t *_fmi, uint32_t _addr)
+{
+	h2fmi_set_address_inner(_fmi, _addr);
+
+	SET_REG(H2FMI_UNKREG4(_fmi), 0x3000);
+	SET_REG(H2FMI_UNKREG5(_fmi), 0xB);
+
+	while(GET_REG(H2FMI_UNKREG5(_fmi)) & 0xB);
+	SET_REG(H2FMI_UNKREG5(_fmi), 0);
+}
+
+static void h2fmi_enable_and_set_address(h2fmi_struct_t *_fmi, uint16_t _bank,
+		uint16_t *_chips, uint32_t *_addrs)
+{
+	h2fmi_enable_chip(_fmi, _chips[_bank]);
+	h2fmi_set_address(_fmi, _addrs[_bank]);
+
+	_fmi->field_80 = _chips[_bank];
+	_fmi->field_15C++;
+}
+
+static void h2fmi_store_80c_810(h2fmi_struct_t *_fmi)
+{
+	SET_REG(H2FMI_UNK80C(_fmi), 1);
+	h2fmi_store_810(_fmi);
+}
+
+static void h2fmi_some_func(h2fmi_struct_t *_fmi)
+{
+	SET_REG(H2FMI_UNK440(_fmi), 0);
+	SET_REG(H2FMI_UNK10(_fmi), 0);
+	SET_REG(H2FMI_UNKREG6(_fmi), 0x31FFFF);
+	SET_REG(H2FMI_UNKC(_fmi), 0xF);
+}
+
+static void h2fmi_disable_and_some_func(h2fmi_struct_t *_fmi)
+{
+	h2fmi_some_func(_fmi);
+	h2fmi_disable_bus(_fmi);
+}
+
+static void h2fmi_set_ecc_bits(h2fmi_struct_t *_fmi, uint32_t _a)
+{
+	SET_REG(H2FMI_PAGE_SIZE(_fmi), _fmi->page_size);
+	SET_REG(H2FMI_ECC_BITS(_fmi), (_a & 0x1F) << 8);
+}
+
+static void h2fmi_some_time_function(h2fmi_struct_t *_fmi)
+{
+	if(GET_REG(H2FMI_UNK8(_fmi)) & 4)
+	{
+		if(timer_get_system_microtime() - _fmi->field_124 > _fmi->field_134)
+		{
+			_fmi->field_13C = 0;
+			_fmi->failure_details.overall_status = 0x8000001F;
+		}
+		else
+			return;
+	}
+	else
+	{
+		if(_fmi->field_78 >= _fmi->field_7C)
+		{
+			SET_REG(H2FMI_UNK810(_fmi), GET_REG(H2FMI_UNK810(_fmi)));
+			//h2fmi_some_mysterious_function(_fmi);
+		}
+		else
+		{
+			//h2fmi_another_function(_fmi);
+			_fmi->field_124 = timer_get_system_microtime();
+			_fmi->state.read_state = H2FMI_READ_2;
+			//h2fmi_yet_another_function(_fmi);
+			return;
+		}
+	}
+
+	_fmi->state.read_state = H2FMI_READ_DONE;
+	h2fmi_disable_and_some_func(_fmi);
+}
+
+static void h2fmi_some_read_func(h2fmi_struct_t *_fmi)
+{
+	uint32_t r5;
+
+	if(_fmi->field_140 == 0)
+		r5 = (_fmi->field_78 >= _fmi->field_7C)? 0: 1;
+	else
+	{
+		_fmi->field_140 = 0;
+		r5 = 0;
+
+		h2fmi_enable_and_set_address(_fmi, _fmi->field_78, _fmi->field_10C, _fmi->field_110);
+	}	
+
+	if(_fmi->field_78 < _fmi->field_7C)
+	{
+		if(_fmi->field_10C[_fmi->field_78 + 1] == _fmi->field_144)
+		{
+			_fmi->field_140 = 1;
+		}
+		else
+		{
+			_fmi->field_140 = 0;
+			h2fmi_enable_and_set_address(_fmi, _fmi->field_78, _fmi->field_10C, _fmi->field_110);
+
+			r5 = 1;
+		}
+
+		_fmi->field_144 = _fmi->field_10C[_fmi->field_78 + 1];
+	}
+
+	if(r5)
+	{
+		h2fmi_enable_chip(_fmi, _fmi->field_10C[_fmi->field_78]);
+		_fmi->field_80 = _fmi->field_10C[_fmi->field_78];
+	}
+
+	SET_REG(H2FMI_UNK10(_fmi), 0x2000);
+	_fmi->state.read_state = H2FMI_READ_4;
+	_fmi->field_124 = timer_get_system_microtime();
+
+	h2fmi_some_time_function(_fmi);
+}
+
+static uint32_t h2fmi_some_read_timing_thing(h2fmi_struct_t *_fmi)
+{
+	_fmi->field_15C = 0;
+	_fmi->field_170 = 0xFFFFFFFF;
+	_fmi->failure_details.overall_status = 0;
+
+	_fmi->field_12C = (clock_get_frequency(FrequencyBaseTimebase) / 1000000) * 2000000;
+	_fmi->field_134 = _fmi->field_12C / 4;
+
+	if(_fmi->state.state == H2FMI_STATE_READ)
+		h2fmi_set_ecc_bits(_fmi, 0xF);
+	else
+	{
+		h2fmi_set_ecc_bits(_fmi, _fmi->ecc_bits+1);
+		h2fmi_store_810(_fmi);
+	}
+
+	return 0;
+}
+
+static uint32_t h2fmi_read_idle_handler(h2fmi_struct_t *_fmi)
+{
+	_fmi->field_78 = 0;
+	_fmi->field_13C = 1;
+	_fmi->field_140 = 1;
+
+	_fmi->field_144 = *_fmi->field_10C;
+
+	h2fmi_some_read_timing_thing(_fmi);
+
+	_fmi->state.read_state = H2FMI_READ_1;
+
+	h2fmi_some_read_func(_fmi);
+	return 0;
+}
+
+static uint32_t h2fmi_read_state_machine(h2fmi_struct_t *_fmi)
+{
+	if(_fmi->state.state != H2FMI_STATE_READ)
+	{
+		bufferPrintf("fmi: read_state_machine called when not reading!\r\n");
+		return -1;
+	}
+
+	static uint32_t (*state_functions[])(h2fmi_struct_t *) =
+	{
+		h2fmi_read_idle_handler,
+	};
+
+	if(_fmi->state.read_state >= array_size(state_functions))
+	{
+		bufferPrintf("fmi: invalid read state!\r\n");
+		_fmi->state.read_state = H2FMI_READ_DONE;
+		return -1;
+	}
+
+	return state_functions[_fmi->state.read_state](_fmi);
+}
+
+int h2fmi_read_multi(h2fmi_struct_t *_fmi, uint16_t _1, uint16_t *_2, uint32_t *_3,
+		uint32_t _4, uint32_t _5, uint32_t _6, uint32_t _7)
+{
+	EnterCriticalSection();
+
+	_fmi->field_10C = _2;
+	_fmi->field_110 = _3;
+	_fmi->field_114 = _4;
+	_fmi->field_7C = _1;
+	_fmi->field_118 = _5;
+	_fmi->field_148 = _6;
+	_fmi->field_158 = _7;
+
+	_fmi->field_14C = 0;
+	_fmi->field_154 = 0;
+	_fmi->field_150 = 0;
+
+	h2fmi_device_reset(_fmi);
+
+	_fmi->state.state = H2FMI_STATE_READ;
+	_fmi->state.read_state = H2FMI_READ_IDLE;
+
+	LeaveCriticalSection();
+
+	h2fmi_store_80c_810(_fmi);
+
+	while(_fmi->state.read_state != H2FMI_READ_DONE)
+	{
+		EnterCriticalSection();
+		h2fmi_read_state_machine(_fmi);
+		LeaveCriticalSection();
+
+		task_yield();
+	}
+
+	if(_fmi->field_13C != 0)
+	{
+		if(h2fmi_dma_wait(_fmi->dma0, 2000000) != 0
+				|| h2fmi_dma_wait(_fmi->dma1, 2000000) != 0)
+		{
+			bufferPrintf("h2fmi: dma wait failed.\r\n");
+			return 1;
+		}
+	
+		_fmi->failure_details.overall_status = 1;
+	}
+	
+	h2fmi_dma_cancel(_fmi->dma0);
+	h2fmi_dma_cancel(_fmi->dma1);
+
+	_fmi->state.state = H2FMI_STATE_IDLE;
+
+	if(_fmi->failure_details.overall_status == 0)
+	{
+		bufferPrintf("h2fmi: overall_status is failure.\r\n");
+		return _fmi->failure_details.overall_status;
+	}
+
+	uint32_t a = _fmi->field_150;
+	uint32_t b = _fmi->field_14C;
+
+	if(_fmi->failure_details.overall_status == 1)
+	{
+		if(b != 0)
+		{
+			_fmi->failure_details.overall_status = b > _1? 2 : 0x80000023;
+		}
+		else
+		{
+			if(a != 0)
+			{
+				_fmi->failure_details.overall_status  = a > _1? 0x80000025: 0x80000024;
+			}
+			else if(_fmi->field_154 != 0)
+			{
+				_fmi->failure_details.overall_status = 0x80000024;
+			}
+		}
+	}
+	
+	h2fmi_some_func(_fmi);
+
+	return 0;
+}
+
+void h2fmi_read_raw_page(h2fmi_struct_t *_fmi, uint32_t _chip, uint32_t _page)
+{
+}
+
+uint8_t h2fmi_calculate_ecc_bits(h2fmi_struct_t *_fmi)
+{
+	uint32_t val = (_fmi->some_ecc_field - _fmi->some_ecc_field2) / (_fmi->some_ecc_field3 >> 9);
+	static uint8_t some_array[] = { 0x1A, 0x10, 0xD, 0x8 };
+
+	int i;
+	for(i = 0; i < sizeof(some_array)/sizeof(uint8_t); i += 2)
+	{
+		if(val >= some_array[i])
+			return some_array[i+1];
+	}
+
+	bufferPrintf("h2fmi: calculating ecc bits failed (0x%08x, 0x%08x, 0x%08x) -> 0x%08x.\r\n",
+			_fmi->some_ecc_field, _fmi->some_ecc_field2, _fmi->some_ecc_field3, val);
+	return 0;
+}
+
+static uint32_t h2fmi_config_sectors_to_page_size(h2fmi_struct_t *_fmi)
+{
+	uint32_t r5 = (_fmi->ecc_bits == 0x10)? 0x4000 : 0;
+	uint32_t r4 = _fmi->some_ecc_field2 & 0x3f;
+	int32_t ps;
+
+	switch(_fmi->field_18)
+	{
+	case 1:
+		ps = 3;
+		break;
+
+	case 4:
+		ps = 0;
+		break;
+
+	case 8:
+		ps = 1;
+		break;
+
+	case 16:
+		ps = 2;
+		break;
+
+	default:
+		{
+			bufferPrintf("h2fmi: Unsupported page size %d.\r\n", _fmi->field_18);
+			ps = -1;
+		}
+		break;
+	}
+
+	return (r4 << 2) | (r4 << 8) | 0x60000 | r5 | ps;
+}
+
+static int64_t s64_rem(int64_t _a, int64_t _b)
+{
+	return _a - ((_a/_b)*_b);
+}
+
+static int64_t some_math_fn(uint8_t _a, uint8_t _b)
+{
+	uint32_t b = ((s64_rem(_b, _a) & 0xFF)? 1 : 0) + (_b/_a);
+
+	if(b == 0)
+		return 0;
+
+	return b - 1;
+}
+
+static uint32_t h2fmi_setup_timing(h2fmi_timing_setup_t *_timing, uint8_t *_buffer)
+{
+	int64_t smth = (1000000000L / ((int64_t)_timing->freq / 1000)) / 1000;
+	uint8_t r1 = (uint8_t)(_timing->q + _timing->g);
+
+	uint32_t var_28 = some_math_fn(smth, _timing->q + _timing->g);
+
+	uint32_t var_2C;
+	if(_timing->p <= var_28 * smth)
+		var_2C = 0;
+	else
+		var_2C = _timing->p - (var_28 * smth);
+
+	_buffer[0] = some_math_fn(smth, _timing->k + _timing->g);
+
+	uint32_t some_time = (_buffer[0] + 1) * smth;
+
+	uint32_t r3 = _timing->m + _timing->h + _timing->g;
+	r1 = MAX(_timing->j, r3);
+	
+	uint32_t lr = (some_time < r1)? r1 - some_time: 0;
+	uint32_t r4 = (some_time < r3)? r1 - some_time: 0;
+
+	_buffer[1] = some_math_fn(smth, MAX(_timing->l + _timing->f, lr));
+	_buffer[2] = (((smth + r4 - 1) / smth) * smth) / smth;
+	_buffer[3] = var_28;
+	_buffer[4] = some_math_fn(smth, MAX(_timing->f + _timing->r, var_2C));
+
+	return 0;
+}
+
+static void h2fmi_init_virtual_physical_map()
+{
+	memset(h2fmi_map, 0xFF, sizeof(h2fmi_map));
+
+	uint32_t count[H2FMI_BUS_COUNT];
+	memset(count, 0, sizeof(count));
+
+	uint16_t total = 0;
+	uint32_t bus;
+	for(bus = 0; bus < H2FMI_BUS_COUNT; bus++)
+		total += fmi_busses[bus]->num_chips;
+
+	uint32_t chip = 0;
+	for(chip = 0; chip < total;)
+	{
+		for(bus = 0; bus < H2FMI_BUS_COUNT; bus++)
+		{
+			h2fmi_struct_t *fmi = fmi_busses[bus];
+			if(fmi->bitmap & (1 << count[bus]))
+			{
+				h2fmi_map_entry_t *e = &h2fmi_map[chip];
+				e->bus = bus;
+				e->chip = count[bus];
+
+				fmi->field_182 = bus;
+				
+				chip++;
+			}
+
+			count[bus]++;
+		}
+	}
+}
+
 void h2fmi_init()
 {
+	memset(h2fmi_dma_state, 0, sizeof(h2fmi_dma_state));
 	h2fmi_init_bus(&fmi0);
 	h2fmi_init_bus(&fmi1);
 
@@ -535,7 +1032,113 @@ void h2fmi_init()
 			busses[i] = &fmi0;
 	}
 
-	nand_info_t *info = h2fmi_nand_find_info(buff1, busses, (fmi0.num_chips > 0) + (fmi1.num_chips > 0));
+	int bus_count = (fmi0.num_chips > 0) + (fmi1.num_chips > 0);
+	nand_info_t *info = h2fmi_nand_find_info(buff1, busses, bus_count);
+
+	for(i = 0; i < sizeof(fmi_busses)/sizeof(h2fmi_struct_t*); i++)
+	{
+		h2fmi_struct_t *fmi = fmi_busses[i];
+		if(fmi)
+		{
+			fmi->field_10 = 0;
+			fmi->field_20 = info->chip_info->unk1;
+			fmi->field_24 = 1;
+			fmi->field_18 = info->chip_info->unk3 >> 9;
+			fmi->field_14 = info->chip_info->unk2;
+			fmi->some_ecc_field = info->chip_info->unk4;
+			fmi->some_ecc_field2 = info->some_array[1];
+			fmi->field_28 = info->some_array[0];
+			fmi->some_ecc_field3 = info->chip_info->unk3;
+			fmi->field_34 = info->chip_info->unk9;
+
+			uint8_t ecc_bits = h2fmi_calculate_ecc_bits(fmi);
+			fmi->ecc_bits = ecc_bits;
+
+			if(ecc_bits > 8)
+			{
+				int8_t z = (((uint64_t)ecc_bits << 3) * 0x66666667) >> 34;
+				fmi->ecc_tag = z;
+			}
+			else
+				fmi->ecc_tag = 8;
+
+			fmi->page_size = h2fmi_config_sectors_to_page_size(fmi);
+		}
+	}
+
+	h2fmi_timing_setup_t timing_setup;
+	memset(&timing_setup, 0, sizeof(timing_setup));
+
+	uint32_t nand_freq = clock_get_frequency(FrequencyNand);
+
+	timing_setup.freq = nand_freq;
+	timing_setup.f = info->some_mask->some_array[3];
+	timing_setup.g = info->some_mask->some_array[4];
+	timing_setup.h = info->some_mask->some_array[5];
+	timing_setup.i = info->some_mask->some_array[6];
+	timing_setup.j = info->timing_info->unk4;
+	timing_setup.k = info->timing_info->unk5;
+	timing_setup.l = info->timing_info->unk6;
+	timing_setup.m = info->timing_info->unk7;
+	timing_setup.n = info->timing_info->unk8;
+
+	timing_setup.o = 0;
+
+	timing_setup.p = info->timing_info->unk1;
+	timing_setup.q = info->timing_info->unk2;
+	timing_setup.r = info->timing_info->unk3;
+
+	uint8_t timing_info[5];
+	if(h2fmi_setup_timing(&timing_setup, timing_info))
+	{
+		bufferPrintf("h2fmi: Failed to setup timing array.\r\n");
+	}
+
+	// At this point an epic structure is memset'd 
+	// and initialized. I'm avoiding it. -- Ricky26
+
+	for(i = 0; i < sizeof(fmi_busses)/sizeof(h2fmi_struct_t*); i++)
+	{
+		h2fmi_struct_t *fmi = fmi_busses[i];
+		if(fmi)
+		{
+			uint32_t tVal = (timing_info[4] & 0xF)
+							| ((timing_info[3] & 0xF) << 4)
+							| ((timing_info[1] & 0xF) << 8)
+							| ((timing_info[0] & 0xF) << 12)
+							| ((timing_info[2] & 0xF) << 16);
+			bufferPrintf("fmi: bus %d, new tval = 0x%08x\r\n", fmi->bus_num, tVal);
+			fmi->timing_register_cache_408 = tVal;
+			SET_REG(H2FMI_UNKREG1(fmi), tVal);
+		}
+	}
+
+	h2fmi_init_virtual_physical_map();
+
+	for(i = 0; i < array_size(h2fmi_map); i++)
+	{
+		h2fmi_map_entry_t *e = &h2fmi_map[i];
+		bufferPrintf("fmi: Map %d: %d, %d.\r\n", i, e->bus, e->chip);
+	}
+
+	// This is a very simple PRNG with
+	// a preset seed. What are you
+	// up to Apple? -- Ricky26
+	uint32_t val = 0x50F4546A;
+	i = 0;
+	do
+	{
+		val = (0x19660D * val) + 0x3C6EF35F;
+
+		int j = 1;
+		do
+		{
+			val = (0x19660D * val) + 0x3C6EF35F;
+			j++;
+		} while(j < 763);
+
+		h2fmi_hash_table[i] = val;
+	} while(i < 1024);
 
 	if(info)
 		free(info);
