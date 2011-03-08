@@ -27,5 +27,9 @@
 #define H2FMI_UNK810(x)		(H2FMI_REG(x, 0x810))
 #define H2FMI_UNK10(x)		(H2FMI_REG(x, 0x10))
 #define H2FMI_UNKC(x)		(H2FMI_REG(x, 0xC))
+#define H2FMI_UNK8(x)		(H2FMI_REG(x, 0x8))
+#define H2FMI_PAGE_SIZE(x)	(H2FMI_REG(x, 0x0))
+#define H2FMI_ECC_BITS(x)	(H2FMI_REG(x, 0x808))
+#define H2FMI_UNK41C(x)		(H2FMI_REG(x, 0x41C))
 
 #endif //HW_H2FMI_H

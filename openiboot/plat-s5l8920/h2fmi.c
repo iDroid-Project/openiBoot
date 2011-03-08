@@ -203,12 +203,16 @@ static h2fmi_struct_t fmi0 = {
 	.bus_num = 0,
 	.base_address = H2FMI0_BASE,
 	.clock_gate = H2FMI0_CLOCK_GATE,
+	.dma0 = 5,
+	.dma1 = 6,
 };
 
 static h2fmi_struct_t fmi1 = {
 	.bus_num = 1,
 	.base_address = H2FMI1_BASE,
 	.clock_gate = H2FMI1_CLOCK_GATE,
+	.dma0 = 7,
+	.dma1 = 8,
 };
 
 static h2fmi_struct_t *fmi_busses[] = {
@@ -318,8 +322,13 @@ static void h2fmi_enable_chip(h2fmi_struct_t *_fmi, uint8_t _chip)
 static void h2fmi_disable_chip(uint8_t _chip)
 {
 	h2fmi_struct_t *fmi = (_chip & 0x8) ? &fmi1: &fmi0;
-	uint32_t maskReg = H2FMI_CHIP_MASK(fmi);
-	SET_REG(maskReg, GET_REG(maskReg) &~ (1 << (_chip & 0x7)));
+	SET_REG(H2FMI_CHIP_MASK(fmi),
+			H2FMI_CHIP_MASK(fmi) &~ (1 << (_chip & 0x7)));
+}
+
+static void h2fmi_disable_bus(h2fmi_struct_t *_fmi)
+{
+	SET_REG(H2FMI_CHIP_MASK(_fmi), 0);
 }
 
 static int h2fmi_init_bus(h2fmi_struct_t *_fmi)
@@ -581,6 +590,34 @@ static void h2fmi_store_810(h2fmi_struct_t *_fmi)
 	SET_REG(H2FMI_UNK810(_fmi), 0x68);
 }
 
+static void h2fmi_set_address_inner(h2fmi_struct_t *_fmi, uint32_t _addr)
+{
+	SET_REG(H2FMI_UNK41C(_fmi), (_addr >> 16) & 0xFF);
+	SET_REG(H2FMI_UNKREG9(_fmi), ((_addr & 0xFF) << 16) || ((_addr >> 8) << 24));
+	SET_REG(H2FMI_UNKREG10(_fmi), 4);
+}
+
+static void h2fmi_set_address(h2fmi_struct_t *_fmi, uint32_t _addr)
+{
+	h2fmi_set_address_inner(_fmi, _addr);
+
+	SET_REG(H2FMI_UNKREG4(_fmi), 0x3000);
+	SET_REG(H2FMI_UNKREG5(_fmi), 0xB);
+
+	while(GET_REG(H2FMI_UNKREG5(_fmi)) & 0xB);
+	SET_REG(H2FMI_UNKREG5(_fmi), 0);
+}
+
+static void h2fmi_enable_and_set_address(h2fmi_struct_t *_fmi, uint16_t _bank,
+		uint16_t *_chips, uint32_t *_addrs)
+{
+	h2fmi_enable_chip(_fmi, _chips[_bank]);
+	h2fmi_set_address(_fmi, _addrs[_bank]);
+
+	_fmi->field_80 = _chips[_bank];
+	_fmi->field_15C++;
+}
+
 static void h2fmi_store_80c_810(h2fmi_struct_t *_fmi)
 {
 	SET_REG(H2FMI_UNK80C(_fmi), 1);
@@ -595,7 +632,155 @@ static void h2fmi_some_func(h2fmi_struct_t *_fmi)
 	SET_REG(H2FMI_UNKC(_fmi), 0xF);
 }
 
-int h2fmi_read_multi(h2fmi_struct_t *_fmi, uint16_t _1, uint32_t _2, uint32_t _3,
+static void h2fmi_disable_and_some_func(h2fmi_struct_t *_fmi)
+{
+	h2fmi_some_func(_fmi);
+	h2fmi_disable_bus(_fmi);
+}
+
+static void h2fmi_set_ecc_bits(h2fmi_struct_t *_fmi, uint32_t _a)
+{
+	SET_REG(H2FMI_PAGE_SIZE(_fmi), _fmi->page_size);
+	SET_REG(H2FMI_ECC_BITS(_fmi), (_a & 0x1F) << 8);
+}
+
+static void h2fmi_some_time_function(h2fmi_struct_t *_fmi)
+{
+	if(GET_REG(H2FMI_UNK8(_fmi)) & 4)
+	{
+		if(timer_get_system_microtime() - _fmi->field_124 > _fmi->field_134)
+		{
+			_fmi->field_13C = 0;
+			_fmi->failure_details.overall_status = 0x8000001F;
+		}
+		else
+			return;
+	}
+	else
+	{
+		if(_fmi->field_78 >= _fmi->field_7C)
+		{
+			SET_REG(H2FMI_UNK810(_fmi), GET_REG(H2FMI_UNK810(_fmi)));
+			//h2fmi_some_mysterious_function(_fmi);
+		}
+		else
+		{
+			//h2fmi_another_function(_fmi);
+			_fmi->field_124 = timer_get_system_microtime();
+			_fmi->state.read_state = H2FMI_READ_2;
+			//h2fmi_yet_another_function(_fmi);
+			return;
+		}
+	}
+
+	_fmi->state.read_state = H2FMI_READ_DONE;
+	h2fmi_disable_and_some_func(_fmi);
+}
+
+static void h2fmi_some_read_func(h2fmi_struct_t *_fmi)
+{
+	uint32_t r5;
+
+	if(_fmi->field_140 == 0)
+		r5 = (_fmi->field_78 >= _fmi->field_7C)? 0: 1;
+	else
+	{
+		_fmi->field_140 = 0;
+		r5 = 0;
+
+		h2fmi_enable_and_set_address(_fmi, _fmi->field_78, _fmi->field_10C, _fmi->field_110);
+	}	
+
+	if(_fmi->field_78 < _fmi->field_7C)
+	{
+		if(_fmi->field_10C[_fmi->field_78 + 1] == _fmi->field_144)
+		{
+			_fmi->field_140 = 1;
+		}
+		else
+		{
+			_fmi->field_140 = 0;
+			h2fmi_enable_and_set_address(_fmi, _fmi->field_78, _fmi->field_10C, _fmi->field_110);
+
+			r5 = 1;
+		}
+
+		_fmi->field_144 = _fmi->field_10C[_fmi->field_78 + 1];
+	}
+
+	if(r5)
+	{
+		h2fmi_enable_chip(_fmi, _fmi->field_10C[_fmi->field_78]);
+		_fmi->field_80 = _fmi->field_10C[_fmi->field_78];
+	}
+
+	SET_REG(H2FMI_UNK10(_fmi), 0x2000);
+	_fmi->state.read_state = H2FMI_READ_4;
+	_fmi->field_124 = timer_get_system_microtime();
+
+	h2fmi_some_time_function(_fmi);
+}
+
+static uint32_t h2fmi_some_read_timing_thing(h2fmi_struct_t *_fmi)
+{
+	_fmi->field_15C = 0;
+	_fmi->field_170 = 0xFFFFFFFF;
+	_fmi->failure_details.overall_status = 0;
+
+	_fmi->field_12C = (clock_get_frequency(FrequencyBaseTimebase) / 1000000) * 2000000;
+	_fmi->field_134 = _fmi->field_12C / 4;
+
+	if(_fmi->state.state == H2FMI_STATE_READ)
+		h2fmi_set_ecc_bits(_fmi, 0xF);
+	else
+	{
+		h2fmi_set_ecc_bits(_fmi, _fmi->ecc_bits+1);
+		h2fmi_store_810(_fmi);
+	}
+
+	return 0;
+}
+
+static uint32_t h2fmi_read_idle_handler(h2fmi_struct_t *_fmi)
+{
+	_fmi->field_78 = 0;
+	_fmi->field_13C = 1;
+	_fmi->field_140 = 1;
+
+	_fmi->field_144 = *_fmi->field_10C;
+
+	h2fmi_some_read_timing_thing(_fmi);
+
+	_fmi->state.read_state = H2FMI_READ_1;
+
+	h2fmi_some_read_func(_fmi);
+	return 0;
+}
+
+static uint32_t h2fmi_read_state_machine(h2fmi_struct_t *_fmi)
+{
+	if(_fmi->state.state != H2FMI_STATE_READ)
+	{
+		bufferPrintf("fmi: read_state_machine called when not reading!\r\n");
+		return -1;
+	}
+
+	static uint32_t (*state_functions[])(h2fmi_struct_t *) =
+	{
+		h2fmi_read_idle_handler,
+	};
+
+	if(_fmi->state.read_state >= array_size(state_functions))
+	{
+		bufferPrintf("fmi: invalid read state!\r\n");
+		_fmi->state.read_state = H2FMI_READ_DONE;
+		return -1;
+	}
+
+	return state_functions[_fmi->state.read_state](_fmi);
+}
+
+int h2fmi_read_multi(h2fmi_struct_t *_fmi, uint16_t _1, uint16_t *_2, uint32_t *_3,
 		uint32_t _4, uint32_t _5, uint32_t _6, uint32_t _7)
 {
 	EnterCriticalSection();
@@ -611,34 +796,29 @@ int h2fmi_read_multi(h2fmi_struct_t *_fmi, uint16_t _1, uint32_t _2, uint32_t _3
 	_fmi->field_14C = 0;
 	_fmi->field_154 = 0;
 	_fmi->field_150 = 0;
-	_fmi->field_70 = 0;
 
 	h2fmi_device_reset(_fmi);
 
-	_fmi->field_6C = 1;
+	_fmi->state.state = H2FMI_STATE_READ;
+	_fmi->state.read_state = H2FMI_READ_IDLE;
 
 	LeaveCriticalSection();
 
 	h2fmi_store_80c_810(_fmi);
 
-	do
+	while(_fmi->state.read_state != H2FMI_READ_DONE)
 	{
-		if(_fmi->field_70 == 5)
-			break;
-
 		EnterCriticalSection();
-
-		//h2fmi_read_state_machine(_fmi);
-
+		h2fmi_read_state_machine(_fmi);
 		LeaveCriticalSection();
+
 		task_yield();
 	}
-	while(_fmi->field_70 != 5);
 
 	if(_fmi->field_13C != 0)
 	{
-		if(h2fmi_dma_wait(_fmi == &fmi0 ? 5 : 7, 2000000) != 0
-				|| h2fmi_dma_wait(_fmi == &fmi0 ? 6 : 8, 2000000) != 0)
+		if(h2fmi_dma_wait(_fmi->dma0, 2000000) != 0
+				|| h2fmi_dma_wait(_fmi->dma1, 2000000) != 0)
 		{
 			bufferPrintf("h2fmi: dma wait failed.\r\n");
 			return 1;
@@ -647,8 +827,10 @@ int h2fmi_read_multi(h2fmi_struct_t *_fmi, uint16_t _1, uint32_t _2, uint32_t _3
 		_fmi->failure_details.overall_status = 1;
 	}
 	
-	h2fmi_dma_cancel(_fmi == &fmi0 ? 5 : 7);
-	h2fmi_dma_cancel(_fmi == &fmi0 ? 6 : 8);
+	h2fmi_dma_cancel(_fmi->dma0);
+	h2fmi_dma_cancel(_fmi->dma1);
+
+	_fmi->state.state = H2FMI_STATE_IDLE;
 
 	if(_fmi->failure_details.overall_status == 0)
 	{
@@ -656,7 +838,6 @@ int h2fmi_read_multi(h2fmi_struct_t *_fmi, uint16_t _1, uint32_t _2, uint32_t _3
 		return _fmi->failure_details.overall_status;
 	}
 
-	_fmi->field_6C = 0;
 	uint32_t a = _fmi->field_150;
 	uint32_t b = _fmi->field_14C;
 
