@@ -94,7 +94,7 @@ typedef struct _h2fmi_struct
 	dmaAES *aes_info; // 64
 	uint32_t aes_enabled; // 68
 	h2fmi_state_t state; // 6C
-	uint32_t current_chip_index; // 78
+	uint32_t current_page_index; // 78
 	uint32_t num_pages_to_read;
 	uint32_t field_80;
 	uint32_t field_100;

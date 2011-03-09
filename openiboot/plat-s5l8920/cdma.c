@@ -428,6 +428,8 @@ void dmaIRQHandler(uint32_t token) {
 	uint32_t channel_reg = channel << 12;
 	DMAInfo* dma = &dmaInfo[channel];
 
+	GET_REG(DMA + channel_reg);
+
 	if (GET_REG(DMA + channel_reg) & 0x40000)
 		system_panic("CDMA: channel %d error interrupt\r\n", channel);
 
@@ -460,7 +462,7 @@ void dmaIRQHandler(uint32_t token) {
 		dma->signalled = 1;
 		dma_set_aes(channel, 0);
 
-		SET_REG(DMA + channel_reg, 0);
+		bufferPrintf("cdma: intsts 0x%08x\r\n", GET_REG(DMA + channel_reg));
 
 		dma_channel_activate(channel, 0);
 
