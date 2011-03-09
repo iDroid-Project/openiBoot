@@ -15,7 +15,8 @@
 #define LargeMemoryStart 0x50000000
 
 #define RAMStart 	0x40000000
-#define RAMEnd		(RAMStart + (0x100*(MMU_SECTION_SIZE)))
+#define RAMSize		(0x100*(MMU_SECTION_SIZE))
+#define RAMEnd		(RAMStart + RAMSize)
 #define HiMemStart 	0xC0000000
 #define HiMemEnd	(HiMemStart + (0x400*(MMU_SECTION_SIZE)))
 
@@ -36,7 +37,8 @@
 
 #define AMC0Map			0x84000000
 #define AMC0Start		0x84800000
-#define AMC0End			(AMC0Start + (0x8*(MMU_SECTION_SIZE)))
+#define AMC0Size		(0x8*(MMU_SECTION_SIZE))
+#define AMC0End			(AMC0Start + AMC0Size)
 
 #define WDT_CTRL 0x3E300000
 #define WDT_CNT 0x3E300004

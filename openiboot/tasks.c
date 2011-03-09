@@ -182,7 +182,7 @@ void tasks_run()
 	}
 }
 
-void task_wake(Event *_evt, void *_obj)
+void task_wake_event(Event *_evt, void *_obj)
 {
 	TaskDescriptor *task = _obj;
 	//bufferPrintf("tasks: Resuming sleeping task %p.\n", task);
@@ -216,10 +216,51 @@ int task_sleep(int _ms)
 
 	//bufferPrintf("tasks: Putting task %p to sleep for %d ms.\n", task, _ms);
 	task_remove(task);
-	event_add(&task->sleepEvent, ticks, &task_wake, task);
+	event_add(&task->sleepEvent, ticks, &task_wake_event, task);
 	SwapTask(next);
 
 	LeaveCriticalSection();
 
 	return 0;
+}
+
+void task_suspend()
+{
+	EnterCriticalSection();
+
+	TaskDescriptor *next = CurrentRunning->taskList.next;
+	if(next == CurrentRunning)
+	{
+		LeaveCriticalSection();
+
+		bufferPrintf("tasks: Last task cannot be suspended!\r\n");
+		return;
+	}
+
+	task_remove(CurrentRunning);
+	SwapTask(next);
+	LeaveCriticalSection();
+}
+
+void task_wait()
+{
+	CurrentRunning->wasWoken = 0;
+	task_suspend();
+}
+
+int task_wait_timeout(int _ms)
+{
+	CurrentRunning->wasWoken = 0;
+	task_sleep(_ms);
+
+	return CurrentRunning->wasWoken;
+}
+
+void task_wake(TaskDescriptor *_task)
+{
+	EnterCriticalSection();
+	_task->wasWoken = 1;
+	task_add_after(_task, CurrentRunning);
+	SwapTask(_task);
+	LeaveCriticalSection();
 }
