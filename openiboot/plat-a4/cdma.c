@@ -410,20 +410,25 @@ void dmaIRQHandler(uint32_t token) {
 	uint32_t wholeSegment;
 	uint32_t currentSegment;
 	uint8_t segmentId;
+	uint32_t status;
 	int channel = token;
 	uint32_t channel_reg = channel << 12;
 	DMAInfo* dma = &dmaInfo[channel];
 
-	if (GET_REG(DMA + channel_reg) & 0x40000)
+	GET_REG(DMA + channel_reg);
+	status = GET_REG(DMA + channel_reg);
+
+	if (status & 0x40000)
 		system_panic("CDMA: channel %d error interrupt, error status 0x%0x\r\n", channel, GET_REG(DMA + DMA_INTERRUPT_ERROR + channel_reg));
 
-	if (GET_REG(DMA + channel_reg) & 0x100000)
+	if (status & 0x100000)
 		system_panic("CDMA: channel %d spurious CIR\r\n", channel);
 
 	SET_REG(DMA + channel_reg, 0x80000);
 
 	if (dma->unsegmentedSize || GET_REG(DMA + DMA_SIZE + channel_reg)) {
 		if (GET_REG(DMA + channel_reg) & 0x30000) {
+			GET_REG(DMA + channel_reg);
 			dma->unsegmentedSize = GET_REG(DMA + DMA_SIZE + channel_reg) + dma->unsegmentedSize;
 			wholeSegment = dma->previousUnsegmentedSize - dma->unsegmentedSize;
 
