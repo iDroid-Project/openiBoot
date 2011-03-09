@@ -706,7 +706,7 @@ static uint32_t h2fmi_read_state_2_handler(h2fmi_struct_t *_fmi)
 
 		SET_REG(H2FMI_UNKREG4(_fmi), 0);
 		SET_REG(H2FMI_UNKREG5(_fmi), 1);
-		while(GET_REG(H2FMI_UNKREG6(_fmi)) == 0); // should this be != 0?
+		while(!(GET_REG(H2FMI_UNKREG6(_fmi)) & 1));
 
 		_fmi->state.read_state = H2FMI_READ_3;
 		SET_REG(H2FMI_UNK10(_fmi), 2);
