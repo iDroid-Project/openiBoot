@@ -13,7 +13,7 @@ typedef struct dmaAES {
 int dma_setup();
 signed int dma_init_channel(uint8_t direction, uint32_t channel, int segmentationSetting,
 		uint32_t txrx_register, uint32_t size, uint32_t Setting1Index, uint32_t Setting2Index, void* handler);
-int dma_continue_async(int channel);
+void dma_continue_async(int channel);
 int dma_set_aes(int channel, dmaAES* dmaAESInfo);
 int dma_cancel(int channel);
 

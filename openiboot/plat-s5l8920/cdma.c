@@ -66,7 +66,7 @@ static DMAInfo dmaInfo[32];
 static uint32_t dmaAES_channel_used = 0;
 
 static void dmaIRQHandler(uint32_t token);
-int dma_continue_async(int channel);
+void dma_continue_async(int channel);
 
 int dma_setup() {
 	clock_gate_switch(0x25, ON);
@@ -75,19 +75,7 @@ int dma_setup() {
 }
 
 int dma_channel_activate(int channel, uint32_t activate) {
-	uint32_t status;
-	uint32_t cmask;
-
-	cmask = 1 << channel;
-	status = GET_REG(DMA + DMA_STATUS) & cmask;
-	if (status != activate) {
-		if (activate)
-			SET_REG(DMA, cmask);
-		else
-			SET_REG(DMA + DMA_OFF, cmask);
-	}
-
-	return status;
+	return 0;
 }
 
 signed int dma_init_channel(uint8_t direction, uint32_t channel, int segmentationSetting, uint32_t txrx_register, uint32_t size, uint32_t Setting1Index, uint32_t Setting2Index, void* handler) {
@@ -184,6 +172,8 @@ signed int dma_init_channel(uint8_t direction, uint32_t channel, int segmentatio
 			return -1;
 	}
 
+	EnterCriticalSection();
+
 	uint32_t channel_reg = channel << 12;
 	SET_REG(DMA + channel_reg, 2);
 
@@ -201,10 +191,12 @@ signed int dma_init_channel(uint8_t direction, uint32_t channel, int segmentatio
 		dma->dmaAES_setting2 = 0;
 
 	dma_continue_async(channel);
+
+	LeaveCriticalSection();
 	return 0;
 }
 
-int dma_continue_async(int channel) {
+void dma_continue_async(int channel) {
 
 	bufferPrintf("cdma: continue_async.\r\n");
 
@@ -213,12 +205,16 @@ int dma_continue_async(int channel) {
 	uint32_t segmentLength;
 	uint32_t value;
 	DMAInfo* dma = &dmaInfo[channel];
+
 	if (!dma->unsegmentedSize)
 		system_panic("CDMA: ASSERT FAILED\r\n");
+
 	dma->previousUnsegmentedSize = dma->unsegmentedSize;
 	dma->previousDmaSegmentNumber = dma->dmaSegmentNumber;
 	dma->previousSegmentOffset = dma->segmentOffset;
-	if (dma->dmaAESInfo) {
+
+	if (dma->dmaAESInfo)
+	{
 		endOffset = dma->segmentationSetting + 8 * dma->dmaSegmentNumber;
 		for (segmentId = 0; segmentId != 28; segmentId++) {
 			if (!dma->unsegmentedSize)
@@ -304,14 +300,12 @@ int dma_continue_async(int channel) {
 		value |= (dma->dmaAES_channel << 8);
 
 	SET_REG(DMA + channel_reg, value);
-
-	return (DMA + channel_reg);
 }
 
 int dma_set_aes(int channel, dmaAES* dmaAESInfo) {
-	bufferPrintf("cdma: set_aes.\r\n");
+	//bufferPrintf("cdma: set_aes.\r\n");
 
-        DMAInfo* dma = &dmaInfo[channel];
+    DMAInfo* dma = &dmaInfo[channel];
 	int result = (int)dmaAESInfo;
 	uint32_t value;
 	int i;
@@ -323,18 +317,21 @@ int dma_set_aes(int channel, dmaAES* dmaAESInfo) {
 
 	int activation = dma_channel_activate(channel, 1);
 
-	if (!dma->dmaAES_channel) {
+	if (!dma->dmaAES_channel)
+	{
 		EnterCriticalSection();
 		for (i = 2; i < 9; i++) {
 			if (dmaAES_channel_used & (1 << i))
 				continue;
-			dmaAES_channel_used &= (1 << i);
+
+			dmaAES_channel_used |= (1 << i);
 			dma->dmaAES_channel = i;
+			break;
 		}
 		LeaveCriticalSection();
 
 		if (!dma->dmaAES_channel)
-			system_panic("CDMA: no AES filter contexts: 0x%08x", dmaAES_channel_used);
+			system_panic("CDMA: no AES filter contexts: 0x%08x\r\n", dmaAES_channel_used);
 	}
 
 	int dmaAES_channel_reg = dma->dmaAES_channel << 12;
@@ -407,12 +404,14 @@ int dma_cancel(int channel) {
 
 	uint32_t channel_reg = DMA + (channel << 12);
 	if (GET_BITS(GET_REG(channel_reg), 16, 2) == 1) {
-		SET_REG(channel_reg, 2);
+		SET_REG(channel_reg, 4);
 
 		while (GET_BITS(GET_REG(channel_reg), 16, 2) == 1) {
 			if (has_elapsed(startTime, 10000))
 				system_panic("CDMA: channel %d timeout during abort\r\n", channel);
 		}
+
+		SET_REG(channel_reg, 2);
 	}
 
 	dma->signalled = 1;
@@ -430,7 +429,7 @@ void dmaIRQHandler(uint32_t token) {
 	DMAInfo* dma = &dmaInfo[channel];
 
 	if (GET_REG(DMA + channel_reg) & 0x40000)
-		system_panic("CDMA: channel %d error interrupt, error status 0x%0x\r\n", channel, GET_REG(DMA + DMA_INTERRUPT_ERROR + channel_reg));
+		system_panic("CDMA: channel %d error interrupt\r\n", channel);
 
 	if (GET_REG(DMA + channel_reg) & 0x100000)
 		system_panic("CDMA: channel %d spurious CIR\r\n", channel);
@@ -460,6 +459,8 @@ void dmaIRQHandler(uint32_t token) {
 	} else {
 		dma->signalled = 1;
 		dma_set_aes(channel, 0);
+
+		SET_REG(DMA + channel_reg, 0);
 
 		dma_channel_activate(channel, 0);
 

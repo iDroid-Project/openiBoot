@@ -12,6 +12,10 @@
 .global ExceptionStackEnd
 .global OpenIBootEnd
 
+.global CurrentRunning
+.global IRQTask
+.global IRQBackupTask
+
 .text
 
 //
@@ -350,7 +354,22 @@ HandleIRQ_prepareHandler:
 	LDR	R0, [R6,#InterruptHandler.token]
 
 HandleIRQ_callHandler:
+	LDR R6, =CurrentRunning
+	LDR R1, [R6]
+	LDR R6, =IRQBackupTask
+	STR R1, [R6]
+
+	LDR R6, =IRQTask
+	LDR R1, [R6]
+	LDR R6, =CurrentRunning
+	STR R1, [R6]
+	
 	BLX	R2
+
+	LDR R6, =IRQBackupTask
+	LDR R1, [R6]
+	LDR R6, =CurrentRunning
+	STR R1, [R6]
 
 HandleIRQ_doneWithInterrupt:
 	MOV	R3, #1
