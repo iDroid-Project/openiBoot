@@ -11,7 +11,7 @@ static void initialize_pagetable();
 static PhysicalAddressMap PhysicalAddressMapping[] = {
     {0x0,        0xFFFFFFFF, RAMStart, RAMSize},
     {0x40000000, 0xFFFFFFFF, RAMStart, RAMSize},
-    {AMC0Map,        0xFFFFFFFF, AMC0SStart, AMC0Size},
+    {AMC0Map,        0xFFFFFFFF, AMC0Start, AMC0Size},
 
 	{0x84000000, 0xFFFFFFFF, 0x84000000, 0x400000},
 	{0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0},
