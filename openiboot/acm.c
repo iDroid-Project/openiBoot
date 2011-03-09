@@ -173,16 +173,7 @@ static void acm_parse(int32_t _amt)
 
 static void acm_received(uint32_t _tkn, int32_t _amt)
 {
-	int attempts;
-	for(attempts = 0; attempts < 5; attempts++)
-	{
-		if(task_start(&acm_parse_task, &acm_parse, (void*)_amt))
-			break;
-
-		bufferPrintf("ACM: Worker already running, yielding...\n");
-
-		task_yield();
-	}
+	task_start(&acm_parse_task, &acm_parse, (void*)_amt);
 }
 
 static void acm_sent(uint32_t _tkn, int32_t _amt)

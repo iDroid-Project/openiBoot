@@ -602,6 +602,8 @@ static void h2fmi_handle_dma(h2fmi_dma_state_t *_dma)
 {
 	EnterCriticalSection();
 
+	_dma->signalled = 1;
+
 	LinkedList *list = _dma->list.next;
 	while(list != &_dma->list)
 	{
@@ -652,8 +654,32 @@ static void h2fmi_dma_execute_async(uint32_t _dir, uint32_t _channel, uint8_t **
 
 static int h2fmi_dma_wait(uint32_t _channel, uint32_t _timeout)
 {
-	// TODO: implement this shizz.
-	return 0;
+	h2fmi_dma_state_t *dma = &h2fmi_dma_state[_channel];
+
+	uint32_t ret = 0;
+
+	bufferPrintf("fmi: dma_wait %d for %d.\r\n", _channel, _timeout);
+
+	if(dma->signalled)
+		return 0;
+
+	EnterCriticalSection();
+
+	h2fmi_dma_task_t *task = malloc(sizeof(task));
+	task->task = CurrentRunning;
+	task->list.next = &dma->list;
+	task->list.prev = dma->list.prev;
+
+	((LinkedList*)dma->list.prev)->next = &task->list;
+	dma->list.prev = &task->list;
+
+	if(_timeout)
+		ret = (task_wait_timeout(_timeout) == 1)? 0: 1;
+	else
+		task_wait();
+
+	LeaveCriticalSection();
+	return ret;
 }
 
 static void h2fmi_dma_cancel(uint32_t _channel)
@@ -861,7 +887,8 @@ static void h2fmi_rw_large_page(h2fmi_struct_t *_fmi)
 {
 	uint32_t dir = (_fmi->state.state == H2FMI_STATE_READ)? 2: 1;
 
-	bufferPrintf("fmi: rw_large_page.\r\n");
+	bufferPrintf("fmi: rw_large_page 0x%08x 0x%08x.\r\n", _fmi->data_ptr,
+			_fmi->bytes_per_page * _fmi->num_pages_to_read);
 
 	h2fmi_dma_execute_async(dir, _fmi->dma0, _fmi->data_ptr,
 			H2FMI_UNK14(_fmi), _fmi->bytes_per_page * _fmi->num_pages_to_read,
@@ -870,6 +897,8 @@ static void h2fmi_rw_large_page(h2fmi_struct_t *_fmi)
 	h2fmi_dma_execute_async(dir, _fmi->dma1, _fmi->wmr_ptr,
 			H2FMI_UNK18(_fmi), _fmi->num_pages_to_read * _fmi->ecc_bytes,
 			1, 1, _fmi->aes_info);
+
+	bufferPrintf("fmi: rw_large_page done!\r\n");
 }
 
 static uint32_t h2fmi_read_state_2_handler(h2fmi_struct_t *_fmi)
@@ -911,7 +940,8 @@ static uint32_t h2fmi_read_state_2_handler(h2fmi_struct_t *_fmi)
 			h2fmi_some_mysterious_function(_fmi, reg);
 		}
 	}
-	
+
+	bufferPrintf("fmi: read_state_2_handler done!\r\n");
 	return 0;
 }
 
@@ -933,12 +963,14 @@ static uint32_t h2fmi_read_state_4_handler(h2fmi_struct_t *_fmi)
 	{
 		if(_fmi->current_chip_index >= _fmi->num_pages_to_read)
 		{
+			bufferPrintf("ZZZ\r\n");
 			uint32_t val = GET_REG(H2FMI_UNK810(_fmi));
 			SET_REG(H2FMI_UNK810(_fmi), val);
 			h2fmi_some_mysterious_function(_fmi, val);
 		}
 		else
 		{
+			bufferPrintf("ZZ2\r\n");
 			h2fmi_another_function(_fmi);
 			_fmi->field_124 = timer_get_system_microtime();
 			_fmi->state.read_state = H2FMI_READ_2;
@@ -1054,8 +1086,7 @@ static uint32_t h2fmi_read_idle_handler(h2fmi_struct_t *_fmi)
 
 	_fmi->state.read_state = H2FMI_READ_1;
 
-	h2fmi_read_state_1_handler(_fmi);
-	return 0;
+	return h2fmi_read_state_1_handler(_fmi);
 }
 
 static uint32_t h2fmi_read_state_machine(h2fmi_struct_t *_fmi)
@@ -1066,7 +1097,8 @@ static uint32_t h2fmi_read_state_machine(h2fmi_struct_t *_fmi)
 		return -1;
 	}
 
-	bufferPrintf("fmi: read_state_machine %d.\r\n", _fmi->state.read_state);
+	uint32_t state = _fmi->state.read_state;
+	bufferPrintf("fmi: read_state_machine %d.\r\n", state);
 
 	static uint32_t (*state_functions[])(h2fmi_struct_t *) =
 	{
@@ -1085,7 +1117,9 @@ static uint32_t h2fmi_read_state_machine(h2fmi_struct_t *_fmi)
 		return -1;
 	}
 
-	return state_functions[_fmi->state.read_state](_fmi);
+	uint32_t ret = state_functions[_fmi->state.read_state](_fmi);
+	bufferPrintf("fmi: state machine %d done!\r\n", state);
+	return ret;
 }
 
 int h2fmi_read_multi(h2fmi_struct_t *_fmi, uint16_t _num_pages, uint16_t *_chips, uint32_t *_pages,
@@ -1120,10 +1154,20 @@ int h2fmi_read_multi(h2fmi_struct_t *_fmi, uint16_t _num_pages, uint16_t *_chips
 	{
 		EnterCriticalSection();
 		h2fmi_read_state_machine(_fmi);
+		bufferPrintf("fmi: Hello harold! 0x%08x\r\n", CurrentRunning->criticalSectionNestCount);
 		LeaveCriticalSection();
+
+		bufferPrintf("fmi: Hello dave!\r\n");
+
+		TaskDescriptor *next = CurrentRunning->taskList.next;
+		bufferPrintf("fmi: Task %s is evil! (%s)\r\n", next->taskName, CurrentRunning->taskName);
 
 		task_yield();
 	}
+
+	bufferPrintf("fmi: state machine done.\r\n");
+
+	udelay(1000000); // LOLOLOLOLOL
 
 	if(_fmi->field_13C != 0)
 	{
@@ -1137,7 +1181,7 @@ int h2fmi_read_multi(h2fmi_struct_t *_fmi, uint16_t _num_pages, uint16_t *_chips
 		_fmi->failure_details.overall_status = 0;
 	}
 	
-	bufferPrintf("fmi: state machine done.\r\n");
+	bufferPrintf("fmi: Time to cancel the DMA!\r\n");
 	
 	h2fmi_dma_cancel(_fmi->dma0);
 	h2fmi_dma_cancel(_fmi->dma1);

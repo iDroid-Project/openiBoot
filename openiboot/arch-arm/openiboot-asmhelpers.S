@@ -49,6 +49,7 @@
 .global EndlessLoop
 
 .global SwapTask
+.global StartTask
 .global CurrentRunning
 
 .text
@@ -425,20 +426,15 @@ SwapTask:
 	STR R0, [R1]	
 	BX LR
 
-.thumb_func
-.global task_stop
-.global StartTask
+.global task_run
 
 StartTask:
 	@ R4 = Task PTR
 	@ R5 = Argument
 
-	BL LeaveCriticalSection
-	
-	MOV R0, R5
-	BLX R4
-
-	BL task_stop
+	MOV R0, R4
+	MOV R1, R5
+	BLX task_run
 
 	@ We shouldn't get here, because the main thread is
 	@ never started. So umm, what do we do? Just let

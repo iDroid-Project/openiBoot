@@ -26,7 +26,29 @@ const TaskDescriptor bootstrapTaskInit = {
 	TaskDescriptorIdentifier2
 	};
 
+const TaskDescriptor irqTaskInit = {
+	TaskDescriptorIdentifier1,
+	{0, 0},
+	{0, 0},
+	TASK_RUNNING,
+	1,
+	{0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+	{{0, 0}, 0, 0, 0, 0},
+	{0, 0},
+	0,
+	0,
+	0,
+	0,
+	0,
+	"irq",
+	TaskDescriptorIdentifier2
+	};
+
 static TaskDescriptor bootstrapTask;
+static TaskDescriptor irqTask;
+
+TaskDescriptor *IRQTask = &irqTask;
+TaskDescriptor *IRQBackupTask = NULL;
 
 static void task_add_after(TaskDescriptor *_a, TaskDescriptor *_b)
 {
@@ -76,6 +98,7 @@ static void task_remove(TaskDescriptor *_t)
 int tasks_setup()
 {
 	memcpy(&bootstrapTask, &bootstrapTaskInit, sizeof(TaskDescriptor));
+	memcpy(&irqTask, &irqTaskInit, sizeof(TaskDescriptor));
 	bootstrapTask.taskList.next = &bootstrapTask;
 	bootstrapTask.taskList.prev = &bootstrapTask;
 	CurrentRunning = &bootstrapTask;
@@ -101,6 +124,22 @@ void task_destroy(TaskDescriptor *_td)
 		free(_td->storage);
 }
 
+void task_run(void (*_fn)(void*), void *_arg)
+{
+	LeaveCriticalSection();
+
+	//bufferPrintf("tasks: New task started %s. 0x%08x(0x%08x).\r\n",
+	//		CurrentRunning->taskName, _fn, _arg);
+
+	_fn(_arg);
+
+	//bufferPrintf("tasks: Task ending %s. 0x%08x(0x%08x).\r\n",
+	//		CurrentRunning->taskName, _fn, _arg);
+
+	EnterCriticalSection();
+	task_stop();
+}
+
 int task_start(TaskDescriptor *_td, void *_fn, void *_arg)
 {
 	EnterCriticalSection();
@@ -116,9 +155,14 @@ int task_start(TaskDescriptor *_td, void *_fn, void *_arg)
 
 		_td->state = TASK_RUNNING;
 
-		task_add_before(_td, &bootstrapTask);
-		SwapTask(_td);
-		
+		if(CurrentRunning == IRQTask)
+			task_add_after(_td, IRQBackupTask);
+		else
+		{
+			task_add_before(_td, CurrentRunning);
+			SwapTask(_td);
+		}
+
 		LeaveCriticalSection();
 
 		//bufferPrintf("tasks: Added %s to tasks.\n", _td->taskName);
@@ -146,6 +190,9 @@ void task_stop()
 	CurrentRunning->state = TASK_STOPPED;
 	task_remove(CurrentRunning);
 
+	//bufferPrintf("tasks: %s died, swapping to %s.\r\n",
+	//		CurrentRunning->taskName, next->taskName);
+
 	// Swap onto next task
 	SwapTask(next);
 	
@@ -156,20 +203,28 @@ void task_stop()
 int task_yield()
 {
 	EnterCriticalSection();
+	if(CurrentRunning == IRQTask)
+	{
+		LeaveCriticalSection();
+
+		bufferPrintf("tasks: Can't swap during ISR!\r\n");
+		return -1;
+	}
+
 	TaskDescriptor *next = CurrentRunning->taskList.next;
 	if(next != CurrentRunning)
 	{
 		// We have another thread to schedule! -- Ricky26
 		
-		//bufferPrintf("tasks: Swapping from %s to %s.\n", CurrentRunning->taskName, td->taskName);
+		//bufferPrintf("tasks: Swapping from %s to %s.\n", CurrentRunning->taskName, next->taskName);
 		SwapTask(next);
-		//bufferPrintf("tasks: Swapped from %s to %s.\n", CurrentRunning->taskName, td->taskName);
+		//bufferPrintf("tasks: Swapped from %s to %s.\n", CurrentRunning->taskName, next->taskName);
 
 		LeaveCriticalSection();
 		return 1;
 	}
-	LeaveCriticalSection();
 
+	LeaveCriticalSection();
 	return 0; // didn't yield
 }
 
@@ -178,7 +233,10 @@ void tasks_run()
 	while(1)
 	{
 		if(!task_yield())
+		{
+			//bufferPrintf("WFI\r\n");
 			WaitForInterrupt(); // Nothing to do, wait for an interrupt.
+		}
 	}
 }
 
@@ -192,6 +250,14 @@ void task_wake_event(Event *_evt, void *_obj)
 int task_sleep(int _ms)
 {
 	EnterCriticalSection();
+
+	if(CurrentRunning == IRQTask)
+	{
+		LeaveCriticalSection();
+
+		bufferPrintf("tasks: You can't suspend an ISR.\r\n");
+		return -1;
+	}
 
 	TaskDescriptor *next = CurrentRunning->taskList.next;
 	if(next == CurrentRunning)
@@ -227,6 +293,14 @@ int task_sleep(int _ms)
 void task_suspend()
 {
 	EnterCriticalSection();
+
+	if(CurrentRunning == IRQTask)
+	{
+		LeaveCriticalSection();
+
+		bufferPrintf("tasks: You can't suspend an ISR.\r\n");
+		return;
+	}
 
 	TaskDescriptor *next = CurrentRunning->taskList.next;
 	if(next == CurrentRunning)
