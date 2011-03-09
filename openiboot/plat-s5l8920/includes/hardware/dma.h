@@ -8,7 +8,7 @@
 #define DMA_OFF 0x8
 #define DMA_STATUS 0x10
 #define DMA_INTERRUPT_ERROR 0x18
-#define DMA_CHANNEL_INTERRUPT_BASE 0x2b
+#define DMA_CHANNEL_INTERRUPT_BASE 0x2a
 
 // Channel Registers
 #define DMA_SETTINGS 0x4

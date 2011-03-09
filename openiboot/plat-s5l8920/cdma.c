@@ -172,8 +172,6 @@ signed int dma_init_channel(uint8_t direction, uint32_t channel, int segmentatio
 			return -1;
 	}
 
-	EnterCriticalSection();
-
 	uint32_t channel_reg = channel << 12;
 	SET_REG(DMA + channel_reg, 2);
 
@@ -187,18 +185,18 @@ signed int dma_init_channel(uint8_t direction, uint32_t channel, int segmentatio
 	SET_REG(DMA + DMA_TXRX_REGISTER + channel_reg, txrx_register);
 	SET_REG(DMA + DMA_SIZE + channel_reg, size);
 
+	bufferPrintf("cdma: dma_size 0x%08x.\r\n", GET_REG(DMA + DMA_SIZE + channel_reg));
+
 	if (dma->dmaAESInfo)
 		dma->dmaAES_setting2 = 0;
 
 	dma_continue_async(channel);
-
-	LeaveCriticalSection();
 	return 0;
 }
 
 void dma_continue_async(int channel) {
 
-	bufferPrintf("cdma: continue_async.\r\n");
+	//bufferPrintf("cdma: continue_async.\r\n");
 
 	uint32_t endOffset;
 	uint8_t segmentId;
@@ -256,6 +254,7 @@ void dma_continue_async(int channel) {
 				}
 				++segmentId;
 			}
+			bufferPrintf("Are you really trying to remove 0x%08x from 0x%08x?\r\n", encryptedSegmentOffsetEnd, dma->unsegmentedSize);
 			dma->unsegmentedSize -= encryptedSegmentOffsetEnd;
 		    }
 
@@ -310,10 +309,22 @@ int dma_set_aes(int channel, dmaAES* dmaAESInfo) {
 	uint32_t value;
 	int i;
 
-	dma->dmaAESInfo = dmaAESInfo;
+	if(dma->dmaAESInfo == dmaAESInfo)
+		return 0;
 
-	if (!dma->dmaAESInfo)
-		return result;
+	if(dma->dmaAESInfo)
+		free(dma->dmaAESInfo);
+
+	if(dmaAESInfo)
+	{
+		dma->dmaAESInfo = malloc(sizeof(*dmaAESInfo));
+   		memcpy(dma->dmaAESInfo, dmaAESInfo, sizeof(*dmaAESInfo));
+	}
+	else
+	{
+		dma->dmaAESInfo = NULL;
+		return 0;
+	}
 
 	int activation = dma_channel_activate(channel, 1);
 
@@ -429,17 +440,20 @@ void dmaIRQHandler(uint32_t token) {
 	DMAInfo* dma = &dmaInfo[channel];
 
 	GET_REG(DMA + channel_reg);
+	uint32_t status = GET_REG(DMA + channel_reg);
+	//bufferPrintf("cdma: intsts 0x%08x\r\n", status);
 
-	if (GET_REG(DMA + channel_reg) & 0x40000)
+	if (status & 0x40000)
 		system_panic("CDMA: channel %d error interrupt\r\n", channel);
 
-	if (GET_REG(DMA + channel_reg) & 0x100000)
+	if (status & 0x100000)
 		system_panic("CDMA: channel %d spurious CIR\r\n", channel);
 
 	SET_REG(DMA + channel_reg, 0x80000);
 
 	if (dma->unsegmentedSize || GET_REG(DMA + DMA_SIZE + channel_reg)) {
 		if (GET_REG(DMA + channel_reg) & 0x30000) {
+			GET_REG(DMA + channel_reg);
 			dma->unsegmentedSize = GET_REG(DMA + DMA_SIZE + channel_reg) + dma->unsegmentedSize;
 			wholeSegment = dma->previousUnsegmentedSize - dma->unsegmentedSize;
 
@@ -460,9 +474,10 @@ void dmaIRQHandler(uint32_t token) {
 		dma_continue_async(channel);
 	} else {
 		dma->signalled = 1;
-		dma_set_aes(channel, 0);
+		
+		bufferPrintf("cmda: done\r\n");
 
-		bufferPrintf("cdma: intsts 0x%08x\r\n", GET_REG(DMA + channel_reg));
+		dma_set_aes(channel, 0);
 
 		dma_channel_activate(channel, 0);
 
