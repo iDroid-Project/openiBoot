@@ -16,4 +16,8 @@ void task_stop();
 int task_yield();
 int task_sleep(int _ms);
 
+void task_wait();
+int task_wait_timeout(int _ms);
+void task_wake(TaskDescriptor *_task);
+
 #endif

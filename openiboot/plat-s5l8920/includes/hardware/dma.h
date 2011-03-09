@@ -1,8 +1,6 @@
 #ifndef HW_DMA_H
 #define HW_DMA_H
 
-#include "hardware/a4.h"
-
 // Device
 #define DMA 0x87000000
 

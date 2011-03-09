@@ -59,6 +59,7 @@ typedef enum OnOff {
 
 #define container_of(type, member, ptr) ((type*)(((char*)(ptr)) - ((char*)(&((type*)NULL)->member))))
 #define array_size(arr) (sizeof(arr)/sizeof((arr)[0]))
+#define round_up(val, amt) (((val + amt - 1) / amt) * amt)
 
 typedef struct Event Event;
 
@@ -117,6 +118,8 @@ typedef struct TaskDescriptor {
 	uint32_t		storageSize;
 	char			taskName[16];
 	uint32_t		identifier2;
+
+	uint32_t		wasWoken;
 } __attribute__ ((packed)) TaskDescriptor;
 
 extern TaskDescriptor* CurrentRunning;

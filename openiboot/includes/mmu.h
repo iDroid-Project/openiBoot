@@ -23,7 +23,6 @@ void mmu_disable();
 void mmu_map_section(uint32_t section, uint32_t target, Boolean cacheable, Boolean bufferable);
 void mmu_map_section_range(uint32_t rangeStart, uint32_t rangeEnd, uint32_t target, Boolean cacheable, Boolean bufferable);
 
-#if defined(CONFIG_A4)
 typedef struct PhysicalAddressMap {
 	uint32_t logicalStart;
 	uint32_t logicalEnd;
@@ -33,6 +32,5 @@ typedef struct PhysicalAddressMap {
 
 PhysicalAddressMap* get_address_map(uint32_t address, uint32_t* address_map_base);
 uint32_t get_physical_address(uint32_t address);
-#endif
 
 #endif

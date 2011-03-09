@@ -38,6 +38,7 @@
 #include "scripting.h"
 #include "actions.h"
 #include "usb.h"
+#include "cdma.h"
 
 #include "radio.h"
 #include "wmcodec.h"
@@ -71,6 +72,7 @@ void platform_init()
 	event_setup();
 
 	// Other devices
+	dma_setup();
 	//usb_shutdown();
 	uart_setup();
 	i2c_setup();

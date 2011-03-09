@@ -19,7 +19,6 @@ int interrupt_install(int irq_no, InterruptServiceRoutine handler, uint32_t toke
 int interrupt_enable(int irq_no);
 int interrupt_disable(int irq_no);
 
-#if defined(CONFIG_A4)
 int interrupt_set_int_type(int irq_no, uint8_t type);
-#endif
+
 #endif
