@@ -685,7 +685,7 @@ static int h2fmi_dma_wait(uint32_t _channel, uint32_t _timeout)
 static void h2fmi_dma_cancel(uint32_t _channel)
 {
 	dma_cancel(_channel);
-	memset(&h2fmi_dma_state[_channel], 0, sizeof(h2fmi_dma_state_t));
+	h2fmi_init_dma_event(&h2fmi_dma_state[_channel], 1, 0);
 }
 
 static void h2fmi_store_810(h2fmi_struct_t *_fmi)
@@ -1163,7 +1163,7 @@ int h2fmi_read_multi(h2fmi_struct_t *_fmi, uint16_t _num_pages, uint16_t *_chips
 	if(_fmi->field_13C != 0)
 	{
 		if(h2fmi_dma_wait(_fmi->dma0, 2000000) != 0
-		  )// || h2fmi_dma_wait(_fmi->dma1, 2000000) != 0)
+			|| h2fmi_dma_wait(_fmi->dma1, 2000000) != 0)
 		{
 			bufferPrintf("h2fmi: dma wait failed.\r\n");
 			return 1;
@@ -1302,7 +1302,7 @@ static void h2fmi_setup_aes(h2fmi_struct_t *_fmi, uint32_t _enabled, uint32_t a2
 			_fmi->aes_struct.handler = h2fmi_aes_handler_1;
 			_fmi->aes_struct.key = h2fmi_aes_key_1;
 			_fmi->aes_struct.unkn0 = (a2 == 0)? 0: 1;
-			_fmi->aes_struct.AESType = type;
+			_fmi->aes_struct.AESType = 0;
 		}
 		else
 		{
@@ -1311,7 +1311,7 @@ static void h2fmi_setup_aes(h2fmi_struct_t *_fmi, uint32_t _enabled, uint32_t a2
 			_fmi->aes_struct.handler = h2fmi_aes_handler_2;
 			_fmi->aes_struct.key = h2fmi_aes_key_2;
 			_fmi->aes_struct.unkn0 = (1 - a2 > 1)? 0: (1 - a2);
-			_fmi->aes_struct.AESType = type;
+			_fmi->aes_struct.AESType = 0;
 		}
 
 		_fmi->aes_info = &_fmi->aes_struct;

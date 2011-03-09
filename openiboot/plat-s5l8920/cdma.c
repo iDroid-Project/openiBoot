@@ -309,22 +309,9 @@ int dma_set_aes(int channel, dmaAES* dmaAESInfo) {
 	uint32_t value;
 	int i;
 
-	if(dma->dmaAESInfo == dmaAESInfo)
+	dma->dmaAESInfo = dmaAESInfo;
+	if(!dmaAESInfo)
 		return 0;
-
-	if(dma->dmaAESInfo)
-		free(dma->dmaAESInfo);
-
-	if(dmaAESInfo)
-	{
-		dma->dmaAESInfo = malloc(sizeof(*dmaAESInfo));
-   		memcpy(dma->dmaAESInfo, dmaAESInfo, sizeof(*dmaAESInfo));
-	}
-	else
-	{
-		dma->dmaAESInfo = NULL;
-		return 0;
-	}
 
 	int activation = dma_channel_activate(channel, 1);
 
@@ -441,7 +428,7 @@ void dmaIRQHandler(uint32_t token) {
 
 	GET_REG(DMA + channel_reg);
 	uint32_t status = GET_REG(DMA + channel_reg);
-	//bufferPrintf("cdma: intsts 0x%08x\r\n", status);
+	bufferPrintf("cdma: intsts 0x%08x\r\n", status);
 
 	if (status & 0x40000)
 		system_panic("CDMA: channel %d error interrupt\r\n", channel);
