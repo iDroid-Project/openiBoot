@@ -324,7 +324,7 @@ static void h2fmi_dma_handler(int _channel)
 	h2fmi_handle_dma(&h2fmi_dma_state[_channel]);
 }
 
-static void h2fmi_dma_execute_async(uint32_t _dir, uint32_t _channel, uint8_t **_ptr,
+static void h2fmi_dma_execute_async(uint32_t _dir, uint32_t _channel, uint8_t *_ptr,
 		uint32_t _reg, uint32_t _size, uint32_t _wordSize, uint32_t _blockSize, dmaAES *_aes)
 {
 	if(!h2fmi_dma_state_initialized)
