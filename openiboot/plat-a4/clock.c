@@ -12,11 +12,12 @@ uint32_t ClockFrequency;
 uint32_t MemoryFrequency;
 uint32_t BusFrequency;
 uint32_t PeripheralFrequency;
-uint32_t UnknownFrequency;   
-uint32_t DisplayFrequency;  
+uint32_t UnknownFrequency;
+uint32_t DisplayFrequency;
 uint32_t FixedFrequency;
 uint32_t TimebaseFrequency;
 uint32_t UsbPhyFrequency;
+uint32_t NANDFrequency;
 
 uint32_t CPU_clock_setting;
 uint32_t clock_freq_multiplier;
@@ -73,15 +74,27 @@ uint32_t clock_get_frequency(FrequencyBase freqBase) {
 			return TimebaseFrequency;
 		case FrequencyBaseUsbPhy:
 			return UsbPhyFrequency;
+		case FrequencyNand:
+			return NANDFrequency;
 		default:
 			return 0;
 	}
 }
 
-/*
 uint32_t CalculatedFrequencyTable[55] = {
+	0x016e3600, 0x2faf0800, 0x1dcd6500, 0x3d278480, 0x00000000, 0x00000000,
+	0x00000000, 0x2faf0800, 0x00000000, 0x2faf0800, 0x0bebc200, 0x061d8d40,
+	0x3d278480, 0x09896800, 0x030ec6a0, 0x0bebc200, 0x05f5e100, 0x00000000,
+	0x061d8d40, 0x030ec6a0, 0x0bebc200, 0x02e98036, 0x00000000, 0x001e8480,
+	0x14628180, 0x00000000, 0x0bebc200, 0x05f5e100, 0x0bebc200, 0x09896800,
+	0x0bebc200, 0x0a3140c0, 0x05f5e100, 0x061d8d40, 0x05f5e100, 0x05f5e100,
+	0x030ec6a0, 0x0337f980, 0x00000000, 0x0413b380, 0x14628180, 0x030ec6a0,
+	0x00000000, 0x030ec6a0, 0x00000000, 0x00000000, 0x00b71b00, 0x016e3600,
+	0x016e3600, 0x02e98036, 0x016e3600, 0x016e3600, 0x000f4240, 0x000f4240,
+	0x000f4240
 };
 
+/*
 ClockThirdStruct ClockThirdTable[6] = {
 	{0,		0,	}, // GET_BITS(register, 0, 0);
 	{0x1F,		0,	}, // GET_BITS(register, 0, 5);
@@ -199,10 +212,6 @@ XXX:	It actually never gets there.
 
 XXX:	Base Frequencies as they are set by LLB
 
-	CalculatedFrequencyTable[1] = 0x5F5E1000;
-	CalculatedFrequencyTable[2] = 0x3B9ACA00;
-	CalculatedFrequencyTable[3] = 0x7A4F0900;
-	CalculatedFrequencyTable[4] = 0x5B8D8000;
 	derived_frequency_table_setup();
 	clock_freq_multiplier = GET_BITS(GET_REG(0xBF100040), 0, 5);
 	if (clock_freq_multiplier == 2) {
@@ -212,7 +221,7 @@ XXX:	Base Frequencies as they are set by LLB
 	} else {
 		CPU_clock_setting = 0;
 	}
-
+*/
 
 	ClockFrequency = CalculatedFrequencyTable[5];
 	MemoryFrequency = CalculatedFrequencyTable[6];
@@ -221,18 +230,9 @@ XXX:	Base Frequencies as they are set by LLB
 	FixedFrequency = CalculatedFrequencyTable[0];
 	TimebaseFrequency = CalculatedFrequencyTable[0];
 	UsbPhyFrequency = CalculatedFrequencyTable[0];
+	NANDFrequency = CalculatedFrequencyTable[33];
 
 	TicksPerSec = CalculatedFrequencyTable[0];
-*/
-
-	ClockFrequency = 0; // or 0x5F5E100
-	MemoryFrequency = 0;
-	BusFrequency = 0x5F5E100;
-	PeripheralFrequency = 0x5F5E100;
-	FixedFrequency = 0x16E3600;
-	TimebaseFrequency = 0x16E3600;
-	UsbPhyFrequency = 0x16E3600;
-	TicksPerSec = 0x16E3600;
 
 	return 0;
 }
@@ -245,7 +245,7 @@ XXX:	Base Frequencies as they are set by LLB
 	TIMEBASE_FREQUENCY = get_frequency(5);
 	CLOCK_FREQUENCIES = get_derived_frequencies.. omg;
 	USBPHY_FREQUENCY = get_frequency(0xE);
-	NCOREF_FREQUENCY = get_frequency(0xF); // 16
+	NCOREF_FREQUENCY = get_frequency(0xF); // 15
 BASE = 0x5FF3D040;
 default, 11, 12 => Frequency = 0;
 0, 6 => BASE + 0x14; 5
