@@ -4,19 +4,11 @@
 #include "util.h"
 #include "malloc.h"
 #include "hardware/dma.h"
+#include "cdma.h"
 #include "clock.h"
 #include "timer.h"
 #include "interrupt.h"
 #include "mmu.h"
-
-typedef struct dmaAES {
-	uint32_t unkn0;
-	uint32_t AESType;
-	uint32_t key[8];
-	uint32_t dataSize;
-	void (*handler)(uint32_t dataBuffer, uint32_t dmaAES_setting2, uint32_t* unknAESSetting1);
-	uint32_t dataBuffer;
-} dmaAES;
 
 typedef struct segmentBuffer {
 	uint32_t address;
@@ -33,7 +25,7 @@ typedef struct DMAInfo {
 	uint32_t signalled;
 	uint32_t txrx_register;
 	uint32_t unk_separator;
-	segmentBuffer* segmentBuffer[32];
+	segmentBuffer* segmentBuffer;
 	uint32_t dmaSegmentNumber;
 	uint32_t unsegmentedSize;
 	uint32_t segmentationSetting;
@@ -106,14 +98,13 @@ signed int dma_init_channel(uint8_t direction, uint32_t channel, int segmentatio
 	DMAInfo* dma = &dmaInfo[channel];
 
 	if (!dma->signalled) {
-		*dma->segmentBuffer = memalign(0x20, 1024);
+		dma->segmentBuffer = memalign(0x20, 32 * sizeof(*dma->segmentBuffer));
 
 		if (!dma->segmentBuffer)
 			system_panic("CDMA: can't allocate command chain");
 
-		for (i = 0; i != 256; i += 8) {
-			*((uint32_t*)dma->segmentBuffer + i) = get_physical_address((uint32_t)((uint32_t*)dma->segmentBuffer + i + 8));
-		}
+		for (i = 0; i != 32; i ++)
+			dma->segmentBuffer[i].address = get_physical_address((uint32_t)(&dma->segmentBuffer[i+1]));
 
 		dma->signalled = 1;
 		dma->txrx_register = 0;
@@ -163,22 +154,22 @@ signed int dma_init_channel(uint8_t direction, uint32_t channel, int segmentatio
 		return -1;
 
 	switch (Setting2Index) {
-		case 2:
-			Setting2 = 0;
+		case 1:
+			Setting2 = 0 << 4;
 			break;
-		case 3:
+		case 2:
 			Setting2 = 1 << 4;
 			break;
-		case 5:
-			Setting2 = 1 << 5;
+		case 4:
+			Setting2 = 2 << 4;
 			break;
-		case 9:
+		case 8:
 			Setting2 = 3 << 4;
 			break;
-		case 17:
-			Setting2 = 1 << 6;
+		case 16:
+			Setting2 = 4 << 4;
 			break;
-		case 33:
+		case 32:
 			Setting2 = 5 << 4;
 			break;
 		default:
@@ -212,7 +203,7 @@ int dma_continue_async(int channel) {
 	uint32_t value;
 	DMAInfo* dma = &dmaInfo[channel];
 	if (!dma->unsegmentedSize)
-		system_panic("CDMA: ASSERT FAILED");
+		system_panic("CDMA: ASSERT FAILED\r\n");
 	dma->previousUnsegmentedSize = dma->unsegmentedSize;
 	dma->previousDmaSegmentNumber = dma->dmaSegmentNumber;
 	dma->previousSegmentOffset = dma->segmentOffset;
@@ -222,9 +213,9 @@ int dma_continue_async(int channel) {
 			if (!dma->unsegmentedSize)
 				break;
 
-			dma->segmentBuffer[segmentId]->value = 2;
+			dma->segmentBuffer[segmentId].value = 2;
 			++segmentId;
-			dma->dmaAESInfo->handler(dma->dmaAESInfo->dataBuffer, dma->dmaAES_setting2, &dma->segmentBuffer[segmentId]->unknAESSetting1);
+			dma->dmaAESInfo->handler(dma->dmaAESInfo->dataBuffer, dma->dmaAES_setting2, &dma->segmentBuffer[segmentId].unknAESSetting1);
 			segmentLength = 0;
 			++dma->dmaAES_setting2;
 
@@ -243,12 +234,12 @@ int dma_continue_async(int channel) {
 				if (!encryptedSegmentOffset)
 					value = 0x30003;
 
-				dma->segmentBuffer[segmentId]->value = value;
-				dma->segmentBuffer[segmentId]->offset = dma->segmentOffset + endOffset;
-				dma->segmentBuffer[segmentId]->length = segmentLength;
+				dma->segmentBuffer[segmentId].value = value;
+				dma->segmentBuffer[segmentId].offset = dma->segmentOffset + endOffset;
+				dma->segmentBuffer[segmentId].length = segmentLength;
 
 				if (!segmentLength)
-					system_panic("Caught trying to generate zero-length cdma segment on channel %d, irqState: %d", channel, dma->irq_state);
+					system_panic("Caught trying to generate zero-length cdma segment on channel %d, irqState: %d\r\n", channel, dma->irq_state);
 
 				dma->segmentOffset += segmentLength;
 				if (dma->segmentOffset >= endOffset + 4 ) {
@@ -262,24 +253,24 @@ int dma_continue_async(int channel) {
 		    }
 
 		if (!dma->unsegmentedSize)
-			dma->segmentBuffer[segmentId-1]->value |= 0x100;
+			dma->segmentBuffer[segmentId-1].value |= 0x100;
 
-		dma->segmentBuffer[segmentId]->value = 0;
+		dma->segmentBuffer[segmentId].value = 0;
 	} else {
 		for (segmentId = 0; segmentId < 31; segmentId++) {
 			int segmentLength = dma->segmentationSetting + 8 * dma->dmaSegmentNumber + 4 - dma->segmentOffset;
 
-			dma->segmentBuffer[segmentId]->value = 3;
-			dma->segmentBuffer[segmentId]->offset = dma->segmentationSetting + 8 * dma->dmaSegmentNumber + dma->segmentOffset;
-			dma->segmentBuffer[segmentId]->length = segmentLength;
+			dma->segmentBuffer[segmentId].value = 3;
+			dma->segmentBuffer[segmentId].offset = dma->segmentationSetting + 8 * dma->dmaSegmentNumber + dma->segmentOffset;
+			dma->segmentBuffer[segmentId].length = segmentLength;
 
 			if (!segmentLength)
-				system_panic("Caught trying to generate zero-length cdma segment on channel %d, irqState: %d", channel, dma->irq_state);
+				system_panic("Caught trying to generate zero-length cdma segment on channel %d, irqState: %d\r\n", channel, dma->irq_state);
 
 			dma->segmentOffset = 0;
 
 			if (segmentLength >= dma->unsegmentedSize) {
-				dma->segmentBuffer[segmentId]->value |= 0x100;
+				dma->segmentBuffer[segmentId].value |= 0x100;
 				dma->unsegmentedSize = 0;
 				break;
 			}
@@ -288,10 +279,10 @@ int dma_continue_async(int channel) {
 			dma->dmaSegmentNumber++;
 		}
 
-		dma->segmentBuffer[segmentId+1]->value = 0;
+		dma->segmentBuffer[segmentId+1].value = 0;
 	}
 
-	DataCacheOperation(1, (uint32_t)dma->segmentBuffer, 32 * (segmentId + 2));
+	DataCacheOperation(1, (uint32_t)dma->segmentBuffer, 32 * sizeof(*dma->segmentBuffer));
 
 	uint32_t channel_reg = channel << 12;
 	SET_REG(DMA + channel_reg + 0x14, get_physical_address((uint32_t)dma->segmentBuffer));
@@ -324,8 +315,9 @@ int dma_set_aes(int channel, dmaAES* dmaAESInfo) {
 		for (i = 2; i < 9; i++) {
 			if (dmaAES_channel_used & (1 << i))
 				continue;
-			dmaAES_channel_used &= (1 << i);
+			dmaAES_channel_used |= (1 << i);
 			dma->dmaAES_channel = i;
+			break;
 		}
 		LeaveCriticalSection();
 
@@ -404,7 +396,7 @@ int dma_cancel(int channel) {
 
 		while (GET_BITS(GET_REG(channel_reg), 16, 2) == 1) {
 			if (has_elapsed(startTime, 10000))
-				system_panic("CDMA: channel %d timeout during abort", channel);
+				system_panic("CDMA: channel %d timeout during abort\r\n", channel);
 		}
 	}
 
@@ -423,10 +415,10 @@ void dmaIRQHandler(uint32_t token) {
 	DMAInfo* dma = &dmaInfo[channel];
 
 	if (GET_REG(DMA + channel_reg) & 0x40000)
-		system_panic("CDMA: channel %d error interrupt, error status 0x%0x", channel, GET_REG(DMA + DMA_INTERRUPT_ERROR + channel_reg));
+		system_panic("CDMA: channel %d error interrupt, error status 0x%0x\r\n", channel, GET_REG(DMA + DMA_INTERRUPT_ERROR + channel_reg));
 
 	if (GET_REG(DMA + channel_reg) & 0x100000)
-		system_panic("CDMA: channel %d spurious CIR", channel);
+		system_panic("CDMA: channel %d spurious CIR\r\n", channel);
 
 	SET_REG(DMA + channel_reg, 0x80000);
 
