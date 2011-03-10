@@ -702,13 +702,15 @@ static void h2fmi_set_address_inner(h2fmi_struct_t *_fmi, uint32_t _addr)
 
 static void h2fmi_set_address(h2fmi_struct_t *_fmi, uint32_t _addr)
 {
+	bufferPrintf("fmi: Aligning to page %d!\r\n", _addr);
+
 	h2fmi_set_address_inner(_fmi, _addr);
 
 	SET_REG(H2FMI_UNKREG4(_fmi), 0x3000);
 	SET_REG(H2FMI_UNKREG5(_fmi), 0xB);
 
-	while((GET_REG(H2FMI_UNKREG5(_fmi)) & 0xB));
-	SET_REG(H2FMI_UNKREG5(_fmi), 0xB);
+	while((GET_REG(H2FMI_UNKREG6(_fmi)) & 0xB) != 0xB);
+	SET_REG(H2FMI_UNKREG6(_fmi), 0xB);
 }
 
 static void h2fmi_enable_and_set_address(h2fmi_struct_t *_fmi, uint16_t _bank,
@@ -1367,7 +1369,7 @@ uint32_t h2fmi_read_single_page(uint32_t _ce, uint32_t _page, uint8_t *_ptr, uin
 		bufferPrintf("fmi: UECC ce %d page 0x%08x.\r\n", _ce, _page);
 		ret = 0x80000002;
 	}
-	else if(read_ret == 1)
+	else if(read_ret == 0)
 	{
 		if(_meta_ptr)
 		{
@@ -1744,8 +1746,8 @@ void h2fmi_init()
 		h2fmi_hash_table[i] = val;
 	} while(i < 1024);
 
-	bufferPrintf("fmi: Intialized NAND memory! %d pages per block, %d blocks per CE.\r\n",
-		h2fmi_geometry.pages_per_block, h2fmi_geometry.blocks_per_ce);
+	bufferPrintf("fmi: Intialized NAND memory! %d bytes per page, %d pages per block, %d blocks per CE.\r\n",
+		fmi0.bytes_per_page, h2fmi_geometry.pages_per_block, h2fmi_geometry.blocks_per_ce);
 
 	if(info)
 		free(info);
