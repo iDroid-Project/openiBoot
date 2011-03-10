@@ -450,7 +450,7 @@ static void h2fmi_set_address(h2fmi_struct_t *_fmi, uint32_t _addr)
 	SET_REG(H2FMI_UNKREG4(_fmi), 0x3000);
 	SET_REG(H2FMI_UNKREG5(_fmi), 0xB);
 
-	while(!(GET_REG(H2FMI_UNKREG5(_fmi)) & 0xB));
+	while((GET_REG(H2FMI_UNKREG5(_fmi)) & 0xB));
 	SET_REG(H2FMI_UNKREG5(_fmi), 0xB);
 }
 
