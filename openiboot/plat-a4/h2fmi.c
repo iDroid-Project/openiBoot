@@ -175,6 +175,8 @@ static h2fmi_struct_t fmi0 = {
 	.base_address = H2FMI0_BASE,
 	.clock_gate = H2FMI0_CLOCK_GATE,
 	.interrupt = H2FMI0_INTERRUPT,
+	.dma0 = 5,
+	.dma1 = 6,
 	.currentmode = 0,
 };
 
@@ -183,6 +185,8 @@ static h2fmi_struct_t fmi1 = {
 	.base_address = H2FMI1_BASE,
 	.clock_gate = H2FMI1_CLOCK_GATE,
 	.interrupt = H2FMI1_INTERRUPT,
+	.dma0 = 6,
+	.dma1 = 7,
 	.currentmode = 0,
 };
 
@@ -239,12 +243,17 @@ static void h2fmi_hw_reg_int_init(h2fmi_struct_t *_fmi)
 	SET_REG(H2FMI_UNKREG14(_fmi), 0xF);
 }
 
+void sub_5FF174A0(h2fmi_state_t *_state) {
+	bufferPrintf("Hello.\r\n");
+	return;
+}
+
 void h2fmi_irq_handler_0(h2fmi_struct_t *_fmi) {
 	bufferPrintf("h2fmi_irq_handler_0: This is also doing more. But I'm too lazy. Just return.\n");
 	return;
 	_fmi->fmi_state = GET_REG(H2FMI_UNKREG14(_fmi));
 	h2fmi_hw_reg_int_init(_fmi);
-//	sub_5FF174A0(v1 + 108);
+	sub_5FF174A0(&_fmi->state);
 }
 
 void h2fmi_irq_handler_1(h2fmi_struct_t *_fmi) {
@@ -386,7 +395,7 @@ static int h2fmi_dma_wait(uint32_t _channel, uint32_t _timeout)
 static void h2fmi_dma_cancel(uint32_t _channel)
 {
 	dma_cancel(_channel);
-	memset(&h2fmi_dma_state[_channel], 0, sizeof(h2fmi_dma_state_t));
+	h2fmi_init_dma_event(&h2fmi_dma_state[_channel], 1, 0);
 }
 
 static void h2fmi_store_810(h2fmi_struct_t *_fmi)
@@ -658,7 +667,7 @@ static void h2fmi_rw_large_page(h2fmi_struct_t *_fmi)
 
 	h2fmi_dma_execute_async(dir, _fmi->dma1, _fmi->wmr_ptr[_fmi->current_page_index],
 			H2FMI_UNK18(_fmi), _fmi->num_pages_to_read * _fmi->ecc_bytes,
-			1, 1, _fmi->aes_info);
+			1, 1, NULL);
 
 	bufferPrintf("fmi: rw_large_page done!\r\n");
 }
@@ -923,8 +932,6 @@ int h2fmi_read_multi(h2fmi_struct_t *_fmi, uint16_t _num_pages, uint16_t *_chips
 
 	bufferPrintf("fmi: state machine done.\r\n");
 
-	udelay(1000000); // LOLOLOLOLOL
-
 	if(_fmi->field_13C != 0)
 	{
 		if(h2fmi_dma_wait(_fmi->dma0, 2000000) != 0
@@ -950,11 +957,11 @@ int h2fmi_read_multi(h2fmi_struct_t *_fmi, uint16_t _num_pages, uint16_t *_chips
 		return _fmi->failure_details.overall_status;
 	}
 
-	uint32_t a = _fmi->field_150;
-	uint32_t b = _fmi->field_14C;
-
 	if(_fmi->failure_details.overall_status == 0)
 	{
+		uint32_t a = _fmi->field_150;
+		uint32_t b = _fmi->field_14C;
+
 		if(b != 0)
 		{
 			_fmi->failure_details.overall_status = b > _num_pages? 2 : 0x80000023;
@@ -971,10 +978,10 @@ int h2fmi_read_multi(h2fmi_struct_t *_fmi, uint16_t _num_pages, uint16_t *_chips
 			}
 		}
 	}
-	
+
 	h2fmi_hw_reg_int_init(_fmi);
-	
-	bufferPrintf("fmi: read_multi done.\r\n");
+
+	bufferPrintf("fmi: read_multi done 0x%08x.\r\n", _fmi->failure_details.overall_status);
 
 	return _fmi->failure_details.overall_status;
 }
@@ -1019,9 +1026,9 @@ static void h2fmi_aes_handler_2(uint32_t dataBuffer, uint32_t dmaAES_setting2, u
 	//bufferPrintf("fmi: aes_handler_2 0x%08x, 0x%08x, 0x%08x.\r\n", dataBuffer, dmaAES_setting2, unknAESSetting1);
 
 	h2fmi_struct_t *fmi = (h2fmi_struct_t*)dataBuffer;
-	if(fmi->aes_struct.unkn0)
+	if(fmi->some_aes_field)
 	{
-		memcpy(unknAESSetting1, ((char*)&fmi->aes_struct.unkn0) + (16*dmaAES_setting2), 16);
+		memcpy(unknAESSetting1, ((char*)&fmi->some_aes_field) + (16*dmaAES_setting2), 16);
 	}
 	else
 	{
@@ -1052,22 +1059,23 @@ static void h2fmi_setup_aes(h2fmi_struct_t *_fmi, uint32_t _enabled, uint32_t a2
 {
 	if(_enabled)
 	{
-		uint32_t epic;
+		uint32_t type;
 		if(a3 < (_fmi->bytes_per_page * h2fmi_ftl_count) + h2fmi_ftl_databuf)
-			epic = 1;
+			type = 1;
 		else
-			epic = 0;
+			type = 0;
 
 		if(h2fmi_ftl_databuf > a3)
-			epic = 0;
+			type = 0;
 
-		if(epic)
+		if(type == 0)
 		{
 			_fmi->aes_struct.dataBuffer = a3;
 			_fmi->aes_struct.dataSize = _fmi->bytes_per_page;
 			_fmi->aes_struct.handler = h2fmi_aes_handler_1;
 			_fmi->aes_struct.key = h2fmi_aes_key_1;
 			_fmi->aes_struct.unkn0 = (a2 == 0)? 0: 1;
+			_fmi->aes_struct.AESType = 0;
 		}
 		else
 		{
@@ -1076,6 +1084,7 @@ static void h2fmi_setup_aes(h2fmi_struct_t *_fmi, uint32_t _enabled, uint32_t a2
 			_fmi->aes_struct.handler = h2fmi_aes_handler_2;
 			_fmi->aes_struct.key = h2fmi_aes_key_2;
 			_fmi->aes_struct.unkn0 = (1 - a2 > 1)? 0: (1 - a2);
+			_fmi->aes_struct.AESType = 0;
 		}
 
 		_fmi->aes_info = &_fmi->aes_struct;
@@ -1106,8 +1115,6 @@ uint32_t h2fmi_read_single_page(uint32_t _ce, uint32_t _page, uint8_t *_ptr, uin
 
 	if(h2fmi_aes_counter == 0)
 		flag = 0;
-	else
-		flag++;
 
 	h2fmi_setup_aes(fmi, flag, 0, (uint32_t)_ptr);
 
@@ -1245,7 +1252,7 @@ static int h2fmi_init_bus(h2fmi_struct_t *_fmi)
 	_fmi->field_1A0 = 0xFF;
 
 	h2fmi_device_reset(_fmi);
-	nand_device_set_interrupt(_fmi);
+//	nand_device_set_interrupt(_fmi);
 
 	return 0;
 }
