@@ -750,14 +750,13 @@ static void h2fmi_set_ecc_bits(h2fmi_struct_t *_fmi, uint32_t _a)
 	SET_REG(H2FMI_ECC_BITS(_fmi), (_a & 0x1F) << 8);
 }
 
-static uint32_t h2fmi_function_1(h2fmi_struct_t *_fmi, uint32_t _val, uint8_t *_var, uint8_t *_a, uint32_t _b)
+static uint32_t h2fmi_function_1(h2fmi_struct_t *_fmi,
+		uint32_t _val, uint8_t *_var, uint8_t *_a, uint32_t _b)
 {
 	if(_val & 0x40)
 	{
 		if(_a)
-		{
 			memset(_a, 0xFE, _b);
-		}
 
 		return 2;
 	}
@@ -792,7 +791,8 @@ static uint32_t h2fmi_function_1(h2fmi_struct_t *_fmi, uint32_t _val, uint8_t *_
 static void h2fmi_some_mysterious_function(h2fmi_struct_t *_fmi, uint32_t _val)
 {
 	uint8_t var_10 = 0;
-	uint32_t ret = h2fmi_function_1(_fmi, _val, &var_10, _fmi->field_158, _fmi->bbt_format);
+	uint32_t ret = h2fmi_function_1(_fmi, _val, &var_10,
+			_fmi->field_158, _fmi->bbt_format);
 	
 	if(ret == 0x80000024)
 		_fmi->field_154++;
@@ -868,7 +868,7 @@ static void h2fmi_inner_function(h2fmi_struct_t *_fmi, uint8_t _a, uint8_t _b)
 
 	SET_REG(H2FMI_UNKREG4(_fmi), val);
 	SET_REG(H2FMI_UNKREG5(_fmi), 1);
-	while(GET_REG(H2FMI_UNKREG6(_fmi)) == 0); // should this be != 0?
+	while((GET_REG(H2FMI_UNKREG6(_fmi)) & 1) == 0); // should this be != 0?
 	SET_REG(H2FMI_UNKREG6(_fmi), 1);
 
 	h2fmi_hw_reg_int_init(_fmi);
@@ -882,7 +882,7 @@ static void h2fmi_another_function(h2fmi_struct_t *_fmi)
 	h2fmi_inner_function(_fmi, 0x40, 0x40);
 
 	SET_REG(H2FMI_UNK440(_fmi), 0x20);
-	SET_REG(H2FMI_UNK10(_fmi), 0xE0);
+	SET_REG(H2FMI_UNK10(_fmi), 0x100);
 }
 
 static void h2fmi_rw_large_page(h2fmi_struct_t *_fmi)
@@ -924,7 +924,8 @@ static uint32_t h2fmi_read_state_2_handler(h2fmi_struct_t *_fmi)
 
 		SET_REG(H2FMI_UNKREG4(_fmi), 0);
 		SET_REG(H2FMI_UNKREG5(_fmi), 1);
-		while(GET_REG(H2FMI_UNKREG6(_fmi)) == 0); // should this be != 0?
+		while((GET_REG(H2FMI_UNKREG6(_fmi)) & 1) == 0);
+		SET_REG(H2FMI_UNKREG6(_fmi), 1);
 
 		_fmi->state.read_state = H2FMI_READ_3;
 		SET_REG(H2FMI_UNK10(_fmi), 2);
@@ -1191,6 +1192,8 @@ int h2fmi_read_multi(h2fmi_struct_t *_fmi, uint16_t _num_pages, uint16_t *_chips
 		uint32_t a = _fmi->field_150;
 		uint32_t b = _fmi->field_14C;
 
+		bufferPrintf("fmi: Some error thing. 0x%08x 0x%08x.\r\n", a, b);
+
 		if(b != 0)
 		{
 			_fmi->failure_details.overall_status = b > _num_pages? 2 : 0x80000023;
@@ -1217,12 +1220,8 @@ int h2fmi_read_multi(h2fmi_struct_t *_fmi, uint16_t _num_pages, uint16_t *_chips
 
 uint32_t h2fmi_read_single(h2fmi_struct_t *_fmi, uint16_t _chip, uint32_t _page, uint8_t *_data, uint8_t *_wmr, uint8_t *_6, uint8_t *_7)
 {
-	uint8_t *data = _data;
-	uint8_t *wmr = _wmr;
-
 	bufferPrintf("fmi: read_single.\r\n");
-
-	return h2fmi_read_multi(_fmi, 1, &_chip, &_page, &data, &wmr, _6, _7);
+	return h2fmi_read_multi(_fmi, 1, &_chip, &_page, &_data, &_wmr, _6, _7);
 }
 
 static void h2fmi_aes_handler_1(uint32_t dataBuffer, uint32_t dmaAES_setting2, uint32_t* unknAESSetting1)
