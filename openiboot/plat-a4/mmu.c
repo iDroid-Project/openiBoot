@@ -8,18 +8,6 @@ uint32_t* CurrentPageTable;
 
 static void initialize_pagetable();
 
-static PhysicalAddressMap PhysicalAddressMapping[] = {
-#if defined(CONFIG_IPHONE_4)
-	{0x0,        0xFFFFFFFF, 0x40000000, 0x20000000},
-	{0x40000000, 0xFFFFFFFF, 0x40000000, 0x20000000},
-#else
-	{0x0,        0xFFFFFFFF, 0x40000000, 0x10000000},
-	{0x40000000, 0xFFFFFFFF, 0x40000000, 0x10000000},
-#endif
-	{0x84000000, 0xFFFFFFFF, 0x84000000, 0x400000},
-	{0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0},
-};
-
 int mmu_setup() {
 	CurrentPageTable = (uint32_t*) PageTable;
 
@@ -100,38 +88,8 @@ void mmu_map_section_range(uint32_t rangeStart, uint32_t rangeEnd, uint32_t targ
 	}
 }
 
-PhysicalAddressMap* get_address_map(uint32_t address, uint32_t* address_map_base) {
-	int i = 0;
-
-	while (1) {
-		if (!PhysicalAddressMapping[i].size)
-			break;
-		if (PhysicalAddressMapping[i].logicalStart != 0xFFFFFFFF &&
-			PhysicalAddressMapping[i].logicalStart <= address &&
-			address < PhysicalAddressMapping[i].logicalStart + PhysicalAddressMapping[i].size) {
-				      *address_map_base = address - PhysicalAddressMapping[i].logicalStart;
-				      return &PhysicalAddressMapping[i];
-		}
-		if (PhysicalAddressMapping[i].logicalEnd != 0xFFFFFFFF &&
-			address >= PhysicalAddressMapping[i].logicalEnd &&
-			address < PhysicalAddressMapping[i].logicalEnd + PhysicalAddressMapping[i].size) {
-				      *address_map_base = address - PhysicalAddressMapping[i].logicalEnd;
-				      return &PhysicalAddressMapping[i];
-		}
-		i++;
-	}
-
-	return 0;
-}
-
 uint32_t get_physical_address(uint32_t address) {
-	uint32_t address_map_base;
-	uint32_t result;
-
-	PhysicalAddressMap* physicalAddressMap = get_address_map(address, &address_map_base);
-	if (physicalAddressMap)
-		result = physicalAddressMap->physicalStart + address_map_base;
-	else
-		result = -1;
-	return result;
+	uint32_t pageData = CurrentPageTable[address >> 20];
+	uint32_t pbase = pageData & MMU_SECTION_MASK;
+	return (address &~ MMU_SECTION_MASK) | pbase;
 }
