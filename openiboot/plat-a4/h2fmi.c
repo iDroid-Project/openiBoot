@@ -239,6 +239,7 @@ void sub_5FF174A0(h2fmi_state_t *_state) {
 	return;
 }
 
+static void h2fmi_hw_reg_int_init(h2fmi_struct_t *_fmi);
 void h2fmi_irq_handler_0(h2fmi_struct_t *_fmi) {
 	bufferPrintf("h2fmi_irq_handler_0: This is also doing more. But I'm too lazy. Just return.\n");
 	return;
