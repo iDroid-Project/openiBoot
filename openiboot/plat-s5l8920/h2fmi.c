@@ -231,7 +231,7 @@ static h2fmi_struct_t *h2fmi_busses[] = {
 
 #define H2FMI_BUS_COUNT (array_size(h2fmi_busses))
 
-static h2fmi_geometry_t h2fmi_geometry;
+h2fmi_geometry_t h2fmi_geometry;
 
 typedef struct _h2fmi_map_entry
 {
@@ -340,7 +340,7 @@ static void h2fmi_disable_chip(uint8_t _chip)
 {
 	h2fmi_struct_t *fmi = (_chip & 0x8) ? &fmi1: &fmi0;
 	SET_REG(H2FMI_CHIP_MASK(fmi),
-			H2FMI_CHIP_MASK(fmi) &~ (1 << (_chip & 0x7)));
+			GET_REG(H2FMI_CHIP_MASK(fmi)) &~ (1 << (_chip & 0x7)));
 }
 
 static void h2fmi_disable_bus(h2fmi_struct_t *_fmi)
@@ -696,7 +696,7 @@ static void h2fmi_store_810(h2fmi_struct_t *_fmi)
 static void h2fmi_set_address_inner(h2fmi_struct_t *_fmi, uint32_t _addr)
 {
 	SET_REG(H2FMI_UNK41C(_fmi), (_addr >> 16) & 0xFF);
-	SET_REG(H2FMI_UNKREG9(_fmi), ((_addr & 0xFF) << 16) || ((_addr >> 8) << 24));
+	SET_REG(H2FMI_UNKREG9(_fmi), ((_addr & 0xFF) << 16) | ((_addr >> 8) << 24));
 	SET_REG(H2FMI_UNKREG10(_fmi), 4);
 }
 
@@ -1392,7 +1392,7 @@ uint32_t h2fmi_read_single_page(uint32_t _ce, uint32_t _page, uint8_t *_ptr, uin
 	return ret;
 }
 
-uint8_t h2fmi_calculate_ecc_bits(h2fmi_struct_t *_fmi)
+static uint8_t h2fmi_calculate_ecc_bits(h2fmi_struct_t *_fmi)
 {
 	uint32_t val = (_fmi->bytes_per_spare - _fmi->ecc_bytes) / (_fmi->bytes_per_page >> 9);
 	static uint8_t some_array[] = { 0x1A, 0x10, 0xD, 0x8 };
@@ -1444,14 +1444,9 @@ static uint32_t h2fmi_config_sectors_to_page_size(h2fmi_struct_t *_fmi)
 	return (r4 << 2) | (r4 << 8) | 0x60000 | r5 | ps;
 }
 
-static int64_t s64_rem(int64_t _a, int64_t _b)
-{
-	return _a - ((_a/_b)*_b);
-}
-
 static int64_t some_math_fn(uint8_t _a, uint8_t _b)
 {
-	uint32_t b = ((s64_rem(_b, _a) & 0xFF)? 1 : 0) + (_b/_a);
+	uint32_t b = (((_b & _a) & 0xFF)? 1 : 0) + (_b/_a);
 
 	if(b == 0)
 		return 0;
@@ -1690,7 +1685,7 @@ void h2fmi_init()
 
 			h2fmi_geometry.page_number_bit_width = nextPOT;
 			h2fmi_geometry.page_number_bit_width_2 = nextPOT;
-			h2fmi_geometry.pages_per_block_per_ce
+			h2fmi_geometry.pages_per_ce
 				= h2fmi_geometry.banks_per_ce_vfl * h2fmi_geometry.pages_per_block;
 			h2fmi_geometry.unk1C = info->chip_info->unk7;
 			h2fmi_geometry.vendorType = info->board_info->unk1;
