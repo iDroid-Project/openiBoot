@@ -32,7 +32,6 @@
 #define H2FMI_UNK10(x)		(H2FMI_REG(x, 0x10))
 #define H2FMI_UNK14(x)		(H2FMI_REG(x, 0x14))
 #define H2FMI_UNK18(x)		(H2FMI_REG(x, 0x18))
-#define H2FMI_UNKREG14(x)	(H2FMI_REG(x, 0xC))
 #define H2FMI_UNKREG15(x)	(H2FMI_REG(x, 0x34))
 #define H2FMI_UNKREG16(x)	(H2FMI_REG(x, 0x1C))
 #define H2FMI_UNKREG17(x)	(H2FMI_REG(x, 0x14))

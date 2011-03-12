@@ -244,7 +244,7 @@ static void h2fmi_hw_reg_int_init(h2fmi_struct_t *_fmi);
 void h2fmi_irq_handler_0(h2fmi_struct_t *_fmi) {
 	bufferPrintf("h2fmi_irq_handler_0: This is also doing more. But I'm too lazy. Just return.\n");
 	return;
-	_fmi->fmi_state = GET_REG(H2FMI_UNKREG14(_fmi));
+	_fmi->fmi_state = GET_REG(H2FMI_UNKC(_fmi));
 	h2fmi_hw_reg_int_init(_fmi);
 	sub_5FF174A0(&_fmi->state);
 }
@@ -290,11 +290,11 @@ static int h2fmi_wait_for_done(h2fmi_struct_t *_fmi, uint32_t _reg, uint32_t _ma
 		if(has_elapsed(startTime, 10000))
 		{
 			bufferPrintf("h2fmi: timeout on 0x%08x failed.\n", _reg);
-			SET_REG(_reg &~ 0x3, _val);
 			return -1;
 		}
 	}
 
+	SET_REG(_reg &~ 0x3, _val);
 	return 0;
 }
 
@@ -357,7 +357,7 @@ static void h2fmi_disable_chip(uint8_t _chip)
 {
 	h2fmi_struct_t *fmi = (_chip & 0x8) ? &fmi1: &fmi0;
 	SET_REG(H2FMI_CHIP_MASK(fmi),
-			H2FMI_CHIP_MASK(fmi) &~ (1 << (_chip & 0x7)));
+			GET_REG(H2FMI_CHIP_MASK(fmi)) &~ (1 << (_chip & 0x7)));
 }
 
 static void h2fmi_disable_bus(h2fmi_struct_t *_fmi)
@@ -422,7 +422,7 @@ static int h2fmi_read_chipid(h2fmi_struct_t *_fmi, uint8_t _chip, void *_buffer,
 	if (!ret) {
 		SET_REG(H2FMI_UNKREG15(_fmi), 0x801);
 		SET_REG(H2FMI_UNK4(_fmi), 3);
-		ret = h2fmi_wait_for_done(_fmi, H2FMI_UNKREG14(_fmi), 2, 2);
+		ret = h2fmi_wait_for_done(_fmi, H2FMI_UNKC(_fmi), 2, 2);
 		if (!ret) {
 			h2fmi_pio_read_sector(_fmi, _buffer, H2FMI_CHIPID_LENGTH);
 		}
@@ -717,7 +717,7 @@ static void h2fmi_store_810(h2fmi_struct_t *_fmi)
 static void h2fmi_set_address_inner(h2fmi_struct_t *_fmi, uint32_t _addr)
 {
 	SET_REG(H2FMI_UNK41C(_fmi), (_addr >> 16) & 0xFF);
-	SET_REG(H2FMI_UNKREG9(_fmi), ((_addr & 0xFF) << 16) || ((_addr >> 8) << 24));
+	SET_REG(H2FMI_UNKREG9(_fmi), ((_addr & 0xFF) << 16) | ((_addr >> 8) << 24));
 	SET_REG(H2FMI_UNKREG10(_fmi), 4);
 }
 
@@ -755,7 +755,7 @@ static void h2fmi_hw_reg_int_init(h2fmi_struct_t *_fmi)
 	SET_REG(H2FMI_UNK440(_fmi), 0);
 	SET_REG(H2FMI_UNK10(_fmi), 0);
 	SET_REG(H2FMI_UNKREG6(_fmi), 0x31FFFF);
-	SET_REG(H2FMI_UNKREG14(_fmi), 0xF);
+	SET_REG(H2FMI_UNKC(_fmi), 0xF);
 }
 
 void nand_device_set_interrupt(h2fmi_struct_t *_fmi)
