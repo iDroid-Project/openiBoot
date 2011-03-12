@@ -184,8 +184,8 @@ static h2fmi_struct_t fmi1 = {
 	.base_address = H2FMI1_BASE,
 	.clock_gate = H2FMI1_CLOCK_GATE,
 	.interrupt = H2FMI1_INTERRUPT,
-	.dma0 = 6,
-	.dma1 = 7,
+	.dma0 = 7,
+	.dma1 = 8,
 	.currentmode = 0,
 };
 

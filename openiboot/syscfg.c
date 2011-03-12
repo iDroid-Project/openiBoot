@@ -2,12 +2,12 @@
 #include "syscfg.h"
 #include "mtd.h"
 #include "util.h"
+#include "commands.h"
 
 #define SCFG_MAGIC 0x53436667
 #define CNTB_MAGIC 0x434e5442
 #define SCFG_LOCATION 0x4000
 
-#ifdef S5L8900
 typedef struct SCfgHeader
 {
 	uint32_t magic;
@@ -17,16 +17,6 @@ typedef struct SCfgHeader
 	uint32_t unknown;
 	uint32_t entries;
 } SCfgHeader;
-#else
-typedef struct SCfgHeader
-{
-	uint32_t magic;
-	uint32_t bytes_total;
-	uint32_t bytes_used;
-	uint32_t version;
-	uint32_t entries;
-} SCfgHeader;
-#endif
 
 typedef struct SCfgEntry
 {
@@ -137,3 +127,26 @@ uint8_t* syscfg_get_entry(uint32_t type, int* size)
 	return NULL;
 }
 
+void syscfg_list()
+{
+	int i;
+
+	for(i = 0; i < header.entries; ++i)
+	{
+		char *tp = (char*)&entries[i].type;
+
+		bufferPrintf("%c%c%c%c: ", tp[3], tp[2], tp[1], tp[0]);
+
+		int j;
+		for(j = 0; j < entries[i].size; j++)
+			bufferPrintf("%c", entries[i].data[j]);
+
+		bufferPrintf("\r\n");
+	}
+}
+
+void cmd_syscfg_list(int argc, char **argv)
+{
+	syscfg_list();
+}
+COMMAND("syscfg_list", "List all syscfg entries.", cmd_syscfg_list);
