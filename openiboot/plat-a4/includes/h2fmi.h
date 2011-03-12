@@ -59,7 +59,7 @@ typedef struct _h2fmi_geometry
 	uint32_t num_ecc_bytes;
 	uint32_t meta_per_logical_page;
 	uint32_t field_60;
-	uint32_t pages_per_block_per_ce;
+	uint32_t pages_per_ce;
 } h2fmi_geometry_t;
 
 
@@ -128,5 +128,9 @@ typedef struct _h2fmi_struct
 
 	uint32_t interrupt;
 } h2fmi_struct_t;
+
+extern h2fmi_geometry_t h2fmi_geometry;
+
+uint32_t h2fmi_read_single_page(uint32_t _ce, uint32_t _page, uint8_t *_ptr, uint8_t *_meta_ptr, uint8_t *_6, uint8_t *_7, uint32_t _8);
 
 #endif //H2FMI_H

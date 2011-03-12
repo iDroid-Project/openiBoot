@@ -197,7 +197,7 @@ static h2fmi_struct_t *h2fmi_busses[] = {
 
 #define H2FMI_BUS_COUNT (array_size(h2fmi_busses))
 
-static h2fmi_geometry_t h2fmi_geometry;
+h2fmi_geometry_t h2fmi_geometry;
 
 typedef struct _h2fmi_map_entry
 {
@@ -1426,7 +1426,7 @@ uint32_t h2fmi_read_single_page(uint32_t _ce, uint32_t _page, uint8_t *_ptr, uin
 	return ret;
 }
 
-uint8_t h2fmi_calculate_ecc_bits(h2fmi_struct_t *_fmi)
+static uint8_t h2fmi_calculate_ecc_bits(h2fmi_struct_t *_fmi)
 {
 	uint32_t val = (_fmi->bytes_per_spare - _fmi->ecc_bytes) / (_fmi->bytes_per_page >> 10);
 	static uint8_t some_array[] = { 0x35, 0x1E, 0x33, 0x1D, 0x2C, 0x19, 0x1C, 0x10, 0x1B, 0xF };
@@ -1443,14 +1443,9 @@ uint8_t h2fmi_calculate_ecc_bits(h2fmi_struct_t *_fmi)
 	return 0;
 }
 
-static int64_t s64_rem(int64_t _a, int64_t _b)
-{
-	return _a - ((_a/_b)*_b);
-}
-
 static int64_t some_math_fn(uint8_t _a, uint8_t _b)
 {
-	uint32_t b = ((s64_rem(_b, _a) & 0xFF)? 1 : 0) + (_b/_a);
+	uint32_t b = (((_b % _a) & 0xFF)? 1 : 0) + (_b/_a);
 
 	if(b == 0)
 		return 0;
@@ -1700,7 +1695,7 @@ void h2fmi_init()
 
 			h2fmi_geometry.page_number_bit_width = nextPOT;
 			h2fmi_geometry.page_number_bit_width_2 = nextPOT;
-			h2fmi_geometry.pages_per_block_per_ce
+			h2fmi_geometry.pages_per_ce
 				= h2fmi_geometry.banks_per_ce_vfl * h2fmi_geometry.pages_per_block;
 			h2fmi_geometry.unk1C = info->chip_info->unk7;
 			h2fmi_geometry.vendorType = info->board_info->unk1;
