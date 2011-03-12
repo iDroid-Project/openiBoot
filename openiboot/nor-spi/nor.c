@@ -12,8 +12,6 @@
 #include "syscfg.h"
 #include "nvram.h"
 
-#define NOR_BLOCK_SIZE 4096
-
 typedef struct _nor_device
 {
 	mtd_t mtd;
@@ -200,7 +198,7 @@ static int nor_read(mtd_t *_dev, void *_dest, uint32_t _off, int _amt)
 
 	while(len > 0)
 	{
-		int toRead = (len > 0x10) ? 0x10 : len;
+		int toRead = MIN(len, NOR_MAX_READ);
 
 		command[0] = NOR_SPI_READ;
 		command[1] = (_off >> 16) & 0xFF;

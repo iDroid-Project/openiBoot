@@ -46,5 +46,8 @@
 #define NOR_CS 0x1204
 #define NOR_SPI 0
 
+#define NOR_MAX_READ 4
+#define NOR_BLOCK_SIZE 4096
+
 #endif
 

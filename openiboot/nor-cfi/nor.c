@@ -96,7 +96,7 @@ static int nor_erase_sector(nor_device_t *_dev, uint32_t _offset)
 	return 0;
 }
 
-static int nor_write_short(nor_device_t *_dev, uint32_t offset, uint8_t data)
+static int nor_write_short(nor_device_t *_dev, uint32_t offset, uint16_t data)
 {
 	SET_REG16(NOR + NOR_COMMAND, COMMAND_UNLOCK);
 	SET_REG16(NOR + LOCK, LOCK_UNLOCK);

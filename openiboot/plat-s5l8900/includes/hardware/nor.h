@@ -52,5 +52,8 @@
 #define NOR_CS	GPIO_SPI0_CS0
 #define NOR_SPI	0
 
+#define NOR_MAX_READ 16
+#define NOR_BLOCK_SIZE 4096
+
 #endif
 
