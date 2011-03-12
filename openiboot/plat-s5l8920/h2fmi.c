@@ -1446,7 +1446,7 @@ static uint32_t h2fmi_config_sectors_to_page_size(h2fmi_struct_t *_fmi)
 
 static int64_t some_math_fn(uint8_t _a, uint8_t _b)
 {
-	uint32_t b = (((_b & _a) & 0xFF)? 1 : 0) + (_b/_a);
+	uint32_t b = (((_b % _a) & 0xFF)? 1 : 0) + (_b/_a);
 
 	if(b == 0)
 		return 0;
