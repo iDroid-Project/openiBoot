@@ -3,11 +3,12 @@
 #include "timer.h"
 #include "tasks.h"
 #include "clock.h"
-#include "interrupt.h"
 #include "util.h"
+#include "cdma.h"
 #include "arm.h"
-#include "openiboot-asmhelpers.h"
 #include "commands.h"
+#include "openiboot-asmhelpers.h"
+#include "interrupt.h"
 
 typedef struct _nand_chipid
 {
@@ -355,8 +356,8 @@ static void h2fmi_enable_chip(h2fmi_struct_t *_fmi, uint8_t _chip)
 static void h2fmi_disable_chip(uint8_t _chip)
 {
 	h2fmi_struct_t *fmi = (_chip & 0x8) ? &fmi1: &fmi0;
-	uint32_t maskReg = H2FMI_CHIP_MASK(fmi);
-	SET_REG(maskReg, GET_REG(maskReg) &~ (1 << (_chip & 0x7)));
+	SET_REG(H2FMI_CHIP_MASK(fmi),
+			H2FMI_CHIP_MASK(fmi) &~ (1 << (_chip & 0x7)));
 }
 
 static void h2fmi_disable_bus(h2fmi_struct_t *_fmi)

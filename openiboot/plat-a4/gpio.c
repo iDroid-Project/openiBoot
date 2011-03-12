@@ -190,7 +190,8 @@ int gpio_pin_state(int port) {
 	port = port >> 8;
 
 	if (port == 0x16) {
-		return spi_status(pin);
+		//return spi_status(pin);
+		return 0;
 	} else {
 		return (GET_REG(GPIO + (8 * port + pin) * sizeof(uint32_t)) & 1);
 	}
@@ -251,7 +252,7 @@ void gpio_custom_io(int pinport, int mode) {
 	uint16_t value;
 	uint32_t pin_register;
 	if (port == 0x16) {
-		spi_on_off(pin, mode);
+		//spi_on_off(pin, mode);
 	} else {
 		pin_register = GPIO + (8 * port + pin) * sizeof(uint32_t);
 		switch(mode) {
