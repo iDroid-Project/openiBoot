@@ -22,7 +22,7 @@
 #include "images.h"
 #include "syscfg.h"
 #include "nvram.h"
-#include "camera.h"
+#include "accel.h"
 #include "util.h"
 #include "commands.h"
 #include "framebuffer.h"
