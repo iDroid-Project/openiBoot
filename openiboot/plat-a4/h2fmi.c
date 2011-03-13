@@ -197,7 +197,7 @@ static h2fmi_struct_t *h2fmi_busses[] = {
 
 #define H2FMI_BUS_COUNT (array_size(h2fmi_busses))
 
-static h2fmi_geometry_t h2fmi_geometry;
+h2fmi_geometry_t h2fmi_geometry;
 
 typedef struct _h2fmi_map_entry
 {
@@ -244,7 +244,7 @@ static void h2fmi_hw_reg_int_init(h2fmi_struct_t *_fmi);
 void h2fmi_irq_handler_0(h2fmi_struct_t *_fmi) {
 	bufferPrintf("h2fmi_irq_handler_0: This is also doing more. But I'm too lazy. Just return.\n");
 	return;
-	_fmi->fmi_state = GET_REG(H2FMI_UNKREG14(_fmi));
+	_fmi->fmi_state = GET_REG(H2FMI_UNKC(_fmi));
 	h2fmi_hw_reg_int_init(_fmi);
 	sub_5FF174A0(&_fmi->state);
 }
@@ -290,11 +290,11 @@ static int h2fmi_wait_for_done(h2fmi_struct_t *_fmi, uint32_t _reg, uint32_t _ma
 		if(has_elapsed(startTime, 10000))
 		{
 			bufferPrintf("h2fmi: timeout on 0x%08x failed.\n", _reg);
-			SET_REG(_reg &~ 0x3, _val);
 			return -1;
 		}
 	}
 
+	SET_REG(_reg &~ 0x3, _val);
 	return 0;
 }
 
@@ -357,7 +357,7 @@ static void h2fmi_disable_chip(uint8_t _chip)
 {
 	h2fmi_struct_t *fmi = (_chip & 0x8) ? &fmi1: &fmi0;
 	SET_REG(H2FMI_CHIP_MASK(fmi),
-			H2FMI_CHIP_MASK(fmi) &~ (1 << (_chip & 0x7)));
+			GET_REG(H2FMI_CHIP_MASK(fmi)) &~ (1 << (_chip & 0x7)));
 }
 
 static void h2fmi_disable_bus(h2fmi_struct_t *_fmi)
@@ -422,7 +422,7 @@ static int h2fmi_read_chipid(h2fmi_struct_t *_fmi, uint8_t _chip, void *_buffer,
 	if (!ret) {
 		SET_REG(H2FMI_UNKREG15(_fmi), 0x801);
 		SET_REG(H2FMI_UNK4(_fmi), 3);
-		ret = h2fmi_wait_for_done(_fmi, H2FMI_UNKREG14(_fmi), 2, 2);
+		ret = h2fmi_wait_for_done(_fmi, H2FMI_UNKC(_fmi), 2, 2);
 		if (!ret) {
 			h2fmi_pio_read_sector(_fmi, _buffer, H2FMI_CHIPID_LENGTH);
 		}
@@ -717,7 +717,7 @@ static void h2fmi_store_810(h2fmi_struct_t *_fmi)
 static void h2fmi_set_address_inner(h2fmi_struct_t *_fmi, uint32_t _addr)
 {
 	SET_REG(H2FMI_UNK41C(_fmi), (_addr >> 16) & 0xFF);
-	SET_REG(H2FMI_UNKREG9(_fmi), ((_addr & 0xFF) << 16) || ((_addr >> 8) << 24));
+	SET_REG(H2FMI_UNKREG9(_fmi), ((_addr & 0xFF) << 16) | ((_addr >> 8) << 24));
 	SET_REG(H2FMI_UNKREG10(_fmi), 4);
 }
 
@@ -755,7 +755,7 @@ static void h2fmi_hw_reg_int_init(h2fmi_struct_t *_fmi)
 	SET_REG(H2FMI_UNK440(_fmi), 0);
 	SET_REG(H2FMI_UNK10(_fmi), 0);
 	SET_REG(H2FMI_UNKREG6(_fmi), 0x31FFFF);
-	SET_REG(H2FMI_UNKREG14(_fmi), 0xF);
+	SET_REG(H2FMI_UNKC(_fmi), 0xF);
 }
 
 void nand_device_set_interrupt(h2fmi_struct_t *_fmi)
@@ -1426,7 +1426,7 @@ uint32_t h2fmi_read_single_page(uint32_t _ce, uint32_t _page, uint8_t *_ptr, uin
 	return ret;
 }
 
-uint8_t h2fmi_calculate_ecc_bits(h2fmi_struct_t *_fmi)
+static uint8_t h2fmi_calculate_ecc_bits(h2fmi_struct_t *_fmi)
 {
 	uint32_t val = (_fmi->bytes_per_spare - _fmi->ecc_bytes) / (_fmi->bytes_per_page >> 10);
 	static uint8_t some_array[] = { 0x35, 0x1E, 0x33, 0x1D, 0x2C, 0x19, 0x1C, 0x10, 0x1B, 0xF };
@@ -1443,14 +1443,9 @@ uint8_t h2fmi_calculate_ecc_bits(h2fmi_struct_t *_fmi)
 	return 0;
 }
 
-static int64_t s64_rem(int64_t _a, int64_t _b)
-{
-	return _a - ((_a/_b)*_b);
-}
-
 static int64_t some_math_fn(uint8_t _a, uint8_t _b)
 {
-	uint32_t b = ((s64_rem(_b, _a) & 0xFF)? 1 : 0) + (_b/_a);
+	uint32_t b = (((_b % _a) & 0xFF)? 1 : 0) + (_b/_a);
 
 	if(b == 0)
 		return 0;
@@ -1700,7 +1695,7 @@ void h2fmi_init()
 
 			h2fmi_geometry.page_number_bit_width = nextPOT;
 			h2fmi_geometry.page_number_bit_width_2 = nextPOT;
-			h2fmi_geometry.pages_per_block_per_ce
+			h2fmi_geometry.pages_per_ce
 				= h2fmi_geometry.banks_per_ce_vfl * h2fmi_geometry.pages_per_block;
 			h2fmi_geometry.unk1C = info->chip_info->unk7;
 			h2fmi_geometry.vendorType = info->board_info->unk1;
