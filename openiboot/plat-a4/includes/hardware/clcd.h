@@ -1,7 +1,11 @@
 #ifndef HW_CLCD_H
 #define HW_CLCD_H
 
+#if !defined(CONFIG_ATV_2G)
 #define CLCD 0x89000000
+#else
+#define CLCD 0x89100000
+#endif
 #define CLCD_FRAMEBUFFER 0x5F700000
 
 #define VIDCON1_IVCLKSHIFT 3
@@ -19,8 +23,7 @@
 #define VIDTCON2_LINEVALSHIFT 0
 #define VIDTCON2_HOZVALMASK 0x3FF
 #define VIDTCON2_HOZVALSHIFT 16
-// nickp666 - TODO: FUCKING FIX THIS - This is completely wrong (atv2)
-#if defined(CONFIG_IPHONE_4) || defined(CONFIG_ATV_2G)
+#if defined(CONFIG_IPHONE_4)
 #define DISPLAYID 0
 #elif defined(CONFIG_IPAD)
 #define DISPLAYID 1
@@ -28,6 +31,8 @@
 #define DISPLAYID 2
 #elif defined(CONFIG_IPOD_2G)
 #define DISPLAYID 3
+#elif defined(CONFIG_ATV_2G)
+#define DISPLAYID 4
 #endif
 
 #endif
