@@ -117,7 +117,7 @@ static LCDInfo LCDInfoTable[] = {
 // iPod Touch 2G -- Should not be in plat-a4
 	{"n72", 0xB, 0xA4CB80, 0xA3, 320, 0xC, 0xC, 0x10, 480, 6, 6, 8, 0, 0, 0, 0, 24, 3, 0x222},
 // aTV 2G
-	{"720p",0xB, 0, 0xF3, 1280, 0xDC, 0x6E, 0x28, 720, 0x14, 5, 5, 0, 0, 0, 0, 24, 5, 0},
+	{"720p", 0xB, 0, 0xF3, 1280, 0xDC, 0x6E, 0x28, 720, 0x14, 5, 5, 0, 0, 0, 0, 24, 5, 0},
 };
 
 static uint32_t atv_values[] = {
@@ -241,7 +241,7 @@ void lcd_fill(uint32_t color) {
 	lcd_fill_switch(ON, color);
 }
 
-uint32_t configureLCDClock(uint32_t result, int zero0, int zero1, int zero2, int zero3, unsigned int divider) {
+void configureLCDClock(uint32_t unkn1, int zero0, int zero1, int zero2, int zero3, unsigned int divider) {
 	uint32_t v6;
 	uint32_t v7;
 	uint32_t v8;
@@ -253,7 +253,7 @@ uint32_t configureLCDClock(uint32_t result, int zero0, int zero1, int zero2, int
 	// <CPICH> it's just result = r0 - r1*(r0/r1)
 	// <CPICH> uint64_t r0, r1;
 
-	if (result == 10) {
+	if (unkn1 == 0xA) {
 		v6 = 31;
 		v7 = dword_5FF3D04C;
 		v8 = dword_5FF3D04C / divider;
@@ -269,9 +269,7 @@ uint32_t configureLCDClock(uint32_t result, int zero0, int zero1, int zero2, int
 		SET_REG(0xBF100094, (GET_REG(0xBF100094) & 0xFFFFFFE0) | v10);
 //		unk_5FF3D078 = v7 / v6;
 		dword_5FF3D0D0 = v7 / v6 / v10;
-		result = dword_5FF3D0D0;
 	}
-	return result;
 }
 
 int displaypipe_init() {
