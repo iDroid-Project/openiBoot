@@ -1,5 +1,4 @@
 #include "openiboot.h"
-#include "lcd.h"
 #include "util.h"
 #include "framebuffer.h"
 #include "buttons.h"
@@ -15,12 +14,9 @@
 #include "actions.h"
 #include "stb_image.h"
 #include "pmu.h"
-#include "nand.h"
-#include "radio.h"
 #include "hfs/fs.h"
 #include "ftl.h"
 #include "scripting.h"
-#include "multitouch.h"
 #include "nvram.h"
 #include "tasks.h"
 

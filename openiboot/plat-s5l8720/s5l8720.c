@@ -31,18 +31,11 @@
 #include "framebuffer.h"
 #include "menu.h"
 #include "pmu.h"
-#include "nand.h"
-#include "ftl.h"
 #include "hfs/bdev.h"
 #include "hfs/fs.h"
 #include "scripting.h"
 #include "actions.h"
-
-#include "radio.h"
-#include "wmcodec.h"
 #include "wdt.h"
-#include "als.h"
-#include "multitouch.h"
 
 //TODO: remove
 #include "buttons.h"

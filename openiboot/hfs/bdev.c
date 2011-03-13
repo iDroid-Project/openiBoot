@@ -1,9 +1,7 @@
 #include "openiboot.h"
 #include "hfs/common.h"
 #include "hfs/bdev.h"
-#include "ftl.h"
 #include "util.h"
-#include "nand.h"
 
 typedef struct _bdevio_device
 {
