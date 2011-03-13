@@ -73,6 +73,12 @@ void uart_run(uint32_t _V) {
 				break;
 			}
 		}
+		EnterCriticalSection();
+		if (strlen(UartCommandBuffer) == UartCommandBufferSize) {
+			memset(UartCommandBuffer, 0, UartCommandBufferSize);
+			curUartCommandBuffer = UartCommandBuffer;
+		}
+		LeaveCriticalSection();
 		task_sleep(500);
 	}
 }
