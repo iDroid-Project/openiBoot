@@ -1224,11 +1224,11 @@ uint32_t h2fmi_read_single(h2fmi_struct_t *_fmi, uint16_t _chip, uint32_t _page,
 	return h2fmi_read_multi(_fmi, 1, &_chip, &_page, &_data, &_wmr, _6, _7);
 }
 
-static void h2fmi_aes_handler_1(uint32_t dataBuffer, uint32_t dmaAES_setting2, uint32_t* unknAESSetting1)
+static void h2fmi_aes_handler_1(uint32_t _param, uint32_t _segment, uint32_t* _iv)
 {
 	//bufferPrintf("fmi: aes_handler_1.\r\n");
 
-	uint32_t val = ((dataBuffer - h2fmi_ftl_databuf) / (h2fmi_geometry.bbt_format << 9)) + h2fmi_ftl_smth[0];
+	uint32_t val = ((_param - h2fmi_ftl_databuf) / (h2fmi_geometry.bbt_format << 9)) + h2fmi_ftl_smth[0];
 	uint32_t i;
 	for(i = 0; i < 4; i++)
 	{
@@ -1237,7 +1237,7 @@ static void h2fmi_aes_handler_1(uint32_t dataBuffer, uint32_t dmaAES_setting2, u
 		else
 			val = (val >> 1);
 
-		unknAESSetting1[i] = val;
+		_iv[i] = val;
 	}
 }
 
@@ -1248,19 +1248,16 @@ static uint32_t h2fmi_aes_key_1[] = {
 	0xCEEE78FC,
 };
 
-static void h2fmi_aes_handler_2(uint32_t dataBuffer, uint32_t dmaAES_setting2, uint32_t* unknAESSetting1)
+static void h2fmi_aes_handler_2(uint32_t _param, uint32_t _segment, uint32_t* _iv)
 {
-	//bufferPrintf("fmi: aes_handler_2.\r\n");
-	//bufferPrintf("fmi: aes_handler_2 0x%08x, 0x%08x, 0x%08x.\r\n", dataBuffer, dmaAES_setting2, unknAESSetting1);
-
-	h2fmi_struct_t *fmi = (h2fmi_struct_t*)dataBuffer;
-	if(fmi->some_aes_field)
+	h2fmi_struct_t *fmi = (h2fmi_struct_t*)_param;
+	if(fmi->aes_iv_pointer)
 	{
-		memcpy(unknAESSetting1, ((char*)&fmi->some_aes_field) + (16*dmaAES_setting2), 16);
+		memcpy(_iv, fmi->aes_iv_pointer + (16*_segment), 16);
 	}
 	else
 	{
-		uint32_t val = fmi->pages[dmaAES_setting2];
+		uint32_t val = fmi->pages[_segment];
 		uint32_t i;
 		for(i = 0; i < 4; i++)
 		{
@@ -1269,7 +1266,8 @@ static void h2fmi_aes_handler_2(uint32_t dataBuffer, uint32_t dmaAES_setting2, u
 			else
 				val = (val >> 1);
 
-			unknAESSetting1[i] = val;
+			bufferPrintf("fmi: iv[%d]: 0x%08x.\r\n", i, val);
+			_iv[i] = val;
 		}
 	}
 }
@@ -1283,38 +1281,33 @@ static uint32_t h2fmi_aes_key_2[] = {
 
 static uint32_t h2fmi_aes_counter = 1;
 
-static void h2fmi_setup_aes(h2fmi_struct_t *_fmi, uint32_t _enabled, uint32_t a2, uint32_t a3)
+static void h2fmi_setup_aes(h2fmi_struct_t *_fmi, uint32_t _enabled, uint32_t _encrypt, uint32_t _offset)
 {
 	if(_enabled)
 	{
-		uint32_t type;
-		if(a3 < (_fmi->bytes_per_page * h2fmi_ftl_count) + h2fmi_ftl_databuf)
-			type = 1;
-		else
-			type = 0;
-
-		if(h2fmi_ftl_databuf > a3)
-			type = 0;
-
-		if(type == 0)
+		if(h2fmi_ftl_databuf <= _offset
+				&& _offset < (_fmi->bytes_per_page * h2fmi_ftl_count) + h2fmi_ftl_databuf)
 		{
-			_fmi->aes_struct.dataBuffer = a3;
+			// FTL
 			_fmi->aes_struct.dataSize = _fmi->bytes_per_page;
-			_fmi->aes_struct.handler = h2fmi_aes_handler_1;
+			_fmi->aes_struct.ivParameter = _offset;
+			_fmi->aes_struct.ivGenerator = h2fmi_aes_handler_1;
 			_fmi->aes_struct.key = h2fmi_aes_key_1;
-			_fmi->aes_struct.unkn0 = (a2 == 0)? 0: 1;
-			_fmi->aes_struct.AESType = 0;
+			_fmi->aes_struct.inverse = !_encrypt;
+			_fmi->aes_struct.type = 0; // AES-128
 		}
 		else
 		{
-			_fmi->aes_struct.dataBuffer = (uint32_t)_fmi;
+			// VFL
 			_fmi->aes_struct.dataSize = _fmi->bytes_per_page;
-			_fmi->aes_struct.handler = h2fmi_aes_handler_2;
+			_fmi->aes_struct.ivParameter = (uint32_t)_fmi;
+			_fmi->aes_struct.ivGenerator = h2fmi_aes_handler_2;
 			_fmi->aes_struct.key = h2fmi_aes_key_2;
-			_fmi->aes_struct.unkn0 = (1 - a2 > 1)? 0: (1 - a2);
-			_fmi->aes_struct.AESType = 0;
+			_fmi->aes_struct.inverse = !_encrypt;
+			_fmi->aes_struct.type = 0; // AES-128
 		}
 
+		_fmi->aes_iv_pointer = NULL;
 		_fmi->aes_info = &_fmi->aes_struct;
 	}
 	else
@@ -1343,8 +1336,6 @@ uint32_t h2fmi_read_single_page(uint32_t _ce, uint32_t _page, uint8_t *_ptr, uin
 
 	if(h2fmi_aes_counter == 0)
 		flag = 0;
-//	else
-//		flag++;
 
 	h2fmi_setup_aes(fmi, flag, 0, (uint32_t)_ptr);
 

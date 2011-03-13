@@ -15,10 +15,7 @@ typedef struct segmentBuffer {
 	uint32_t value;
 	uint32_t offset;
 	uint32_t length;
-	uint32_t unknAESSetting1;
-	uint32_t unknAESSetting2;
-	uint32_t unknAESSetting3;
-	uint32_t unknAESSetting4;
+	uint32_t iv[4];
 } segmentBuffer;
 
 typedef struct DMAInfo {
@@ -185,8 +182,6 @@ signed int dma_init_channel(uint8_t direction, uint32_t channel, int segmentatio
 	SET_REG(DMA + DMA_TXRX_REGISTER + channel_reg, txrx_register);
 	SET_REG(DMA + DMA_SIZE + channel_reg, size);
 
-	bufferPrintf("cdma: dma_size 0x%08x.\r\n", GET_REG(DMA + DMA_SIZE + channel_reg));
-
 	if (dma->dmaAESInfo)
 		dma->dmaAES_setting2 = 0;
 
@@ -220,7 +215,7 @@ void dma_continue_async(int channel) {
 
 			dma->segmentBuffer[segmentId].value = 2;
 			++segmentId;
-			dma->dmaAESInfo->handler(dma->dmaAESInfo->dataBuffer, dma->dmaAES_setting2, &dma->segmentBuffer[segmentId].unknAESSetting1);
+			dma->dmaAESInfo->ivGenerator(dma->dmaAESInfo->ivParameter, dma->dmaAES_setting2, dma->segmentBuffer[segmentId].iv);
 			segmentLength = 0;
 			++dma->dmaAES_setting2;
 
@@ -254,7 +249,6 @@ void dma_continue_async(int channel) {
 				}
 				++segmentId;
 			}
-			bufferPrintf("Are you really trying to remove 0x%08x from 0x%08x?\r\n", encryptedSegmentOffsetEnd, dma->unsegmentedSize);
 			dma->unsegmentedSize -= encryptedSegmentOffsetEnd;
 		    }
 
@@ -335,14 +329,14 @@ int dma_set_aes(int channel, dmaAES* dmaAESInfo) {
 	int dmaAES_channel_reg = dma->dmaAES_channel << 12;
 
 	value = (channel << 8) | 0x20000;
-	if (!(dma->dmaAESInfo->unkn0 & 0xF))
+	if (!(dma->dmaAESInfo->inverse & 0xF))
 		value |= 0x30000;
 
 
-	if ((dma->dmaAESInfo->AESType & 0xFFF) > 256)
+	if ((dma->dmaAESInfo->type & 0xFFF) > 256)
 		return -1;
 
-	switch(GET_BITS(dma->dmaAESInfo->AESType, 28, 4)) {
+	switch(GET_BITS(dma->dmaAESInfo->type, 28, 4)) {
 		case 2:				// AES 256
 			value |= 0x80000;
 			break;
@@ -354,8 +348,8 @@ int dma_set_aes(int channel, dmaAES* dmaAESInfo) {
 			return -1;
 	}
 
-	if ((dma->dmaAESInfo->AESType & 0xFFF) < 256) {
-		switch(GET_BITS(dma->dmaAESInfo->AESType, 28, 4)) {
+	if ((dma->dmaAESInfo->type & 0xFFF) < 256) {
+		switch(GET_BITS(dma->dmaAESInfo->type, 28, 4)) {
 			case 2:				// AES 256
 				SET_REG(DMA + DMA_AES_KEY_7 + dmaAES_channel_reg, dma->dmaAESInfo->key[7]);
 				SET_REG(DMA + DMA_AES_KEY_6 + dmaAES_channel_reg, dma->dmaAESInfo->key[6]);
@@ -372,11 +366,11 @@ int dma_set_aes(int channel, dmaAES* dmaAESInfo) {
 			default:			// Fail
 				return -1;
 		}
-	} else if ((dma->dmaAESInfo->AESType & 0xFFF) == 512) {
+	} else if ((dma->dmaAESInfo->type & 0xFFF) == 512) {
 		value |= 0x200000;
-	} else if ((dma->dmaAESInfo->AESType & 0xFFF) == 513) {
+	} else if ((dma->dmaAESInfo->type & 0xFFF) == 513) {
 		value |= 0x400000;
-	} else if ((dma->dmaAESInfo->AESType & 0xFFF) != 256) {
+	} else if ((dma->dmaAESInfo->type & 0xFFF) != 256) {
 		return -1;
 	}
 
@@ -392,7 +386,7 @@ int dma_cancel(int channel) {
 
 	bufferPrintf("cdma: dma_cancel.\r\n");
 
-        DMAInfo* dma = &dmaInfo[channel];
+	DMAInfo* dma = &dmaInfo[channel];
 	uint64_t startTime = timer_get_system_microtime();
 
 	if (!dma->signalled)
