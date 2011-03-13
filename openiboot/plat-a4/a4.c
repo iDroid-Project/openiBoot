@@ -22,27 +22,15 @@
 #include "images.h"
 #include "syscfg.h"
 #include "nvram.h"
-#include "accel.h"
-#include "sdio.h"
-#include "wlan.h"
 #include "camera.h"
 #include "util.h"
 #include "commands.h"
 #include "framebuffer.h"
 #include "menu.h"
-#include "pmu.h"
-#include "nand.h"
-#include "ftl.h"
 #include "hfs/bdev.h"
 #include "hfs/fs.h"
 #include "scripting.h"
 #include "actions.h"
-
-#include "radio.h"
-#include "wmcodec.h"
-#include "wdt.h"
-#include "als.h"
-#include "multitouch.h"
 
 void platform_init()
 {
