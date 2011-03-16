@@ -116,3 +116,22 @@ int interrupt_set_int_type(int irq_no, uint8_t type) {
 	return 0;
 }
 
+int interrupt_clear(int irq_no) {
+	if(irq_no >= VIC_MaxInterrupt) {
+		return -1;
+	}
+
+	EnterCriticalSection();
+	if(irq_no < VIC_InterruptSeparator) {
+		SET_REG(VIC0 + VICINTENCLEAR, GET_REG(VIC0 + VICINTENCLEAR) | (1 << irq_no));
+	} else if(irq_no < VIC_InterruptSeparator*2) {
+		SET_REG(VIC1 + VICINTENCLEAR, GET_REG(VIC1 + VICINTENCLEAR) | (1 << (irq_no - VIC_InterruptSeparator)));
+	} else if(irq_no < VIC_InterruptSeparator*3) {
+		SET_REG(VIC2 + VICINTENCLEAR, GET_REG(VIC2 + VICINTENCLEAR) | (1 << (irq_no - VIC_InterruptSeparator*2)));
+	} else if(irq_no < VIC_InterruptSeparator*4) {
+		SET_REG(VIC3 + VICINTENCLEAR, GET_REG(VIC3 + VICINTENCLEAR) | (1 << (irq_no - VIC_InterruptSeparator*3)));
+	}
+	LeaveCriticalSection();
+
+	return 0;
+}
