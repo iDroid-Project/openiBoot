@@ -242,13 +242,13 @@ typedef struct _h2fmi_map_entry
 
 static h2fmi_map_entry_t h2fmi_map[H2FMI_CHIP_COUNT];
 
-static uint32_t h2fmi_hash_table[1024];
+static uint32_t h2fmi_hash_table[256];
 static uint8_t *h2fmi_wmr_data = NULL;
 
 static uint32_t h2fmi_ftl_count = 0;
 static uint32_t h2fmi_ftl_databuf = 0;
 static uint32_t h2fmi_ftl_smth[2] = {0, 0};
-static uint32_t h2fmi_data_whitening_enabled = 0;
+static uint32_t h2fmi_data_whitening_enabled = 1;
 
 static int compare_board_ids(nand_board_id_t *a, nand_board_id_t *b)
 {
@@ -965,14 +965,12 @@ static uint32_t h2fmi_read_state_4_handler(h2fmi_struct_t *_fmi)
 	{
 		if(_fmi->current_page_index >= _fmi->num_pages_to_read)
 		{
-			bufferPrintf("ZZZ\r\n");
 			uint32_t val = GET_REG(H2FMI_UNK810(_fmi));
 			SET_REG(H2FMI_UNK810(_fmi), val);
 			h2fmi_some_mysterious_function(_fmi, val);
 		}
 		else
 		{
-			bufferPrintf("ZZ2\r\n");
 			h2fmi_another_function(_fmi);
 			_fmi->field_124 = timer_get_system_microtime();
 			_fmi->state.read_state = H2FMI_READ_2;
@@ -1322,8 +1320,6 @@ uint32_t h2fmi_read_single_page(uint32_t _ce, uint32_t _page, uint8_t *_ptr, uin
 
 	h2fmi_struct_t *fmi = h2fmi_busses[bus];
 
-	uint32_t var_28 = fmi->meta_per_logical_page - fmi->ecc_bytes;
-
 	if(_meta_ptr)
 		_meta_ptr[0] = 0;
 
@@ -1347,8 +1343,8 @@ uint32_t h2fmi_read_single_page(uint32_t _ce, uint32_t _page, uint8_t *_ptr, uin
 	if(h2fmi_data_whitening_enabled)
 	{
 		uint32_t i;
-		for(i = 0; i < 4; i++)
-			((uint32_t*)_ptr)[i] ^= h2fmi_hash_table[i + _page];
+		for(i = 0; i < 3; i++)
+			((uint32_t*)_meta_ptr)[i] ^= h2fmi_hash_table[(i + _page) % array_size(h2fmi_hash_table)];
 	}
 
 	uint32_t ret = 0;
@@ -1364,7 +1360,7 @@ uint32_t h2fmi_read_single_page(uint32_t _ce, uint32_t _page, uint8_t *_ptr, uin
 		if(_meta_ptr)
 		{
 			uint32_t i;
-			for(i = 1; i < var_28; i++)
+			for(i = 0; i < fmi->meta_per_logical_page - fmi->ecc_bytes; i++)
 				_meta_ptr[fmi->ecc_bytes + i] = 0xFF;
 		}
 
@@ -1718,7 +1714,7 @@ void h2fmi_init()
 	// a preset seed. What are you
 	// up to Apple? -- Ricky26
 	uint32_t val = 0x50F4546A;
-	for(i = 0; i < 1024; i++)
+	for(i = 0; i < 256; i++)
 	{
 		val = (0x19660D * val) + 0x3C6EF35F;
 
@@ -1729,7 +1725,7 @@ void h2fmi_init()
 		} while(j < 763);
 
 		h2fmi_hash_table[i] = val;
-	} while(i < 1024);
+	}
 
 	bufferPrintf("fmi: Intialized NAND memory! %d bytes per page, %d pages per block, %d blocks per CE.\r\n",
 		fmi0.bytes_per_page, h2fmi_geometry.pages_per_block, h2fmi_geometry.blocks_per_ce);
