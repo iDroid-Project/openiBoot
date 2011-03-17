@@ -374,7 +374,7 @@ int uart_set_mode(int ureg, uint32_t mode) {
 	return 0;
 }
 
-uint32_t uart_set_rx_buf(int ureg, uint32_t mode, uint32_t size) {
+int uart_set_rx_buf(int ureg, uint32_t mode, uint32_t size) {
 	if(ureg >= NUM_UARTS)
 		return -1; // Invalid ureg
 
@@ -390,7 +390,8 @@ uint32_t uart_set_rx_buf(int ureg, uint32_t mode, uint32_t size) {
 	UARTs[ureg].buffer_read = 0;
 	UARTs[ureg].buffer_written = 0;
 	uart_set_mode(ureg, mode);
-	return (uint32_t)buffer;
+
+	return 0;
 }
 
 int uart_write(int ureg, const char *buffer, uint32_t length) {
