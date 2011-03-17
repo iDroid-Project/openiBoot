@@ -1402,13 +1402,15 @@ uint32_t h2fmi_read_single_page(uint32_t _ce, uint32_t _page, uint8_t *_ptr, uin
 	uint32_t read_ret = h2fmi_read_single(fmi, chip, _page, _ptr, h2fmi_wmr_data, _6, _7);
 
 	if(_meta_ptr)
+	{
 		memcpy(_meta_ptr, h2fmi_wmr_data, fmi->meta_per_logical_page);
 
-	if(h2fmi_data_whitening_enabled)
-	{
-		uint32_t i;
-		for(i = 0; i < 3; i++)
-			((uint32_t*)_meta_ptr)[i] ^= h2fmi_hash_table[(i + _page) % array_size(h2fmi_hash_table)];
+		if(h2fmi_data_whitening_enabled)
+		{
+			uint32_t i;
+			for(i = 0; i < 3; i++)
+				((uint32_t*)_meta_ptr)[i] ^= h2fmi_hash_table[(i + _page) % array_size(h2fmi_hash_table)];
+		}
 	}
 
 	uint32_t ret = 0;

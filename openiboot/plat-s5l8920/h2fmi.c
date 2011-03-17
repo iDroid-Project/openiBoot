@@ -1338,13 +1338,15 @@ uint32_t h2fmi_read_single_page(uint32_t _ce, uint32_t _page, uint8_t *_ptr, uin
 	uint32_t read_ret = h2fmi_read_single(fmi, chip, _page, _ptr, h2fmi_wmr_data, _6, _7);
 
 	if(_meta_ptr)
+	{
 		memcpy(_meta_ptr, h2fmi_wmr_data, fmi->meta_per_logical_page);
 
-	if(h2fmi_data_whitening_enabled)
-	{
-		uint32_t i;
-		for(i = 0; i < 3; i++)
-			((uint32_t*)_meta_ptr)[i] ^= h2fmi_hash_table[(i + _page) % array_size(h2fmi_hash_table)];
+		if(h2fmi_data_whitening_enabled)
+		{
+			uint32_t i;
+			for(i = 0; i < 3; i++)
+				((uint32_t*)_meta_ptr)[i] ^= h2fmi_hash_table[(i + _page) % array_size(h2fmi_hash_table)];
+		}
 	}
 
 	uint32_t ret = 0;
@@ -1734,6 +1736,44 @@ void h2fmi_init()
 		free(info);
 
 	free(buff1);
+
+	int done = 0;
+	for(i = 8191; i >= 7836; i--)
+	{
+		uint8_t buffer[0x2000];
+		int num_errs = 0;
+		int j;
+		for(j = 0; j < 128; j++)
+		{
+			int ret = h2fmi_read_single_page(0, i*128 + j, buffer, NULL, NULL, NULL, 0);
+			if(ret == 1)
+			{
+				num_errs++;
+				if(num_errs > 1)
+					break;
+
+				continue;
+			}
+			else if(ret == 0)
+			{
+				char checkmsg[] = "DEVICEINFOBBT";
+				if(memcmp(buffer, checkmsg, sizeof(checkmsg)-1) == 0)
+				{
+					bufferPrintf("fmi: Found DEVICEINFOBBT on b%dp%d.\r\n", i, j);
+					done = 1;
+					break;
+				}
+			}
+		}
+
+		if(done == 1)
+			break;
+	}
+
+	if(done != 1)
+	{
+		bufferPrintf("fmi: Failed to find DEVICEINFOBBT.\r\n");
+	}
 }
 MODULE_INIT(h2fmi_init);
 
