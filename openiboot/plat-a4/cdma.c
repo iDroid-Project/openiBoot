@@ -211,8 +211,8 @@ int dma_continue_async(int channel) {
 				break;
 
 			dma->segmentBuffer[segmentId].value = 2;
-			++segmentId;
 			dma->dmaAESInfo->ivGenerator(dma->dmaAESInfo->ivParameter, dma->dmaAES_setting2, dma->segmentBuffer[segmentId].iv);
+			++segmentId;
 			segmentLength = 0;
 			++dma->dmaAES_setting2;
 
@@ -247,7 +247,7 @@ int dma_continue_async(int channel) {
 				++segmentId;
 			}
 			dma->unsegmentedSize -= encryptedSegmentOffsetEnd;
-		    }
+		}
 
 		if (!dma->unsegmentedSize)
 			dma->segmentBuffer[segmentId-1].value |= 0x100;
