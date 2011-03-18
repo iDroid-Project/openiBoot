@@ -248,7 +248,7 @@ static uint8_t *h2fmi_wmr_data = NULL;
 static uint32_t h2fmi_ftl_count = 0;
 static uint32_t h2fmi_ftl_databuf = 0;
 static uint32_t h2fmi_ftl_smth[2] = {0, 0};
-static uint32_t h2fmi_data_whitening_enabled = 1;
+static uint32_t h2fmi_data_whitening_enabled = 0;
 
 static int compare_board_ids(nand_board_id_t *a, nand_board_id_t *b)
 {
@@ -914,7 +914,7 @@ static uint32_t h2fmi_read_state_2_handler(h2fmi_struct_t *_fmi)
 		_fmi->field_13C = 0x8000001D;
 		_fmi->failure_details.overall_status = 0x8000001D;
 		_fmi->state.read_state = H2FMI_READ_DONE;
-		h2fmi_read_complete_handler(_fmi);
+		return h2fmi_read_complete_handler(_fmi);
 	}
 	else if(val != 1)
 	{
@@ -934,7 +934,7 @@ static uint32_t h2fmi_read_state_2_handler(h2fmi_struct_t *_fmi)
 		if(_fmi->current_page_index == 0)
 		{
 			h2fmi_rw_large_page(_fmi);
-			_fmi->banks_per_ce_vfl = timer_get_system_microtime();
+			_fmi->field_124 = timer_get_system_microtime();
 		}
 		else
 		{
@@ -998,7 +998,7 @@ static uint32_t h2fmi_read_state_1_handler(h2fmi_struct_t *_fmi)
 		h2fmi_enable_and_set_address(_fmi, _fmi->current_page_index, _fmi->chips, _fmi->pages);
 	}	
 
-	if(_fmi->current_page_index < _fmi->num_pages_to_read)
+	if(_fmi->current_page_index + 1 < _fmi->num_pages_to_read)
 	{
 		if(_fmi->chips[_fmi->current_page_index + 1] == _fmi->current_chip)
 		{
@@ -1032,14 +1032,16 @@ static uint32_t h2fmi_read_state_3_handler(h2fmi_struct_t *_fmi)
 {
 	bufferPrintf("fmi: read_state_3_handler.\r\n");
 
-	if((GET_REG(H2FMI_UNKC(_fmi)) & 2) == 0)
+	_fmi->field_48 = GET_REG(H2FMI_UNKC(_fmi));
+
+	if((_fmi->field_48 & 2) == 0)
 	{
 		if(timer_get_system_microtime() - _fmi->field_124 > _fmi->field_12C)
 		{
 			_fmi->field_13C = 0;
 			_fmi->failure_details.overall_status = 0x8000001C;
 			_fmi->state.read_state = H2FMI_READ_DONE;
-			h2fmi_read_complete_handler(_fmi);
+			return h2fmi_read_complete_handler(_fmi);
 		}
 	}
 	else
@@ -1047,6 +1049,7 @@ static uint32_t h2fmi_read_state_3_handler(h2fmi_struct_t *_fmi)
 		SET_REG(H2FMI_UNK10(_fmi), 0);
 		_fmi->current_page_index++;
 		_fmi->state.read_state = H2FMI_READ_1;
+		return h2fmi_read_state_1_handler(_fmi);
 	}
 
 	return 0;
@@ -1264,9 +1267,12 @@ static void h2fmi_aes_handler_2(uint32_t _param, uint32_t _segment, uint32_t* _i
 			else
 				val = (val >> 1);
 
-			bufferPrintf("fmi: iv[%d]: 0x%08x.\r\n", i, val);
 			_iv[i] = val;
 		}
+
+		bufferPrintf("fmi: iv = ");
+		bytesToHex((uint8_t*)_iv, sizeof(*_iv)*4);
+		bufferPrintf("\r\n");
 	}
 }
 
@@ -1304,6 +1310,10 @@ static void h2fmi_setup_aes(h2fmi_struct_t *_fmi, uint32_t _enabled, uint32_t _e
 			_fmi->aes_struct.inverse = !_encrypt;
 			_fmi->aes_struct.type = 0; // AES-128
 		}
+
+		bufferPrintf("fmi: key = ");
+		bytesToHex((uint8_t*)_fmi->aes_struct.key, sizeof(uint32_t)*4);
+		bufferPrintf("\r\n");
 
 		_fmi->aes_iv_pointer = NULL;
 		_fmi->aes_info = &_fmi->aes_struct;
@@ -1724,12 +1734,12 @@ void h2fmi_init()
 		for(j = 1; j < 763; j++)
 		{
 			val = (0x19660D * val) + 0x3C6EF35F;
-		} while(j < 763);
+		}
 
 		h2fmi_hash_table[i] = val;
 	}
 
-	bufferPrintf("fmi: Intialized NAND memory! %d bytes per page, %d pages per block, %d blocks per CE.\r\n",
+	bufferPrintf("fmi: Initialized NAND memory! %d bytes per page, %d pages per block, %d blocks per CE.\r\n",
 		fmi0.bytes_per_page, h2fmi_geometry.pages_per_block, h2fmi_geometry.blocks_per_ce);
 
 	if(info)
@@ -1737,7 +1747,7 @@ void h2fmi_init()
 
 	free(buff1);
 
-	int done = 0;
+	/*int done = 0;
 	for(i = 8191; i >= 7836; i--)
 	{
 		uint8_t buffer[0x2000];
@@ -1773,7 +1783,7 @@ void h2fmi_init()
 	if(done != 1)
 	{
 		bufferPrintf("fmi: Failed to find DEVICEINFOBBT.\r\n");
-	}
+	}*/
 }
 MODULE_INIT(h2fmi_init);
 

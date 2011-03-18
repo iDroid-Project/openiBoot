@@ -90,6 +90,7 @@ typedef struct _h2fmi_struct
 	uint32_t page_size; // 3C
 	uint8_t ecc_bits; // 44
 	int8_t ecc_tag; // 45
+	uint32_t field_48; // 48
 	dmaAES aes_struct;
 	dmaAES *aes_info; // 64
 	uint8_t *aes_iv_pointer; // 68
