@@ -1620,6 +1620,7 @@ void h2fmi_init()
 		h2fmi_geometry.num_ce = chip_count;
 		h2fmi_geometry.blocks_per_ce = fmi0.blocks_per_ce;
 		h2fmi_geometry.pages_per_block = fmi0.pages_per_block;
+		h2fmi_geometry.bytes_per_page = fmi0.bytes_per_page;
 		h2fmi_geometry.bbt_format = fmi0.bbt_format;
 		h2fmi_geometry.bytes_per_spare = fmi0.bytes_per_spare;
 		h2fmi_geometry.banks_per_ce_vfl = fmi0.banks_per_ce_vfl;

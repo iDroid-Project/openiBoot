@@ -81,7 +81,9 @@ signed int dma_init_channel(uint8_t direction, uint32_t channel, int segmentatio
 
 	if (!dma->signalled) {
 		dma->segmentBuffer = memalign(0x20, 32 * sizeof(*dma->segmentBuffer));
-		bufferPrintf("cdma: new segment buffer 0x%08x.\r\n", dma->segmentBuffer);
+		memset(dma->segmentBuffer, 0, (32 * sizeof(*dma->segmentBuffer)));
+
+		//bufferPrintf("cdma: new segment buffer 0x%08x.\r\n", dma->segmentBuffer);
 
 		if (!dma->segmentBuffer)
 			system_panic("CDMA: can't allocate command chain\r\n");
@@ -110,47 +112,52 @@ signed int dma_init_channel(uint8_t direction, uint32_t channel, int segmentatio
 	uint8_t Setting1;
 	uint8_t Setting2;
 
-	if ( Setting1Index == 1 ) {
-		Setting1 = 0;
-	} else if ( Setting1Index == 2 ) {
-		Setting1 = 1 << 2;
-	} else if ( Setting1Index == 4 ) {
-		Setting1 = 1 << 3;
-	} else {
-		return 2;
-	}
+	switch(Setting1Index)
+	{
+	case 1:
+		Setting1 = 0 << 2;
+		break;
 
-	if ((Setting2Index - 1) > 0x1F)
-		return 3;
+	case 2:
+		Setting1 = 1 << 2;
+		break;
+
+	case 4:
+		Setting1 = 2 << 2;
+		break;
+
+	default:
+		return -1;
+	}
 
 	switch (Setting2Index)
 	{
-		case 1:
-			Setting2 = 0 << 4;
-			break;
+	case 1:
+		Setting2 = 0 << 4;
+		break;
 
-		case 2:
-			Setting2 = 1 << 4;
-			break;
+	case 2:
+		Setting2 = 1 << 4;
+		break;
 
-		case 4:
-			Setting2 = 2 << 4;
-			break;
+	case 4:
+		Setting2 = 2 << 4;
+		break;
 
-		case 8:
-			Setting2 = 3 << 4;
-			break;
+	case 8:
+		Setting2 = 3 << 4;
+		break;
 
-		case 16:
-			Setting2 = 4 << 4;
-			break;
+	case 16:
+		Setting2 = 4 << 4;
+		break;
 
-		case 32:
-			Setting2 = 5 << 4;
-			break;
+	case 32:
+		Setting2 = 5 << 4;
+		break;
 
-		default:
-			return -1;
+	default:
+		return -1;
 	}
 
 	uint32_t channel_reg = channel << 12;
@@ -198,8 +205,9 @@ void dma_continue_async(int channel) {
 				break;
 
 			dma->segmentBuffer[segmentId].value = 2;
-			dma->dmaAESInfo->ivGenerator(dma->dmaAESInfo->ivParameter, dma->current_segment++, dma->segmentBuffer[segmentId].iv);
+			dma->dmaAESInfo->ivGenerator(dma->dmaAESInfo->ivParameter, dma->current_segment, dma->segmentBuffer[segmentId].iv);
 			segmentId++;
+			dma->current_segment++;
 			segmentLength = 0;
 
 			int encryptedSegmentOffset;
@@ -279,7 +287,7 @@ void dma_continue_async(int channel) {
 	if (dma->dmaAESInfo)
 		value |= (dma->dmaAES_channel << 8);
 
-	bufferPrintf("cdma: continue async 0x%08x.\r\n", value);
+	//bufferPrintf("cdma: continue async 0x%08x.\r\n", value);
 	SET_REG(DMA + channel_reg, value);
 }
 
@@ -348,18 +356,18 @@ int dma_set_aes(int channel, dmaAES* dmaAESInfo) {
 		switch(GET_BITS(dma->dmaAESInfo->type, 28, 4))
 		{
 		case 2: // AES-256
-			SET_REG(DMA + DMA_AES_KEY_7 + dmaAES_channel_reg, dma->dmaAESInfo->key[7]);
-			SET_REG(DMA + DMA_AES_KEY_6 + dmaAES_channel_reg, dma->dmaAESInfo->key[6]);
+			SET_REG(DMA + DMA_AES + DMA_AES_KEY_7 + dmaAES_channel_reg, dma->dmaAESInfo->key[7]);
+			SET_REG(DMA + DMA_AES + DMA_AES_KEY_6 + dmaAES_channel_reg, dma->dmaAESInfo->key[6]);
 
 		case 1: // AES-192
-			SET_REG(DMA + DMA_AES_KEY_5 + dmaAES_channel_reg, dma->dmaAESInfo->key[5]);
-			SET_REG(DMA + DMA_AES_KEY_4 + dmaAES_channel_reg, dma->dmaAESInfo->key[4]);
+			SET_REG(DMA + DMA_AES + DMA_AES_KEY_5 + dmaAES_channel_reg, dma->dmaAESInfo->key[5]);
+			SET_REG(DMA + DMA_AES + DMA_AES_KEY_4 + dmaAES_channel_reg, dma->dmaAESInfo->key[4]);
 
 		case 0: // AES-128
-			SET_REG(DMA + DMA_AES_KEY_3 + dmaAES_channel_reg, dma->dmaAESInfo->key[3]);
-			SET_REG(DMA + DMA_AES_KEY_2 + dmaAES_channel_reg, dma->dmaAESInfo->key[2]);
-			SET_REG(DMA + DMA_AES_KEY_1 + dmaAES_channel_reg, dma->dmaAESInfo->key[1]);
-			SET_REG(DMA + DMA_AES_KEY_0 + dmaAES_channel_reg, dma->dmaAESInfo->key[0]);
+			SET_REG(DMA + DMA_AES + DMA_AES_KEY_3 + dmaAES_channel_reg, dma->dmaAESInfo->key[3]);
+			SET_REG(DMA + DMA_AES + DMA_AES_KEY_2 + dmaAES_channel_reg, dma->dmaAESInfo->key[2]);
+			SET_REG(DMA + DMA_AES + DMA_AES_KEY_1 + dmaAES_channel_reg, dma->dmaAESInfo->key[1]);
+			SET_REG(DMA + DMA_AES + DMA_AES_KEY_0 + dmaAES_channel_reg, dma->dmaAESInfo->key[0]);
 			value |= 0x100000;
 			break;
 
@@ -376,7 +384,7 @@ int dma_set_aes(int channel, dmaAES* dmaAESInfo) {
 
 int dma_cancel(int channel) {
 
-	bufferPrintf("cdma: dma_cancel.\r\n");
+	//bufferPrintf("cdma: dma_cancel.\r\n");
 
 	DMAInfo* dma = &dmaInfo[channel];
 	uint64_t startTime = timer_get_system_microtime();
@@ -414,7 +422,7 @@ void dmaIRQHandler(uint32_t token) {
 
 	GET_REG(DMA + channel_reg);
 	uint32_t status = GET_REG(DMA + channel_reg);
-	bufferPrintf("cdma: intsts 0x%08x\r\n", status);
+	//bufferPrintf("cdma: intsts 0x%08x\r\n", status);
 
 	if (status & 0x40000)
 		system_panic("CDMA: channel %d error interrupt\r\n", channel);
@@ -448,7 +456,7 @@ void dmaIRQHandler(uint32_t token) {
 	} else {
 		dma->signalled = 1;
 		
-		bufferPrintf("cmda: done\r\n");
+		//bufferPrintf("cmda: done\r\n");
 
 		dma_set_aes(channel, 0);
 

@@ -32,6 +32,7 @@ typedef struct _h2fmi_geometry
 	uint16_t num_ce;
 	uint16_t blocks_per_ce;
 	uint16_t pages_per_block;
+	uint16_t bytes_per_page;
 	uint16_t bbt_format;
 	uint16_t bytes_per_spare;
 	uint16_t banks_per_ce_vfl;
