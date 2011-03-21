@@ -5,6 +5,7 @@
 #include "clock.h"
 #include "util.h"
 #include "cdma.h"
+#include "hardware/dma.h"
 #include "arm.h"
 #include "commands.h"
 #include "openiboot-asmhelpers.h"
@@ -973,7 +974,7 @@ static uint32_t h2fmi_read_state_2_handler(h2fmi_struct_t *_fmi)
 		_fmi->field_13C = 0x8000001D;
 		_fmi->failure_details.overall_status = 0x8000001D;
 		_fmi->state.read_state = H2FMI_READ_DONE;
-		h2fmi_read_complete_handler(_fmi);
+		return h2fmi_read_complete_handler(_fmi);
 	}
 	else if(val != 1)
 	{
@@ -1059,7 +1060,7 @@ static uint32_t h2fmi_read_state_1_handler(h2fmi_struct_t *_fmi)
 		h2fmi_enable_and_set_address(_fmi, _fmi->current_page_index, _fmi->chips, _fmi->pages);
 	}	
 
-	if(_fmi->current_page_index < _fmi->num_pages_to_read)
+	if(_fmi->current_page_index + 1 < _fmi->num_pages_to_read)
 	{
 		if(_fmi->chips[_fmi->current_page_index + 1] == _fmi->current_chip)
 		{
@@ -1093,14 +1094,16 @@ static uint32_t h2fmi_read_state_3_handler(h2fmi_struct_t *_fmi)
 {
 	bufferPrintf("fmi: read_state_3_handler.\r\n");
 
-	if((GET_REG(H2FMI_UNKC(_fmi)) & 2) == 0)
+	_fmi->field_48 = GET_REG(H2FMI_UNKC(_fmi));
+
+	if((_fmi->field_48 & 2) == 0)
 	{
 		if(timer_get_system_microtime() - _fmi->field_124 > _fmi->field_12C)
 		{
 			_fmi->field_13C = 0;
 			_fmi->failure_details.overall_status = 0x8000001C;
 			_fmi->state.read_state = H2FMI_READ_DONE;
-			h2fmi_read_complete_handler(_fmi);
+			return h2fmi_read_complete_handler(_fmi);
 		}
 	}
 	else
@@ -1108,6 +1111,7 @@ static uint32_t h2fmi_read_state_3_handler(h2fmi_struct_t *_fmi)
 		SET_REG(H2FMI_UNK10(_fmi), 0);
 		_fmi->current_page_index++;
 		_fmi->state.read_state = H2FMI_READ_1;
+		return h2fmi_read_state_1_handler(_fmi);
 	}
 
 	return 0;
@@ -1327,9 +1331,12 @@ static void h2fmi_aes_handler_2(uint32_t _param, uint32_t _segment, uint32_t* _i
 			else
 				val = (val >> 1);
 
-			bufferPrintf("fmi: iv[%d]: 0x%08x.\r\n", i, val);
 			_iv[i] = val;
 		}
+
+		bufferPrintf("fmi: iv = ");
+		bytesToHex((uint8_t*)_iv, sizeof(*_iv)*4);
+		bufferPrintf("\r\n");
 	}
 }
 
@@ -1368,6 +1375,10 @@ static void h2fmi_setup_aes(h2fmi_struct_t *_fmi, uint32_t _enabled, uint32_t _e
 			_fmi->aes_struct.type = 0; // AES-128
 
 		}
+
+		bufferPrintf("fmi: key = ");
+		bytesToHex((uint8_t*)_fmi->aes_struct.key, sizeof(uint32_t)*4);
+		bufferPrintf("\r\n");
 
 		_fmi->aes_iv_pointer = NULL;
 		_fmi->aes_info = &_fmi->aes_struct;
@@ -1650,6 +1661,7 @@ void h2fmi_init()
 		h2fmi_geometry.num_ce = chip_count;
 		h2fmi_geometry.blocks_per_ce = fmi0.blocks_per_ce;
 		h2fmi_geometry.pages_per_block = fmi0.pages_per_block;
+		h2fmi_geometry.bytes_per_page = fmi0.bytes_per_page;
 		h2fmi_geometry.bbt_format = fmi0.bbt_format;
 		h2fmi_geometry.bytes_per_spare = fmi0.bytes_per_spare;
 		h2fmi_geometry.banks_per_ce_vfl = fmi0.banks_per_ce_vfl;
@@ -1765,7 +1777,7 @@ void h2fmi_init()
 		for(j = 1; j < 763; j++)
 		{
 			val = (0x19660D * val) + 0x3C6EF35F;
-		} while(j < 763);
+		}
 
 		h2fmi_hash_table[i] = val;
 	}
