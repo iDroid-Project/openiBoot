@@ -353,16 +353,16 @@ int dma_set_aes(int channel, dmaAES* dmaAESInfo) {
 	if ((dma->dmaAESInfo->type & 0xFFF) < 256) {
 		switch(GET_BITS(dma->dmaAESInfo->type, 28, 4)) {
 			case 2:				// AES 256
-				SET_REG(DMA + DMA_AES_KEY_7 + dmaAES_channel_reg, dma->dmaAESInfo->key[7]);
-				SET_REG(DMA + DMA_AES_KEY_6 + dmaAES_channel_reg, dma->dmaAESInfo->key[6]);
+				SET_REG(DMA + DMA_AES + DMA_AES_KEY_7 + dmaAES_channel_reg, dma->dmaAESInfo->key[7]);
+				SET_REG(DMA + DMA_AES + DMA_AES_KEY_6 + dmaAES_channel_reg, dma->dmaAESInfo->key[6]);
 			case 1:				// AES 192
-	        		SET_REG(DMA + DMA_AES_KEY_5 + dmaAES_channel_reg, dma->dmaAESInfo->key[5]);
-			        SET_REG(DMA + DMA_AES_KEY_4 + dmaAES_channel_reg, dma->dmaAESInfo->key[4]);
+	        		SET_REG(DMA + DMA_AES + DMA_AES_KEY_5 + dmaAES_channel_reg, dma->dmaAESInfo->key[5]);
+			        SET_REG(DMA + DMA_AES + DMA_AES_KEY_4 + dmaAES_channel_reg, dma->dmaAESInfo->key[4]);
 			case 0:				// AES 128
-			        SET_REG(DMA + DMA_AES_KEY_3 + dmaAES_channel_reg, dma->dmaAESInfo->key[3]);
-			        SET_REG(DMA + DMA_AES_KEY_2 + dmaAES_channel_reg, dma->dmaAESInfo->key[2]);
-			        SET_REG(DMA + DMA_AES_KEY_1 + dmaAES_channel_reg, dma->dmaAESInfo->key[1]);
-			        SET_REG(DMA + DMA_AES_KEY_0 + dmaAES_channel_reg, dma->dmaAESInfo->key[0]);
+			        SET_REG(DMA + DMA_AES + DMA_AES_KEY_3 + dmaAES_channel_reg, dma->dmaAESInfo->key[3]);
+			        SET_REG(DMA + DMA_AES + DMA_AES_KEY_2 + dmaAES_channel_reg, dma->dmaAESInfo->key[2]);
+			        SET_REG(DMA + DMA_AES + DMA_AES_KEY_1 + dmaAES_channel_reg, dma->dmaAESInfo->key[1]);
+			        SET_REG(DMA + DMA_AES + DMA_AES_KEY_0 + dmaAES_channel_reg, dma->dmaAESInfo->key[0]);
 				value |= 0x100000;
 				break;
 			default:			// Fail
