@@ -2,8 +2,9 @@
 #define  VFL_VFL_H
 
 #include "../../includes/vfl.h"
+#include "nand.h"
 
-typedef struct _vfl_context
+typedef struct _vfl_vfl_context
 {
 	uint32_t usn_inc; // 0x000
 	uint16_t control_block[3]; // 0x004
@@ -24,9 +25,9 @@ typedef struct _vfl_context
 	uint8_t unk3[0x4C];				// 0x7AC
 	uint32_t checksum1;				// 0x7F8
 	uint32_t checksum2;				// 0x7FC
-} vfl_context_t;
+} vfl_vfl_context_t;
 
-typedef struct _vfl_spare_data
+typedef struct _vfl_vfl_spare_data
 {
 	union
 	{
@@ -49,7 +50,27 @@ typedef struct _vfl_spare_data
 	uint8_t type1;
 	uint8_t eccMark;
 	uint8_t field_B;
+} __attribute__ ((packed)) vfl_vfl_spare_data_t;
 
-} __attribute__ ((packed)) vfl_spare_data_t;
+// VFL-VFL Device Struct
+typedef struct _vfl_vfl_device
+{
+	vfl_device_t vfl;
+
+	uint32_t current_version;
+	vfl_vfl_context_t *contexts;
+	nand_device_t *device;
+	nand_geometry_t *geometry;
+	uint8_t *bbt;
+
+	uint32_t *pageBuffer;
+	uint16_t *chipBuffer;
+} vfl_vfl_device_t;
+
+// VFL-VFL Functions
+int vfl_vfl_device_init(vfl_vfl_device_t *_vfl);
+void vfl_vfl_device_cleanup(vfl_vfl_device_t *_vfl);
+
+vfl_vfl_device_t *vfl_vfl_device_allocate();
 
 #endif //VFL_VFL_H

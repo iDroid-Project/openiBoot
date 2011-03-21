@@ -33,11 +33,11 @@ void vfl_close(vfl_device_t *_vfl)
 	_vfl->close(_vfl);
 }
 
-int vfl_read(vfl_device_t *_vfl, uint32_t _page, uint8_t* buffer, uint8_t* spare,
-		int empty_ok, int* refresh_page, int _aes)
+int vfl_read_single_page(vfl_device_t *_vfl, uint32_t _page, uint8_t* buffer, uint8_t* spare,
+		int empty_ok, int* refresh_page)
 {
-	if(!_vfl->read)
+	if(!_vfl->read_single_page)
 		return -1;
 
-	return _vfl->read(_vfl, _page, buffer, spare, empty_ok, refresh_page, _aes);
+	return _vfl->read_single_page(_vfl, _page, buffer, spare, empty_ok, refresh_page);
 }

@@ -45,23 +45,21 @@ struct _nand_device;
 
 typedef nand_geometry_t *(*nand_device_get_geometry_t)(struct _nand_device *);
 
-typedef int (*nand_device_read_t)(struct _nand_device *, uint32_t _chip, uint32_t _block,
-		uint32_t _page, uint8_t *_buffer, uint8_t *_spareBuffer);
+typedef int (*nand_device_read_single_page_t)(struct _nand_device *, uint32_t _chip,
+		uint32_t _block, uint32_t _page, uint8_t *_buffer, uint8_t *_spareBuffer);
 
-typedef int (*nand_device_write_t)(struct _nand_device *, uint32_t _chip, uint32_t _block,
-		uint32_t _page, uint8_t *_buffer, uint8_t *_spareBuffer);
+typedef int (*nand_device_write_single_page_t)(struct _nand_device *, uint32_t _chip,
+		uint32_t _block, uint32_t _page, uint8_t *_buffer, uint8_t *_spareBuffer);
 
 typedef void (*nand_device_enable_encryption_t)(struct _nand_device *, int _enabled);
 
 // NAND Device Struct
 typedef struct _nand_device
 {
-	int encryption_enabled;
-
 	nand_device_get_geometry_t get_geometry;
 
-	nand_device_read_t read;
-	nand_device_write_t write;
+	nand_device_read_single_page_t read_single_page;
+	nand_device_write_single_page_t write_single_page;
 
 	nand_device_enable_encryption_t enable_encryption;
 } nand_device_t;
@@ -74,10 +72,10 @@ nand_device_t *nand_device_allocate();
 
 nand_geometry_t *nand_device_get_geometry(nand_device_t *_dev);
 
-int nand_device_read(nand_device_t *_dev, uint32_t _chip, uint32_t _block,
+int nand_device_read_single_page(nand_device_t *_dev, uint32_t _chip, uint32_t _block,
 		uint32_t _page, uint8_t *_buffer, uint8_t *_spareBuffer);
 
-int nand_device_write(nand_device_t *_dev, uint32_t _chip, uint32_t _block,
+int nand_device_write_single_page(nand_device_t *_dev, uint32_t _chip, uint32_t _block,
 		uint32_t _page, uint8_t *_buffer, uint8_t *_spareBuffer);
 
 void nand_device_enable_encryption(nand_device_t *_dev, int _enabled);
