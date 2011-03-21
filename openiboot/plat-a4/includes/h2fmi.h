@@ -33,6 +33,7 @@ typedef struct _h2fmi_geometry
 	uint16_t num_ce;
 	uint16_t blocks_per_ce;
 	uint16_t pages_per_block;
+	uint16_t bytes_per_page;
 	uint16_t bbt_format;
 	uint16_t bytes_per_spare;
 	uint16_t banks_per_ce_vfl;
@@ -92,6 +93,7 @@ typedef struct _h2fmi_struct
 	uint32_t unk40;
 	uint8_t ecc_bits; // 44
 	int8_t ecc_tag; // 45
+	uint32_t field_48; // 48
 	dmaAES aes_struct;
 	dmaAES *aes_info; // 64
 	uint8_t *aes_iv_pointer; // 68
