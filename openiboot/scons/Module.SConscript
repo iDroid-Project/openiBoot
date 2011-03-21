@@ -7,11 +7,18 @@ class Module:
 		self.env = env
 		self.name = name
 		self.sources = sources
-		self.dependancies = dependancies
+		self.dependencies = dependancies
 		self.appends = []
 
 	def Append(self, **what):
 		self.appends.append(what)
+
+	def Depends(self, *what):
+		for w in what:
+			if SCons.Util.is_List(w):
+				self.dependencies += w
+			else:
+				self.dependencies.append(w)
 
 	def Add(self, env):
 		if env['MODULE_SRC'] is None:
@@ -20,9 +27,9 @@ class Module:
 			env['MODULE_SRC'] += self.sources
 
 		if env['MODULE_DEPS'] is None:
-			env['MODULE_DEPS'] = self.dependancies.clone()
+			env['MODULE_DEPS'] = self.dependencies.clone()
 		else:
-			env['MODULE_DEPS'] += self.dependancies
+			env['MODULE_DEPS'] += self.dependencies
 
 		for a in self.appends:
 			env.Append(**a)
@@ -73,6 +80,10 @@ def OpenIBootTarget(env, name, fname, flag, sources, img3template=None):
 	if env['MODULE_SRC'] is not None:
 		sources = sources + env['MODULE_SRC']
 
+	deps = []
+	if env['MODULE_DEPS'] is not None:
+		deps = env['MODULE_DEPS']
+
 	# Work out filenames
 	elf_name = '#' + fname
 	bin_name = elf_name + '.bin'
@@ -94,6 +105,8 @@ def OpenIBootTarget(env, name, fname, flag, sources, img3template=None):
 
 	# Add Targets
 	elf = env.Program(elf_name, sources)
+	Depends(elf, deps)
+
 	bin = env.Make8900Image(bin_name, elf)
 	if img3template is not None:
 		img3 = env.Make8900Image(img3_name, elf+['#mk8900image/%s.img3' % img3template])
@@ -101,6 +114,7 @@ def OpenIBootTarget(env, name, fname, flag, sources, img3template=None):
 	else:
 		img3 = None
 		Alias(name, bin)
+	
 
 	locals()[elf_name] = elf
 	locals()[bin_name] = bin

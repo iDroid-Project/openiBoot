@@ -231,7 +231,7 @@ static h2fmi_struct_t *h2fmi_busses[] = {
 
 #define H2FMI_BUS_COUNT (array_size(h2fmi_busses))
 
-h2fmi_geometry_t h2fmi_geometry;
+nand_geometry_t nand_geometry;
 
 typedef struct _h2fmi_map_entry
 {
@@ -247,7 +247,8 @@ static uint8_t *h2fmi_wmr_data = NULL;
 
 static uint32_t h2fmi_ftl_count = 0;
 static uint32_t h2fmi_ftl_databuf = 0;
-static uint32_t h2fmi_ftl_smth[2] = {0, 0};
+static uint32_t h2fmi_ftl_start_page = 0;
+static uint32_t h2fmi_ftl_smth = 0;
 static uint32_t h2fmi_data_whitening_enabled = 0;
 
 static int compare_board_ids(nand_board_id_t *a, nand_board_id_t *b)
@@ -1229,7 +1230,7 @@ static void h2fmi_aes_handler_1(uint32_t _param, uint32_t _segment, uint32_t* _i
 {
 	//bufferPrintf("fmi: aes_handler_1.\r\n");
 
-	uint32_t val = ((_param - h2fmi_ftl_databuf) / (h2fmi_geometry.bbt_format << 9)) + h2fmi_ftl_smth[0];
+	uint32_t val = ((_param - h2fmi_ftl_databuf) / (nand_geometry.bbt_format << 9)) + h2fmi_ftl_start_page;
 	uint32_t i;
 	for(i = 0; i < 4; i++)
 	{
@@ -1284,6 +1285,22 @@ static uint32_t h2fmi_aes_key_2[] = {
 };
 
 static uint32_t h2fmi_aes_counter = 1;
+
+void h2fmi_setup_ftl(uint32_t _start_page, uint32_t _smth, uint32_t _dataBuf, uint32_t _count)
+{
+	h2fmi_ftl_start_page = _start_page;
+	h2fmi_ftl_smth = _smth;
+	h2fmi_ftl_databuf = _dataBuf;
+	h2fmi_ftl_count = _count;
+}
+
+void h2fmi_clear_ftl()
+{
+	h2fmi_ftl_start_page = 0;
+	h2fmi_ftl_smth = 0;
+	h2fmi_ftl_databuf = 0;
+	h2fmi_ftl_count = 0;
+}
 
 static void h2fmi_setup_aes(h2fmi_struct_t *_fmi, uint32_t _enabled, uint32_t _encrypt, uint32_t _offset)
 {
@@ -1615,57 +1632,57 @@ void h2fmi_init()
 
 	// Initialize NAND Geometry
 	{
-		memset(&h2fmi_geometry, 0, sizeof(h2fmi_geometry));
-		h2fmi_geometry.num_fmi = bus_count;
-		h2fmi_geometry.num_ce = chip_count;
-		h2fmi_geometry.blocks_per_ce = fmi0.blocks_per_ce;
-		h2fmi_geometry.pages_per_block = fmi0.pages_per_block;
-		h2fmi_geometry.bytes_per_page = fmi0.bytes_per_page;
-		h2fmi_geometry.bbt_format = fmi0.bbt_format;
-		h2fmi_geometry.bytes_per_spare = fmi0.bytes_per_spare;
-		h2fmi_geometry.banks_per_ce_vfl = fmi0.banks_per_ce_vfl;
-		h2fmi_geometry.banks_per_ce = fmi0.banks_per_ce;
-		h2fmi_geometry.blocks_per_bank = h2fmi_geometry.blocks_per_ce / h2fmi_geometry.banks_per_ce;
+		memset(&nand_geometry, 0, sizeof(nand_geometry));
+		nand_geometry.num_fmi = bus_count;
+		nand_geometry.num_ce = chip_count;
+		nand_geometry.blocks_per_ce = fmi0.blocks_per_ce;
+		nand_geometry.pages_per_block = fmi0.pages_per_block;
+		nand_geometry.bytes_per_page = fmi0.bytes_per_page;
+		nand_geometry.bbt_format = fmi0.bbt_format;
+		nand_geometry.bytes_per_spare = fmi0.bytes_per_spare;
+		nand_geometry.banks_per_ce_vfl = fmi0.banks_per_ce_vfl;
+		nand_geometry.banks_per_ce = fmi0.banks_per_ce;
+		nand_geometry.blocks_per_bank = nand_geometry.blocks_per_ce / nand_geometry.banks_per_ce;
 		
 		// Check that blocks per CE is a POT.
-		if((h2fmi_geometry.blocks_per_ce & (h2fmi_geometry.blocks_per_ce-1)) == 0)
+		if((nand_geometry.blocks_per_ce & (nand_geometry.blocks_per_ce-1)) == 0)
 		{
-			h2fmi_geometry.unk14 = h2fmi_geometry.blocks_per_bank;
-			h2fmi_geometry.unk18 = h2fmi_geometry.blocks_per_ce;
-			h2fmi_geometry.unk1A = h2fmi_geometry.blocks_per_ce;
+			nand_geometry.unk14 = nand_geometry.blocks_per_bank;
+			nand_geometry.unk18 = nand_geometry.blocks_per_ce;
+			nand_geometry.unk1A = nand_geometry.blocks_per_ce;
 		}
 		else
 		{
 			// Find next biggest power of two.
 			uint32_t nextPOT = 1;
-			if((h2fmi_geometry.blocks_per_bank & 0x80000000) == 0)
-				while(nextPOT < h2fmi_geometry.blocks_per_bank)
+			if((nand_geometry.blocks_per_bank & 0x80000000) == 0)
+				while(nextPOT < nand_geometry.blocks_per_bank)
 					nextPOT <<= 1;
 
 			uint32_t unk14;
-			if(nextPOT - h2fmi_geometry.blocks_per_bank != 0)
+			if(nextPOT - nand_geometry.blocks_per_bank != 0)
 				unk14 = nextPOT << 1;
 			else
 				unk14 = nextPOT;
 
-			h2fmi_geometry.unk14 = unk14;
-			h2fmi_geometry.unk18 = ((h2fmi_geometry.banks_per_ce-1)*unk14)
-				+ h2fmi_geometry.blocks_per_bank;
-			h2fmi_geometry.unk1A = unk14;
+			nand_geometry.unk14 = unk14;
+			nand_geometry.unk18 = ((nand_geometry.banks_per_ce-1)*unk14)
+				+ nand_geometry.blocks_per_bank;
+			nand_geometry.unk1A = unk14;
 		}
 
 		// Find next biggest power of two.
 		uint32_t nextPOT = 1;
-		if((h2fmi_geometry.pages_per_block & 0x80000000) == 0)
-			while(nextPOT < h2fmi_geometry.pages_per_block)
+		if((nand_geometry.pages_per_block & 0x80000000) == 0)
+			while(nextPOT < nand_geometry.pages_per_block)
 				nextPOT <<= 1;
 
-		if(nextPOT - h2fmi_geometry.pages_per_block != 0)
-			h2fmi_geometry.pages_per_block_2 = nextPOT << 1;
+		if(nextPOT - nand_geometry.pages_per_block != 0)
+			nand_geometry.pages_per_block_2 = nextPOT << 1;
 		else
-			h2fmi_geometry.pages_per_block_2 = nextPOT;
+			nand_geometry.pages_per_block_2 = nextPOT;
 		
-		h2fmi_geometry.is_ppn = fmi0.is_ppn;
+		nand_geometry.is_ppn = fmi0.is_ppn;
 		if(fmi0.is_ppn)
 		{
 			// TODO: Write this code, currently is_ppn
@@ -1673,30 +1690,30 @@ void h2fmi_init()
 		}
 		else
 		{
-			h2fmi_geometry.blocks_per_bank_32 = h2fmi_geometry.blocks_per_bank;
-			h2fmi_geometry.pages_per_block_32 = h2fmi_geometry.pages_per_block;
-			h2fmi_geometry.pages_per_block_2_32 = h2fmi_geometry.pages_per_block;
-			h2fmi_geometry.banks_per_ce_32 = h2fmi_geometry.banks_per_ce;
+			nand_geometry.blocks_per_bank_32 = nand_geometry.blocks_per_bank;
+			nand_geometry.pages_per_block_32 = nand_geometry.pages_per_block;
+			nand_geometry.pages_per_block_2_32 = nand_geometry.pages_per_block;
+			nand_geometry.banks_per_ce_32 = nand_geometry.banks_per_ce;
 
 			nextPOT = 1;
-			if(((h2fmi_geometry.pages_per_block - 1) & 0x80000000) == 0)
-				while(nextPOT < h2fmi_geometry.pages_per_block - 1)
+			if(((nand_geometry.pages_per_block - 1) & 0x80000000) == 0)
+				while(nextPOT < nand_geometry.pages_per_block - 1)
 					nextPOT <<= 1;
 
-			h2fmi_geometry.page_number_bit_width = nextPOT;
-			h2fmi_geometry.page_number_bit_width_2 = nextPOT;
-			h2fmi_geometry.pages_per_ce
-				= h2fmi_geometry.banks_per_ce_vfl * h2fmi_geometry.pages_per_block;
-			h2fmi_geometry.unk1C = info->chip_info->unk7;
-			h2fmi_geometry.vendorType = info->board_info->unk1;
+			nand_geometry.page_number_bit_width = nextPOT;
+			nand_geometry.page_number_bit_width_2 = nextPOT;
+			nand_geometry.pages_per_ce
+				= nand_geometry.banks_per_ce_vfl * nand_geometry.pages_per_block;
+			nand_geometry.unk1C = info->chip_info->unk7;
+			nand_geometry.vendorType = info->board_info->unk1;
 
 		}
 
-		h2fmi_geometry.num_ecc_bytes = info->some_array[1];
-		h2fmi_geometry.meta_per_logical_page = info->some_array[0];
-		h2fmi_geometry.field_60 = info->some_array[2];
-		h2fmi_geometry.ecc_bits = fmi0.ecc_bits;
-		h2fmi_geometry.ecc_tag = fmi0.ecc_tag;
+		nand_geometry.num_ecc_bytes = info->some_array[1];
+		nand_geometry.meta_per_logical_page = info->some_array[0];
+		nand_geometry.field_60 = info->some_array[2];
+		nand_geometry.ecc_bits = fmi0.ecc_bits;
+		nand_geometry.ecc_tag = fmi0.ecc_tag;
 	}
 
 	for(i = 0; i < sizeof(h2fmi_busses)/sizeof(h2fmi_struct_t*); i++)
@@ -1741,7 +1758,7 @@ void h2fmi_init()
 	}
 
 	bufferPrintf("fmi: Initialized NAND memory! %d bytes per page, %d pages per block, %d blocks per CE.\r\n",
-		fmi0.bytes_per_page, h2fmi_geometry.pages_per_block, h2fmi_geometry.blocks_per_ce);
+		fmi0.bytes_per_page, nand_geometry.pages_per_block, nand_geometry.blocks_per_ce);
 
 	if(info)
 		free(info);

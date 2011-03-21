@@ -6,8 +6,11 @@ env.Append(ASFLAGS = ['-L'+str(Dir('includes'))])
 env.Append(CPPDEFINES = ['ARM_A8', 'CONFIG_S5L8920', 'MALLOC_NO_WDT'])
 
 env.AddModules([
+	"acm",
 	"nor-spi",
 	"usb-synopsys",
+	"vfl-vfl",
+	"vfl-vsvfl",
 	])
 
 plat_s5l8920_src = arch_arm_src + env.Localize([
@@ -16,6 +19,8 @@ plat_s5l8920_src = arch_arm_src + env.Localize([
 	'#device.c',
 	'#mtd.c',
 	'#bdev.c',
+	'#nand.c',
+	'#vfl.c',
 	'#openiboot.c',
 	'#util.c',
 	'#malloc.c',
@@ -23,7 +28,6 @@ plat_s5l8920_src = arch_arm_src + env.Localize([
 	'#tasks.c',
 	'#printf.c',
 	'#framebuffer.c',
-	'#acm.c',
 	'#commands.c',
 	'#actions.c',
 	'#scripting.c',
@@ -51,7 +55,6 @@ plat_s5l8920_src = arch_arm_src + env.Localize([
 	'timer.c',
 	'cdma.c',
 	'h2fmi.c',
-	'vfl.c',
 	'uart.c',
 	]) + hfs_src
 Export('plat_s5l8920_src')

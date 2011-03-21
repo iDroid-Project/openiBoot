@@ -31,8 +31,6 @@
 #include "framebuffer.h"
 #include "menu.h"
 #include "pmu.h"
-#include "nand.h"
-#include "ftl.h"
 #include "hfs/bdev.h"
 #include "hfs/fs.h"
 #include "scripting.h"

@@ -1,6 +1,6 @@
 #include "openiboot.h"
 #include "commands.h"
-#include "nand.h"
+#include "s5l8900/nand.h"
 #include "hardware/nand.h"
 #include "timer.h"
 #include "clock.h"

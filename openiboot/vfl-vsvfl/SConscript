@@ -1,0 +1,8 @@
+Import('*')
+
+vfl_vsvfl_src = env.Localize([
+	'vsvfl.c',
+	])
+
+vfl_vsvfl = env.CreateModule('vfl-vsvfl', vfl_vsvfl_src)
+vfl_vsvfl.Append(CPPPATH = [Dir('includes')])

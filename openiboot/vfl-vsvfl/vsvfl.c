@@ -1,7 +1,10 @@
-#include "vfl.h"
-#include "h2fmi.h"
+#include "vfl/vsvfl.h"
 #include "util.h"
 #include "commands.h"
+
+// TODO: Fix this mess. -- Ricky26
+
+#if 0
 
 static int VFL_Init_Done = 0;
 //static VFLData1Type VFLData1;
@@ -12,9 +15,9 @@ static uint16_t* ScatteredBankNumberBuffer = NULL;
 static int curVFLusnInc = 0;
 
 static void virtual_page_number_to_virtual_address(uint32_t _vpNum, uint16_t* _bank, uint16_t* _block, uint16_t* _page) {
-	*_bank = _vpNum % h2fmi_geometry.num_ce;
-	*_block = (_vpNum / h2fmi_geometry.num_ce) / h2fmi_geometry.pages_per_block;
-	*_page = (_vpNum / h2fmi_geometry.num_ce) % h2fmi_geometry.pages_per_block;
+	*_bank = _vpNum % nand_geometry.num_ce;
+	*_block = (_vpNum / nand_geometry.num_ce) / nand_geometry.pages_per_block;
+	*_page = (_vpNum / nand_geometry.num_ce) % nand_geometry.pages_per_block;
 }
 
 static int vfl_is_good_block(uint8_t* badBlockTable, uint16_t virtualBlock) {
@@ -29,7 +32,7 @@ static uint16_t virtual_block_to_physical_block(uint16_t virtualBank, uint16_t v
 	int pwDesPbn;
 	for(pwDesPbn = 0; pwDesPbn < pstVFLCxt[virtualBank].num_reserved_blocks; pwDesPbn++) {
 		if(pstVFLCxt[virtualBank].reserved_block_pool_map[pwDesPbn] == virtualBlock) {
-			if(pwDesPbn >= h2fmi_geometry.blocks_per_ce)
+			if(pwDesPbn >= nand_geometry.blocks_per_ce)
 				bufferPrintf("ftl: Destination physical block for remapping is greater than number of blocks per bank!");
 
 			return pstVFLCxt[virtualBank].reserved_block_pool_start + pwDesPbn;
@@ -80,7 +83,7 @@ static int vfl_check_checksum(int bank)
 	return FALSE;
 }
 
-int VFL_Read(uint32_t dwVpn, uint8_t* buffer, uint8_t* spare, int empty_ok, int* refresh_page, int aes)
+int vfl_read(uint32_t dwVpn, uint8_t* buffer, uint8_t* spare, int empty_ok, int* refresh_page, int aes)
 {
 	if(refresh_page)
 		*refresh_page = FALSE;
@@ -88,9 +91,9 @@ int VFL_Read(uint32_t dwVpn, uint8_t* buffer, uint8_t* spare, int empty_ok, int*
 	//VFLData1.field_8++;
 	//VFLData1.field_20++;
 
-	if(dwVpn >= h2fmi_geometry.pages_per_ce * h2fmi_geometry.num_ce)
+	if(dwVpn >= nand_geometry.pages_per_ce * nand_geometry.num_ce)
 	{
-		bufferPrintf("ftl: dwVpn overflow: %d\r\n", dwVpn);
+		bufferPrintf("ftl: No such virtual page %d.\r\n", dwVpn);
 		return ERROR_ARG;
 	}
 
@@ -102,13 +105,12 @@ int VFL_Read(uint32_t dwVpn, uint8_t* buffer, uint8_t* spare, int empty_ok, int*
 	virtual_page_number_to_virtual_address(dwVpn, &virtualBank, &virtualBlock, &virtualPage);
 	physicalBlock = virtual_block_to_physical_block(virtualBank, virtualBlock);
 
-	int page = physicalBlock * h2fmi_geometry.pages_per_block + virtualPage;
+	int page = physicalBlock * nand_geometry.pages_per_block + virtualPage;
 
 	int ret = h2fmi_read_single_page(virtualBank, page, buffer, spare, NULL, NULL, !aes);
 
-	if(!empty_ok && ret == ERROR_EMPTY) {
+	if(!empty_ok && ret == ERROR_EMPTY)
 		ret = ERROR_NAND;
-	}
 
 	/*if(refresh_page) {
 		if((Geometry->field_2F <= 0 && ret == 0) || ret == ERROR_NAND) {
@@ -120,7 +122,7 @@ int VFL_Read(uint32_t dwVpn, uint8_t* buffer, uint8_t* spare, int empty_ok, int*
 	/*if(ret == ERROR_ARG || ret == ERROR_NAND) {
 		nand_bank_reset(virtualBank, 100);
 		ret = nand_read(virtualBank, page, buffer, spare, TRUE, TRUE);
-		if(!empty_ok && ret == ERROR_EMPTYBLOCK) {
+		if(!empty_ok && ret == ERROR_EMPTY) {
 			return ERROR_NAND;
 		}
 
@@ -128,37 +130,34 @@ int VFL_Read(uint32_t dwVpn, uint8_t* buffer, uint8_t* spare, int empty_ok, int*
 			return ret;
 	}*/
 
-	/*if(ret == ERROR_EMPTYBLOCK) {
-		if(spare) {
-			memset(spare, 0xFF, sizeof(SpareData));
-		}
-	}*/
+	if(ret == ERROR_EMPTY && spare)
+		memset(spare, 0xFF, nand_geometry.bytes_per_spare);
 
 	return ret;
 }
 
 static int findDeviceInfoBBT(int bank, void* deviceInfoBBT)
 {
-	uint8_t* buffer = malloc(h2fmi_geometry.bytes_per_page);
-	int lowestBlock = h2fmi_geometry.blocks_per_ce - (h2fmi_geometry.blocks_per_ce / 10);
+	uint8_t* buffer = malloc(nand_geometry.bytes_per_page);
+	int lowestBlock = nand_geometry.blocks_per_ce - (nand_geometry.blocks_per_ce / 10);
 	int block;
-	for(block = h2fmi_geometry.blocks_per_ce - 1; block >= lowestBlock; block--) {
+	for(block = nand_geometry.blocks_per_ce - 1; block >= lowestBlock; block--) {
 		int page;
 		int badBlockCount = 0;
-		for(page = 0; page < h2fmi_geometry.pages_per_block; page++) {
+		for(page = 0; page < nand_geometry.pages_per_block; page++) {
 			if(badBlockCount > 2) {
 				DebugPrintf("ftl: findDeviceInfoBBT - too many bad pages, skipping block %d\r\n", block);
 				break;
 			}
 
-			int ret = h2fmi_read_single_page(bank, (block * h2fmi_geometry.pages_per_block) + page, buffer, NULL, NULL, NULL, 0);
+			int ret = h2fmi_read_single_page(bank, (block * nand_geometry.pages_per_block) + page, buffer, NULL, NULL, NULL, 0);
 			if(ret != 0) {
 				if(ret == 1) {
-					DebugPrintf("ftl: findDeviceInfoBBT - found 'badBlock' on bank %d, page %d\r\n", (block * h2fmi_geometry.pages_per_block) + page);
+					DebugPrintf("ftl: findDeviceInfoBBT - found 'badBlock' on bank %d, page %d\r\n", (block * nand_geometry.pages_per_block) + page);
 					badBlockCount++;
 				}
 
-				DebugPrintf("ftl: findDeviceInfoBBT - skipping bank %d, page %d\r\n", (block * h2fmi_geometry.pages_per_block) + page);
+				DebugPrintf("ftl: findDeviceInfoBBT - skipping bank %d, page %d\r\n", (block * nand_geometry.pages_per_block) + page);
 				continue;
 			}
 
@@ -170,7 +169,7 @@ static int findDeviceInfoBBT(int bank, void* deviceInfoBBT)
 				free(buffer);
 				return TRUE;
 			} else {
-				DebugPrintf("ftl: did not find signature on bank %d, page %d\r\n", (block * h2fmi_geometry.pages_per_block) + page);
+				DebugPrintf("ftl: did not find signature on bank %d, page %d\r\n", (block * nand_geometry.pages_per_block) + page);
 			}
 		}
 	}
@@ -183,7 +182,7 @@ static int findDeviceInfoBBT(int bank, void* deviceInfoBBT)
 {
 	int bank;
 	int good = TRUE;
-	for(bank = 0; bank < h2fmi_geometry.banks_per_ce; bank++)
+	for(bank = 0; bank < nand_geometry.banks_per_ce; bank++)
 	{
 		good = findDeviceInfoBBT(bank, NULL);
 		if(!good)
@@ -198,7 +197,7 @@ static uint16_t* VFL_get_FTLCtrlBlock()
 	int bank = 0;
 	int max = 0;
 	uint16_t* FTLCtrlBlock = NULL;
-	for(bank = 0; bank < h2fmi_geometry.banks_per_ce; bank++)
+	for(bank = 0; bank < nand_geometry.banks_per_ce; bank++)
 	{
 		int cur = pstVFLCxt[bank].usn_inc;
 		if(max <= cur)
@@ -213,20 +212,20 @@ static uint16_t* VFL_get_FTLCtrlBlock()
 
 static int VFL_Open() {
 	int bank = 0;
-	for(bank = 0; bank < h2fmi_geometry.num_ce; bank++) {
+	for(bank = 0; bank < nand_geometry.num_ce; bank++) {
 		if(!findDeviceInfoBBT(bank, pstBBTArea)) {
 			bufferPrintf("ftl: findDeviceInfoBBT failed\r\n");
 			return -1;
 		}
 
-		if(bank >= h2fmi_geometry.num_ce) {
+		if(bank >= nand_geometry.num_ce) {
 			return -1;
 		}
 
 
 		vfl_context_t *curVFLCxt = &pstVFLCxt[bank];
-		uint8_t* pageBuffer = malloc(h2fmi_geometry.bytes_per_page);
-		uint8_t* spareBuffer = malloc(h2fmi_geometry.bytes_per_spare);
+		uint8_t* pageBuffer = malloc(nand_geometry.bytes_per_page);
+		uint8_t* spareBuffer = malloc(nand_geometry.bytes_per_spare);
 		if(pageBuffer == NULL || spareBuffer == NULL) {
 			bufferPrintf("ftl: cannot allocate page and spare buffer\r\n");
 			return -1;
@@ -287,15 +286,15 @@ static int VFL_Open() {
 		// in all the land (and is the newest).
 		int page = 8;
 		int last = 0;
-		for(page = 8; page < h2fmi_geometry.pages_per_block; page += 8) {
-			if(h2fmi_read_single_page(bank, (curVFLCxt->vfl_context_block[VFLCxtIdx] * h2fmi_geometry.pages_per_block) + page, pageBuffer, spareBuffer, NULL, NULL, 0) != 0) {
+		for(page = 8; page < nand_geometry.pages_per_block; page += 8) {
+			if(h2fmi_read_single_page(bank, (curVFLCxt->vfl_context_block[VFLCxtIdx] * nand_geometry.pages_per_block) + page, pageBuffer, spareBuffer, NULL, NULL, 0) != 0) {
 				break;
 			}
 			
 			last = page;
 		}
 
-		if(h2fmi_read_single_page(bank, (curVFLCxt->vfl_context_block[VFLCxtIdx] * h2fmi_geometry.pages_per_block) + last, pageBuffer, spareBuffer, NULL, NULL, 0) != 0) {
+		if(h2fmi_read_single_page(bank, (curVFLCxt->vfl_context_block[VFLCxtIdx] * nand_geometry.pages_per_block) + last, pageBuffer, spareBuffer, NULL, NULL, 0) != 0) {
 			bufferPrintf("ftl: cannot find readable VFLCxt\n");
 			free(pageBuffer);
 			free(spareBuffer);
@@ -328,7 +327,7 @@ static int VFL_Open() {
 	memcpy(buffer, FTLCtrlBlock, sizeof(buffer));
 
 	// Then we update the VFLCxts on every bank with that information.
-	for(bank = 0; bank < h2fmi_geometry.banks_per_ce; bank++) {
+	for(bank = 0; bank < nand_geometry.banks_per_ce; bank++) {
 		memcpy(pstVFLCxt[bank].control_block, buffer, sizeof(buffer));
 		vfl_gen_checksum(bank);
 	}
@@ -343,21 +342,21 @@ int VFL_Init()
 
 	//memset(&VFLData1, 0, sizeof(VFLData1));
 	if(pstVFLCxt == NULL) {
-		pstVFLCxt = malloc(h2fmi_geometry.num_ce * sizeof(vfl_context_t));
-		memset(pstVFLCxt, 0, h2fmi_geometry.num_ce * sizeof(vfl_context_t));
+		pstVFLCxt = malloc(nand_geometry.num_ce * sizeof(vfl_context_t));
+		memset(pstVFLCxt, 0, nand_geometry.num_ce * sizeof(vfl_context_t));
 		if(pstVFLCxt == NULL)
 			return -1;
 	}
 
 	if(pstBBTArea == NULL) {
-		pstBBTArea = (uint8_t*) malloc(round_up(h2fmi_geometry.blocks_per_bank, 8));
+		pstBBTArea = (uint8_t*) malloc(round_up(nand_geometry.blocks_per_bank, 8));
 		if(pstBBTArea == NULL)
 			return -1;
 	}
 
 	if(ScatteredPageNumberBuffer == NULL && ScatteredBankNumberBuffer == NULL) {
-		ScatteredPageNumberBuffer = (uint32_t*) malloc(h2fmi_geometry.pages_per_block * sizeof(uint32_t));
-		ScatteredBankNumberBuffer = (uint16_t*) malloc(h2fmi_geometry.pages_per_block * sizeof(uint16_t));
+		ScatteredPageNumberBuffer = (uint32_t*) malloc(nand_geometry.pages_per_block * sizeof(uint32_t));
+		ScatteredBankNumberBuffer = (uint16_t*) malloc(nand_geometry.pages_per_block * sizeof(uint16_t));
 		if(ScatteredPageNumberBuffer == NULL || ScatteredBankNumberBuffer == NULL)
 			return -1;
 	}
@@ -367,7 +366,7 @@ int VFL_Init()
 	return 0;
 }
 
-void vfl_bootstrap()
+static void vfl_bootstrap()
 {
 	if(VFL_Init() != 0)
 	{
@@ -383,15 +382,15 @@ void vfl_bootstrap()
 }
 MODULE_INIT(vfl_bootstrap);
 
-void cmd_vfl_open(int argc, char** argv)
+static void cmd_vfl_open(int argc, char** argv)
 {
 	VFL_Open();
 }
 COMMAND("vfl_open", "H2FMI NAND test", cmd_vfl_open);
 
-void cmd_vfl_read(int argc, char** argv)
+static void cmd_vfl_read(int argc, char** argv)
 {
-	if(argc < 6)
+	if(argc < 7)
 	{
 		bufferPrintf("Usage: %s [page] [data] [metadata] [buf1] [buf2] [flag]\r\n", argv[0]);
 		return;
@@ -404,10 +403,12 @@ void cmd_vfl_read(int argc, char** argv)
 	uint32_t refresh = parseNumber(argv[5]);
 	uint32_t flag = parseNumber(argv[6]);
 
-	uint32_t ret = VFL_Read(page,
+	uint32_t ret = vfl_read(page,
 			(uint8_t*)data, (uint8_t*)meta, empty_ok, (int32_t*)refresh,
 			flag);
 
 	bufferPrintf("vfl: Command completed with result 0x%08x.\r\n", ret);
 }
 COMMAND("vfl_read", "H2FMI NAND test", cmd_vfl_read);
+
+#endif
