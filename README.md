@@ -62,9 +62,7 @@ Change into the openiboot subfolder
 **Compile oibc:**
 `cd ../utils/oibc && make && cd ../openiboot`
 
-- The linux client will also build on OSX with the correct libusb version installed.
-
-2. Installing
+2. Running/Installing
 ---------------------------------------------------
 **If you're on linux, you'll need to install the following as /etc/udev/rules.d/51-android.rules:**
 	SUBSYSTEM=="usb" ID_VENDOR_ID=="0bb4", MODE="0666"
@@ -75,8 +73,11 @@ Change into the openiboot subfolder
 
 *NOTE: For the 3GS, iPhone4, iPad and Apple TV 2G, you must put your device into DFU mode instead.*
 
-**Run:** 
+**For iPhone 2G, iPhone 3G & iPod Touch 1G run:** 
 `../utils/syringe/loadibec openiboot.img3`
+
+**For newer devices runi (substituting *device* and *revision* with the actual device, for example: iphone_4_openiboot.bin):**
+`../utils/syringe/loadibec *device*_*revision*_openiboot.bin`
 
 You should now see openiBoot on your phone, use the volume buttons to scroll to the console icon, then press home
 
