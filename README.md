@@ -23,6 +23,10 @@ iDroid Project openiBoot
 	
 Wait, for a long time, as the toolchain is compiled.
 
+**Initialise Submodules**
+`git submodule init`
+`git submodule update`
+
 **Compile OpeniBoot:**
 
 To run openiboot from the recovery mode (a.k.a iboot), you’ll need to create an img3 image.
@@ -76,8 +80,8 @@ Change into the openiboot subfolder
 **For iPhone 2G, iPhone 3G & iPod Touch 1G run:** 
 `../utils/syringe/loadibec openiboot.img3`
 
-**For newer devices runi (substituting *device* and *revision* with the actual device, for example: iphone_4_openiboot.bin):**
-`../utils/syringe/loadibec *device*_*revision*_openiboot.bin`
+**For newer devices run: (substituting *device* and *revision* with the actual device, for example: iphone_4_openiboot.bin):**
+`../utils/syringe/loadibec device_revision_openiboot.bin`
 
 You should now see openiBoot on your phone, use the volume buttons to scroll to the console icon, then press home
 
