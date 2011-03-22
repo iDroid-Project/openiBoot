@@ -23,6 +23,6 @@ env.AddModules([
 	"nor-spi",
 	])
 
-elf, bin, img3 = env.OpenIBootTarget('iPhone3G', 'iphone_3g_openiboot', 'CONFIG_IPHONE_3G', iphone_3g_src+menu_src, 'template-3g')
-env.OpenIBootTarget('iPhone3G-Installer', 'iphone_3g_installer', 'CONFIG_IPHONE_3G', iphone_3g_src+installer_src, 'template-3g')
+elf, bin, img3 = env.MenuEnv().OpenIBootTarget('iPhone3G', 'iphone_3g_openiboot', 'CONFIG_IPHONE_3G', iphone_3g_src, 'template-3g')
+env.InstallerEnv().OpenIBootTarget('iPhone3G-Installer', 'iphone_3g_installer', 'CONFIG_IPHONE_3G', iphone_3g_src, 'template-3g')
 Default(img3)
