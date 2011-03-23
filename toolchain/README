@@ -1,7 +1,7 @@
 Using build-toolchain
 --------------------------
 
-This script will build the GNU ARM toolchain from scratch. It must be ran as root
+This script will build the GNU ARM toolchain from scratch. It must be run as root
 due to the fact that it installs the bins in /usr/local.
 
 It will use /tmp/ipl-toolchain for temporary storage. If you would like to override
