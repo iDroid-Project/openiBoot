@@ -780,13 +780,13 @@ static void h2fmi_hw_reg_int_init(h2fmi_struct_t *_fmi)
 
 void nand_device_set_interrupt(h2fmi_struct_t *_fmi)
 {
-	sub_5FF17160((uint32_t*)_fmi + 0x6C, 1, 0);
+	sub_5FF17160((uint32_t*)_fmi + 0x1B, 1, 0);
 	_fmi->fmi_state = 0;
 	h2fmi_hw_reg_int_init(_fmi);
 	interrupt_set_int_type(_fmi->interrupt, 0);
 	interrupt_install(_fmi->interrupt, h2fmiIRQHandler, (uint32_t)_fmi);
 	interrupt_enable(_fmi->interrupt);
-	sub_5FF17160((uint32_t*)_fmi + 0x16C, 1, 0);
+	sub_5FF17160((uint32_t*)_fmi + 0x5B, 1, 0);
 	SET_REG(H2FMI_UNKREG3(_fmi), 0);
 }
 
