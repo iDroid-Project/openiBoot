@@ -1,0 +1,8 @@
+Import("*")
+
+radio_xgold618_src = env.Localize([
+	'radio.c'
+	])
+
+radio_xgold618 = env.CreateModule('radio-xgold618', radio_xgold618_src)
+radio_xgold618.Append(CPPPATH=[Dir('includes')])

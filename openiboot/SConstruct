@@ -70,6 +70,7 @@ env.SConscript([
 	'hfs/SConscript',
 	'radio-pmb8876/SConscript',
 	'radio-pmb8878/SConscript',
+	'radio-xgold618/SConscript',
 	'usb-synopsys/SConscript',
 	'nor-cfi/SConscript',
 	'nor-spi/SConscript',
