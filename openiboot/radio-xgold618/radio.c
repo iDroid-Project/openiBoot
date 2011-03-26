@@ -12,9 +12,11 @@
 // device 4 seems to be the vibrator, device 0 seems to be the speakers,
 // 7 seems to have to do with bluetooth, and 9 is bb nvram
 
+/*
 static int radio_nvram_read_all(char** res);
 static char* radio_nvram = NULL;
 static int radio_nvram_len;
+*/
 static int RadioAvailable = FALSE;
 
 static char* response_buf;
@@ -22,7 +24,7 @@ static char* response_buf;
 
 // This ugliness should be removed when we have a working PMU driver.
 
-int pmu_send_buffer(int bus, uint8_t buffer, uint8_t response, int check) {
+static int pmu_send_buffer(int bus, uint8_t buffer, uint8_t response, int check) {
 	uint8_t send_buffer[2] = { buffer, response };
 	uint8_t recv_buffer = 0;
 	int result;
@@ -35,7 +37,7 @@ int pmu_send_buffer(int bus, uint8_t buffer, uint8_t response, int check) {
 	return result;
 }
 
-int sub_5FF085D8(int a, int b ,int c)
+static int sub_5FF085D8(int a, int b ,int c)
 {
 	uint8_t registers = 0x50 + a;
 	uint8_t recv_buff = 0;
@@ -101,9 +103,10 @@ static void radio_init()
 }
 MODULE_INIT(radio_init);
 
+/*
 int radio_nvram_get(int type_in, uint8_t** data_out)
 {
-	/*if(!RadioAvailable)
+	if(!RadioAvailable)
 		return -1;
 
 	if(radio_nvram == NULL)
@@ -129,14 +132,14 @@ int radio_nvram_get(int type_in, uint8_t** data_out)
 			return size - 4;
 		}
 		cursor += size;
-	}*/
+	}
 
 	return -1;
 }
 
 void radio_nvram_list()
 {
-	/*if(radio_nvram == NULL)
+	if(radio_nvram == NULL)
 	{
 		bufferPrintf("radio: reading baseband nvram... ");
 		radio_nvram_len = radio_nvram_read_all(&radio_nvram);
@@ -187,8 +190,9 @@ void radio_nvram_list()
 		}
 
 		cursor += size;
-	}*/
+	}
 }
+*/
 
 int radio_write(const char* str)
 {
@@ -269,9 +273,10 @@ int radio_cmd(const char* cmd, int tries)
 		return TRUE;
 }
 
+/*
 static int radio_nvram_read_idx(int idx, char** res)
 {
-	/*char cmd[20];
+	char cmd[20];
 	char* curBuf;
 	char* resultStart;
 	int curBufSize;
@@ -331,14 +336,12 @@ static int radio_nvram_read_idx(int idx, char** res)
 
 	*res = curBuf;
 
-	return c;*/
-	
-	return -1;
+	return c;
 }
 
 static int radio_nvram_read_all(char** res)
 {
-	/*int ret;
+	int ret;
 	int idx;
 	int len;
 
@@ -357,17 +360,16 @@ static int radio_nvram_read_all(char** res)
 		free(line);
 		len += ret;
 		++idx;
-	}*/
+	}
 }
 
 int speaker_setup()
 {
 	// something set at the very beginning
-	/*radio_cmd("at+xdrv=0,41,25\r\n", 10);
-	return 0;*/
-	
-	return -1;
+	radio_cmd("at+xdrv=0,41,25\r\n", 10);
+	return 0;
 }
+*/
 
 int radio_register(int timeout)
 {
@@ -407,9 +409,10 @@ int radio_register(int timeout)
 	}
 }
 
+/*
 void radio_call(const char* number)
 {
-	/*char buf[256];
+	char buf[256];
 
 	bufferPrintf("radio: Setting up audio\r\n");
 
@@ -507,30 +510,31 @@ void radio_call(const char* number)
 	radio_cmd("at+xdrv=0,4\r\n", 10);
 	radio_cmd("at+xdrv=0,20,0\r\n", 10);
 
-	radio_cmd("at+xcallstat=0\r\n", 10);*/
+	radio_cmd("at+xcallstat=0\r\n", 10);
 }
 
 void radio_hangup()
 {
-	/*radio_cmd("at+chld=1\r\n", 10);
+	radio_cmd("at+chld=1\r\n", 10);
 	radio_cmd("at+xctms=0\r\n", 10);
 	audiohw_switch_normal_call(FALSE);
-	speaker_setup();*/
+	speaker_setup();
 }
 
 void loudspeaker_vol(int vol)
 {
-	/*char buf[100];
+	char buf[100];
 	sprintf(buf, "at+xdrv=0,1,%d,2\r\n", vol);
-	radio_cmd(buf, 10);*/
+	radio_cmd(buf, 10);
 }
 
 void speaker_vol(int vol)
 {
-	/*char buf[100];
+	char buf[100];
 	sprintf(buf, "at+xdrv=0,1,%d,0\r\n", vol);
-	radio_cmd(buf, 10);*/
+	radio_cmd(buf, 10);
 }
+*/
 
 void cmd_radio_send(int argc, char** argv) {
 	if(argc < 2) {
@@ -557,10 +561,12 @@ void cmd_radio_send(int argc, char** argv) {
 }
 COMMAND("radio_send", "send a command to the baseband", cmd_radio_send);
 
-/*void cmd_radio_nvram_list(int argc, char** argv) {
+/*
+void cmd_radio_nvram_list(int argc, char** argv) {
 	radio_nvram_list();
 }
-COMMAND("radio_nvram_list", "list entries in baseband NVRAM", cmd_radio_nvram_list);*/
+COMMAND("radio_nvram_list", "list entries in baseband NVRAM", cmd_radio_nvram_list);
+*/
 
 void cmd_radio_register(int argc, char** argv) {
 	bufferPrintf("Registering with cellular network...\r\n");
@@ -569,7 +575,8 @@ void cmd_radio_register(int argc, char** argv) {
 }
 COMMAND("radio_register", "register with a cellular network", cmd_radio_register);
 
-/*void cmd_radio_call(int argc, char** argv) {
+/*
+void cmd_radio_call(int argc, char** argv) {
 	if(argc < 2) {
 		bufferPrintf("Usage: %s <phone number>\r\n", argv[0]);
 		return;
@@ -584,4 +591,5 @@ COMMAND("radio_call", "make a call", cmd_radio_call);
 void cmd_radio_hangup(int argc, char** argv) {
 	radio_hangup(argv[1]);
 }
-COMMAND("radio_hangup", "hang up", cmd_radio_hangup);*/
+COMMAND("radio_hangup", "hang up", cmd_radio_hangup);
+*/
