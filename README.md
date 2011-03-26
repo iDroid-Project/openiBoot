@@ -26,7 +26,9 @@ Wait, for a long time, as the toolchain is compiled.
 **Compile OpeniBoot:**
 
 To run openiboot from the recovery mode (a.k.a iboot), you’ll need to create an img3 image.
-You will need a system capable of running x86 Linux binaries (Build requires libusb, libreadline and pthread). If compiling on 64-bit linux, you may need libc6-dev-i386 and type export ARCH=x86_64 before you proceed with the next steps, All community builds are run on an Ubuntu 10.04 Lucid Lynx system.
+You will need a system capable of running x86 Linux binaries (Build requires scons, libssl, libpng, libcurl, libusb, libreadline and pthread). 
+
+If compiling on 64-bit linux, you may need libc6-dev-i386 and type export ARCH=x86_64 before you proceed with the next steps.
 
 Change into the openiboot subfolder
 
@@ -60,9 +62,7 @@ Change into the openiboot subfolder
 **Compile oibc:**
 `cd ../utils/oibc && make && cd ../openiboot`
 
-- The linux client will also build on OSX with the correct libusb version installed.
-
-2. Installing
+2. Running/Installing
 ---------------------------------------------------
 **If you're on linux, you'll need to install the following as /etc/udev/rules.d/51-android.rules:**
 	SUBSYSTEM=="usb" ID_VENDOR_ID=="0bb4", MODE="0666"
@@ -73,15 +73,18 @@ Change into the openiboot subfolder
 
 *NOTE: For the 3GS, iPhone4, iPad and Apple TV 2G, you must put your device into DFU mode instead.*
 
-**Run:** 
+**For iPhone 2G, iPhone 3G & iPod Touch 1G run:** 
 `../utils/syringe/loadibec openiboot.img3`
+
+**For newer devices runi (substituting *device* and *revision* with the actual device, for example: iphone_4_openiboot.bin):**
+`../utils/syringe/loadibec *device*_*revision*_openiboot.bin`
 
 You should now see openiBoot on your phone, use the volume buttons to scroll to the console icon, then press home
 
 **Run the client:**
 `../utils/oibc/oibc`
 
-*NOTE: If you are on a mac, you will most likely need to do this as soon as you have selected the console - Linux does not manifest this issue.*
+*NOTE: You cannot install openiboot on an iPhone 4, iPad or new bootrom 3GS/iPT2G - you can only run it*
 
 You should now see the same output on your computer, as is on your phone's screen.
 
