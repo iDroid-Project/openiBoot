@@ -5,6 +5,7 @@
 #include "timer.h"
 #include "util.h"
 #include "hardware/radio.h"
+#include "hardware/pmu.h"
 #include "uart.h"
 #include "i2c.h"
 
@@ -22,20 +23,20 @@ static char* response_buf;
 
 // This ugliness should be removed when we have a working PMU driver.
 
-int pmu_send_buffer(int bus, uint8_t buffer, uint8_t response, int check) {
+static int pmu_send_buffer(int bus, uint8_t buffer, uint8_t response, int check) {
 	uint8_t send_buffer[2] = { buffer, response };
 	uint8_t recv_buffer = 0;
 	int result;
 
-	i2c_tx(bus, 0xE9, (void*)&send_buffer, 2);
-	if (check && (i2c_rx(bus, 0xE8, (void*)&buffer, 1, (void*)&recv_buffer, 1), recv_buffer != response))
+	i2c_tx(bus, PMU_SETADDR, (void*)&send_buffer, 2);
+	if (check && (i2c_rx(bus, PMU_GETADDR, (void*)&buffer, 1, (void*)&recv_buffer, 1), recv_buffer != response))
 		result = -1;
 	else
 		result = 0;
 	return result;
 }
 
-int sub_5FF085D8(int a, int b ,int c)
+static int sub_5FF085D8(int a, int b ,int c)
 {
 	uint8_t registers = 0x50 + a;
 	uint8_t recv_buff = 0;
@@ -44,7 +45,7 @@ int sub_5FF085D8(int a, int b ,int c)
 
 	if (a > 10) return -1;
 	
-	result = i2c_rx(0, 0xE8, (void*)&registers, 1, (void*)&recv_buff, 1);
+	result = i2c_rx(0, PMU_GETADDR, (void*)&registers, 1, (void*)&recv_buff, 1);
 	if (result != I2CNoError) return result;
 	
 	recv_buff &= 0x1D;
@@ -66,7 +67,7 @@ int radio_setup()
 	response_buf = malloc(RESPONSE_BUF_SIZE);
 	
 	gpio_custom_io(0x606, 2);
-
+	
 	sub_5FF085D8(2, 1, 0);
 	udelay(100000);
 	sub_5FF085D8(2, 1, 1);
@@ -103,7 +104,7 @@ MODULE_INIT(radio_init);
 
 int radio_nvram_get(int type_in, uint8_t** data_out)
 {
-	/*if(!RadioAvailable)
+	if(!RadioAvailable)
 		return -1;
 
 	if(radio_nvram == NULL)
@@ -129,14 +130,14 @@ int radio_nvram_get(int type_in, uint8_t** data_out)
 			return size - 4;
 		}
 		cursor += size;
-	}*/
+	}
 
 	return -1;
 }
 
 void radio_nvram_list()
 {
-	/*if(radio_nvram == NULL)
+	if(radio_nvram == NULL)
 	{
 		bufferPrintf("radio: reading baseband nvram... ");
 		radio_nvram_len = radio_nvram_read_all(&radio_nvram);
@@ -271,7 +272,7 @@ int radio_cmd(const char* cmd, int tries)
 
 static int radio_nvram_read_idx(int idx, char** res)
 {
-	/*char cmd[20];
+	char cmd[20];
 	char* curBuf;
 	char* resultStart;
 	int curBufSize;
@@ -331,14 +332,14 @@ static int radio_nvram_read_idx(int idx, char** res)
 
 	*res = curBuf;
 
-	return c;*/
+	return c;
 	
 	return -1;
 }
 
 static int radio_nvram_read_all(char** res)
 {
-	/*int ret;
+	int ret;
 	int idx;
 	int len;
 
@@ -357,14 +358,17 @@ static int radio_nvram_read_all(char** res)
 		free(line);
 		len += ret;
 		++idx;
-	}*/
+	}
 }
 
 int speaker_setup()
 {
+	// TODO: Implement this for X-Gold 618.
+
 	// something set at the very beginning
-	/*radio_cmd("at+xdrv=0,41,25\r\n", 10);
-	return 0;*/
+	/*
+	radio_cmd("at+xdrv=0,41,25\r\n", 10);
+	*/
 	
 	return -1;
 }
@@ -409,7 +413,10 @@ int radio_register(int timeout)
 
 void radio_call(const char* number)
 {
-	/*char buf[256];
+	// TODO: Validate this is the same for X-Gold 618.
+	
+	/*
+	char buf[256];
 
 	bufferPrintf("radio: Setting up audio\r\n");
 
@@ -507,29 +514,29 @@ void radio_call(const char* number)
 	radio_cmd("at+xdrv=0,4\r\n", 10);
 	radio_cmd("at+xdrv=0,20,0\r\n", 10);
 
-	radio_cmd("at+xcallstat=0\r\n", 10);*/
+	radio_cmd("at+xcallstat=0\r\n", 10);
+	*/
 }
 
 void radio_hangup()
 {
-	/*radio_cmd("at+chld=1\r\n", 10);
+	radio_cmd("at+chld=1\r\n", 10);
 	radio_cmd("at+xctms=0\r\n", 10);
-	audiohw_switch_normal_call(FALSE);
-	speaker_setup();*/
+	
+	// TODO: Decomment (or remove) this line when there's a working audio driver.
+	// audiohw_switch_normal_call(FALSE);
+	
+	speaker_setup();
 }
 
 void loudspeaker_vol(int vol)
 {
-	/*char buf[100];
-	sprintf(buf, "at+xdrv=0,1,%d,2\r\n", vol);
-	radio_cmd(buf, 10);*/
+	// TODO: Implement.
 }
 
 void speaker_vol(int vol)
 {
-	/*char buf[100];
-	sprintf(buf, "at+xdrv=0,1,%d,0\r\n", vol);
-	radio_cmd(buf, 10);*/
+	// TODO: Implement.
 }
 
 void cmd_radio_send(int argc, char** argv) {
@@ -557,10 +564,10 @@ void cmd_radio_send(int argc, char** argv) {
 }
 COMMAND("radio_send", "send a command to the baseband", cmd_radio_send);
 
-/*void cmd_radio_nvram_list(int argc, char** argv) {
+void cmd_radio_nvram_list(int argc, char** argv) {
 	radio_nvram_list();
 }
-COMMAND("radio_nvram_list", "list entries in baseband NVRAM", cmd_radio_nvram_list);*/
+COMMAND("radio_nvram_list", "list entries in baseband NVRAM", cmd_radio_nvram_list);
 
 void cmd_radio_register(int argc, char** argv) {
 	bufferPrintf("Registering with cellular network...\r\n");

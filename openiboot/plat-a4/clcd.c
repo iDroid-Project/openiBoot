@@ -2,6 +2,7 @@
 #include "util.h"
 #include "hardware/clcd.h"
 #include "hardware/mipi_dsim.h"
+#include "hardware/pmu.h"
 #include "timer.h"
 #include "i2c.h"
 #include "tasks.h"
@@ -187,8 +188,8 @@ int pmu_send_buffer(int bus, uint8_t buffer, uint8_t response, int check) {
 	uint8_t recv_buffer = 0;
 	int result;
 
-	i2c_tx(bus, 0xE9, (void*)&send_buffer, 2);
-	if (check && (i2c_rx(bus, 0xE8, (void*)&buffer, 1, (void*)&recv_buffer, 1), recv_buffer != response))
+	i2c_tx(bus, PMU_SETADDR, (void*)&send_buffer, 2);
+	if (check && (i2c_rx(bus, PMU_GETADDR, (void*)&buffer, 1, (void*)&recv_buffer, 1), recv_buffer != response))
 		result = -1;
 	else
 		result = 0;
