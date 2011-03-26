@@ -13,9 +13,11 @@
 // device 4 seems to be the vibrator, device 0 seems to be the speakers,
 // 7 seems to have to do with bluetooth, and 9 is bb nvram
 
+
 static int radio_nvram_read_all(char** res);
 static char* radio_nvram = NULL;
 static int radio_nvram_len;
+
 static int RadioAvailable = FALSE;
 
 static char* response_buf;
@@ -92,6 +94,8 @@ int radio_setup()
 	RadioAvailable = TRUE;
 
 	bufferPrintf("radio: ready.\r\n");
+	
+	speaker_setup();
 
 	return 0;
 }
@@ -188,7 +192,7 @@ void radio_nvram_list()
 		}
 
 		cursor += size;
-	}*/
+	}
 }
 
 int radio_write(const char* str)
@@ -332,9 +336,7 @@ static int radio_nvram_read_idx(int idx, char** res)
 
 	*res = curBuf;
 
-	return c;
-	
-	return -1;
+	return c;*/
 }
 
 static int radio_nvram_read_all(char** res)
@@ -363,12 +365,7 @@ static int radio_nvram_read_all(char** res)
 
 int speaker_setup()
 {
-	// TODO: Implement this for X-Gold 618.
-
-	// something set at the very beginning
-	/*
-	radio_cmd("at+xdrv=0,41,25\r\n", 10);
-	*/
+	// TODO: Implement.
 	
 	return -1;
 }
@@ -576,7 +573,8 @@ void cmd_radio_register(int argc, char** argv) {
 }
 COMMAND("radio_register", "register with a cellular network", cmd_radio_register);
 
-/*void cmd_radio_call(int argc, char** argv) {
+/*
+void cmd_radio_call(int argc, char** argv) {
 	if(argc < 2) {
 		bufferPrintf("Usage: %s <phone number>\r\n", argv[0]);
 		return;
@@ -591,4 +589,5 @@ COMMAND("radio_call", "make a call", cmd_radio_call);
 void cmd_radio_hangup(int argc, char** argv) {
 	radio_hangup(argv[1]);
 }
-COMMAND("radio_hangup", "hang up", cmd_radio_hangup);*/
+COMMAND("radio_hangup", "hang up", cmd_radio_hangup);
+*/
