@@ -9,7 +9,7 @@
 #include "lcd.h"
 #include "mipi_dsim.h"
 #include "openiboot-asmhelpers.h"
-#include "a4/pmu.h"
+#include "pmu.h"
 
 static GammaTableDescriptor PinotGammaTables[] = {
 #if defined(CONFIG_A4)

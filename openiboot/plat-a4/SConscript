@@ -41,6 +41,7 @@ plat_a4_src = arch_arm_src + env.Localize([
 	'clcd.c',
 	'miu.c',
 	'mmu.c',
+	'pmu.c',
 	'power.c',
 	'spi.c',
 	'timer.c',

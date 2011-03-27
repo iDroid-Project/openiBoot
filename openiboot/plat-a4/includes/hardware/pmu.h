@@ -8,14 +8,14 @@
 #define PMU_GETADDR 0xE8
 
 // Registers
-#define PMU_ADC_REG         2
-#define PMU_POWERSUPPLY_REG 7
+#define PMU_ADC_REG         0x2
+#define PMU_POWERSUPPLY_REG 0x7
 #define PMU_MUXSEL_REG      0x30
 #define PMU_ADCVAL_REG      0x31
 
 // Values
-#define PMU_POWERSUPPLY_USB       0b01000
-#define PMU_POWERSUPPLY_FIREWIRE  0b10000
+#define PMU_POWERSUPPLY_USB       0x8
+#define PMU_POWERSUPPLY_FIREWIRE  0x10
 
 #endif
 

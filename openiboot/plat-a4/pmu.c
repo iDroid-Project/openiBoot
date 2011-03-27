@@ -6,18 +6,7 @@
 #include "i2c.h"
 #include "timer.h"
 #include "gpio.h"
-
-static void pmu_init_boot()
-{
-	// TODO
-}
-MODULE_INIT_BOOT(pmu_init_boot);
-
-static void pmu_init()
-{
-	// TODO
-}
-MODULE_INIT(pmu_init);
+#include "util.h"
 
 int sub_5FF085D8(int a, int b ,int c)
 {
@@ -98,7 +87,7 @@ static int query_adc(int mux) {
 	uint32_t mux_masked, result;
 	uint64_t timeout;
 
-	mux_masked = mux & 0b1111;
+	mux_masked = mux & 0xF;
 	result = pmu_get_reg(PMU_ADC_REG);
 	
 	if (mux == 3) {
@@ -117,14 +106,14 @@ static int query_adc(int mux) {
 			
 		result = pmu_get_reg(PMU_ADC_REG);
 		
-		if (result & 0b100000)
+		if (result & 0x20)
 			break;
 	}
 	
 	pmu_get_regs(PMU_ADCVAL_REG, buf, 2);
 	pmu_write_reg(PMU_MUXSEL_REG, 0, 0);
 	
-	return (buf[1] << 4) | (buf[0] & 0b1111);
+	return (buf[1] << 4) | (buf[0] & 0xF);
 }
 
 static void usbphy_charger_identify(unsigned int sel) {
@@ -132,7 +121,7 @@ static void usbphy_charger_identify(unsigned int sel) {
 		return;
 	
 	clock_gate_switch(0x1D, 1);
-	SET_REG(0x86000048, (GET_REG(0x86000048) & (~0b110)) | (sel*2));
+	SET_REG(0x86000048, (GET_REG(0x86000048) & (~0x6)) | (sel*2));
 	clock_gate_switch(0x1D, 0);
 }
 
@@ -179,7 +168,6 @@ PowerSupplyType pmu_get_power_supply() {
 		return PowerSupplyTypeFirewire;
 	else
 		return PowerSupplyTypeBattery;
-	}
 }
 
 void cmd_pmu_powersupply(int argc, char** argv) {
@@ -217,3 +205,16 @@ void cmd_pmu_powersupply(int argc, char** argv) {
 	bufferPrintf("\r\n");
 }
 COMMAND("pmu_powersupply", "get the power supply type", cmd_pmu_powersupply);
+
+static void pmu_init_boot()
+{
+	// TODO
+}
+MODULE_INIT_BOOT(pmu_init_boot);
+
+static void pmu_init()
+{
+	// TODO
+}
+MODULE_INIT(pmu_init);
+
