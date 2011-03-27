@@ -28,18 +28,6 @@
 
 !.gitignore
 
-openiboot/*.img3
-openiboot/*.img2
-openiboot/openiboot
-openiboot/mk8900image/mk8900image
-
-openiboot/images/bin2c
-
-tools/client/linux/oibc
-tools/client/linux/loadibec
-tools/client/linux/linux
-tools/iRecovery/irecovery
-
 *.orig
 *~
 \#*#
