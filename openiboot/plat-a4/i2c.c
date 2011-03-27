@@ -61,7 +61,7 @@ static void i2cIRQHandler(uint32_t token) {
 		count = result & 0x20;
 		if (!(result & 0x20)) {
 			while (count < i2c->bufferLen) {
-				SET_REG(i2c->buffer + count++, GET_REG(i2c->register_20));
+				i2c->buffer[count++] = GET_REG(i2c->register_20);
 			}
 		}
 	}
