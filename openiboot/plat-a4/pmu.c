@@ -9,6 +9,18 @@
 #include "gpio.h"
 #include "util.h"
 
+static void pmu_init_boot()
+{
+	// TODO
+}
+MODULE_INIT_BOOT(pmu_init_boot);
+
+static void pmu_init()
+{
+	// TODO
+}
+MODULE_INIT(pmu_init);
+
 int sub_5FF085D8(int a, int b ,int c)
 {
 	uint8_t registers = 0x50 + a;
@@ -81,6 +93,43 @@ int pmu_write_regs(const PMURegisterData* regs, int num) {
 	}
 
 	return 0;
+}
+
+void pmu_write_oocshdwn(int data) {
+	uint8_t poweroffData[] = {0xC0, 0xFF, 0xBF, 0xFF, 0xAE, 0xFF};
+	uint8_t buffer[sizeof(poweroffData) + 1];
+	
+	pmu_get_reg(1);
+		
+	buffer[0] = 0xC; // Register
+	memcpy(&buffer[1], poweroffData, sizeof(poweroffData));
+		
+	i2c_tx(PMU_I2C_BUS, PMU_SETADDR, buffer, sizeof(buffer));
+	
+	if (data == 1) {
+		uint8_t result, reg;
+		
+		// sub_5FF0D99C();  // Something to do with gas gauge.
+		
+		for (reg = 0x50; reg < 0x5B; reg++) {
+			i2c_rx(PMU_I2C_BUS, PMU_GETADDR, &reg, 1, &result, 1);
+			
+			if (!(result & 0xE0 <= 0x5F || result & 2 == 0))
+				pmu_write_reg(reg, result & 0xFD, FALSE);
+		}
+	}
+	
+	pmu_write_reg(0x12, data, FALSE);
+	
+	while(TRUE) {
+		udelay(100000);
+	}
+}
+
+void pmu_poweroff() {
+	// OpenIBootShutdown();
+	// lcd_shutdown();
+	pmu_write_oocshdwn(1);
 }
 
 static int query_adc(int mux) {
@@ -171,6 +220,11 @@ PowerSupplyType pmu_get_power_supply() {
 		return PowerSupplyTypeBattery;
 }
 
+void cmd_poweroff(int argc, char** argv) {
+	pmu_poweroff();
+}
+COMMAND("poweroff", "power off the device", cmd_poweroff);
+
 void cmd_pmu_powersupply(int argc, char** argv) {
 	PowerSupplyType power = pmu_get_power_supply();
 	bufferPrintf("power supply type: ");
@@ -206,16 +260,3 @@ void cmd_pmu_powersupply(int argc, char** argv) {
 	bufferPrintf("\r\n");
 }
 COMMAND("pmu_powersupply", "get the power supply type", cmd_pmu_powersupply);
-
-static void pmu_init_boot()
-{
-	// TODO
-}
-MODULE_INIT_BOOT(pmu_init_boot);
-
-static void pmu_init()
-{
-	// TODO
-}
-MODULE_INIT(pmu_init);
-
