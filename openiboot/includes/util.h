@@ -19,6 +19,7 @@ void __assert(const char* file, int line, const char* m);
 void* memset(void* x, int fill, uint32_t size);
 void* memcpy(void* dest, const void* src, uint32_t size);
 int strcmp(const char* s1, const char* s2);
+int strncmp(const char* s1, const char* s2, size_t n);
 char* strchr(const char* s1, int s2);
 char* strstr(const char* s1, const char* s2);
 char* strdup(const char* str);

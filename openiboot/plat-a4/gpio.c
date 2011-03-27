@@ -89,15 +89,11 @@ const uint16_t gpio_reset_table[] = {
 
 
 int gpio_setup() {
-/*	When resetting the GPIO Interrupts we'll also fuck the framebuffer hook.
-	Once LCD is ported we can enable this again.
-
 	// Reset everything
 	int i;
 	for (i = 0; i < 0xB0; i++) {
 		SET_REG(GPIO + i * sizeof(uint32_t), gpio_reset_table[i]);
 	}
-*/
 
 	// Initialise it
 	uint8_t v[8];
