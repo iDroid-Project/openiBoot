@@ -182,7 +182,6 @@ void displaytime_sleep(uint32_t time) {
 	task_sleep(time * TimePerMillionFrames / 1000);
 }
 
-}
 void sub_5FF08870(uint8_t arg) {
 	uint8_t v1;
 
