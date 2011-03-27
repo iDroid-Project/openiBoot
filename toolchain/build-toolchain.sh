@@ -3,7 +3,6 @@
 #
 # iPhoneLinux.org Toolchain builder
 #
-# on ubuntu install the following packages : build-essential texinfo
 
 #########  Setup Variables  ###########
 MYDIR="$PWD/`dirname $0`"

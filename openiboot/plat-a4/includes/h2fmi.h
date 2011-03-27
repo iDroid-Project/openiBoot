@@ -2,12 +2,9 @@
 #define  H2FMI_H
 
 #include "openiboot.h"
+#include "nand.h"
 #include "cdma.h"
-
-typedef struct _h2fmi_failure_details
-{
-	uint32_t overall_status;
-} h2fmi_failure_details_t;
+#include "nand.h"
 
 #define H2FMI_STATE_IDLE	0
 #define H2FMI_STATE_READ	1
@@ -20,49 +17,16 @@ typedef struct _h2fmi_failure_details
 #define H2FMI_READ_4	4
 #define H2FMI_READ_DONE	5
 
+typedef struct _h2fmi_failure_details
+{
+	uint32_t overall_status;
+} h2fmi_failure_details_t;
+
 typedef struct _h2fmi_state
 {
 	uint32_t state;
 	uint32_t read_state;
 } h2fmi_state_t;
-
-
-typedef struct _h2fmi_geometry
-{
-	uint32_t field_0;
-	uint16_t num_ce;
-	uint16_t blocks_per_ce;
-	uint16_t pages_per_block;
-	uint16_t bytes_per_page;
-	uint16_t bbt_format;
-	uint16_t bytes_per_spare;
-	uint16_t banks_per_ce_vfl;
-	uint16_t banks_per_ce;
-	uint16_t blocks_per_bank;
-	uint16_t unk14;
-	uint16_t pages_per_block_2;
-	uint16_t unk18;
-	uint16_t unk1A;
-	uint32_t unk1C;
-	uint32_t vendorType;
-	uint8_t ecc_bits;
-	uint8_t ecc_tag;
-
-	uint32_t num_fmi;
-	uint32_t blocks_per_bank_32;
-	uint32_t banks_per_ce_32;
-	uint32_t pages_per_block_32;
-	uint32_t pages_per_block_2_32;
-
-	uint32_t page_number_bit_width;
-	uint32_t page_number_bit_width_2;
-	uint32_t is_ppn;
-	uint32_t num_ecc_bytes;
-	uint32_t meta_per_logical_page;
-	uint32_t field_60;
-	uint32_t pages_per_ce;
-} h2fmi_geometry_t;
-
 
 typedef struct _h2fmi_struct
 {
@@ -131,8 +95,10 @@ typedef struct _h2fmi_struct
 	uint32_t interrupt;
 } h2fmi_struct_t;
 
-extern h2fmi_geometry_t h2fmi_geometry;
+extern nand_geometry_t h2fmi_geometry;
+uint32_t h2fmi_aes_enabled;
 
+void h2fmi_set_encryption(uint32_t _arg);
 uint32_t h2fmi_read_single_page(uint32_t _ce, uint32_t _page, uint8_t *_ptr, uint8_t *_meta_ptr, uint8_t *_6, uint8_t *_7, uint32_t _8);
 
 #endif //H2FMI_H

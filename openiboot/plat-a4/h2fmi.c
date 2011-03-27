@@ -1,5 +1,6 @@
 #include "h2fmi.h"
 #include "hardware/h2fmi.h"
+#include "vfl/vfl.h"
 #include "timer.h"
 #include "tasks.h"
 #include "clock.h"
@@ -78,6 +79,7 @@ typedef struct _nand_info
 } nand_info_t;
 
 static nand_chip_info_t nand_chip_info[] = {
+#ifdef CONFIG_IPHONE_4
 	{ { 0x7294D7EC, 0x0, }, 0x1038, 0x80, 0x2000, 0x1B4, 0xC, 0, 8, 1, 0 },
 	{ { 0x72D5DEEC, 0x0, }, 0x2070, 0x80, 0x2000, 0x1B4, 0xC, 0, 8, 2, 0 },
 	{ { 0x29D5D7EC, 0x0, }, 0x2000, 0x80, 0x1000, 0xDA, 0x8, 0, 2, 2, 0 },
@@ -91,9 +93,24 @@ static nand_chip_info_t nand_chip_info[] = {
 	{ { 0x3295DE45, 0x0, }, 0x2000, 0x80, 0x2000, 0x178, 0x8, 0, 9, 2, 0 },
 	{ { 0x32944845, 0x0, }, 0x1000, 0x80, 0x2000, 0x1C0, 0x8, 0, 9, 1, 0 },
 	{ { 0x32956845, 0x0, }, 0x2000, 0x80, 0x2000, 0x1C0, 0x8, 0, 9, 2, 0 },
+#endif
+#ifdef CONFIG_IPOD_4G
+	{ { 0x7A94D7EC, 0, }, 0x1038, 0x80, 0x2000, 0x280, 0x10, 0, 8, 1, 0 },
+	{ { 0x7AD5DEEC, 0, }, 0x2070, 0x80, 0x2000, 0x280, 0x10, 0, 8, 2, 0 },
+	{ { 0x7294D7EC, 0, }, 0x1038, 0x80, 0x2000, 0x1B4, 0xC, 0, 8, 1, 0 },
+	{ { 0x72D5DEEC, 0, }, 0x2070, 0x80, 0x2000, 0x1B4, 0xC, 0, 8, 2, 0 },
+	{ { 0x9A94D7AD, 0, }, 0x800, 0x100, 0x2000, 0x1C0, 0x18, 0, 8, 1, 0 },
+	{ { 0x9A95DEAD, 0, }, 0x1000, 0x100, 0x2000, 0x1C0, 0x18, 0, 8, 2, 0 },
+	{ { 0x3294E798, 0, }, 0x1004, 0x80, 0x2000, 0x1C0, 0x10, 0, 1, 1, 0 },
+	{ { 0x3295EE98, 0, }, 0x2008, 0x80, 0x2000, 0x1C0, 0x18, 0, 1, 2, 0 },
+	{ { 0xCB05A82C, 0, }, 0x2000, 0x100, 0x2000, 0x1C0, 0x18, 0, 7, 2, 0 },
+	{ { 0x4B04882C, 0, }, 0x1000, 0x100, 0x2000, 0x1C0, 0x18, 0, 7, 1, 0 },
+	{ { 0x32956845, 0, }, 0x2000, 0x80, 0x2000, 0x1C0, 8, 0, 9, 2, 0 },
+#endif
 };
 
 static nand_board_info_t nand_board_info[] = {
+#ifdef CONFIG_IPHONE_4
 	{ { 2, 1, { 0x4604682C, 0x0 }, 4, { 0x0, 0x0, }, 0, }, 0x14, 0x12, },
 	{ { 2, 1, { 0xC605882C, 0x0 }, 4, { 0x0, 0x0, }, 0, }, 0x14, 0x12, },
 	{ { 2, 1, { 0x3295DE98, 0x0 }, 4, { 0x0, 0x0, }, 0, }, 0x11, 0x15, },
@@ -111,9 +128,30 @@ static nand_board_info_t nand_board_info[] = {
 	{ { 2, 1, { 0x32944845, 0x0 }, 4, { 0x0, 0x0, }, 0, }, 0x11, 0x15, },
 	{ { 2, 1, { 0x32956845, 0x0 }, 4, { 0x0, 0x0, }, 0, }, 0x11, 0x15, },
 	{ { 2, 1, { 0x3295DE45, 0x0 }, 4, { 0x0, 0x0, }, 0, }, 0x11, 0x15, },
+#endif
+#ifdef CONFIG_IPOD_4G
+	{ { 2, 1, { 0x7A94D7EC, 0, }, 2, { 0, 0, }, 0, }, 0x14, 0x10 },
+	{ { 2, 1, { 0x7AD5DEEC, 0, }, 4, { 0, 0, }, 0, }, 0x14, 0x10 },
+	{ { 2, 1, { 0x7294D7EC, 0, }, 2, { 0, 0, }, 0, }, 0x14, 0x10 },
+	{ { 2, 1, { 0x7294D7EC, 0, }, 4, { 0, 0, }, 0, }, 0x14, 0x10 },
+	{ { 2, 1, { 0x72D5DEEC, 0, }, 4, { 0, 0, }, 0, }, 0x14, 0x10 },
+	{ { 2, 2, { 0x72D5DEEC, 0, }, 4, { 0x72D5DEEC, 0, }, 4, }, 0x14, 0x10 },
+	{ { 2, 1, { 0x72D5DEEC, 0, }, 8, { 0, 0, }, 0, }, 0x14, 0x10 },
+	{ { 2, 2, { 0x72D5DEEC, 0, }, 8, { 0x72D5DEEC, 0, }, 8, }, 0x14, 0x10 },
+	{ { 2, 1, { 0x9A94D7AD, 0, }, 2, { 0, 0, }, 0, }, 0x14, 0x10 },
+	{ { 2, 1, { 0x9A95DEAD, 0, }, 4, { 0, 0, }, 0, }, 0x14, 0x10 },
+	{ { 2, 1, { 0x3295EE98, 0, }, 4, { 0, 0, }, 0, }, 0x11, 0x15 },
+	{ { 2, 1, { 0x3294E798, 0, }, 4, { 0, 0, }, 0, }, 0x11, 0x15 },
+	{ { 2, 1, { 0x3294E798, 0, }, 2, { 0, 0, }, 0, }, 0x11, 0x15 },
+	{ { 2, 1, { 0x3295EE98, 0, }, 8, { 0, 0, }, 0, }, 0x11, 0x15 },
+	{ { 2, 1, { 0x32956845, 0, }, 4, { 0, 0, }, 0, }, 0x11, 0x15 },
+	{ { 2, 1, { 0xCB05A82C, 0, }, 4, { 0, 0, }, 0, }, 0x14, 0x12 },
+	{ { 2, 1, { 0x4B04882C, 0, }, 4, { 0, 0, }, 0, }, 0x14, 0x12 },
+#endif
 };
 
 static nand_timing_info_t nand_timing_info[] = {
+#ifdef CONFIG_IPHONE_4
 	{ { 2, 1, { 0x7294D7EC, 0x0, }, 2, { 0x0, 0x0, }, 0, }, 0x1E, 0xF, 0xA, 0x1E, 0xF, 0xA, 0x19, 0xF, },
 	{ { 2, 1, { 0x7294D7EC, 0x0, }, 4, { 0x0, 0x0, }, 0, }, 0x1E, 0xF, 0xA, 0x1E, 0xF, 0xA, 0x19, 0xF, },
 	{ { 2, 1, { 0x72D5DEEC, 0x0, }, 4, { 0x0, 0x0, }, 0, }, 0x1E, 0xF, 0xA, 0x1E, 0xF, 0xA, 0x14, 0xF, },
@@ -132,6 +170,26 @@ static nand_timing_info_t nand_timing_info[] = {
 	{ { 2, 1, { 0x3295DE45, 0x0, }, 4, { 0x0, 0x0, }, 0, }, 0x19, 0xC, 0xA, 0x19, 0xC, 0xA, 0x14, 0x1E, },
 	{ { 2, 1, { 0x32944845, 0x0, }, 4, { 0x0, 0x0, }, 0, }, 0x19, 0xC, 0xA, 0x19, 0xC, 0xA, 0x14, 0x19, },
 	{ { 2, 1, { 0x32956845, 0x0, }, 4, { 0x0, 0x0, }, 0, }, 0x19, 0xC, 0xA, 0x19, 0xC, 0xA, 0x14, 0x19, },
+#endif
+#ifdef CONFIG_IPOD_4G
+	{ { 2, 1, { 0x7A94D7EC, 0, }, 2, { 0, 0, }, 0, }, 0x19, 0xC, 0xA, 0x19, 0xC, 0xA, 0x14, 0xF },
+	{ { 2, 1, { 0x7AD5DEEC, 0, }, 4, { 0, 0, }, 0, }, 0x19, 0xC, 0xA, 0x19, 0xC, 0xA, 0x14, 0xF },
+	{ { 2, 1, { 0x7294D7EC, 0, }, 2, { 0, 0, }, 0, }, 0x1E, 0xF, 0xA, 0x1E, 0xF, 0xA, 0x19, 0xF },
+	{ { 2, 1, { 0x7294D7EC, 0, }, 4, { 0, 0, }, 0, }, 0x1E, 0xF, 0xA, 0x1E, 0xF, 0xA, 0x19, 0xF },
+	{ { 2, 1, { 0x72D5DEEC, 0, }, 4, { 0, 0, }, 0, }, 0x1E, 0xF, 0xA, 0x1E, 0xF, 0xA, 0x14, 0xF },
+	{ { 2, 2, { 0x72D5DEEC, 0, }, 4, { 0x72D5DEEC, 0, }, 4, }, 0x1E, 0xF, 0xA, 0x1E, 0xF, 0xA, 0x14, 0xF },
+	{ { 2, 1, { 0x72D5DEEC, 0, }, 8, { 0, 0, }, 0, }, 0x1E, 0xF, 0xA, 0x1E, 0xF, 0xA, 0x19, 0xF },
+	{ { 2, 2, { 0x72D5DEEC, 0, }, 8, { 0x72D5DEEC, 0, }, 8, }, 0x1E, 0xF, 0xA, 0x1E, 0xF, 0xA, 0x19, 0xF },
+	{ { 2, 1, { 0x9A94D7AD, 0, }, 2, { 0, 0, }, 0, }, 0x19, 0xC, 0xA, 0x19, 0xC, 0xA, 0x14, 0xF },
+	{ { 2, 1, { 0x9A95DEAD, 0, }, 4, { 0, 0, }, 0, }, 0x19, 0xC, 0xA, 0x19, 0xC, 0xA, 0x14, 0xF },
+	{ { 2, 1, { 0x3294E798, 0, }, 4, { 0, 0, }, 0, }, 0x19, 0xC, 0xA, 0x19, 0xC, 0xA, 0x14, 0x19 },
+	{ { 2, 1, { 0x3295EE98, 0, }, 4, { 0, 0, }, 0, }, 0x19, 0xC, 0xA, 0x19, 0xC, 0xA, 0x14, 0x19 },
+	{ { 2, 1, { 0x3295EE98, 0, }, 8, { 0, 0, }, 0, }, 0x19, 0xC, 0xA, 0x19, 0xC, 0xA, 0x14, 0x19 },
+	{ { 2, 1, { 0x3294E798, 0, }, 2, { 0, 0, }, 0, }, 0x19, 0xC, 0xA, 0x19, 0xC, 0xA, 0x14, 0x19 },
+	{ { 2, 1, { 0xCB05A82C, 0, }, 4, { 0, 0, }, 0, }, 0x14, 0xA, 7, 0x14, 0xA, 7, 0x10, 0xF },
+	{ { 2, 1, { 0x4B04882C, 0, }, 4, { 0, 0, }, 0, }, 0x14, 0xA, 7, 0x14, 0xA, 7, 0x10, 0xF },
+	{ { 2, 1, { 0x32956845, 0, }, 4, { 0, 0, }, 0, }, 0x19, 0xC, 0xA, 0x19, 0xC, 0xA, 0x14, 0x19 },
+#endif
 };
 
 typedef struct _h2fmi_timing_setup
@@ -198,7 +256,9 @@ static h2fmi_struct_t *h2fmi_busses[] = {
 
 #define H2FMI_BUS_COUNT (array_size(h2fmi_busses))
 
-h2fmi_geometry_t h2fmi_geometry;
+nand_geometry_t h2fmi_geometry;
+static nand_device_t h2fmi_device;
+static vfl_vfl_device_t h2fmi_vfl_device;
 
 typedef struct _h2fmi_map_entry
 {
@@ -461,7 +521,7 @@ static int h2fmi_check_chipid(h2fmi_struct_t *_fmi, char *_id, char *_base, int 
 	{
 		if(!memcmp(ptr, _base, 6))
 		{
-			bufferPrintf("fmi: Found chip ID %2x %2x %2x %2x %2x %2x on fmi%d:ce%d.\n",
+			bufferPrintf("fmi: Found chip ID %02x %02x %02x %02x %02x %02x on fmi%d:ce%d.\n",
 					ptr[0], ptr[1], ptr[2], ptr[3], ptr[4], ptr[5],
 					_fmi->bus_num, i);
 
@@ -469,7 +529,7 @@ static int h2fmi_check_chipid(h2fmi_struct_t *_fmi, char *_id, char *_base, int 
 			_fmi->num_chips++;
 		}
 		else if(memcmp(ptr, "\xff\xff\xff\xff\xff\xff", 6) && memcmp(ptr, "\0\0\0\0\0\0", 6))
-			bufferPrintf("fmi: Ignoring mismatched chip with ID %2x %2x %2x %2x %2x %2x on fmi%d:ce%d.\n",
+			bufferPrintf("fmi: Ignoring mismatched chip with ID %02x %02x %02x %02x %02x %02x on fmi%d:ce%d.\n",
 					ptr[0], ptr[1], ptr[2], ptr[3], ptr[4], ptr[5],
 					_fmi->bus_num, i);
 
@@ -505,10 +565,17 @@ static int h2fmi_reset_and_read_chipids(h2fmi_struct_t *_fmi, void *_buffer, uin
 
 static nand_info_t *h2fmi_nand_find_info(char *_id, h2fmi_struct_t **_busses, int _count)
 {
-#if !defined(CONFIG_IPAD)
+#if defined(CONFIG_IPHONE_4)
 	static nand_smth_struct_t nand_smth = { { 0, 0, 0, 3, 4, 3, 4, 0 }, { 0xF0F, 0, 0 } };
-#else
+#endif
+#if defined(CONFIG_IPAD)
 	static nand_smth_struct_t nand_smth = { { 0, 0, 0, 3, 3, 4, 4, 0 }, { 0x3333, 0xCCCC, 0 } };
+#endif
+#if defined(CONFIG_IPOD_4G)
+	static nand_smth_struct_t nand_smth = { { 0, 0, 0, 5, 5, 5, 5, 0 }, { 0x3333, 0xCCCC, 0 } };
+#endif
+#if defined(CONFIG_ATV_2G)
+	static nand_smth_struct_t nand_smth = { { 0, 0, 0, 3, 3, 3, 4, 0 }, { 0x3333, 0xCCCC, 0 } };
 #endif
 	static uint32_t nand_some_array[] = { 0xC, 0xA, 0 };
 
@@ -699,7 +766,7 @@ static int h2fmi_dma_wait(uint32_t _channel, uint32_t _timeout)
 
 	uint32_t ret = 0;
 
-	bufferPrintf("fmi: dma_wait %d for %d.\r\n", _channel, _timeout);
+	//bufferPrintf("fmi: dma_wait %d for %d.\r\n", _channel, _timeout);
 
 	if(dma->signalled)
 		return 0;
@@ -743,7 +810,7 @@ static void h2fmi_set_address_inner(h2fmi_struct_t *_fmi, uint32_t _addr)
 
 static void h2fmi_set_address(h2fmi_struct_t *_fmi, uint32_t _addr)
 {
-	bufferPrintf("fmi: Aligning to page %d!\r\n", _addr);
+	//bufferPrintf("fmi: Aligning to page %d!\r\n", _addr);
 
 	h2fmi_set_address_inner(_fmi, _addr);
 
@@ -949,7 +1016,7 @@ static void h2fmi_rw_large_page(h2fmi_struct_t *_fmi)
 {
 	uint32_t dir = (_fmi->state.state == H2FMI_STATE_READ)? 2: 1;
 
-	bufferPrintf("fmi: rw_large_page.\r\n");
+	//bufferPrintf("fmi: rw_large_page.\r\n");
 
 	h2fmi_dma_execute_async(dir, _fmi->dma0, _fmi->data_ptr[_fmi->current_page_index],
 			H2FMI_DATA(_fmi), _fmi->bytes_per_page * _fmi->num_pages_to_read,
@@ -959,12 +1026,12 @@ static void h2fmi_rw_large_page(h2fmi_struct_t *_fmi)
 			H2FMI_UNK18(_fmi), _fmi->num_pages_to_read * _fmi->ecc_bytes,
 			1, 1, NULL);
 
-	bufferPrintf("fmi: rw_large_page done!\r\n");
+	//bufferPrintf("fmi: rw_large_page done!\r\n");
 }
 
 static uint32_t h2fmi_read_state_2_handler(h2fmi_struct_t *_fmi)
 {
-	bufferPrintf("fmi: read_state_2_handler.\r\n");
+	//bufferPrintf("fmi: read_state_2_handler.\r\n");
 
 	uint32_t val = h2fmi_function_2(_fmi);
 	if(val == 0)
@@ -1005,13 +1072,13 @@ static uint32_t h2fmi_read_state_2_handler(h2fmi_struct_t *_fmi)
 		}
 	}
 
-	bufferPrintf("fmi: read_state_2_handler done!\r\n");
+	//bufferPrintf("fmi: read_state_2_handler done!\r\n");
 	return 0;
 }
 
 static uint32_t h2fmi_read_state_4_handler(h2fmi_struct_t *_fmi)
 {
-	bufferPrintf("fmi: read_state_4_handler.\r\n");
+	//bufferPrintf("fmi: read_state_4_handler.\r\n");
 
 	if(GET_REG(H2FMI_UNK8(_fmi)) & 4)
 	{
@@ -1048,7 +1115,7 @@ static uint32_t h2fmi_read_state_1_handler(h2fmi_struct_t *_fmi)
 {
 	uint32_t r5;
 
-	bufferPrintf("fmi: read_state_1_handler.\r\n");
+	//bufferPrintf("fmi: read_state_1_handler.\r\n");
 
 	if(_fmi->field_140 == 0)
 		r5 = (_fmi->current_page_index >= _fmi->num_pages_to_read)? 0: 1;
@@ -1092,7 +1159,7 @@ static uint32_t h2fmi_read_state_1_handler(h2fmi_struct_t *_fmi)
 
 static uint32_t h2fmi_read_state_3_handler(h2fmi_struct_t *_fmi)
 {
-	bufferPrintf("fmi: read_state_3_handler.\r\n");
+	//bufferPrintf("fmi: read_state_3_handler.\r\n");
 
 	_fmi->field_48 = GET_REG(H2FMI_UNKC(_fmi));
 
@@ -1145,7 +1212,7 @@ static uint32_t h2fmi_read_idle_handler(h2fmi_struct_t *_fmi)
 
 	_fmi->current_chip = *_fmi->chips;
 
-	bufferPrintf("fmi: read_idle_handler.\r\n");
+	//bufferPrintf("fmi: read_idle_handler.\r\n");
 
 	h2fmi_some_read_timing_thing(_fmi);
 
@@ -1163,7 +1230,7 @@ static uint32_t h2fmi_read_state_machine(h2fmi_struct_t *_fmi)
 	}
 
 	uint32_t state = _fmi->state.read_state;
-	bufferPrintf("fmi: read_state_machine %d.\r\n", state);
+	//bufferPrintf("fmi: read_state_machine %d.\r\n", state);
 
 	static uint32_t (*state_functions[])(h2fmi_struct_t *) =
 	{
@@ -1182,8 +1249,8 @@ static uint32_t h2fmi_read_state_machine(h2fmi_struct_t *_fmi)
 		return -1;
 	}
 
-	uint32_t ret = state_functions[_fmi->state.read_state](_fmi);
-	bufferPrintf("fmi: state machine %d done!\r\n", state);
+	uint32_t ret = state_functions[state](_fmi);
+	//bufferPrintf("fmi: state machine %d done!\r\n", state);
 	return ret;
 }
 
@@ -1211,7 +1278,7 @@ int h2fmi_read_multi(h2fmi_struct_t *_fmi, uint16_t _num_pages, uint16_t *_chips
 
 	LeaveCriticalSection();
 	
-	bufferPrintf("fmi: read_multi.\r\n");
+	//bufferPrintf("fmi: read_multi.\r\n");
 
 	h2fmi_store_80c_810(_fmi);
 
@@ -1224,7 +1291,7 @@ int h2fmi_read_multi(h2fmi_struct_t *_fmi, uint16_t _num_pages, uint16_t *_chips
 		task_yield();
 	}
 
-	bufferPrintf("fmi: state machine done.\r\n");
+	//bufferPrintf("fmi: state machine done.\r\n");
 
 	if(_fmi->field_13C != 0)
 	{
@@ -1238,7 +1305,7 @@ int h2fmi_read_multi(h2fmi_struct_t *_fmi, uint16_t _num_pages, uint16_t *_chips
 		_fmi->failure_details.overall_status = 0;
 	}
 	
-	bufferPrintf("fmi: Time to cancel the DMA!\r\n");
+	//bufferPrintf("fmi: Time to cancel the DMA!\r\n");
 	
 	h2fmi_dma_cancel(_fmi->dma0);
 	h2fmi_dma_cancel(_fmi->dma1);
@@ -1247,7 +1314,7 @@ int h2fmi_read_multi(h2fmi_struct_t *_fmi, uint16_t _num_pages, uint16_t *_chips
 
 	if(_fmi->failure_details.overall_status != 0)
 	{
-		bufferPrintf("h2fmi: overall_status is failure.\r\n");
+		//bufferPrintf("h2fmi: overall_status is failure.\r\n");
 		return _fmi->failure_details.overall_status;
 	}
 	else
@@ -1255,7 +1322,7 @@ int h2fmi_read_multi(h2fmi_struct_t *_fmi, uint16_t _num_pages, uint16_t *_chips
 		uint32_t a = _fmi->field_150;
 		uint32_t b = _fmi->field_14C;
 
-		bufferPrintf("fmi: Some error thing. 0x%08x 0x%08x.\r\n", a, b);
+		//bufferPrintf("fmi: Some error thing. 0x%08x 0x%08x.\r\n", a, b);
 
 		if(b != 0)
 		{
@@ -1276,14 +1343,14 @@ int h2fmi_read_multi(h2fmi_struct_t *_fmi, uint16_t _num_pages, uint16_t *_chips
 
 	h2fmi_hw_reg_int_init(_fmi);
 
-	bufferPrintf("fmi: read_multi done 0x%08x.\r\n", _fmi->failure_details.overall_status);
+	//bufferPrintf("fmi: read_multi done 0x%08x.\r\n", _fmi->failure_details.overall_status);
 
 	return _fmi->failure_details.overall_status;
 }
 
 uint32_t h2fmi_read_single(h2fmi_struct_t *_fmi, uint16_t _chip, uint32_t _page, uint8_t *_data, uint8_t *_wmr, uint8_t *_6, uint8_t *_7)
 {
-	bufferPrintf("fmi: read_single.\r\n");
+	//bufferPrintf("fmi: read_single.\r\n");
 	return h2fmi_read_multi(_fmi, 1, &_chip, &_page, &_data, &_wmr, _6, _7);
 }
 
@@ -1334,9 +1401,9 @@ static void h2fmi_aes_handler_2(uint32_t _param, uint32_t _segment, uint32_t* _i
 			_iv[i] = val;
 		}
 
-		bufferPrintf("fmi: iv = ");
-		bytesToHex((uint8_t*)_iv, sizeof(*_iv)*4);
-		bufferPrintf("\r\n");
+		//bufferPrintf("fmi: iv = ");
+		//bytesToHex((uint8_t*)_iv, sizeof(*_iv)*4);
+		//bufferPrintf("\r\n");
 	}
 }
 
@@ -1347,7 +1414,11 @@ static uint32_t h2fmi_aes_key_2[] = {
 	0xA579CCD3,
 };
 
-static uint32_t h2fmi_aes_counter = 1;
+uint32_t h2fmi_aes_enabled = 1;
+
+void h2fmi_set_encryption(uint32_t _arg) {
+	h2fmi_aes_enabled = _arg;
+}
 
 static void h2fmi_setup_aes(h2fmi_struct_t *_fmi, uint32_t _enabled, uint32_t _encrypt, uint32_t _offset)
 {
@@ -1376,9 +1447,9 @@ static void h2fmi_setup_aes(h2fmi_struct_t *_fmi, uint32_t _enabled, uint32_t _e
 
 		}
 
-		bufferPrintf("fmi: key = ");
-		bytesToHex((uint8_t*)_fmi->aes_struct.key, sizeof(uint32_t)*4);
-		bufferPrintf("\r\n");
+		//bufferPrintf("fmi: key = ");
+		//bytesToHex((uint8_t*)_fmi->aes_struct.key, sizeof(uint32_t)*4);
+		//bufferPrintf("\r\n");
 
 		_fmi->aes_iv_pointer = NULL;
 		_fmi->aes_info = &_fmi->aes_struct;
@@ -1405,7 +1476,7 @@ uint32_t h2fmi_read_single_page(uint32_t _ce, uint32_t _page, uint8_t *_ptr, uin
 	if(flag > 1)
 		flag = 0;
 
-	if(h2fmi_aes_counter == 0)
+	if(h2fmi_aes_enabled == 0)
 		flag = 0;
 
 	h2fmi_setup_aes(fmi, flag, 0, (uint32_t)_ptr);
@@ -1546,6 +1617,39 @@ static void h2fmi_init_virtual_physical_map()
 
 			count[bus]++;
 		}
+	}
+}
+
+// NAND Device Functions
+static nand_geometry_t *h2fmi_device_get_geometry(nand_device_t *_dev)
+{
+	return &h2fmi_geometry;
+}
+
+static int h2fmi_device_read_single_page(nand_device_t *_dev, uint32_t _chip, uint32_t _block,
+		uint32_t _page, uint8_t *_buffer, uint8_t *_spareBuffer)
+{
+	return h2fmi_read_single_page(_chip, _block*h2fmi_geometry.pages_per_block + _page,
+			_buffer, _spareBuffer, NULL, NULL, 0);
+}
+
+static void h2fmi_device_enable_encryption(nand_device_t *_dev, int _enabled)
+{
+	h2fmi_aes_enabled = _enabled;
+}
+
+static void h2fmi_init_device()
+{
+	nand_device_init(&h2fmi_device);
+	h2fmi_device.get_geometry = h2fmi_device_get_geometry;
+	h2fmi_device.read_single_page = h2fmi_device_read_single_page;
+	h2fmi_device.enable_encryption = h2fmi_device_enable_encryption;
+
+	vfl_vfl_device_init(&h2fmi_vfl_device);
+	if(vfl_open(&h2fmi_vfl_device.vfl, &h2fmi_device))
+	{
+		bufferPrintf("fmi: Failed to open VFL!\r\n");
+		return;
 	}
 }
 
@@ -1750,7 +1854,7 @@ void h2fmi_init()
 							| ((timing_info[1] & 0xF) << 8)
 							| ((timing_info[0] & 0xF) << 12)
 							| ((timing_info[2] & 0xF) << 16);
-			bufferPrintf("fmi: bus %d, new tval = 0x%08x\r\n", fmi->bus_num, tVal);
+			//bufferPrintf("fmi: bus %d, new tval = 0x%08x\r\n", fmi->bus_num, tVal);
 			fmi->timing_register_cache_408 = tVal;
 			SET_REG(H2FMI_UNKREG1(fmi), tVal);
 		}
@@ -1758,11 +1862,11 @@ void h2fmi_init()
 
 	h2fmi_init_virtual_physical_map();
 
-	for(i = 0; i < array_size(h2fmi_map); i++)
-	{
-		h2fmi_map_entry_t *e = &h2fmi_map[i];
-		bufferPrintf("fmi: Map %d: %d, %d.\r\n", i, e->bus, e->chip);
-	}
+	//for(i = 0; i < array_size(h2fmi_map); i++)
+	//{
+		//h2fmi_map_entry_t *e = &h2fmi_map[i];
+		//bufferPrintf("fmi: Map %d: %d, %d.\r\n", i, e->bus, e->chip);
+	//}
 
 	// This is a very simple PRNG with
 	// a preset seed. What are you
@@ -1787,6 +1891,8 @@ void h2fmi_init()
 
 	if(info)
 		free(info);
+
+	h2fmi_init_device();
 
 	free(buff1);
 }
@@ -1815,3 +1921,25 @@ void cmd_nand_test(int argc, char** argv)
 	bufferPrintf("fmi: Command completed with result 0x%08x.\r\n", ret);
 }
 COMMAND("nand_test", "H2FMI NAND test", cmd_nand_test);
+
+static void cmd_vfl_read(int argc, char** argv)
+{
+	if(argc < 6)
+	{
+		bufferPrintf("Usage: %s [page] [data] [metadata] [buf1] [buf2] [flag]\r\n", argv[0]);
+		return;
+	}
+	
+	uint32_t page = parseNumber(argv[1]);
+	uint32_t data = parseNumber(argv[2]);
+	uint32_t meta = parseNumber(argv[3]);
+	uint32_t empty_ok = parseNumber(argv[4]);
+	uint32_t refresh = parseNumber(argv[5]);
+
+	uint32_t ret = vfl_read_single_page(&h2fmi_vfl_device.vfl, page,
+			(uint8_t*)data, (uint8_t*)meta, empty_ok, (int32_t*)refresh);
+
+	bufferPrintf("vfl: Command completed with result 0x%08x.\r\n", ret);
+}
+COMMAND("vfl_read", "H2FMI NAND test", cmd_vfl_read);
+

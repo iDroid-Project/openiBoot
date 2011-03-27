@@ -3,7 +3,7 @@
 #include "framebuffer.h"
 #include "lcd.h"
 #include "util.h"
-#if defined(CONFIG_IPHONE_4)||defined(CONFIG_IPAD)
+#if defined(BIG_FONT)
 #include "pcf/9x15.h"
 #else
 #include "pcf/6x10.h"

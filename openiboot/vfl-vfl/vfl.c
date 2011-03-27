@@ -255,20 +255,29 @@ static int vfl_vfl_open(vfl_device_t *_vfl, nand_device_t *_nand)
 		// Any VFLCxt page will contain an up-to-date list of all blocks used to store VFLCxt pages. Find any such
 		// page in the system area.
 
+		int vfl_start, vfl_size;
+#ifdef CONFIG_A4
+		vfl_start = 16;
+		vfl_size = 1;
+#else
+		vfl_start = 1;
+		vfl_size = 1;
+#endif
+
 		int i;
-		for(i = 128; i < 256 /*FTLData->sysSuBlks*/; i++) {
+		for(i = 0; i < vfl_size /*FTLData->sysSuBlks*/; i++) {
 			// so pstBBTArea is a bit array of some sort
 			if(!(vfl->bbt[i / 8] & (1 << (i  & 0x7))))
 				continue;
 
-			if(nand_device_read_single_page(vfl->device, bank, 0, i, pageBuffer, spareBuffer) == 0)
+			if(nand_device_read_single_page(vfl->device, bank, i+vfl_start, 0, pageBuffer, spareBuffer) == 0)
 			{
 				memcpy(curVFLCxt->vfl_context_block, ((vfl_vfl_context_t*)pageBuffer)->vfl_context_block, sizeof(curVFLCxt->vfl_context_block));
 				break;
 			}
 		}
 
-		if(i == 256) { //FTLData->sysSuBlks) {
+		if(i == vfl_start+vfl_size) { //FTLData->sysSuBlks) {
 			bufferPrintf("ftl: cannot find readable VFLCxtBlock\r\n");
 			free(pageBuffer);
 			free(spareBuffer);
