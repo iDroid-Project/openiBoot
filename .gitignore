@@ -25,6 +25,7 @@
 *.bin
 *.gz
 *.dump
+.DS_Store
 
 !.gitignore
 
