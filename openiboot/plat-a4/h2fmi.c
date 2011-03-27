@@ -505,10 +505,14 @@ static int h2fmi_reset_and_read_chipids(h2fmi_struct_t *_fmi, void *_buffer, uin
 
 static nand_info_t *h2fmi_nand_find_info(char *_id, h2fmi_struct_t **_busses, int _count)
 {
-#if !defined(CONFIG_IPAD)
+#if defined(CONFIG_IPHONE_4)
 	static nand_smth_struct_t nand_smth = { { 0, 0, 0, 3, 4, 3, 4, 0 }, { 0xF0F, 0, 0 } };
-#else
+#elif defined(CONFIG_IPAD)
 	static nand_smth_struct_t nand_smth = { { 0, 0, 0, 3, 3, 4, 4, 0 }, { 0x3333, 0xCCCC, 0 } };
+#elif defined(CONFIG_IPOD_4G)
+	static nand_smth_struct_t nand_smth = { { 0, 0, 0, 5, 5, 5, 5, 0 }, { 0x3333, 0xCCCC, 0 } };
+#elif defined(CONFIG_ATV_2G)
+	static nand_smth_struct_t nand_smth = { { 0, 0, 0, 3, 3, 3, 4, 0 }, { 0x3333, 0xCCCC, 0 } };
 #endif
 	static uint32_t nand_some_array[] = { 0xC, 0xA, 0 };
 
@@ -1347,7 +1351,11 @@ static uint32_t h2fmi_aes_key_2[] = {
 	0xA579CCD3,
 };
 
-static uint32_t h2fmi_aes_counter = 1;
+uint32_t h2fmi_aes_counter = 1;
+
+void h2fmi_set_encryption(uint32_t _arg) {
+	h2fmi_aes_counter = _arg;
+}
 
 static void h2fmi_setup_aes(h2fmi_struct_t *_fmi, uint32_t _enabled, uint32_t _encrypt, uint32_t _offset)
 {
