@@ -3,6 +3,7 @@
 #include "pmu.h"
 #include "a4/pmu.h"
 #include "hardware/pmu.h"
+#include "hardware/usbphy.h"
 #include "i2c.h"
 #include "timer.h"
 #include "gpio.h"
@@ -120,9 +121,9 @@ static void usbphy_charger_identify(unsigned int sel) {
 	if (sel > 2)
 		return;
 	
-	clock_gate_switch(0x1D, 1);
-	SET_REG(0x86000048, (GET_REG(0x86000048) & (~0x6)) | (sel*2));
-	clock_gate_switch(0x1D, 0);
+	clock_gate_switch(USB_CLOCKGATE_UNK1, 1);
+	SET_REG(USB_PHY + OPHYUNK3, (GET_REG(USB_PHY + OPHYUNK3) & (~0x6)) | (sel*2));
+	clock_gate_switch(USB_CLOCKGATE_UNK1, 0);
 }
 
 static PowerSupplyType identify_usb_charger() {
