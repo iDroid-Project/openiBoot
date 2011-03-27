@@ -163,7 +163,7 @@ static PowerSupplyType identify_usb_charger() {
 PowerSupplyType pmu_get_power_supply() {
 	uint8_t val = pmu_get_reg(PMU_POWERSUPPLY_REG);
 	
-	if ((val & PMU_POWERSUPPLY_USB))
+	if (val & PMU_POWERSUPPLY_USB)
 		return identify_usb_charger();
 	else if (val & PMU_POWERSUPPLY_FIREWIRE)
 		return PowerSupplyTypeFirewire;
