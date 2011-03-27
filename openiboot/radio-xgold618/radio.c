@@ -5,9 +5,9 @@
 #include "timer.h"
 #include "util.h"
 #include "hardware/radio.h"
-#include "hardware/pmu.h"
 #include "uart.h"
 #include "i2c.h"
+#include "a4/pmu.h"
 
 // For the +XDRV stuff, it's usually device,function,arg1,arg2,arg3,...
 // device 4 seems to be the vibrator, device 0 seems to be the speakers,
@@ -22,47 +22,6 @@ static int RadioAvailable = FALSE;
 
 static char* response_buf;
 #define RESPONSE_BUF_SIZE 0x1000
-
-// This ugliness should be removed when we have a working PMU driver.
-
-static int pmu_send_buffer(int bus, uint8_t buffer, uint8_t response, int check) {
-	uint8_t send_buffer[2] = { buffer, response };
-	uint8_t recv_buffer = 0;
-	int result;
-
-	i2c_tx(bus, PMU_SETADDR, (void*)send_buffer, 2);
-	if (check && (i2c_rx(bus, PMU_GETADDR, (void*)&buffer, 1, (void*)&recv_buffer, 1), recv_buffer != response))
-		result = -1;
-	else
-		result = 0;
-	return result;
-}
-
-static int sub_5FF085D8(int a, int b ,int c)
-{
-	uint8_t registers = 0x50 + a;
-	uint8_t recv_buff = 0;
-	uint8_t expected_response = 0;
-	int result;
-
-	if (a > 10) return -1;
-	
-	result = i2c_rx(PMU_I2C_BUS, PMU_GETADDR, (void*)&registers, 1, (void*)&recv_buff, 1);
-	if (result != I2CNoError) return result;
-	
-	recv_buff &= 0x1D;
-	
-	if (b == 0) {
-		expected_response = recv_buff | 0x60;
-	} else {
-		expected_response = recv_buff;
-		if (c != 0)
-			expected_response |= 2;
-	}
-	
-	pmu_send_buffer(PMU_I2C_BUS, registers, expected_response, 1);
-	return 0;
-}
 
 int radio_setup()
 {

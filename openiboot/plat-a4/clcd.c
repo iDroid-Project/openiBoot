@@ -2,7 +2,6 @@
 #include "util.h"
 #include "hardware/clcd.h"
 #include "hardware/mipi_dsim.h"
-#include "hardware/pmu.h"
 #include "timer.h"
 #include "i2c.h"
 #include "tasks.h"
@@ -10,6 +9,7 @@
 #include "lcd.h"
 #include "mipi_dsim.h"
 #include "openiboot-asmhelpers.h"
+#include "a4/pmu.h"
 
 static GammaTableDescriptor PinotGammaTables[] = {
 #if defined(CONFIG_A4)
@@ -183,26 +183,13 @@ void displaytime_sleep(uint32_t time) {
 	task_sleep(time * TimePerMillionFrames / 1000);
 }
 
-int pmu_send_buffer(int bus, uint8_t buffer, uint8_t response, int check) {
-	uint8_t send_buffer[2] = { buffer, response };
-	uint8_t recv_buffer = 0;
-	int result;
-
-	i2c_tx(bus, PMU_SETADDR, (void*)send_buffer, 2);
-	if (check && (i2c_rx(bus, PMU_GETADDR, (void*)&buffer, 1, (void*)&recv_buffer, 1), recv_buffer != response))
-		result = -1;
-	else
-		result = 0;
-	return result;
-}
-
 void sub_5FF08870(uint8_t arg) {
 	uint8_t v1;
 
 	v1 = (1049-50*arg)/50;
-	pmu_send_buffer(0, 0x6B, v1, 1);
+	pmu_write_reg(0x6B, v1, 1);
 	task_sleep(10);
-	pmu_send_buffer(0, 0x6C, v1 + 4, 1);
+	pmu_write_reg(0x6C, v1 + 4, 1);
 }
 
 int signed_calculate_remainder(uint64_t x, uint64_t y) {
