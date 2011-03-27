@@ -1,0 +1,8 @@
+Import('*')
+
+acm_src = env.Localize([
+	'acm.c',
+	])
+
+acm = env.CreateModule('acm', acm_src)
+acm.Append(CPPPATH = [Dir('includes')])

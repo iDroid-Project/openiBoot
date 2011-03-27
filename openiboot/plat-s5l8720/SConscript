@@ -6,6 +6,7 @@ env.Append(ASFLAGS = ['-L'+str(Dir('includes'))])
 env.Append(CPPDEFINES = ['ARM11', 'CONFIG_S5L8720'])
 
 env.AddModules([
+	"acm",
 	"usb-synopsys",
 	])
 
@@ -15,7 +16,6 @@ plat_s5l8720_src = arch_arm_src + env.Localize([
 	'#device.c',
 	'#mtd.c',
 	'#bdev.c',
-	'#acm.c',
 #	'#audiohw.c',
 #	'#actions.c',
 	'#commands.c',

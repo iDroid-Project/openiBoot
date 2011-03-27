@@ -15,7 +15,6 @@
 #include "stb_image.h"
 #include "pmu.h"
 #include "hfs/fs.h"
-#include "ftl.h"
 #include "scripting.h"
 #include "nvram.h"
 #include "tasks.h"

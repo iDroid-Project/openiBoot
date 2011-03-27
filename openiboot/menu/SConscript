@@ -1,0 +1,25 @@
+Import('*')
+
+menu_src = env.Localize([
+	'menu.c',
+	])
+
+menu = env.CreateModule('menu', menu_src)
+menu.Append(CPPPATH = [Dir('includes'), Dir('.')])
+
+images = env.Bin2CList([
+	'Console',
+	'ConsoleSelected',
+	'Header',
+	'iPhoneOS',
+	'iPhoneOSSelected',
+	'AndroidOSSelected',
+	'AndroidOS',
+	], "images/%s.png", "images/%sPNG.h", "data%sPNG")
+menu.Depends(images)
+
+def MenuEnv(env):
+	e2 = env.Clone()
+	e2.AddModules(["menu"])
+	return e2
+env.AddMethod(MenuEnv, "MenuEnv")

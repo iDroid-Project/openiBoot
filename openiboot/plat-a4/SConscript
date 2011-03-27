@@ -3,10 +3,13 @@ Import("*")
 env = env.Clone()
 env.Append(CPPPATH = [Dir('includes')])
 env.Append(ASFLAGS = ['-L'+str(Dir('includes'))])
-env.Append(CPPDEFINES = ['ARM_A8', 'CONFIG_A4', 'MALLOC_NO_WDT'])
+env.Append(CPPDEFINES = ['ARM_A8', 'CONFIG_A4', 'MALLOC_NO_WDT', 'BIG_FONT'])
 
 env.AddModules([
+	"acm",
 	"usb-synopsys",
+	"vfl-vfl",
+	"vfl-vsvfl",
 	])
 
 plat_a4_src = arch_arm_src + env.Localize([
@@ -15,13 +18,14 @@ plat_a4_src = arch_arm_src + env.Localize([
 	'#device.c',
 	'#mtd.c',
 	'#bdev.c',
+	'#nand.c',
+	'#vfl.c',
 	'#openiboot.c',
 	'#util.c',
 	'#malloc.c',
 	'#tasks.c',
 	'#printf.c',
 	'#framebuffer.c',
-	'#acm.c',
 	'#commands.c',
 	'#stb_image.c',
 

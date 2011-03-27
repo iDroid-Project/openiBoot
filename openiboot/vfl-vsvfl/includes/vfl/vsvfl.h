@@ -1,11 +1,7 @@
-#ifndef  VFL_H
-#define  VFL_H
+#ifndef  VFL_VSVFL_H
+#define  VFL_VSVFL_H
 
-#include "openiboot.h"
-
-#define ERROR_ARG	0x80000001
-#define ERROR_NAND	0x80000002
-#define ERROR_EMPTY	0x80000003
+#include "../../includes/vfl.h"
 
 typedef struct _vfl_context
 {
@@ -56,4 +52,4 @@ typedef struct _vfl_spare_data
 
 } __attribute__ ((packed)) vfl_spare_data_t;
 
-#endif //VFL_H
+#endif //VFL_VSVFL_H
