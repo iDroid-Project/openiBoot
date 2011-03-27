@@ -21,17 +21,19 @@ static void pmu_init()
 }
 MODULE_INIT(pmu_init);
 
-int sub_5FF085D8(int a, int b ,int c)
+int sub_5FF085D8(int regidx, int b ,int c)
 {
-	uint8_t registers = 0x50 + a;
+	uint8_t registers = PMU_UNKREG_START + regidx;
 	uint8_t recv_buff = 0;
 	uint8_t data = 0;
 	int result;
 
-	if (a > 10) return -1;
+	if (regidx > PMU_UNKREG_END - PMU_UNKREG_START)
+		return -1;
 	
 	result = i2c_rx(PMU_I2C_BUS, PMU_GETADDR, (void*)&registers, 1, (void*)&recv_buff, 1);
-	if (result != I2CNoError) return result;
+	if (result != I2CNoError)
+		return result;
 	
 	recv_buff &= 0x1D;
 	
@@ -99,11 +101,11 @@ void pmu_write_oocshdwn(int data) {
 	uint8_t poweroffData[] = {0xC0, 0xFF, 0xBF, 0xFF, 0xAE, 0xFF};
 	uint8_t buffer[sizeof(poweroffData) + 1];
 	
-	pmu_get_reg(1);
-		
-	buffer[0] = 0xC; // Register
+	pmu_get_reg(PMU_UNK2_REG);
+	
+	buffer[0] = PMU_UNK1_REG;
 	memcpy(&buffer[1], poweroffData, sizeof(poweroffData));
-		
+	
 	i2c_tx(PMU_I2C_BUS, PMU_SETADDR, buffer, sizeof(buffer));
 	
 	if (data == 1) {
@@ -111,15 +113,15 @@ void pmu_write_oocshdwn(int data) {
 		
 		// sub_5FF0D99C();  // Something to do with gas gauge.
 		
-		for (reg = 0x50; reg < 0x5B; reg++) {
-			i2c_rx(PMU_I2C_BUS, PMU_GETADDR, &reg, 1, &result, 1);
+		for (reg = PMU_UNKREG_START; reg <= PMU_UNKREG_END; reg++) {
+			result = pmu_get_reg(reg);
 			
 			if (!((result & 0xE0) <= 0x5F || (result & 2) == 0))
 				pmu_write_reg(reg, result & 0xFD, FALSE);
 		}
 	}
 	
-	pmu_write_reg(0x12, data, FALSE);
+	pmu_write_reg(PMU_OOCSHDWN_REG, data, FALSE);
 	
 	while(TRUE) {
 		udelay(100000);
@@ -127,7 +129,7 @@ void pmu_write_oocshdwn(int data) {
 }
 
 void pmu_poweroff() {
-	// OpenIBootShutdown();
+	OpenIBootShutdown();
 	// lcd_shutdown();
 	pmu_write_oocshdwn(1);
 }
@@ -167,39 +169,37 @@ static int query_adc(int mux) {
 }
 
 static void usbphy_charger_identify(unsigned int sel) {
-	if (sel > 2)
+	if (sel > PMU_CHARGER_IDENTIFY_MAX)
 		return;
 	
-	clock_gate_switch(USB_CLOCKGATE_UNK1, 1);
+	clock_gate_switch(USB_CLOCKGATE_UNK1, ON);
 	SET_REG(USB_PHY + OPHYUNK3, (GET_REG(USB_PHY + OPHYUNK3) & (~0x6)) | (sel*2));
-	clock_gate_switch(USB_CLOCKGATE_UNK1, 0);
+	clock_gate_switch(USB_CLOCKGATE_UNK1, OFF);
 }
 
 static PowerSupplyType identify_usb_charger() {
-	int dn;
-	int dp;
+	int dn, dp, x;
 
-	usbphy_charger_identify(2);
+	usbphy_charger_identify(PMU_CHARGER_IDENTIFY_DN);
 	udelay(2000);
 	
-	dn = query_adc(6);
-	if(dn < 0)
+	dn = query_adc(PMU_ADCMUX_USBCHARGER);
+	if (dn < 0)
 		dn = 0;
 
-	usbphy_charger_identify(1);
+	usbphy_charger_identify(PMU_CHARGER_IDENTIFY_DP);
 	udelay(2000);
 	
-	dp = query_adc(6);
-	if(dp < 0)
+	dp = query_adc(PMU_ADCMUX_USBCHARGER);
+	if (dp < 0)
 		dp = 0;
 	
-	usbphy_charger_identify(0);
+	usbphy_charger_identify(PMU_CHARGER_IDENTIFY_NONE);
 
-	if(dn < 99 || dp < 99) {
+	if (dn < 99 || dp < 99)
 		return PowerSupplyTypeUSBHost;
-	}
 
-	int x = (dn * 1000) / dp;
+	x = (dn * 1000) / dp;
 	
 	if (x <= 0x5E1)
 		return PowerSupplyTypeUSBBrick1000mA;
