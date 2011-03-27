@@ -30,7 +30,7 @@ static int pmu_send_buffer(int bus, uint8_t buffer, uint8_t response, int check)
 	uint8_t recv_buffer = 0;
 	int result;
 
-	i2c_tx(bus, PMU_SETADDR, (void*)&send_buffer, 2);
+	i2c_tx(bus, PMU_SETADDR, (void*)send_buffer, 2);
 	if (check && (i2c_rx(bus, PMU_GETADDR, (void*)&buffer, 1, (void*)&recv_buffer, 1), recv_buffer != response))
 		result = -1;
 	else
@@ -47,7 +47,7 @@ static int sub_5FF085D8(int a, int b ,int c)
 
 	if (a > 10) return -1;
 	
-	result = i2c_rx(0, PMU_GETADDR, (void*)&registers, 1, (void*)&recv_buff, 1);
+	result = i2c_rx(PMU_I2C_BUS, PMU_GETADDR, (void*)&registers, 1, (void*)&recv_buff, 1);
 	if (result != I2CNoError) return result;
 	
 	recv_buff &= 0x1D;
@@ -60,7 +60,7 @@ static int sub_5FF085D8(int a, int b ,int c)
 			expected_response |= 2;
 	}
 	
-	pmu_send_buffer(0, registers, expected_response, 1);
+	pmu_send_buffer(PMU_I2C_BUS, registers, expected_response, 1);
 	return 0;
 }
 
@@ -68,12 +68,17 @@ int radio_setup()
 {
 	response_buf = malloc(RESPONSE_BUF_SIZE);
 	
+	if (!response_buf) {
+		bufferPrintf("radio: failed to allocate memory.\r\n");
+		return -1;
+	}
+	
 	gpio_custom_io(0x606, 2);
 	
 	sub_5FF085D8(2, 1, 0);
 	udelay(100000);
 	sub_5FF085D8(2, 1, 1);
-	
+
 	gpio_pin_output(0x102, 0);
 	udelay(50000);
 	gpio_pin_output(0x101, 1);

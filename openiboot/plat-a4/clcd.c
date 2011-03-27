@@ -188,7 +188,7 @@ int pmu_send_buffer(int bus, uint8_t buffer, uint8_t response, int check) {
 	uint8_t recv_buffer = 0;
 	int result;
 
-	i2c_tx(bus, PMU_SETADDR, (void*)&send_buffer, 2);
+	i2c_tx(bus, PMU_SETADDR, (void*)send_buffer, 2);
 	if (check && (i2c_rx(bus, PMU_GETADDR, (void*)&buffer, 1, (void*)&recv_buffer, 1), recv_buffer != response))
 		result = -1;
 	else
