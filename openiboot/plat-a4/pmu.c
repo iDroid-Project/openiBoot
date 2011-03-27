@@ -114,7 +114,7 @@ void pmu_write_oocshdwn(int data) {
 		for (reg = 0x50; reg < 0x5B; reg++) {
 			i2c_rx(PMU_I2C_BUS, PMU_GETADDR, &reg, 1, &result, 1);
 			
-			if (!(result & 0xE0 <= 0x5F || result & 2 == 0))
+			if (!((result & 0xE0) <= 0x5F || (result & 2) == 0))
 				pmu_write_reg(reg, result & 0xFD, FALSE);
 		}
 	}
