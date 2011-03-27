@@ -521,7 +521,7 @@ static int h2fmi_check_chipid(h2fmi_struct_t *_fmi, char *_id, char *_base, int 
 	{
 		if(!memcmp(ptr, _base, 6))
 		{
-			bufferPrintf("fmi: Found chip ID %2x %2x %2x %2x %2x %2x on fmi%d:ce%d.\n",
+			bufferPrintf("fmi: Found chip ID %02x %02x %02x %02x %02x %02x on fmi%d:ce%d.\n",
 					ptr[0], ptr[1], ptr[2], ptr[3], ptr[4], ptr[5],
 					_fmi->bus_num, i);
 
@@ -529,7 +529,7 @@ static int h2fmi_check_chipid(h2fmi_struct_t *_fmi, char *_id, char *_base, int 
 			_fmi->num_chips++;
 		}
 		else if(memcmp(ptr, "\xff\xff\xff\xff\xff\xff", 6) && memcmp(ptr, "\0\0\0\0\0\0", 6))
-			bufferPrintf("fmi: Ignoring mismatched chip with ID %2x %2x %2x %2x %2x %2x on fmi%d:ce%d.\n",
+			bufferPrintf("fmi: Ignoring mismatched chip with ID %02x %02x %02x %02x %02x %02x on fmi%d:ce%d.\n",
 					ptr[0], ptr[1], ptr[2], ptr[3], ptr[4], ptr[5],
 					_fmi->bus_num, i);
 
