@@ -4,6 +4,7 @@
 #include "openiboot.h"
 #include "nand.h"
 #include "cdma.h"
+#include "nand.h"
 
 #define H2FMI_STATE_IDLE	0
 #define H2FMI_STATE_READ	1
@@ -94,7 +95,7 @@ typedef struct _h2fmi_struct
 	uint32_t interrupt;
 } h2fmi_struct_t;
 
-extern h2fmi_geometry_t h2fmi_geometry;
+extern nand_geometry_t h2fmi_geometry;
 uint32_t h2fmi_aes_enabled;
 
 void h2fmi_set_encryption(uint32_t _arg);

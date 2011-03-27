@@ -256,7 +256,7 @@ static h2fmi_struct_t *h2fmi_busses[] = {
 
 #define H2FMI_BUS_COUNT (array_size(h2fmi_busses))
 
-static nand_geometry_t h2fmi_geometry;
+nand_geometry_t h2fmi_geometry;
 static nand_device_t h2fmi_device;
 static vfl_vfl_device_t h2fmi_vfl_device;
 
