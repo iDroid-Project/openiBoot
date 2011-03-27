@@ -251,41 +251,50 @@ void gpio_custom_io(int pinport, int mode) {
 		//spi_on_off(pin, mode);
 	} else {
 		pin_register = GPIO + (8 * port + pin) * sizeof(uint32_t);
-		switch(mode) {
-			default:
-				return;
+		switch(mode)
+		{
 		case 0: // use_as_input
 			value = 0x210;
 			bitmask = 0x27E;
 			break;
+
 		case 1: // use_as_output
 			value = 0x212;
 			bitmask = 0x27E;
 			break;
+
 		case 2: // clear_output
 			value = 0x212;
 			bitmask = 0x27F;
 			break;
+
 		case 3: // set_output
 			value = 0x213;
 			bitmask = 0x27F;
 			break;
+
 		case 4: // reset
 			value = gpio_reset_table[8 * port + pin];
 			bitmask = 0x3FF;
 			break;
+
 		case 5:
 			value = 0x230;
 			bitmask = 0x27E;
 			break;
+
 		case 6:
 			value = 0x250;
 			bitmask = 0x27E;
 			break;
+
 		case 7:
 			value = 0x270;
 			bitmask = 0x27E;
 			break;
+
+		default:
+			return;
 		}
 	SET_REG(pin_register, (GET_REG(pin_register) & (~bitmask)) | (value & bitmask));
 	}
