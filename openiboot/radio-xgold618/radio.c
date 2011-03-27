@@ -336,7 +336,7 @@ static int radio_nvram_read_idx(int idx, char** res)
 
 	*res = curBuf;
 
-	return c;*/
+	return c;
 }
 
 static int radio_nvram_read_all(char** res)
