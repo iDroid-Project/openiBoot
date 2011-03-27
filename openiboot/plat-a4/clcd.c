@@ -151,7 +151,6 @@ uint32_t* FRAMEBUFFER;
 static LCDInfo* LCDTable;
 static uint32_t TimePerMillionFrames = 0;
 
-static uint32_t dword_5FF3D04C = 0x3D278480;
 static uint32_t dword_5FF3D0D0;
 
 static int gammaVar1;
@@ -248,15 +247,13 @@ void configureLCDClock(uint32_t unkn1, int zero0, int zero1, int zero2, int zero
 	uint32_t v10;
 
 	// I actually hate this part. -- Bluerise
-	// dword_5FF3D04C == CalculatedFrequencyTable[4] == 0x3D278480;
-	// or 0x5B8D8000 because of different frequencies but I don't think so...
 	// <CPICH> it's just result = r0 - r1*(r0/r1)
 	// <CPICH> uint64_t r0, r1;
 
 	if (unkn1 == 0xA) {
 		v6 = 31;
-		v7 = dword_5FF3D04C;
-		v8 = dword_5FF3D04C / divider;
+		v7 = CalculatedFrequencyTable[3];
+		v8 = CalculatedFrequencyTable[3] / divider;
 		do
 		{
 			if (!calculate_remainder(v8, v6))

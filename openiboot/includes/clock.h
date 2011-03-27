@@ -14,6 +14,8 @@ typedef enum ClockDivisorCode {
 extern uint32_t ClockPLL;
 extern uint32_t PLLFrequencies[NUM_PLL];
 
+extern uint32_t CalculatedFrequencyTable[55];
+
 extern uint32_t ClockFrequency;
 extern uint32_t MemoryFrequency;
 extern uint32_t BusFrequency;
