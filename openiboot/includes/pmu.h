@@ -15,9 +15,7 @@ typedef enum PowerSupplyType {
 	PowerSupplyTypeUSBHost,
 	PowerSupplyTypeUSBBrick500mA,
 	PowerSupplyTypeUSBBrick1000mA,
-#if defined(CONFIG_A4)
 	PowerSupplyTypeUSBBrick2000mA
-#endif
 } PowerSupplyType;
 
 #define PMU_IBOOTSTATE 0xF
