@@ -2,7 +2,7 @@
 #define A4_PMU_H
 
 // Specific A4 PMU functions.
-int sub_5FF085D8(int a, int b ,int c);
+int pmu_write_unk(uint8_t regidx, int flag1, int flag2);
 
 #endif
 

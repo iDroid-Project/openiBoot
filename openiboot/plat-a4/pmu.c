@@ -21,7 +21,7 @@ static void pmu_init()
 }
 MODULE_INIT(pmu_init);
 
-int sub_5FF085D8(int regidx, int b ,int c)
+int pmu_write_unk(uint8_t regidx, int flag1, int flag2)
 {
 	uint8_t registers = PMU_UNKREG_START + regidx;
 	uint8_t recv_buff = 0;
@@ -37,11 +37,11 @@ int sub_5FF085D8(int regidx, int b ,int c)
 	
 	recv_buff &= 0x1D;
 	
-	if (b == 0) {
+	if (!flag1) {
 		data = recv_buff | 0x60;
 	} else {
 		data = recv_buff;
-		if (c != 0)
+		if (flag2)
 			data |= 2;
 	}
 	
@@ -75,14 +75,14 @@ int pmu_write_reg(int reg, int data, int verify) {
 
 	i2c_tx(PMU_I2C_BUS, PMU_SETADDR, command, sizeof(command));
 
-	if(!verify)
+	if (!verify)
 		return 0;
 
 	uint8_t pmuReg = reg;
 	uint8_t buffer = 0;
 	i2c_rx(PMU_I2C_BUS, PMU_GETADDR, &pmuReg, 1, &buffer, 1);
 
-	if(buffer == data)
+	if (buffer == data)
 		return 0;
 	else
 		return -1;
@@ -168,7 +168,7 @@ static int query_adc(int mux) {
 	return (buf[1] << 4) | (buf[0] & 0xF);
 }
 
-static void usbphy_charger_identify(unsigned int sel) {
+static void usbphy_charger_identify(uint8_t sel) {
 	if (sel > PMU_CHARGER_IDENTIFY_MAX)
 		return;
 	
