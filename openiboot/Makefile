@@ -6,11 +6,11 @@ ifeq ($(PLATFORM),IPHONE3G)
 	TARGET = iphone_3g_openiboot.img3
 endif
 
-ifeq ($(PLATFORM),IPOD)
+ifeq ($(PLATFORM),IPT1G)
 	TARGET = ipod_1g_openiboot.img3
 endif
 
-ifeq ($(PLATFORM),IPOD2G)
+ifeq ($(PLATFORM),IPT2G)
 	TARGET = ipod_2g_openiboot.img3
 endif
 
@@ -18,11 +18,11 @@ ifeq ($(PLATFORM),IPHONE4)
 	TARGET = iphone_4_openiboot.bin
 endif
 
-ifeq ($(PLATFORM),IPAD)
+ifeq ($(PLATFORM),IPAD1G)
 	TARGET = ipad_1g_openiboot.bin
 endif
 
-ifeq ($(PLATFORM),IPOD4G)
+ifeq ($(PLATFORM),IPT4G)
 	TARGET = ipt_4g_openiboot.bin
 endif
 
