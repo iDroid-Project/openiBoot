@@ -2,4 +2,5 @@
 *.img2
 *.bin
 *_openiboot
-
+iBSS.*
+*.o
