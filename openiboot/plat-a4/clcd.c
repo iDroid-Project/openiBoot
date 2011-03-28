@@ -62,7 +62,7 @@ static GammaTableDescriptor PinotGammaTables[] = {
 		{{0x74040422, 0x71001D0, 0x71DDD340, 0x71C34D37, 3, 0xD03400, 0x340D0D, 0xC701C1C0, 0x37777771, 0x434D34DD, 0x4D34D0D3, 0xDDDD34D3, 0xD01DDDDD, 0x34D34, 0x3401C01C, 0x4504034, 0xC, 0}},
 	},
 #endif
-#if defined(CONFIG_IPOD_2G)
+#if defined(CONFIG_IPOD_TOUCH_2G)
 // iPod Touch 2G -- Should not be in plat-a4
 	{0x970387, 0xFFFFFF,
 		{{0x4041D422, 0x4001DD07, 0xDDDC003, 0x1C0, 0xDDDDDC00, 0x7774, 0xDC701C00, 0x74DDC771, 0x704D34D3, 0x7000, 0, 0x1C000000, 0x1DDC7777, 0xD000D00, 0x34D371D, 0x8A5D034D, 0xEB42, 0}},
@@ -420,14 +420,14 @@ int pinot_init(LCDInfo* LCDTable, ColorSpace colorspace, uint32_t* panelID, Wind
 
 	bufferPrintf("pinot_init()\r\n");
 	DotPitch = LCDTable->DotPitch;
-#if defined(CONFIG_IPAD)
+#if defined(CONFIG_IPAD_1G)
 	gpio_pin_output(0x1404, 0);
 #else
 	gpio_pin_output(0x206, 0);
 #endif
 	task_sleep(10);
 	mipi_dsim_init(LCDTable);
-#if defined(CONFIG_IPAD)
+#if defined(CONFIG_IPAD_1G)
 	gpio_pin_output(0x1404, 1);
 #else
 	gpio_pin_output(0x206, 1);
@@ -472,7 +472,7 @@ int pinot_init(LCDInfo* LCDTable, ColorSpace colorspace, uint32_t* panelID, Wind
 
 	*panelID = pinot_panel_id;
 
-#if !defined(CONFIG_IPAD)
+#if !defined(CONFIG_IPAD_1G)
 	if (!dword_5FF3AE0C)
 		return dword_5FF3AE0C;
 

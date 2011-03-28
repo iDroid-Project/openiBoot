@@ -6,7 +6,7 @@
 #define SDIO 0x38D00000
 #define SDIO_CLOCKGATE 0xB
 
-#ifdef CONFIG_IPOD
+#ifdef CONFIG_IPOD_TOUCH_1G
 #define SDIO_GPIO_POWER 0x1701
 #endif
 
@@ -31,7 +31,7 @@
 #define SDIO_NUMBLK	0x4C
 #define SDIO_REMBLK	0x50
 
-#ifndef CONFIG_IPOD
+#ifndef CONFIG_IPOD_TOUCH_1G
 #define SDIO_GPIO_DEVICE_RESET 0x607
 #endif
 

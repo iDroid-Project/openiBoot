@@ -3,7 +3,7 @@
 
 // Constants
 #define EventTimer 4
-#ifdef CONFIG_IPOD
+#ifdef CONFIG_IPOD_TOUCH_1G
 #define PiezoTimer 1
 #endif
 #ifdef CONFIG_IPHONE_3G

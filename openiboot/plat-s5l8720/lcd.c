@@ -807,7 +807,7 @@ static int syrah_init() {
 	gpio_pin_output(LCD_GPIO_POWER_ENABLE, 1);
 	udelay(10000);
 
-#ifdef CONFIG_IPOD
+#ifdef CONFIG_IPOD_TOUCH_1G
 	togglePixelClock(ON);
 	transmitCommandOnSPI1(0x6D, 0x0);
 	transmitCommandOnSPI1(0x36, 0x8);
@@ -852,7 +852,7 @@ static int syrah_init() {
 	transmitCommandOnSPI0(0x7, 0x0);
 	transmitCommandOnSPI0(0x0, 0x16);
 
-#ifndef CONFIG_IPOD
+#ifndef CONFIG_IPOD_TOUCH_1G
 	togglePixelClock(ON);
 	udelay(40000);
 #endif
@@ -1111,7 +1111,7 @@ static void resetLCD() {
 		altResetDirection = TRUE;
 #endif
 
-#ifdef CONFIG_IPOD
+#ifdef CONFIG_IPOD_TOUCH_1G
 	altResetDirection = TRUE;
 #endif
 

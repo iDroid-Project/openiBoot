@@ -172,7 +172,7 @@
 
 
 // Other settings
-#if defined(CONFIG_IPAD)
+#if defined(CONFIG_IPAD_1G)
 #define PLL_STABLE_TIME             200000
 #else
 #define PLL_STABLE_TIME             150000

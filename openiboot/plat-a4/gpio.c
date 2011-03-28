@@ -35,7 +35,7 @@ GPIOInterruptGroup InterruptGroups[GPIO_NUMINTGROUPS];
 void gpio_switch(int pinport, OnOff on_off);
 void gpio_custom_io(int pinport, int mode);
 
-#if !defined(CONFIG_IPAD)
+#if !defined(CONFIG_IPAD_1G)
 const uint16_t gpio_reset_table[] = {
 	0x210, 0x210, 0x390, 0x390, 0x210, 0x290, 0x213, 0x212,
 	0x213, 0x212, 0x213, 0x290, 0x290, 0x390, 0x212, 0x1E,

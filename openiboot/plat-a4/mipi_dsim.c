@@ -82,7 +82,7 @@ int mipi_dsim_init(LCDInfo* LCDTable) {
 
 	clock_gate_switch(MIPI_DSIM_CLOCKGATE, ON);
 	mashFest = (GET_BITS(LCDTable->unkn18, 26, 6) << 13) | (GET_BITS(LCDTable->unkn18, 16, 9) << 4) | ((GET_BITS(LCDTable->unkn18, 11, 4) & 0xE));
-#if defined(CONFIG_IPAD)
+#if defined(CONFIG_IPAD_1G)
 	if (mashFest) {
 		SET_REG(MIPI_DSIM + CLKCTRL, CLKCTRL_ESC_PRESCALER(LCDTable->unkn18 >> 4) | CLKCTRL_ESC_CLKEN);
 		SET_REG(MIPI_DSIM + PLLCTRL, (LCDTable->unkn18 << 10) & 0xF000000);
@@ -153,13 +153,13 @@ int mipi_dsim_init(LCDInfo* LCDTable) {
 	}
 #endif
 	while((GET_REG(MIPI_DSIM + STATUS) & STATUS_SWRST) != STATUS_SWRST);
-#if !defined(CONFIG_IPAD)
+#if !defined(CONFIG_IPAD_1G)
 	SET_REG(MIPI_DSIM + PHYACCHR, GET_REG(MIPI_DSIM + PHYACCHR) | AFC_ENABLE);
 #endif
 	SET_REG(MIPI_DSIM + MDRESOL, DRESOL_VRESOL(LCDTable->height) | DRESOL_HRESOL(LCDTable->width) | DRESOL_STAND_BY);
 	SET_REG(MIPI_DSIM + MVPORCH, MVPORCH_VFP(LCDTable->verticalFrontPorch) | MVPORCH_VBP(LCDTable->verticalBackPorch)
 		| MVPORCH_CMD_ALLOW(0xD)); //TODO: figure out what the 0xD does, or at least make a constant for it
-#if defined(CONFIG_IPHONE_4) || defined(CONFIG_IPOD_4G)
+#if defined(CONFIG_IPHONE_4) || defined(CONFIG_IPOD_TOUCH_4G)
 	SET_REG(MIPI_DSIM + MHPORCH, MHPORCH_HFP(0xF) | MHPORCH_HBP(0xE));
 	SET_REG(MIPI_DSIM + MSYNC, MSYNC_VSPW(LCDTable->verticalSyncPulseWidth) | MSYNC_HSPW(1)); // WTF?
 #else

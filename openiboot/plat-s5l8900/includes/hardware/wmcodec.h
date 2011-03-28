@@ -3,7 +3,7 @@
 
 #include "hardware/s5l8900.h"
 
-#ifdef CONFIG_IPOD
+#ifdef CONFIG_IPOD_TOUCH_1G
 #define WMCODEC_I2C 1
 #endif
 
@@ -18,7 +18,7 @@
 #define WMCODEC_I2C_SLAVE_ADDR 0x34
 #endif
 
-#if defined(CONFIG_IPHONE_4) || defined(CONFIG_IPAD)
+#if defined(CONFIG_IPHONE_4) || defined(CONFIG_IPAD_1G)
 #define WMCODEC_I2C 0
 #endif
 
