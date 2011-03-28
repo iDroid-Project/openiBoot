@@ -6,7 +6,7 @@
 #include "hardware/gpio.h"
 #include "clock.h"
 #include "util.h"
-#if defined(CONFIG_IPHONE_4) || defined(CONFIG_IPAD)
+#if defined(CONFIG_IPHONE_4) || defined(CONFIG_IPAD_1G)
 #include "timer.h"
 #include "spi.h"
 #include "chipid.h"

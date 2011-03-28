@@ -7,11 +7,11 @@ ifeq ($(PLATFORM),IPHONE3G)
 endif
 
 ifeq ($(PLATFORM),IPT1G)
-	TARGET = ipod_1g_openiboot.img3
+	TARGET = ipt_1g_openiboot.img3
 endif
 
 ifeq ($(PLATFORM),IPT2G)
-	TARGET = ipod_2g_openiboot.img3
+	TARGET = ipt_2g_openiboot.img3
 endif
 
 ifeq ($(PLATFORM),IPHONE4)

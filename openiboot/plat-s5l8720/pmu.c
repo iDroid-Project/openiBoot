@@ -493,6 +493,10 @@ void cmd_pmu_powersupply(int argc, char** argv) {
 		case PowerSupplyTypeUSBBrick1000mA:
 			bufferPrintf("1000 mA brick");
 			break;
+			
+		case PowerSupplyTypeUSBBrick2000mA:
+			bufferPrintf("2000 mA brick");
+			break;
 	}
 	bufferPrintf("\r\n");
 }
