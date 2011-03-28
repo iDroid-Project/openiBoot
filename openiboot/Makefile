@@ -32,7 +32,7 @@ all:
 clean:
 	scons -c
 	@rm *.o
-	@cd ../utils/syringe; make clean
+	@cd ../utils/syringe; make clean_all
 	@cd ../utils/oibc; make clean
 
 install:
