@@ -37,7 +37,7 @@ You will need a system capable of running x86 Linux binaries (Build requires sco
 Change into the openiboot subfolder
 
 **For iPod Touch 1G, run:**
-`scons iPod1G`
+`scons iPodTouch1G`
 
 **For iPhone 2G, run:**
 `scons iPhone2G`
@@ -46,7 +46,7 @@ Change into the openiboot subfolder
 `scons iPhone3G`
 
 **For iPod Touch 2G, run:**
-`scons iPod2G`
+`scons iPodTouch2G`
 
 **For iPhone 3GS, run:**
 `scons iPhone3GS`
@@ -54,7 +54,10 @@ Change into the openiboot subfolder
 **For iPhone 4, run:**
 `scons iPhone4`
 
-**For iPad, run:**
+**For iPod Touch 4G, run:**
+`scons iPodTouch4G`
+
+**For iPad 1G, run:**
 `scons iPad1G`
 
 **For Apple TV 2G, run:**
