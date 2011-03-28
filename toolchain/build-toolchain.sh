@@ -6,7 +6,13 @@
 
 #########  Setup Variables  ###########
 MYDIR="$PWD/`dirname $0`"
-declare -i CPU="$(cat /proc/cpuinfo | grep processor | wc -l) + 1"
+
+if uname | grep -iq "darwin"; then
+	declare -i CPU="$(/usr/sbin/system_profiler -detailLevel full SPHardwareDataType | grep "Total Number Of Cores" | sed -e 's/.*: //') +1"
+else
+	declare -i CPU="$(cat /proc/cpuinfo | grep processor | wc -l) + 1"
+fi
+
 # Package URL
 PKG_MIRROR="http://www.gnuarm.com"
 
