@@ -8,11 +8,13 @@
 #define PMU_GETADDR 0xE8
 
 // Registers
-#define PMU_ADC_REG          0x2
-#define PMU_POWERSUPPLY_REG  0x7
-#define PMU_OOCSHDWN_REG     0x12
-#define PMU_MUXSEL_REG       0x30
-#define PMU_ADCVAL_REG       0x31
+#define PMU_ADC_REG           0x2
+#define PMU_POWERSUPPLY_REG   0x7
+#define PMU_OOCSHDWN_REG      0x12
+#define PMU_MUXSEL_REG        0x30
+#define PMU_ADCVAL_REG        0x31
+#define PMU_VOLTAGE_HIGH_REG  0x8E
+#define PMU_VOLTAGE_LOW_REG   0x8D
 
 // Unknown registers
 #define PMU_UNK1_REG      0xC

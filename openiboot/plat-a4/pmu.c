@@ -220,10 +220,19 @@ PowerSupplyType pmu_get_power_supply() {
 		return PowerSupplyTypeBattery;
 }
 
+int pmu_get_battery_voltage() {
+	return (pmu_get_reg(PMU_VOLTAGE_HIGH_REG) << 8) | pmu_get_reg(PMU_VOLTAGE_LOW_REG);
+}
+
 void cmd_poweroff(int argc, char** argv) {
 	pmu_poweroff();
 }
 COMMAND("poweroff", "power off the device", cmd_poweroff);
+
+void cmd_pmu_voltage(int argc, char** argv) {
+	bufferPrintf("battery voltage: %d mV\r\n", pmu_get_battery_voltage());
+}
+COMMAND("pmu_voltage", "get the battery voltage", cmd_pmu_voltage);
 
 void cmd_pmu_powersupply(int argc, char** argv) {
 	PowerSupplyType power = pmu_get_power_supply();
