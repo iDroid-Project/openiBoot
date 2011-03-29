@@ -135,10 +135,10 @@ static error_t vfl_vfl_read_single_page(vfl_device_t *_vfl, uint32_t dwVpn, uint
 	//VFLData1.field_8++;
 	//VFLData1.field_20++;
 	
-	dwVpn += vfl->geometry.pages_per_sublk * vfl->geometry->fs_start_block;
+	dwVpn += vfl->geometry.pages_per_sublk * vfl->geometry.fs_start_block;
 	if(dwVpn >= vfl->geometry.pages_total*vfl->geometry.pages_per_sublk)
 	{
-		bufferPrintf("ftl: No such virtual page %d (highest page %d).\r\n", dwVpn, max_page);
+		bufferPrintf("ftl: No such virtual page %d.\r\n", dwVpn);
 		return EINVAL;
 	}
 
