@@ -16,6 +16,9 @@
 #define PMU_VOLTAGE_HIGH_REG  0x8E
 #define PMU_VOLTAGE_LOW_REG   0x8D
 
+// General-purpose registers
+#define PMU_MAXREG	0xF
+
 // Unknown registers
 #define PMU_UNK1_REG      0xC
 #define PMU_UNK2_REG      0x1
