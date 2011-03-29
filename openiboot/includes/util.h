@@ -37,7 +37,7 @@ unsigned long int strtoul(const char* str, char** endptr, int base);
 char** tokenize(char* commandline, int* argc);
 void dump_memory(uint32_t start, int length);
 void buffer_dump_memory(uint32_t start, int length);
-void hexdump(uint32_t start, int length);
+void hexdump(void *start, int length);
 void buffer_dump_memory2(uint32_t start, int length, int width);
 int addToBuffer(const char* toBuffer, int len);
 printf_handler_t addPrintfHandler(printf_handler_t);

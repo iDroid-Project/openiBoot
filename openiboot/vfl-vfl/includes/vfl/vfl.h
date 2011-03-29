@@ -14,14 +14,15 @@ typedef struct _vfl_vfl_geometry
 	uint16_t blocks_per_ce;
 	uint16_t bytes_per_page;
 	uint32_t num_ecc_bytes;
-	uint32_t meta_per_logical_page;
+	uint32_t bytes_per_spare;
 	uint32_t one;
 	uint16_t num_ce;
 	uint16_t ecc_bits;
-	uint16_t field_24;
-	uint16_t field_26;
+	uint16_t reserved_blocks;
+	uint16_t vfl_blocks;
 	uint16_t some_crazy_val;
-	uint16_t field_2A;
+	uint16_t fs_start_block;
+	uint32_t unk;
 } vfl_vfl_geometry_t;
 
 struct _vfl_vfl_context;
@@ -42,7 +43,7 @@ typedef struct _vfl_vfl_device
 } vfl_vfl_device_t;
 
 // VFL-VFL Functions
-int vfl_vfl_device_init(vfl_vfl_device_t *_vfl);
+error_t vfl_vfl_device_init(vfl_vfl_device_t *_vfl);
 void vfl_vfl_device_cleanup(vfl_vfl_device_t *_vfl);
 
 vfl_vfl_device_t *vfl_vfl_device_allocate();

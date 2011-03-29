@@ -435,14 +435,15 @@ void buffer_dump_memory2(uint32_t start, int length, int width) {
 }
 
 
-void hexdump(uint32_t start, int length) {
-	uint32_t curPos = start;
+void hexdump(void *start, int length) {
+	uint32_t curPos = (uint32_t)start;
+	uint32_t end = (uint32_t)start + length;
 	int x = 0;
 
 	uint8_t line[16];
 	int idx = 0;
 
-	while(curPos < (start + length)) {
+	while(curPos < end) {
 		if(x == 0) {
 			bufferPrintf("%08x ", (unsigned int) curPos);
 		}

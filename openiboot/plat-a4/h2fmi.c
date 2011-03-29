@@ -1523,7 +1523,7 @@ static void h2fmi_setup_aes(h2fmi_struct_t *_fmi, uint32_t _enabled, uint32_t _e
 
 }
 
-uint32_t h2fmi_read_single_page(uint32_t _ce, uint32_t _page, uint8_t *_ptr, uint8_t *_meta_ptr, uint8_t *_6, uint8_t *_7, uint32_t _8)
+error_t h2fmi_read_single_page(uint32_t _ce, uint32_t _page, uint8_t *_ptr, uint8_t *_meta_ptr, uint8_t *_6, uint8_t *_7, uint32_t _8)
 {
 	uint32_t bus = h2fmi_map[_ce].bus;
 	uint32_t chip = h2fmi_map[_ce].chip;
@@ -1685,7 +1685,7 @@ static void h2fmi_init_virtual_physical_map()
 }
 
 // NAND Device Functions
-static int h2fmi_device_read_single_page(nand_device_t *_dev, uint32_t _chip, uint32_t _block,
+static error_t h2fmi_device_read_single_page(nand_device_t *_dev, uint32_t _chip, uint32_t _block,
 		uint32_t _page, uint8_t *_buffer, uint8_t *_spareBuffer)
 {
 	return h2fmi_read_single_page(_chip, _block*h2fmi_geometry.pages_per_block + _page,
@@ -1716,8 +1716,8 @@ static uint32_t h2fmi_device_get_info(nand_device_t *_dev, nand_device_info_t _i
 	case diBlocksPerCE:
 		return h2fmi_geometry.blocks_per_ce;
 
-	case diBBTFormat:
-		return h2fmi_geometry.bbt_format;
+	case diBytesPerPage:
+		return h2fmi_geometry.bbt_format << 10;
 
 	case diBytesPerSpare:
 		return h2fmi_geometry.bytes_per_spare;
@@ -1773,9 +1773,29 @@ static uint32_t h2fmi_device_get_info(nand_device_t *_dev, nand_device_info_t _i
 	case diPagesPerCE:
 		return h2fmi_geometry.pages_per_ce;
 
+	case diNumCE:
+		return h2fmi_geometry.num_ce;
+
 	default:
-		system_panic("h2fmi: Tried to get unimplemented device info.\r\n");
+		system_panic("h2fmi: Tried to get unimplemented device info: %d.\r\n", _info);
 		return 0;
+	}
+}
+
+static void h2fmi_device_set_info(nand_device_t *_dev, nand_device_info_t _info, uint32_t _val)
+{
+	switch(_info)
+	{
+	case diVendorType:
+		break;
+
+	case diBanksPerCE_VFL:
+		h2fmi_geometry.banks_per_ce_vfl = _val;
+		break;
+
+	default:
+		system_panic("h2fmi: Invalid device info to set: %d.\r\n", _val);
+		break;
 	}
 }
 
@@ -1785,13 +1805,14 @@ static void h2fmi_init_device()
 	h2fmi_device.read_single_page = h2fmi_device_read_single_page;
 	h2fmi_device.enable_encryption = h2fmi_device_enable_encryption;
 	h2fmi_device.get_info = h2fmi_device_get_info;
+	h2fmi_device.set_info = h2fmi_device_set_info;
 
 	vfl_vfl_device_init(&h2fmi_vfl_device);
-	if(vfl_open(&h2fmi_vfl_device.vfl, &h2fmi_device))
+	/*if(vfl_open(&h2fmi_vfl_device.vfl, &h2fmi_device))
 	{
 		bufferPrintf("fmi: Failed to open VFL!\r\n");
 		return;
-	}
+	}*/
 }
 
 int isPPN = 0;

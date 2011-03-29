@@ -7,13 +7,13 @@
 // VFL Device Prototypes
 struct _vfl_device;
 
-typedef int (*vfl_open_t)(struct _vfl_device *, nand_device_t *_dev);
+typedef error_t (*vfl_open_t)(struct _vfl_device *, nand_device_t *_dev);
 typedef void (*vfl_close_t)(struct _vfl_device *);
 
-typedef int (*vfl_read_single_page_t)(struct _vfl_device *, uint32_t _page, uint8_t *_buffer,
+typedef error_t (*vfl_read_single_page_t)(struct _vfl_device *, uint32_t _page, uint8_t *_buffer,
 		uint8_t *_sparebuffer, int _empty_ok, int *_refresh);
 
-typedef int (*vfl_write_single_page_t)(struct _vfl_device *, uint32_t _page, uint8_t *_buffer,
+typedef error_t (*vfl_write_single_page_t)(struct _vfl_device *, uint32_t _page, uint8_t *_buffer,
 		uint8_t *_sparebuffer);
 
 // VFL Device Struct
@@ -32,12 +32,12 @@ void vfl_cleanup(vfl_device_t *_vfl);
 
 vfl_device_t *vfl_allocate();
 
-int vfl_open(vfl_device_t *_vfl, nand_device_t *_dev);
+error_t vfl_open(vfl_device_t *_vfl, nand_device_t *_dev);
 void vfl_close(vfl_device_t *_vfl);
 
-int vfl_read_single_page(vfl_device_t *_vfl, uint32_t _page, uint8_t* _buffer, uint8_t* _spare,
+error_t vfl_read_single_page(vfl_device_t *_vfl, uint32_t _page, uint8_t* _buffer, uint8_t* _spare,
 		int _empty_ok, int* _refresh_page);
 
-int vfl_write_single_page(vfl_device_t *_vfl, uint32_t _page, uint8_t* _buffer, uint8_t* _spare);
+error_t vfl_write_single_page(vfl_device_t *_vfl, uint32_t _page, uint8_t* _buffer, uint8_t* _spare);
 
 #endif //VFL_H
