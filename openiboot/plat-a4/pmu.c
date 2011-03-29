@@ -15,13 +15,13 @@ static uint8_t GPMemCache[PMU_MAXREG + 1];
 
 static void pmu_init_boot()
 {
-	// TODO
+	pmu_set_iboot_stage(0x20);
 }
 MODULE_INIT_BOOT(pmu_init_boot);
 
 static void pmu_init()
 {
-	// TODO
+	pmu_set_iboot_stage(0);
 }
 MODULE_INIT(pmu_init);
 
