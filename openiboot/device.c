@@ -7,7 +7,7 @@ static LinkedList device_list = {&device_list, &device_list};
 
 static inline device_t *device_get(LinkedList *_ptr)
 {
-	return container_of(device_t, list_ptr, _ptr);
+	return CONTAINER_OF(device_t, list_ptr, _ptr);
 }
 
 int device_init(device_t *_dev)

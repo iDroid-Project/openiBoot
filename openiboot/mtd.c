@@ -5,8 +5,8 @@
 
 LinkedList mtd_list = {&mtd_list, &mtd_list};
 
-#define mtd_get(ptr)		(container_of(mtd_t, list_ptr, (ptr)))
-#define mtd_get_bdev(ptr) 	(container_of(mtd_t, bdev, (ptr)))
+#define mtd_get(ptr)		(CONTAINER_OF(mtd_t, list_ptr, (ptr)))
+#define mtd_get_bdev(ptr) 	(CONTAINER_OF(mtd_t, bdev, (ptr)))
 
 static int mtd_bdev_prepare(block_device_t *_dev)
 {

@@ -17,14 +17,6 @@ nand_device_t *nand_device_allocate()
 	return ret;
 }
 
-nand_geometry_t *nand_device_get_geometry(nand_device_t *_dev)
-{
-	if(!_dev->get_geometry)
-		return NULL;
-
-	return _dev->get_geometry(_dev);
-}
-
 int nand_device_read_single_page(nand_device_t *_dev, uint32_t _chip, uint32_t _block,
 		uint32_t _page, uint8_t *_buffer, uint8_t *_spareBuffer)
 {
@@ -49,3 +41,10 @@ void nand_device_enable_encryption(nand_device_t *_dev, int _enabled)
 		_dev->enable_encryption(_dev, _enabled);
 }
 
+uint32_t nand_device_get_info(nand_device_t *_dev, nand_device_info_t _item)
+{
+	if(_dev->get_info)
+		return _dev->get_info(_dev, _item);
+
+	return 0;
+}

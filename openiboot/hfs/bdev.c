@@ -9,7 +9,7 @@ typedef struct _bdevio_device
 	block_device_handle_t handle;
 } bdevio_device_t;
 
-#define bdevio_device_get(x) (container_of(bdevio_device_t, io, (x)))
+#define bdevio_device_get(x) (CONTAINER_OF(bdevio_device_t, io, (x)))
 
 
 static int bdevio_read(io_func *_io, off_t _addr, size_t _sz, void *_dest)
