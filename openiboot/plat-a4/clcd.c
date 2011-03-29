@@ -10,6 +10,7 @@
 #include "mipi_dsim.h"
 #include "openiboot-asmhelpers.h"
 #include "pmu.h"
+#include "commands.h"
 
 static GammaTableDescriptor PinotGammaTables[] = {
 #if defined(CONFIG_A4)
@@ -144,6 +145,14 @@ static uint32_t atv_values[] = {
 	0xD8364, 0xD9368, 0xDA36C, 0xDB370, 0xDC374, 0xDD378, 0xDE378, 0xDE37C, 0xDF380, 0xE0384, 0xE1388, 0xE238C,
 	0xE3390, 0xE4394, 0xE5394, 0xE5398, 0xE639C, 0xE73A0, 0xE83A4, 0xE93A8, 0xEA3AC, 0xEB3B0, 0xEC3B0, 0xEC3B4,
 	0xED3B8, 0xEE3BC, 0xEF3C0, 0xEF3C0
+};
+
+static const PMURegisterData backlightOffData = {0x68, 0x0};
+
+static const PMURegisterData backlightData[] = {
+	{0x66, 0xD4},
+	{0x67, 0x0},
+	{0x68, 0x15}
 };
 
 volatile uint32_t* CurFramebuffer;
@@ -731,3 +740,37 @@ static void createFramebuffer(Framebuffer* framebuffer, uint32_t framebufferAddr
 		framebuffer->vline = vline_rgb565;
 	}
 }
+
+void lcd_set_backlight_level(int level) {
+	if (level == 0) {
+		pmu_write_regs(&backlightOffData, 1);
+	} else { 
+		PMURegisterData myBacklightData[sizeof(backlightData)/sizeof(PMURegisterData)];
+
+		memcpy(myBacklightData, backlightData, sizeof(myBacklightData));
+
+		if (level <= LCD_MAX_BACKLIGHT) {
+			int i;
+			for (i = 0; i < (sizeof(myBacklightData)/sizeof(PMURegisterData)); i++) {
+				if (myBacklightData[i].reg == LCD_BACKLIGHT_HIGH_REG) {
+					myBacklightData[i].data = level >> LCD_BACKLIGHT_HIGH_SHIFT;
+				} else if (myBacklightData[i].reg == LCD_BACKLIGHT_LOW_REG) {
+					myBacklightData[i].data = level & LCD_BACKLIGHT_LOW_MASK;
+				}
+			}
+		}
+		pmu_write_regs(myBacklightData, sizeof(myBacklightData)/sizeof(PMURegisterData));
+	}
+}
+
+void cmd_backlight(int argc, char** argv) {
+	if(argc < 2) {
+		bufferPrintf("Usage: %s <0-%d>\r\n", argv[0], LCD_MAX_BACKLIGHT);
+		return;
+	}
+
+	uint32_t level = parseNumber(argv[1]);
+	lcd_set_backlight_level(level);
+	bufferPrintf("backlight set to %d\r\n", level);
+}
+COMMAND("backlight", "set the backlight level", cmd_backlight);

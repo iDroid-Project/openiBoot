@@ -35,4 +35,10 @@
 #define DISPLAYID 4
 #endif
 
+#define LCD_MAX_BACKLIGHT         2047
+#define LCD_BACKLIGHT_HIGH_REG    0x66
+#define LCD_BACKLIGHT_LOW_REG     0x67
+#define LCD_BACKLIGHT_HIGH_SHIFT  3
+#define LCD_BACKLIGHT_LOW_MASK    7
+
 #endif
