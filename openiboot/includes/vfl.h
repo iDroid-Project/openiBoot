@@ -4,10 +4,6 @@
 #include "openiboot.h"
 #include "nand.h"
 
-#define ERROR_ARG	0x80000001
-#define ERROR_NAND	0x80000002
-#define ERROR_EMPTY	0x80000003
-
 // VFL Device Prototypes
 struct _vfl_device;
 

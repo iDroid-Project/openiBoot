@@ -3,6 +3,12 @@
 
 #include "openiboot.h"
 
+enum
+{
+	ENAND_EMPTY = ERROR(0x23),
+	ENAND_ECC = ERROR(0x24),
+};
+
 typedef enum _nand_device_info
 {
 	diPagesPerBlock,

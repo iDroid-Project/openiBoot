@@ -13,6 +13,8 @@ typedef long unsigned int size_t;
 typedef signed int intptr_t;
 typedef uint32_t fourcc_t;
 
+#include "error.h"
+
 #ifdef DEBUG
 #define OPENIBOOT_VERSION_DEBUG " (DEBUG)"
 #else
@@ -34,11 +36,6 @@ typedef uint32_t fourcc_t;
 #ifndef MAX
 #define MAX(a, b) (((a) > (b))? (a): (b))
 #endif
-
-#define ERROR_BIT		(0x80000000)
-#define ERROR(x)		((x) | ERROR_BIT)
-#define FAILED(x)		(((x) & ERROR_BIT) != 0)
-#define SUCCEEDED(x)	(((x) & ERROR_BIT) == 0)
 
 #define FOURCC(a, b, c, d) (d || (c << 8) || (b << 16) || (a << 24))
 

@@ -941,7 +941,7 @@ static uint32_t h2fmi_function_1(h2fmi_struct_t *_fmi,
 	uint32_t a = 0;
 	uint32_t b = 0;
 
-	uint32_t ret = (_val & 8)? 0x80000024: 1;
+	uint32_t ret = (_val & 8)? ENAND_ECC: 1;
 
 	if(_var)
 		*_var = (_val >> 16) & 0x1F;
@@ -985,7 +985,7 @@ static void h2fmi_some_mysterious_function(h2fmi_struct_t *_fmi, uint32_t _val)
 	uint32_t ret = h2fmi_function_1(_fmi, _val, &var_10,
 			_fmi->field_158, _fmi->bbt_format);
 	
-	if(ret == 0x80000024)
+	if(ret == ENAND_ECC)
 		_fmi->field_154++;
 	else if(ret == 0x80000025)
 		_fmi->field_150++;
@@ -993,7 +993,7 @@ static void h2fmi_some_mysterious_function(h2fmi_struct_t *_fmi, uint32_t _val)
 		_fmi->field_14C++;
 	else
 	{
-		if(ret != 0x80000024 && ret != 0x80000025)
+		if(ret != ENAND_ECC && ret != 0x80000025)
 			goto skipBlock;
 	}
 
@@ -1390,17 +1390,17 @@ int h2fmi_read_multi(h2fmi_struct_t *_fmi, uint16_t _num_pages, uint16_t *_chips
 
 		if(b != 0)
 		{
-			_fmi->failure_details.overall_status = b > _num_pages? 2 : 0x80000023;
+			_fmi->failure_details.overall_status = b > _num_pages? 2 : ENAND_EMPTY;
 		}
 		else
 		{
 			if(a != 0)
 			{
-				_fmi->failure_details.overall_status  = a > _num_pages? 0x80000025: 0x80000024;
+				_fmi->failure_details.overall_status  = a > _num_pages? 0x80000025: ENAND_ECC;
 			}
 			else if(_fmi->field_154 != 0)
 			{
-				_fmi->failure_details.overall_status = 0x80000024;
+				_fmi->failure_details.overall_status = ENAND_ECC;
 			}
 		}
 	}
@@ -1559,13 +1559,13 @@ uint32_t h2fmi_read_single_page(uint32_t _ce, uint32_t _page, uint8_t *_ptr, uin
 		}
 	}
 
-	uint32_t ret = 0;
-	if(read_ret == 0x80000023)
-		ret = 0x80000002;
-	else if(read_ret == 0x80000024)
+	uint32_t ret = EIO;
+	if(read_ret == ENAND_EMPTY)
+		ret = ENOENT;
+	else if(read_ret == ENAND_ECC)
 	{
 		bufferPrintf("fmi: UECC ce %d page 0x%08x.\r\n", _ce, _page);
-		ret = 0x80000002;
+		ret = ENOENT;
 	}
 	else if(read_ret == 0)
 	{

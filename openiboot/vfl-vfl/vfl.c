@@ -139,7 +139,7 @@ static int vfl_vfl_read_single_page(vfl_device_t *_vfl, uint32_t dwVpn, uint8_t*
 	if(dwVpn >= max_page)
 	{
 		bufferPrintf("ftl: No such virtual page %d (highest page %d).\r\n", dwVpn, max_page);
-		return ERROR_ARG;
+		return EINVAL;
 	}
 
 	uint16_t virtualBank;
@@ -152,28 +152,28 @@ static int vfl_vfl_read_single_page(vfl_device_t *_vfl, uint32_t dwVpn, uint8_t*
 
 	int ret = nand_device_read_single_page(vfl->device, virtualBank, physicalBlock, virtualPage, buffer, spare);
 
-	if(!empty_ok && ret == ERROR_EMPTY)
-		ret = ERROR_NAND;
+	if(!empty_ok && ret == ENOENT)
+		ret = EIO;
 
 	/*if(refresh_page) {
-		if((Geometry->field_2F <= 0 && ret == 0) || ret == ERROR_NAND) {
+		if((Geometry->field_2F <= 0 && ret == 0) || ret == EIO) {
 			bufferPrintf("ftl: setting refresh_page to TRUE due to the following factors: Geometry->field_2F = %x, ret = %d\r\n", Geometry->field_2F, ret);
 			*refresh_page = TRUE;
 		}
 	}*/
 
-	/*if(ret == ERROR_ARG || ret == ERROR_NAND) {
+	/*if(ret == EINVAL || ret == EIO) {
 		nand_bank_reset(virtualBank, 100);
 		ret = nand_read(virtualBank, page, buffer, spare, TRUE, TRUE);
-		if(!empty_ok && ret == ERROR_EMPTY) {
-			return ERROR_NAND;
+		if(!empty_ok && ret == ENOENT) {
+			return EIO;
 		}
 
-		if(ret == ERROR_ARG || ret == ERROR_NAND)
+		if(ret == EINVAL || ret == EIO)
 			return ret;
 	}*/
 
-	if(ret == ERROR_EMPTY && spare)
+	if(ret == ENOENT && spare)
 		memset(spare, 0xFF, vfl->geometry.num_ecc_bytes);
 
 	return ret;
