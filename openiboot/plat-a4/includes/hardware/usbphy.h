@@ -44,4 +44,7 @@
 #define USB_RESET2_DELAYUS 20
 #define USB_RESET_DELAYUS 1000
 
+// Clockgates
+#define USB_CLOCKGATE_UNK1 0x1D
+
 #endif

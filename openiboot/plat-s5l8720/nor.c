@@ -512,7 +512,7 @@ int nor_write(void* buffer, int offset, int len) {
 			return -1;
 		}
 		uint16_t* curSector = (uint16_t*)(sectorsToChange + (i * NORSectorSize));
-#ifdef CONFIG_IPOD_2G
+#ifdef CONFIG_IPOD_TOUCH_2G
 		// use an optimized SPI write that does groups of words at the same time.
 		//TODO: get this working for the iPhone 3G?
 		nor_serial_write_sector(i + startSector, (uint8_t *)curSector);

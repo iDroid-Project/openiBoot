@@ -15,10 +15,14 @@ typedef void (*printf_handler_t)(const char *_str);
 void panic();
 void system_panic(const char* format, ...);
 
+signed int signed_calculate_remainder(uint64_t x, uint64_t y);
+uint32_t calculate_remainder(uint64_t x, uint64_t y);
+
 void __assert(const char* file, int line, const char* m);
 void* memset(void* x, int fill, uint32_t size);
 void* memcpy(void* dest, const void* src, uint32_t size);
 int strcmp(const char* s1, const char* s2);
+int strncmp(const char* s1, const char* s2, size_t n);
 char* strchr(const char* s1, int s2);
 char* strstr(const char* s1, const char* s2);
 char* strdup(const char* str);

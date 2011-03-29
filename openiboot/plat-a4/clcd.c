@@ -9,6 +9,8 @@
 #include "lcd.h"
 #include "mipi_dsim.h"
 #include "openiboot-asmhelpers.h"
+#include "pmu.h"
+#include "commands.h"
 
 static GammaTableDescriptor PinotGammaTables[] = {
 #if defined(CONFIG_A4)
@@ -61,7 +63,7 @@ static GammaTableDescriptor PinotGammaTables[] = {
 		{{0x74040422, 0x71001D0, 0x71DDD340, 0x71C34D37, 3, 0xD03400, 0x340D0D, 0xC701C1C0, 0x37777771, 0x434D34DD, 0x4D34D0D3, 0xDDDD34D3, 0xD01DDDDD, 0x34D34, 0x3401C01C, 0x4504034, 0xC, 0}},
 	},
 #endif
-#if defined(CONFIG_IPOD_2G)
+#if defined(CONFIG_IPOD_TOUCH_2G)
 // iPod Touch 2G -- Should not be in plat-a4
 	{0x970387, 0xFFFFFF,
 		{{0x4041D422, 0x4001DD07, 0xDDDC003, 0x1C0, 0xDDDDDC00, 0x7774, 0xDC701C00, 0x74DDC771, 0x704D34D3, 0x7000, 0, 0x1C000000, 0x1DDC7777, 0xD000D00, 0x34D371D, 0x8A5D034D, 0xEB42, 0}},
@@ -145,13 +147,20 @@ static uint32_t atv_values[] = {
 	0xED3B8, 0xEE3BC, 0xEF3C0, 0xEF3C0
 };
 
+static const PMURegisterData backlightOffData = {0x68, 0x0};
+
+static const PMURegisterData backlightData[] = {
+	{0x66, 0xD4},
+	{0x67, 0x0},
+	{0x68, 0x15}
+};
+
 volatile uint32_t* CurFramebuffer;
 uint32_t* FRAMEBUFFER;
 
 static LCDInfo* LCDTable;
 static uint32_t TimePerMillionFrames = 0;
 
-static uint32_t dword_5FF3D04C = 0x3D278480;
 static uint32_t dword_5FF3D0D0;
 
 static int gammaVar1;
@@ -182,34 +191,13 @@ void displaytime_sleep(uint32_t time) {
 	task_sleep(time * TimePerMillionFrames / 1000);
 }
 
-int pmu_send_buffer(int bus, uint8_t buffer, uint8_t response, int check) {
-	uint8_t send_buffer[2] = { buffer, response };
-	uint8_t recv_buffer = 0;
-	int result;
-
-	i2c_tx(bus, 0xE9, (void*)&send_buffer, 2);
-	if (check && (i2c_rx(bus, 0xE8, (void*)&buffer, 1, (void*)&recv_buffer, 1), recv_buffer != response))
-		result = -1;
-	else
-		result = 0;
-	return result;
-}
-
 void sub_5FF08870(uint8_t arg) {
 	uint8_t v1;
 
 	v1 = (1049-50*arg)/50;
-	pmu_send_buffer(0, 0x6B, v1, 1);
+	pmu_write_reg(0x6B, v1, 1);
 	task_sleep(10);
-	pmu_send_buffer(0, 0x6C, v1 + 4, 1);
-}
-
-int signed_calculate_remainder(uint64_t x, uint64_t y) {
-	return (int)(x - y*(x/y));
-}
-
-uint32_t calculate_remainder(uint64_t x, uint64_t y) {
-	return (uint32_t)(x - y*(x/y));
+	pmu_write_reg(0x6C, v1 + 4, 1);
 }
 
 void lcd_fill_switch(OnOff on_off, uint32_t color) {
@@ -248,15 +236,13 @@ void configureLCDClock(uint32_t unkn1, int zero0, int zero1, int zero2, int zero
 	uint32_t v10;
 
 	// I actually hate this part. -- Bluerise
-	// dword_5FF3D04C == CalculatedFrequencyTable[4] == 0x3D278480;
-	// or 0x5B8D8000 because of different frequencies but I don't think so...
 	// <CPICH> it's just result = r0 - r1*(r0/r1)
 	// <CPICH> uint64_t r0, r1;
 
 	if (unkn1 == 0xA) {
 		v6 = 31;
-		v7 = dword_5FF3D04C;
-		v8 = dword_5FF3D04C / divider;
+		v7 = CalculatedFrequencyTable[3];
+		v8 = CalculatedFrequencyTable[3] / divider;
 		do
 		{
 			if (!calculate_remainder(v8, v6))
@@ -435,14 +421,14 @@ int pinot_init(LCDInfo* LCDTable, ColorSpace colorspace, uint32_t* panelID, Wind
 
 	bufferPrintf("pinot_init()\r\n");
 	DotPitch = LCDTable->DotPitch;
-#if defined(CONFIG_IPAD)
+#if defined(CONFIG_IPAD_1G)
 	gpio_pin_output(0x1404, 0);
 #else
 	gpio_pin_output(0x206, 0);
 #endif
 	task_sleep(10);
 	mipi_dsim_init(LCDTable);
-#if defined(CONFIG_IPAD)
+#if defined(CONFIG_IPAD_1G)
 	gpio_pin_output(0x1404, 1);
 #else
 	gpio_pin_output(0x206, 1);
@@ -487,7 +473,7 @@ int pinot_init(LCDInfo* LCDTable, ColorSpace colorspace, uint32_t* panelID, Wind
 
 	*panelID = pinot_panel_id;
 
-#if !defined(CONFIG_IPAD)
+#if !defined(CONFIG_IPAD_1G)
 	if (!dword_5FF3AE0C)
 		return dword_5FF3AE0C;
 
@@ -746,3 +732,52 @@ static void createFramebuffer(Framebuffer* framebuffer, uint32_t framebufferAddr
 		framebuffer->vline = vline_rgb565;
 	}
 }
+
+#if !defined(CONFIG_IPAD_1G)
+void lcd_set_backlight_level(int level) {
+	if (level == 0) {
+		pmu_write_regs(&backlightOffData, 1);
+	} else { 
+		PMURegisterData myBacklightData[sizeof(backlightData)/sizeof(PMURegisterData)];
+
+		memcpy(myBacklightData, backlightData, sizeof(myBacklightData));
+
+		if (level <= LCD_MAX_BACKLIGHT) {
+			int i;
+			for (i = 0; i < (sizeof(myBacklightData)/sizeof(PMURegisterData)); i++) {
+				if (myBacklightData[i].reg == LCD_BACKLIGHT_HIGH_REG) {
+					myBacklightData[i].data = level >> LCD_BACKLIGHT_HIGH_SHIFT;
+				} else if (myBacklightData[i].reg == LCD_BACKLIGHT_LOW_REG) {
+					myBacklightData[i].data = level & LCD_BACKLIGHT_LOW_MASK;
+				}
+			}
+		}
+		pmu_write_regs(myBacklightData, sizeof(myBacklightData)/sizeof(PMURegisterData));
+	}
+}
+#else
+void lcd_set_backlight_level(int level) {
+	uint32_t _arg = 0x1000;
+	clock_gate_switch(0x3E, ON);
+	SET_REG(0xBF600000, (((((((((uint64_t)TicksPerSec+1999999)*(uint64_t)0x431BDE83) >> 32) >> 19) - 1) & 0xFF) << 8) | 0x3));
+	SET_REG(0xBF600018, ((_arg | 0x80) | (level & 0x7F )) | ((level & 0x780) << 1));
+	SET_REG(0xBF600014, 3);
+	while(!(GET_REG(0xBF600014) & 1));
+	if(level)
+		gpio_pin_output(0x1403, 1);
+	else
+		gpio_pin_output(0x1403, 0);
+}
+#endif
+
+void cmd_backlight(int argc, char** argv) {
+	if(argc < 2) {
+		bufferPrintf("Usage: %s <0-%d>\r\n", argv[0], LCD_MAX_BACKLIGHT);
+		return;
+	}
+
+	uint32_t level = parseNumber(argv[1]);
+	lcd_set_backlight_level(level);
+	bufferPrintf("backlight set to %d\r\n", level);
+}
+COMMAND("backlight", "set the backlight level", cmd_backlight);

@@ -1,0 +1,6 @@
+*.img3
+*.img2
+*.bin
+*_openiboot
+iBSS.*
+*.o

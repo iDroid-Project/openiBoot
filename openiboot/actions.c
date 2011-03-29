@@ -245,7 +245,7 @@ static void setup_wifi_tags()
 	uint32_t calSize;
 	uint8_t* cal;
 
-#if defined(CONFIG_IPOD) || defined(CONFIG_IPOD_2G) 
+#if defined(CONFIG_IPOD_TOUCH_1G) || defined(CONFIG_IPOD_TOUCH_2G) 
 	return;
 #else
 	if(radio_nvram_get(2, &mac) < 0)
@@ -383,7 +383,7 @@ static int load_multitouch_images()
         free(mainData);
 #endif
 
-#if defined(CONFIG_IPHONE_3G) || defined(CONFIG_IPOD)
+#if defined(CONFIG_IPHONE_3G) || defined(CONFIG_IPOD_TOUCH_1G)
         Image* image = images_get(fourcc("mtz2"));
         if(image == NULL) {
             return 0;

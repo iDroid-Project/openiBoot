@@ -177,10 +177,16 @@ int uart_setup() {
 	prev_printf_handler = addPrintfHandler(uart_printf_handler);
 	UartHasInit = TRUE;
 
-	// Enabling an interrupt and running a new task for handling UART commands
+	// Set UART0 to IRQ mode with a 0x400 bytes buffer
 	uart_set_rx_buf(0, UART_IRQ_MODE, 0x400);
-	interrupt_install(UART_INTERRUPT, uartIRQHandler, 0);
-	interrupt_enable(UART_INTERRUPT);
+
+	// Install and enable the UART interrupts
+	for(i = 0; i < NUM_UARTS; i++) {
+		interrupt_install(UART_INTERRUPT + i, uartIRQHandler, i);
+		interrupt_enable(UART_INTERRUPT + i);
+	}
+
+	// Run a new task for handling UART commands (from UART0)
 	task_start(&uart_task, &uart_run, 0);
 
 	return 0;

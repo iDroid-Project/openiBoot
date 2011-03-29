@@ -37,7 +37,7 @@
 #define GPIO_SPI0_CS0_IPHONE 0x400
 #define GPIO_SPI0_CS0_IPOD 0x700
 
-#ifdef CONFIG_IPOD
+#ifdef CONFIG_IPOD_TOUCH_1G
 #define GPIO_SPI2_CS0 0x1804
 #define GPIO_SPI2_CS1 0x705
 #endif
@@ -46,11 +46,11 @@
 #define GPIO_SPI2_CS0 0x705
 #endif
 
-#if defined(CONFIG_IPHONE_4) || defined(CONFIG_IPAD)
+#if defined(CONFIG_IPHONE_4) || defined(CONFIG_IPAD_1G)
 #define GPIO_SPI2_CS0 0x705 // No!
 #endif
 
-#ifdef CONFIG_IPOD
+#ifdef CONFIG_IPOD_TOUCH_1G
 #define GPIO_SPI0_CS0 GPIO_SPI0_CS0_IPOD
 #else
 #define GPIO_SPI0_CS0 GPIO_SPI0_CS0_IPHONE

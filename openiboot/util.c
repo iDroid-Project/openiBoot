@@ -36,6 +36,14 @@ void system_panic(const char* format, ...) {
 	panic();
 }
 
+signed int signed_calculate_remainder(uint64_t x, uint64_t y) {
+	return (signed int)(x - y*(x/y));
+}
+
+uint32_t calculate_remainder(uint64_t x, uint64_t y) {
+	return (uint32_t)(x - y*(x/y));
+}
+
 void* memset(void* x, int fill, uint32_t size) {
 	uint32_t i;
 	for(i = 0; i < size; i++) {
@@ -55,6 +63,15 @@ void* memcpy(void* dest, const void* src, uint32_t size) {
 int strcmp(const char* s1, const char* s2) {
 	while(*s1 == *(s2++)) {
 		if(*(s1++) == '\0')
+			return 0;
+	}
+
+	return (*(const unsigned char *)s1 - *(const unsigned char *)(s2 - 1));
+}
+
+int strncmp(const char* s1, const char* s2, size_t n) {
+	while(n-- > 0 && *s1 == *(s2++)) {
+		if(n == 0 || *(s1++) == '\0')
 			return 0;
 	}
 

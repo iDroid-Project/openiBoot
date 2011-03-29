@@ -61,4 +61,4 @@ plat_s5l8720_src = arch_arm_src + env.Localize([
 	]) + hfs_src
 Export('plat_s5l8720_src')
 
-env.SConscript('iPod2G.SConscript', 'env')
+env.SConscript('iPodTouch2G.SConscript', 'env')
