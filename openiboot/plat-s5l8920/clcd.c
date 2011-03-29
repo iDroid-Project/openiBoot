@@ -93,14 +93,6 @@ void sub_5FF08870(uint8_t arg) {
 	// Empty on 3GS
 }
 
-int signed_calculate_remainder(uint64_t x, uint64_t y) {
-	return (int)(x - y*(x/y));
-}
-
-uint32_t calculate_remainder(uint64_t x, uint64_t y) {
-	return (uint32_t)(x - y*(x/y));
-}
-
 void framebuffer_fill(Framebuffer* framebuffer, int x, int y, int width, int height, int fill) {
 	if(x >= framebuffer->width)
 		return;
