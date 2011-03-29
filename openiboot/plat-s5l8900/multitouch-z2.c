@@ -1,5 +1,5 @@
 #include "openiboot.h"
-#include "openiboot-asmhelpers.h"
+#include "arm/arm.h"
 #include "multitouch.h"
 #include "commands.h"
 #include "hardware/multitouch.h"

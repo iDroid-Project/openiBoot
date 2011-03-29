@@ -82,7 +82,7 @@ int radio_setup()
 
 static void radio_init()
 {
-	radio_setup();
+	//radio_setup();
 }
 MODULE_INIT(radio_init);
 

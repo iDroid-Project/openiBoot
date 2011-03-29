@@ -7,7 +7,7 @@ env.Append(CPPDEFINES = ['CONFIG_ARM'])
 
 arch_arm_src = env.Localize([
 	'entry.S',
-	'openiboot-asmhelpers.S',
+	'asmhelpers.S',
 	'arm.c',
 	])
 Export('arch_arm_src')

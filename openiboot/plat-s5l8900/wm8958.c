@@ -25,7 +25,7 @@
 #include "dma.h"
 #include "util.h"
 #include "radio.h"
-#include "openiboot-asmhelpers.h"
+#include "arm/arm.h"
 
 const void* pcm_buffer;
 uint32_t pcm_buffer_size;

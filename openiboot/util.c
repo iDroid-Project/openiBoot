@@ -2,7 +2,7 @@
 #include "hardware/platform.h"
 #include "uart.h"
 #include "util.h"
-#include "openiboot-asmhelpers.h"
+#include "arm/arm.h"
 #include "framebuffer.h"
 
 static printf_handler_t printf_handler = NULL;

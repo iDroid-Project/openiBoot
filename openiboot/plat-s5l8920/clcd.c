@@ -9,7 +9,7 @@
 #include "lcd.h"
 #include "mipi_dsim.h"
 #include "framebuffer.h"
-#include "openiboot-asmhelpers.h"
+#include "arm/arm.h"
 
 static GammaTableDescriptor PinotGammaTables[] = {
 	// 3GS Gamma Tables
@@ -91,14 +91,6 @@ int pmu_send_buffer(int bus, uint8_t buffer, uint8_t response, int check) {
 
 void sub_5FF08870(uint8_t arg) {
 	// Empty on 3GS
-}
-
-int signed_calculate_remainder(uint64_t x, uint64_t y) {
-	return (int)(x - y*(x/y));
-}
-
-uint32_t calculate_remainder(uint64_t x, uint64_t y) {
-	return (uint32_t)(x - y*(x/y));
 }
 
 void framebuffer_fill(Framebuffer* framebuffer, int x, int y, int width, int height, int fill) {

@@ -7,9 +7,8 @@
 #include "util.h"
 #include "cdma.h"
 #include "hardware/dma.h"
-#include "arm.h"
 #include "commands.h"
-#include "openiboot-asmhelpers.h"
+#include "arm/arm.h"
 #include "interrupt.h"
 
 typedef struct _nand_chipid

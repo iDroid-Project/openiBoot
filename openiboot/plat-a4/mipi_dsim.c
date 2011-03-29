@@ -5,7 +5,7 @@
 #include "timer.h"
 #include "tasks.h"
 #include "gpio.h"
-#include "openiboot-asmhelpers.h"
+#include "arm/arm.h"
 
 static int mipi_dsim_has_init = 0;
 

@@ -5,10 +5,9 @@
 #include "clock.h"
 #include "util.h"
 #include "cdma.h"
-#include "arm.h"
 #include "commands.h"
 #include "vfl/vfl.h"
-#include "openiboot-asmhelpers.h"
+#include "arm/arm.h"
 
 typedef struct _nand_chipid
 {
