@@ -62,6 +62,7 @@ void platform_init()
 	displaypipe_init();
 	framebuffer_setup();
 	framebuffer_setdisplaytext(TRUE);
+	lcd_set_backlight_level(1500);
 }
 
 void platform_shutdown()
