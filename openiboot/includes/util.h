@@ -15,9 +15,6 @@ typedef void (*printf_handler_t)(const char *_str);
 void panic();
 void system_panic(const char* format, ...);
 
-signed int signed_calculate_remainder(uint64_t x, uint64_t y);
-uint32_t calculate_remainder(uint64_t x, uint64_t y);
-
 void __assert(const char* file, int line, const char* m);
 void* memset(void* x, int fill, uint32_t size);
 void* memcpy(void* dest, const void* src, uint32_t size);

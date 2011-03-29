@@ -339,7 +339,11 @@ static uint8_t *h2fmi_wmr_data = NULL;
 static uint32_t h2fmi_ftl_count = 0;
 static uint32_t h2fmi_ftl_databuf = 0;
 static uint32_t h2fmi_ftl_smth[2] = {0, 0};
-static uint32_t h2fmi_data_whitening_enabled = 1;
+uint32_t h2fmi_data_whitening_enabled = 1;
+
+void h2fmi_set_whitening(uint32_t _arg) {
+	h2fmi_data_whitening_enabled = _arg;
+}
 
 static int compare_board_ids(nand_board_id_t *a, nand_board_id_t *b)
 {
@@ -1522,6 +1526,39 @@ static void h2fmi_setup_aes(h2fmi_struct_t *_fmi, uint32_t _enabled, uint32_t _e
 	else
 		_fmi->aes_info = NULL;
 
+}
+
+uint32_t h2fmi_read_multi_ftl(uint32_t _ce, uint32_t _page, uint8_t *_ptr)
+{
+	uint32_t bus = h2fmi_map[_ce].bus;
+	uint32_t chip = h2fmi_map[_ce].chip;
+
+	h2fmi_struct_t *fmi = h2fmi_busses[bus];
+
+	DataCacheOperation(3, (uint32_t)_ptr, round_up(fmi->bytes_per_page, 64));
+
+	h2fmi_setup_aes(fmi, h2fmi_aes_enabled, 0, (uint32_t)_ptr);
+
+	uint32_t read_ret = h2fmi_read_single(fmi, chip, _page, _ptr, h2fmi_wmr_data, NULL, NULL);
+
+	uint32_t ret = 0;
+
+	if(read_ret == 2)
+		ret = 1;
+	else if(read_ret > 2) {
+		if(read_ret + 0x80000000 - 0x23 > 2)
+			ret = 0x80000001;
+		else
+			ret = 0x80000002;
+	}
+	else if(read_ret != 0)
+		ret = 0x80000001;
+	else
+		ret = 0;
+
+	DataCacheOperation(3, (uint32_t)_ptr, round_up(fmi->bytes_per_page, 64));
+
+	return ret;
 }
 
 uint32_t h2fmi_read_single_page(uint32_t _ce, uint32_t _page, uint8_t *_ptr, uint8_t *_meta_ptr, uint8_t *_6, uint8_t *_7, uint32_t _8)
