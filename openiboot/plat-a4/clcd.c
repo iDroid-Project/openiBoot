@@ -191,14 +191,6 @@ void sub_5FF08870(uint8_t arg) {
 	pmu_write_reg(0x6C, v1 + 4, 1);
 }
 
-int signed_calculate_remainder(uint64_t x, uint64_t y) {
-	return (int)(x - y*(x/y));
-}
-
-uint32_t calculate_remainder(uint64_t x, uint64_t y) {
-	return (uint32_t)(x - y*(x/y));
-}
-
 void lcd_fill_switch(OnOff on_off, uint32_t color) {
 	if (on_off == ON) {
 		if (color)

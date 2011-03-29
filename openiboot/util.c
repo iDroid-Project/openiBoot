@@ -36,6 +36,14 @@ void system_panic(const char* format, ...) {
 	panic();
 }
 
+signed int signed_calculate_remainder(uint64_t x, uint64_t y) {
+	return (signed int)(x - y*(x/y));
+}
+
+uint32_t calculate_remainder(uint64_t x, uint64_t y) {
+	return (uint32_t)(x - y*(x/y));
+}
+
 void* memset(void* x, int fill, uint32_t size) {
 	uint32_t i;
 	for(i = 0; i < size; i++) {
