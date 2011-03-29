@@ -258,7 +258,7 @@ void configureLCDClock(uint32_t unkn1, int zero0, int zero1, int zero2, int zero
 		v8 = CalculatedFrequencyTable[3] / divider;
 		do
 		{
-			if (!calculate_remainder(v8, v6))
+			if (!(v8 % v6))
 				break;
 			--v6;
 		}
@@ -397,7 +397,7 @@ int displaypipe_init() {
 	uint32_t curBuf;
 	buffer1[0] = 1;
 	for (curBuf = 0; curBuf != 256; curBuf++) {
-		if (signed_calculate_remainder(curBuf+1, (256 >> (10 - (uint8_t)(LCDTable->bitsPerPixel / 3)))) == 1)
+		if ((curBuf+1 % (256 >> (10 - (uint8_t)(LCDTable->bitsPerPixel / 3)))) == 1)
 			buffer1[curBuf] = buffer1[curBuf] - 1;
 		buffer1[curBuf+1] = buffer1[curBuf] + 4;
 		buffer2[curBuf] = buffer1[curBuf];
@@ -746,6 +746,7 @@ static void createFramebuffer(Framebuffer* framebuffer, uint32_t framebufferAddr
 	}
 }
 
+#if !defined(CONFIG_IPAD_1G)
 void lcd_set_backlight_level(int level) {
 	if (level == 0) {
 		pmu_write_regs(&backlightOffData, 1);
@@ -767,6 +768,20 @@ void lcd_set_backlight_level(int level) {
 		pmu_write_regs(myBacklightData, sizeof(myBacklightData)/sizeof(PMURegisterData));
 	}
 }
+#else
+void lcd_set_backlight_level(int level) {
+	uint32_t _arg = 0x1000;
+	clock_gate_switch(0x3E, ON);
+	SET_REG(0xBF600000, (((((((((uint64_t)TicksPerSec+1999999)*(uint64_t)0x431BDE83) >> 32) >> 19) - 1) & 0xFF) << 8) | 0x3));
+	SET_REG(0xBF600018, ((_arg | 0x80) | (level & 0x7F )) | ((level & 0x780) << 1));
+	SET_REG(0xBF600014, 3);
+	while(!(GET_REG(0xBF600014) & 1));
+	if(level)
+		gpio_pin_output(0x1403, 1);
+	else
+		gpio_pin_output(0x1403, 0);
+}
+#endif
 
 void cmd_backlight(int argc, char** argv) {
 	if(argc < 2) {
