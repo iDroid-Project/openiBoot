@@ -132,13 +132,13 @@ typedef struct _h2fmi_struct
 	uint32_t interrupt;
 } h2fmi_struct_t;
 
-extern nand_geometry_t h2fmi_geometry;
+extern h2fmi_geometry_t h2fmi_geometry;
 uint32_t h2fmi_aes_enabled;
 uint32_t h2fmi_data_whitening_enabled;
 
 void h2fmi_set_encryption(uint32_t _arg);
 void h2fmi_set_whitening(uint32_t _arg);
-uint32_t h2fmi_read_single_page(uint32_t _ce, uint32_t _page, uint8_t *_ptr, uint8_t *_meta_ptr, uint8_t *_6, uint8_t *_7, uint32_t _8);
-uint32_t h2fmi_read_multi_ftl(uint32_t _ce, uint32_t _page, uint8_t *_ptr);
+error_t h2fmi_read_single_page(uint32_t _ce, uint32_t _page, uint8_t *_ptr, uint8_t *_meta_ptr, uint8_t *_6, uint8_t *_7, uint32_t _8);
+error_t h2fmi_read_multi_ftl(uint32_t _ce, uint32_t _page, uint8_t *_ptr);
 
 #endif //H2FMI_H

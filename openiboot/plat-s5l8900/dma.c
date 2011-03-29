@@ -6,7 +6,7 @@
 #include "clock.h"
 #include "timer.h"
 #include "interrupt.h"
-#include "openiboot-asmhelpers.h"
+#include "arm/arm.h"
 
 static const int ControllerLookupTable[] = {
 	1, 1, 1, 1, 1,

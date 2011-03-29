@@ -1,5 +1,5 @@
 #include "bdev.h"
-#include "openiboot-asmhelpers.h"
+#include "arm/arm.h"
 #include "util.h"
 
 static LinkedList bdev_list = {&bdev_list, &bdev_list};

@@ -1,5 +1,5 @@
 #include "openiboot.h"
-#include "openiboot-asmhelpers.h"
+#include "arm/arm.h"
 #include "commands.h"
 #include "util.h"
 
@@ -95,7 +95,7 @@ void cmd_hexdump(int argc, char** argv) {
 	uint32_t address = parseNumber(argv[1]);
 	uint32_t len = parseNumber(argv[2]);
 	bufferPrintf("dumping memory 0x%x - 0x%x\r\n", address, address + len);
-	hexdump(address, len);
+	hexdump((void*)address, len);
 }
 COMMAND("hexdump", "display a block of memory like 'hexdump -C'", cmd_hexdump);
 

@@ -1,5 +1,5 @@
 #include "openiboot.h"
-#include "openiboot-asmhelpers.h"
+#include "arm/arm.h"
 #include "wdt.h"
 #include "commands.h"
 #include "interrupt.h"

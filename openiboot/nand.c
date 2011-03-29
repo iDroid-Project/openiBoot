@@ -17,7 +17,7 @@ nand_device_t *nand_device_allocate()
 	return ret;
 }
 
-int nand_device_read_single_page(nand_device_t *_dev, uint32_t _chip, uint32_t _block,
+error_t nand_device_read_single_page(nand_device_t *_dev, uint32_t _chip, uint32_t _block,
 		uint32_t _page, uint8_t *_buffer, uint8_t *_spareBuffer)
 {
 	if(!_dev->read_single_page)
@@ -26,7 +26,7 @@ int nand_device_read_single_page(nand_device_t *_dev, uint32_t _chip, uint32_t _
 	return _dev->read_single_page(_dev, _chip, _block, _page, _buffer, _spareBuffer);
 }
 
-int nand_device_write_single_page(nand_device_t *_dev, uint32_t _chip, uint32_t _block,
+error_t nand_device_write_single_page(nand_device_t *_dev, uint32_t _chip, uint32_t _block,
 		uint32_t _page, uint8_t *_buffer, uint8_t *_spareBuffer)
 {
 	if(!_dev->write_single_page)
@@ -47,4 +47,10 @@ uint32_t nand_device_get_info(nand_device_t *_dev, nand_device_info_t _item)
 		return _dev->get_info(_dev, _item);
 
 	return 0;
+}
+
+void nand_device_set_info(nand_device_t *_dev, nand_device_info_t _item, uint32_t _val)
+{
+	if(_dev->get_info)
+		_dev->set_info(_dev, _item, _val);
 }
