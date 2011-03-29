@@ -733,6 +733,7 @@ static void createFramebuffer(Framebuffer* framebuffer, uint32_t framebufferAddr
 	}
 }
 
+#if !defined(CONFIG_IPAD_1G)
 void lcd_set_backlight_level(int level) {
 	if (level == 0) {
 		pmu_write_regs(&backlightOffData, 1);
@@ -754,6 +755,20 @@ void lcd_set_backlight_level(int level) {
 		pmu_write_regs(myBacklightData, sizeof(myBacklightData)/sizeof(PMURegisterData));
 	}
 }
+#else
+void lcd_set_backlight_level(int level) {
+	uint32_t _arg = 0x1000;
+	clock_gate_switch(0x3E, ON);
+	SET_REG(0xBF600000, (((((((((uint64_t)TicksPerSec+1999999)*(uint64_t)0x431BDE83) >> 32) >> 19) - 1) & 0xFF) << 8) | 0x3));
+	SET_REG(0xBF600018, ((_arg | 0x80) | (level & 0x7F )) | ((level & 0x780) << 1));
+	SET_REG(0xBF600014, 3);
+	while(!(GET_REG(0xBF600014) & 1));
+	if(level)
+		gpio_pin_output(0x1403, 1);
+	else
+		gpio_pin_output(0x1403, 0);
+}
+#endif
 
 void cmd_backlight(int argc, char** argv) {
 	if(argc < 2) {
