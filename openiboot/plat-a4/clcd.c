@@ -229,6 +229,19 @@ void lcd_fill(uint32_t color) {
 	lcd_fill_switch(ON, color);
 }
 
+void lcd_shutdown() {
+	if (LCDTable) {
+		framebuffer_fill(&currentWindow->framebuffer, 0, 0, currentWindow->framebuffer.width, currentWindow->framebuffer.height, framebufferLastFill);
+		task_sleep(TimePerMillionFrames * 2);
+		
+		// Removed because it halts for some reason. -Oranav
+		//if (LCDTable->unkn17 == 3)
+		//	pinot_quiesce();
+		
+		lcd_fill_switch(OFF, 0);
+	}
+}
+
 void configureLCDClock(uint32_t unkn1, int zero0, int zero1, int zero2, int zero3, unsigned int divider) {
 	uint32_t v6;
 	uint32_t v7;
@@ -384,7 +397,7 @@ int displaypipe_init() {
 	uint32_t curBuf;
 	buffer1[0] = 1;
 	for (curBuf = 0; curBuf != 256; curBuf++) {
-		if ((curBuf+1 % (256 >> (10 - (uint8_t)(LCDTable->bitsPerPixel / 3)))) == 1)
+		if (((curBuf+1) % (256 >> (10 - (uint8_t)(LCDTable->bitsPerPixel / 3)))) == 1)
 			buffer1[curBuf] = buffer1[curBuf] - 1;
 		buffer1[curBuf+1] = buffer1[curBuf] + 4;
 		buffer2[curBuf] = buffer1[curBuf];

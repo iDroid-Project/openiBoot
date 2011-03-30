@@ -8,16 +8,20 @@
 #include "timer.h"
 #include "gpio.h"
 #include "util.h"
+#include "lcd.h"
+
+static uint32_t GPMemCachedPresent = 0;
+static uint8_t GPMemCache[PMU_MAXREG + 1];
 
 static void pmu_init_boot()
 {
-	// TODO
+	pmu_set_iboot_stage(0x20);
 }
 MODULE_INIT_BOOT(pmu_init_boot);
 
 static void pmu_init()
 {
-	// TODO
+	pmu_set_iboot_stage(0);
 }
 MODULE_INIT(pmu_init);
 
@@ -130,8 +134,58 @@ void pmu_write_oocshdwn(int data) {
 
 void pmu_poweroff() {
 	OpenIBootShutdown();
-	// lcd_shutdown();
+	lcd_set_backlight_level(0);
+	lcd_shutdown();
+	pmu_set_iboot_stage(0);
 	pmu_write_oocshdwn(1);
+}
+
+void pmu_set_iboot_stage(uint8_t stage) {
+	uint8_t state = 0;
+	
+	pmu_get_gpmem_reg(PMU_IBOOTSTATE, &state);
+	
+	if ((state & 0xD0) != 0x80) {
+		// There was some check here, omitted for now. -Oranav
+		pmu_set_gpmem_reg(PMU_IBOOTSTAGE, stage);
+	}
+}
+
+int pmu_get_gpmem_reg(int reg, uint8_t* out) {
+	if (reg > PMU_MAXREG)
+		return -1;
+	
+	// Check whether the register is already cached.
+	if ((GPMemCachedPresent & (0x1 << reg)) == 0) {
+		uint8_t registers[1];
+
+		registers[0] = reg ^ 0x80;
+
+		if (i2c_rx(PMU_I2C_BUS, PMU_GETADDR, registers, 1, &GPMemCache[reg], 1) != 0) {
+			return -1;
+		}
+
+		GPMemCachedPresent |= (0x1 << reg);
+	}
+
+	*out = GPMemCache[reg];
+
+	return 0;	
+}
+
+int pmu_set_gpmem_reg(int reg, uint8_t data) {
+	if (reg > PMU_MAXREG)
+		return -1;
+	
+	// If the data isn't cached,
+	// Or if the cached data differs than what we write, write it.
+	if ((GPMemCachedPresent & (0x1 << reg)) == 0 || GPMemCache[reg] != data) {
+		GPMemCache[reg] = data;
+		GPMemCachedPresent |= (0x1 << reg);
+		pmu_write_reg(reg ^ 0x80, data, FALSE);
+	}
+
+	return 0;
 }
 
 static int query_adc(int mux) {
