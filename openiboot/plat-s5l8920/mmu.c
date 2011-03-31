@@ -2,7 +2,7 @@
 #include "mmu.h"
 #include "hardware/arm.h"
 #include "hardware/platform.h"
-#include "openiboot-asmhelpers.h"
+#include "arm/arm.h"
 
 uint32_t* CurrentPageTable;
 

@@ -2,7 +2,7 @@
 #include "interrupt.h"
 #include "hardware/interrupt.h"
 #include "util.h"
-#include "openiboot-asmhelpers.h"
+#include "arm/arm.h"
 
 int interrupt_setup() {
 	SET_REG(VIC0 + VICINTENCLEAR, 0xFFFFFFFF); // disable all interrupts

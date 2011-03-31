@@ -9,7 +9,7 @@
 #include "lcd.h"
 #include "mipi_dsim.h"
 #include "framebuffer.h"
-#include "openiboot-asmhelpers.h"
+#include "arm/arm.h"
 
 static GammaTableDescriptor PinotGammaTables[] = {
 	// 3GS Gamma Tables

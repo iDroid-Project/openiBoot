@@ -5,7 +5,7 @@
 #include "timer.h"
 #include "clock.h"
 #include "util.h"
-#include "openiboot-asmhelpers.h"
+#include "arm/arm.h"
 #include "dma.h"
 #include "hardware/interrupt.h"
 

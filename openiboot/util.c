@@ -2,7 +2,7 @@
 #include "hardware/platform.h"
 #include "uart.h"
 #include "util.h"
-#include "openiboot-asmhelpers.h"
+#include "arm/arm.h"
 #include "framebuffer.h"
 
 static printf_handler_t printf_handler = NULL;
@@ -34,14 +34,6 @@ void system_panic(const char* format, ...) {
 	bufferPrint(buffer);
 	LeaveCriticalSection();
 	panic();
-}
-
-signed int signed_calculate_remainder(uint64_t x, uint64_t y) {
-	return (signed int)(x - y*(x/y));
-}
-
-uint32_t calculate_remainder(uint64_t x, uint64_t y) {
-	return (uint32_t)(x - y*(x/y));
 }
 
 void* memset(void* x, int fill, uint32_t size) {
@@ -435,14 +427,15 @@ void buffer_dump_memory2(uint32_t start, int length, int width) {
 }
 
 
-void hexdump(uint32_t start, int length) {
-	uint32_t curPos = start;
+void hexdump(void *start, int length) {
+	uint32_t curPos = (uint32_t)start;
+	uint32_t end = (uint32_t)start + length;
 	int x = 0;
 
 	uint8_t line[16];
 	int idx = 0;
 
-	while(curPos < (start + length)) {
+	while(curPos < end) {
 		if(x == 0) {
 			bufferPrintf("%08x ", (unsigned int) curPos);
 		}

@@ -1,6 +1,5 @@
 #include "openiboot.h"
-#include "openiboot-asmhelpers.h"
-#include "arm.h"
+#include "arm/arm.h"
 #include "hardware/a4.h"
 #include "uart.h"
 #include "usb.h"
@@ -62,6 +61,7 @@ void platform_init()
 	displaypipe_init();
 	framebuffer_setup();
 	framebuffer_setdisplaytext(TRUE);
+	lcd_set_backlight_level(1500);
 }
 
 void platform_shutdown()

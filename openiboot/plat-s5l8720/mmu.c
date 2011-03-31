@@ -2,7 +2,7 @@
 #include "mmu.h"
 #include "hardware/s5l8720.h"
 #include "hardware/arm.h"
-#include "openiboot-asmhelpers.h"
+#include "arm/arm.h"
 
 uint32_t* CurrentPageTable;
 
