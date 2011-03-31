@@ -8,7 +8,7 @@
 #include "gpio.h"
 #include "lcd.h"
 #include "mipi_dsim.h"
-#include "openiboot-asmhelpers.h"
+#include "arm/arm.h"
 #include "pmu.h"
 #include "commands.h"
 

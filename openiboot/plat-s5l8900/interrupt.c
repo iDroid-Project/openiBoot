@@ -3,7 +3,7 @@
 #include "hardware/interrupt.h"
 #include "hardware/edgeic.h"
 #include "util.h"
-#include "openiboot-asmhelpers.h"
+#include "arm/arm.h"
 
 int interrupt_setup() {
 	if((0xfff & (GET_REG(VIC0 + VICPERIPHID0) | (GET_REG(VIC0 + VICPERIPHID1) << 8) | (GET_REG(VIC0 + VICPERIPHID2) << 16) | (GET_REG(VIC0 + VICPERIPHID3) << 24))) != 0x192) {

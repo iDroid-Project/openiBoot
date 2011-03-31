@@ -1,8 +1,7 @@
 #include "openiboot.h"
-#include "openiboot-asmhelpers.h"
+#include "arm/arm.h"
 #include "hardware/arm.h"
 #include "hardware/platform.h"
-#include "arm.h"
 
 int arm_setup() {
 	CleanAndInvalidateCPUDataCache();
