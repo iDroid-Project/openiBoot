@@ -6,7 +6,7 @@
 #include "interrupt.h"
 #include "tasks.h"
 #include "commands.h"
-#include "openiboot-asmhelpers.h"
+#include "arm/arm.h"
 #include "util.h"
 
 const UARTRegisters HWUarts[] = {
