@@ -1,12 +1,12 @@
 #include "bdev.h"
-#include "openiboot-asmhelpers.h"
+#include "arm/arm.h"
 #include "util.h"
 
 static LinkedList bdev_list = {&bdev_list, &bdev_list};
 
 static inline block_device_t *bdev_get(LinkedList *_ptr)
 {
-	return container_of(block_device_t, list_ptr, _ptr);
+	return CONTAINER_OF(block_device_t, list_ptr, _ptr);
 }
 
 static int block_device_prepare(block_device_t *_bdev)
@@ -85,7 +85,7 @@ int block_device_setup(block_device_t *_bdev)
 		if(ret >= 0)
 		{
 			int i;
-			for(i = 0; i < array_size(_bdev->mbr.partitions); i++)
+			for(i = 0; i < ARRAY_SIZE(_bdev->mbr.partitions); i++)
 			{
 				MBRPartitionRecord *record = &_bdev->mbr.partitions[i];	
 				if(record->type == 0xee)

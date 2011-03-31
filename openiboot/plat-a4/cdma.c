@@ -1,6 +1,5 @@
 #include "openiboot.h"
-#include "openiboot-asmhelpers.h"
-#include "arm.h"
+#include "arm/arm.h"
 #include "util.h"
 #include "malloc.h"
 #include "hardware/dma.h"

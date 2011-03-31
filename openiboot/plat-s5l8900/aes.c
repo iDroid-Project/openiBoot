@@ -4,7 +4,7 @@
 #include "hardware/aes.h"
 #include "util.h"
 #include "clock.h"
-#include "openiboot-asmhelpers.h"
+#include "arm/arm.h"
 
 static int unknown1;
 static int unknown2;

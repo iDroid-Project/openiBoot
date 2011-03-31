@@ -4,7 +4,7 @@
 #include "util.h"
 #include "timer.h"
 #include "wdt.h"
-#include "openiboot-asmhelpers.h"
+#include "arm/arm.h"
 
 void cmd_malloc_stats(int argc, char** argv) {
 	malloc_stats();

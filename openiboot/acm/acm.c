@@ -1,5 +1,5 @@
 #include "openiboot.h"
-#include "openiboot-asmhelpers.h"
+#include "arm/arm.h"
 #include "hardware/power.h"
 #include "hardware/usb.h"
 #include "hardware/platform.h"
@@ -222,9 +222,9 @@ static void acm_started()
 {
 	acm_is_ready = 0;
 
-	//if(usb_get_speed() == USBHighSpeed)
-	//	acm_usb_mps = 512;
-	//else
+	if(usb_get_speed() == USBHighSpeed)
+		acm_usb_mps = 512;
+	else
 		acm_usb_mps = 0x80;
 
 	usb_enable_endpoint(ACM_EP_SEND, USBIn, USBBulk, acm_usb_mps);
