@@ -9,6 +9,15 @@
 
 static int mipi_dsim_has_init = 0;
 
+void mipi_dsim_on_off(OnOff on_off) {
+	if(on_off == ON) {
+		SET_REG(MIPI_DSIM + MDRESOL, GET_REG(MIPI_DSIM + MDRESOL) | 1 << 31);
+	} else {
+		SET_REG(MIPI_DSIM + MDRESOL, GET_REG(MIPI_DSIM + MDRESOL) | (~(1 << 31)));
+	}
+}
+
+
 void mipi_dsim_framebuffer_on_off(OnOff on_off) {
 	if (on_off) {
 		SET_REG(MIPI_DSIM + CLKCTRL, GET_REG(MIPI_DSIM + CLKCTRL) | 1 << 31);
@@ -64,7 +73,7 @@ int mipi_dsim_read_write(int a1, uint8_t* buffer, uint32_t* read) {
 		}
 
 		if (i < to_read)
-			*(buffer+i) = (uint8_t)read_buffer;
+			buffer[i] = (uint8_t)read_buffer;
 
 		read_buffer = read_buffer >> 8;
 	}
@@ -74,6 +83,9 @@ int mipi_dsim_read_write(int a1, uint8_t* buffer, uint32_t* read) {
 int mipi_dsim_init(LCDInfo* LCDTable) {
 	int result;
 	uint32_t mashFest;
+	uint32_t value = 0;
+	uint32_t frequency;
+	int lower_than_6;
 
 	bufferPrintf("mipi_dsim_init()\r\n");
 
@@ -82,26 +94,6 @@ int mipi_dsim_init(LCDInfo* LCDTable) {
 
 	clock_gate_switch(MIPI_DSIM_CLOCKGATE, ON);
 	mashFest = (GET_BITS(LCDTable->unkn18, 26, 6) << 13) | (GET_BITS(LCDTable->unkn18, 16, 9) << 4) | ((GET_BITS(LCDTable->unkn18, 11, 4) & 0xE));
-#if defined(CONFIG_IPAD_1G)
-	if (mashFest) {
-		bufferPrintf("Mashfest!!\r\n");
-		SET_REG(MIPI_DSIM + CLKCTRL, CLKCTRL_ESC_PRESCALER(LCDTable->unkn18 >> 4) | CLKCTRL_ESC_CLKEN);
-		SET_REG(MIPI_DSIM + PLLCTRL, (LCDTable->unkn18 << 16) & 0xF000000);
-		SET_REG(MIPI_DSIM + PLLTMR, PLL_STABLE_TIME);
-		SET_REG(MIPI_DSIM + PLLCTRL, GET_REG(MIPI_DSIM + PLLCTRL) | mashFest);
-		SET_REG(MIPI_DSIM + PLLCTRL, GET_REG(MIPI_DSIM + PLLCTRL) | PLLCTRL_PLL_EN);
-		while (!GET_BITS(GET_REG(MIPI_DSIM + STATUS), 31, 1));
-	} else {
-		bufferPrintf("No Mashfest!!\r\n");
-		SET_REG(MIPI_DSIM + CLKCTRL, CLKCTRL_ESC_PRESCALER(LCDTable->unkn18 >> 4) | CLKCTRL_ESC_CLKEN
-			| CLKCTRL_PLL_BYPASS | CLKCTRL_BYTE_CLK_SRC);
-		SET_REG(MIPI_DSIM + PLLCTRL, (LCDTable->unkn18 << 16) & 0xF000000);
-	}
-	SET_REG(MIPI_DSIM + SWRST, SWRST_RESET);
-#else
-	uint32_t value = 0;
-	uint32_t frequency;
-	int lower_than_6;
 
 	if (mashFest) {
 		SET_REG(MIPI_DSIM + CLKCTRL, CLKCTRL_ESC_PRESCALER(LCDTable->unkn18 >> 4) | CLKCTRL_ESC_CLKEN);
@@ -135,12 +127,12 @@ int mipi_dsim_init(LCDInfo* LCDTable) {
 					break;
 			}
 			lower_than_6 = 1;
-			SET_REG(MIPI_DSIM + PHYACCHR, value << 5 | (1 << 14));
+			SET_REG(MIPI_DSIM + PHYACCHR, value << 5 | AFC_ENABLE);
 		}
 		SET_REG(MIPI_DSIM + PLLTMR, 300000);
 		SET_REG(MIPI_DSIM + PLLCTRL, GET_REG(MIPI_DSIM + PLLCTRL) | mashFest);
 		SET_REG(MIPI_DSIM + PLLCTRL, GET_REG(MIPI_DSIM + PLLCTRL) | 0x800000);
-		while ((GET_REG(MIPI_DSIM + STATUS) & STATUS_PLL_STABLE) != STATUS_PLL_STABLE);
+		while (!GET_BITS(GET_REG(MIPI_DSIM + STATUS), 31, 1));
 		SET_REG(MIPI_DSIM + SWRST, SWRST_RESET);
 		if (lower_than_6) {
 			SET_REG(MIPI_DSIM + PLLCTRL, GET_REG(MIPI_DSIM + PLLCTRL) & ~(1 << 23));
@@ -153,21 +145,18 @@ int mipi_dsim_init(LCDInfo* LCDTable) {
 		SET_REG(MIPI_DSIM + PLLCTRL, (LCDTable->unkn18 << 16) & 0xF000000);
 		SET_REG(MIPI_DSIM + SWRST, SWRST_RESET);
 	}
-#endif
 	while((GET_REG(MIPI_DSIM + STATUS) & STATUS_SWRST) != STATUS_SWRST);
 #if !defined(CONFIG_IPAD_1G)
 	SET_REG(MIPI_DSIM + PHYACCHR, GET_REG(MIPI_DSIM + PHYACCHR) | AFC_ENABLE);
-#endif
 	SET_REG(MIPI_DSIM + MDRESOL, DRESOL_VRESOL(LCDTable->height) | DRESOL_HRESOL(LCDTable->width) | DRESOL_STAND_BY);
+#else
+	SET_REG(MIPI_DSIM + MDRESOL, DRESOL_VRESOL(LCDTable->height) | DRESOL_HRESOL(LCDTable->width));
+#endif
 	SET_REG(MIPI_DSIM + MVPORCH, MVPORCH_VFP(LCDTable->verticalFrontPorch) | MVPORCH_VBP(LCDTable->verticalBackPorch)
 		| MVPORCH_CMD_ALLOW(0xD)); //TODO: figure out what the 0xD does, or at least make a constant for it
-#if defined(CONFIG_IPHONE_4) || defined(CONFIG_IPOD_TOUCH_4G)
+	SET_REG(MIPI_DSIM + MSYNC, MSYNC_VSPW(LCDTable->verticalSyncPulseWidth));
 	SET_REG(MIPI_DSIM + MHPORCH, MHPORCH_HFP(0xF) | MHPORCH_HBP(0xE));
-	SET_REG(MIPI_DSIM + MSYNC, MSYNC_VSPW(LCDTable->verticalSyncPulseWidth) | MSYNC_HSPW(1)); // WTF?
-#else
-	SET_REG(MIPI_DSIM + MHPORCH, MHPORCH_HFP(LCDTable->horizontalFrontPorch) | MHPORCH_HBP(LCDTable->horizontalBackPorch));
-	SET_REG(MIPI_DSIM + MSYNC, MSYNC_VSPW(LCDTable->verticalSyncPulseWidth) | MSYNC_HSPW(LCDTable->horizontalSyncPulseWidth));
-#endif
+	SET_REG(MIPI_DSIM + MSYNC, GET_REG(MIPI_DSIM + MSYNC) | MSYNC_HSPW(1));
 	SET_REG(MIPI_DSIM + SDRESOL, DRESOL_VRESOL(0) | DRESOL_HRESOL(10));     //TODO: does this just turn the sub display resolution off (enable bit isn't set)?
 	SET_REG(MIPI_DSIM + CONFIG, CONFIG_NUM_DATA(NUM_DATA_LANES) | CONFIG_EN_DATA(DATA_LANES_ENABLED) | CONFIG_MAIN_PXL_FMT(LCDTable->bitsPerPixel <= 18?5:7) | CONFIG_HSE_MODE | CONFIG_AUTO_MODE | CONFIG_VIDEO_MODE | CONFIG_BURST_MODE | 1);
 	SET_REG(MIPI_DSIM + CLKCTRL, GET_REG(MIPI_DSIM + CLKCTRL) | CLKCTRL_BYTE_CLKEN | CLKCTRL_ESC_EN_CLK
@@ -210,7 +199,6 @@ int mipi_dsim_init(LCDInfo* LCDTable) {
 	mipi_dsim_has_init = 1;
 	return result;
 }
-
 
 void mipi_dsim_quiesce() {
 	bufferPrintf("mipi_dsim_quiesce()\r\n");
