@@ -456,7 +456,7 @@ int pinot_init(LCDInfo* LCDTable, ColorSpace colorspace, uint32_t* panelID, Wind
 		uint32_t read_length;
 		read_length = 15;
 		PanelIDInfo[0] = 0xB1; // -79
-		if (mipi_dsim_read_write(0x14, &PanelIDInfo[0], &read_length) || read_length <= 2) {
+		if (mipi_dsim_read_write(0x14, PanelIDInfo, &read_length) || read_length <= 2) {
 			bufferPrintf("pinot_init(): read of pinot panel id failed\r\n");
 		} else {
 			pinot_panel_id = (PanelIDInfo[0] << 24) | (PanelIDInfo[1] << 16) | ((PanelIDInfo[3] & 0xF0) << 8) | ((PanelIDInfo[2] & 0xF8) << 4) | ((PanelIDInfo[3] & 0xF) << 3) | (PanelIDInfo[2] & 0x7);
@@ -468,8 +468,17 @@ int pinot_init(LCDInfo* LCDTable, ColorSpace colorspace, uint32_t* panelID, Wind
 	bufferPrintf("pinot_init(): pinot_panel_id:      0x%08lx\r\n", pinot_panel_id);
 	bufferPrintf("pinot_init(): pinot_default_color: 0x%08lx\r\n", pinot_default_color);
 	bufferPrintf("pinot_init(): pinot_backlight_cal: 0x%08lx\r\n", pinot_backlight_cal);
+
+	uint32_t on_off = 0;
+	if ((GET_BITS(pinot_panel_id, 8, 8) - 3) <= 1 || GET_BITS(pinot_panel_id, 8, 8) == 7 || GET_BITS(pinot_panel_id, 8, 8) == 8) {
+		mipi_dsim_on_off(ON);
+		on_off = 1;
+	}
+
 	lcd_fill_switch(ON, pinot_default_color);
+
 	udelay(100);
+
 	if (!pinot_panel_id) {
 		lcd_fill_switch(OFF, 0);
 		mipi_dsim_quiesce();
@@ -480,6 +489,10 @@ int pinot_init(LCDInfo* LCDTable, ColorSpace colorspace, uint32_t* panelID, Wind
 	displaytime_sleep(7);
 	mipi_dsim_write_data(5, 0x29, 0);
 	displaytime_sleep(7);
+
+	if(on_off)
+		mipi_dsim_on_off(ON);
+
 #if defined(CONFIG_IPHONE_4)
 	gpio_switch(0x207, OFF);
 #endif
