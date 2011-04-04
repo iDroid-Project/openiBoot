@@ -250,7 +250,7 @@ void display_module_init()
 }
 MODULE_INIT(display_module_init);
 
-static uint8_t PanelIDInfo[5];
+static uint8_t PanelIDInfo[6];
 static uint32_t DotPitch;
 static uint8_t dword_5FF3AE0C;
 

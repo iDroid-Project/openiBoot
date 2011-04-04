@@ -19,7 +19,7 @@ Import('*')
 henv = Environment()
 Export('henv')
 
-henv.Append(CPPFLAGS = ['-g'])
+#henv.Append(CPPFLAGS = ['-g']) # TODO: add a debug flag
 
 env = ARMEnvironment()
 env.Append(CPPDEFINES=[
