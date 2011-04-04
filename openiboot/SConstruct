@@ -7,7 +7,7 @@ import SCons
 #
 # Configuration, change this stuff
 #
-version="0.2"
+version="0.3"
 # /Configuration
 
 SConscript([
@@ -33,23 +33,13 @@ def localize(env, ls):
 	return [File(f) for f in ls]
 env.AddMethod(localize, "Localize")
 
-# Sources for menu
-menu_src = env.Localize([
-	'menu.c',
-	])
-Export('menu_src')
-
-# Sources for installer image
-installer_src = env.Localize([
-	'installer.c',
-	])
-Export('installer_src')
-
 # Base Target Sources
 base_src = env.Localize([
 	'device.c',
 	'mtd.c',
 	'bdev.c',
+	'nand.c',
+	'vfl.c',
 	'audiohw.c',
 	'actions.c',
 	'commands.c',
@@ -65,7 +55,6 @@ base_src = env.Localize([
 	'syscfg.c',
 	'tasks.c',
 	'util.c',
-	'acm.c',
 	])
 Export('base_src')
 
@@ -81,8 +70,14 @@ env.SConscript([
 	'hfs/SConscript',
 	'radio-pmb8876/SConscript',
 	'radio-pmb8878/SConscript',
+	'radio-xgold618/SConscript',
 	'usb-synopsys/SConscript',
 	'nor-cfi/SConscript',
 	'nor-spi/SConscript',
+	'vfl-vfl/SConscript',
+	'vfl-vsvfl/SConscript',
+	'acm/SConscript',
+	'menu/SConscript',
+	'installer/SConscript',
 	'arch-arm/SConscript',
 	])

@@ -5,7 +5,7 @@
 #include "lcd.h"
 
 typedef struct LCDInfo {
-	char name[4];
+	char* name;
 	uint32_t unkn1;
 	uint32_t DrivingClockFrequency;
 	uint32_t DotPitch;

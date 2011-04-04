@@ -1,0 +1,21 @@
+Import('*')
+
+installer_src = env.Localize([
+	'installer.c',
+	])
+
+installer = env.CreateModule('installer', installer_src)
+installer.Append(CPPPATH = [Dir('includes'), Dir('.')])
+
+images = env.Bin2CList([
+	'installerLogo',
+	'installerBarEmpty',
+	'installerBarFull',
+	], "images/%s.png", "images/%sPNG.h", "data%sPNG")
+installer.Depends(images)
+
+def InstallerEnv(env):
+	e2 = env.Clone()
+	e2.AddModules(["installer"])
+	return e2
+env.AddMethod(InstallerEnv, "InstallerEnv")

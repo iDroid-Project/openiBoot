@@ -1,7 +1,7 @@
 #include "openiboot.h"
 #include "commands.h"
-#include "ftl.h"
-#include "nand.h"
+#include "s5l8900/ftl.h"
+#include "s5l8900/nand.h"
 #include "mtd.h"
 #include "util.h"
 

@@ -23,6 +23,6 @@ env.AddModules([
 	"nor-cfi",
 	])
 
-elf, bin, img3 = env.OpenIBootTarget('iPhone2G', 'iphone_2g_openiboot', 'CONFIG_IPHONE_2G', iphone_2g_src+menu_src, 'template')
-env.OpenIBootTarget('iPhone2G-Installer', 'iphone_2g_installer', 'CONFIG_IPHONE_2G', iphone_2g_src+installer_src, 'template')
+elf, bin, img3 = env.MenuEnv().OpenIBootTarget('iPhone2G', 'iphone_2g_openiboot', 'CONFIG_IPHONE_2G', iphone_2g_src, 'template')
+env.InstallerEnv().OpenIBootTarget('iPhone2G-Installer', 'iphone_2g_installer', 'CONFIG_IPHONE_2G', iphone_2g_src, 'template')
 Default(img3)

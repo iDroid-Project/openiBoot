@@ -7,7 +7,7 @@
 
 #if defined(CONFIG_A4)||defined(CONFIG_S5L8920)
 #define USB_PHY_3G
-#elif defined(CONFIG_IPOD_2G)
+#elif defined(CONFIG_IPOD_TOUCH_2G)
 #define USB_PHY_2G
 #else
 #define USB_PHY_1G

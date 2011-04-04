@@ -11,7 +11,7 @@
 #include "clock.h"
 #include "tasks.h"
 #include "interrupt.h"
-#include "openiboot-asmhelpers.h"
+#include "arm/arm.h"
 
 static void change_state(USBState new_state);
 

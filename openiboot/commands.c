@@ -1,36 +1,7 @@
 #include "openiboot.h"
-#include "openiboot-asmhelpers.h"
+#include "arm/arm.h"
 #include "commands.h"
 #include "util.h"
-#include "nor.h"
-#include "lcd.h"
-#include "images.h"
-#include "timer.h"
-#include "mmu.h"
-#include "arm.h"
-#include "gpio.h"
-#include "framebuffer.h"
-#include "actions.h"
-#include "nvram.h"
-#include "pmu.h"
-#include "dma.h"
-#include "nand.h"
-#include "ftl.h"
-#include "i2c.h"
-#include "hfs/fs.h"
-#include "aes.h"
-#include "accel.h"
-#include "sdio.h"
-#include "wdt.h"
-#include "wmcodec.h"
-#include "multitouch.h"
-#include "wlan.h"
-#include "radio.h"
-#include "als.h"
-#include "piezo.h"
-#include "vibrator.h"
-#include "uart.h"
-#include "hardware/radio.h"
 
 int received_file_size; // Makes commands automatically use output from last command.
 
@@ -124,7 +95,7 @@ void cmd_hexdump(int argc, char** argv) {
 	uint32_t address = parseNumber(argv[1]);
 	uint32_t len = parseNumber(argv[2]);
 	bufferPrintf("dumping memory 0x%x - 0x%x\r\n", address, address + len);
-	hexdump(address, len);
+	hexdump((void*)address, len);
 }
 COMMAND("hexdump", "display a block of memory like 'hexdump -C'", cmd_hexdump);
 

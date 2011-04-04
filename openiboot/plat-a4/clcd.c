@@ -8,7 +8,9 @@
 #include "gpio.h"
 #include "lcd.h"
 #include "mipi_dsim.h"
-#include "openiboot-asmhelpers.h"
+#include "arm/arm.h"
+#include "pmu.h"
+#include "commands.h"
 
 static GammaTableDescriptor PinotGammaTables[] = {
 #if defined(CONFIG_A4)
@@ -61,8 +63,8 @@ static GammaTableDescriptor PinotGammaTables[] = {
 		{{0x74040422, 0x71001D0, 0x71DDD340, 0x71C34D37, 3, 0xD03400, 0x340D0D, 0xC701C1C0, 0x37777771, 0x434D34DD, 0x4D34D0D3, 0xDDDD34D3, 0xD01DDDDD, 0x34D34, 0x3401C01C, 0x4504034, 0xC, 0}},
 	},
 #endif
-#if defined(CONFIG_IPOD_2G)
-// iPod Touch 2G
+#if defined(CONFIG_IPOD_TOUCH_2G)
+// iPod Touch 2G -- Should not be in plat-a4
 	{0x970387, 0xFFFFFF,
 		{{0x4041D422, 0x4001DD07, 0xDDDC003, 0x1C0, 0xDDDDDC00, 0x7774, 0xDC701C00, 0x74DDC771, 0x704D34D3, 0x7000, 0, 0x1C000000, 0x1DDC7777, 0xD000D00, 0x34D371D, 0x8A5D034D, 0xEB42, 0}},
 		{{0x7474422, 0x1C774074, 0x34D31C1C, 0x1C0, 0xDC770070, 0x4001DDDD, 0xC0000D03, 0xC1C70001, 0x71C71D, 0xD00000, 0x40D00034, 0xD00D03, 0xC74D0700, 0x771DC771, 0x3777, 0xE904AD1C, 0xCFAC, 0}},
@@ -107,10 +109,50 @@ static GammaTableDescriptor PinotGammaTables[] = {
 };
 
 static LCDInfo LCDInfoTable[] = {
+// iPhone 4
 	{"n90", 0xA, 0x30EC6A0, 0x146, 640, 0x47, 0x47, 0x49, 960, 0xC, 0xC, 0x10, 0, 0, 0, 0, 24, 3, 0x8391643},
+// iPad
 	{"k48", 0xA, 0x413B380, 0x84, 1024, 0x85, 0x85, 0x87, 768, 0xA, 0xA, 0xC, 0, 0, 0, 0, 18, 3, 0x644},
-	{"n81", 0xA, 0x30EC6A0, 0x146, 640, 0x47, 0x47, 0x49, 930, 0xC, 0xC, 0x10, 0, 0, 0, 0, 24, 3, 0x35731643},
+// iPod Touch 4G
+//	{"n81", 0xA, 0x30EC6A0, 0x146, 640, 0x47, 0x47, 0x49, 960, 0xC, 0xC, 0x10, 0, 0, 0, 0, 24, 3, 0x35731643},
+	{"n81", 0xA, 0x30EC6A0, 0x146, 640, 0x47, 0x47, 0x49, 960, 0xC, 0xC, 0x10, 0, 0, 0, 0, 24, 3, 0x8391643},
+// iPod Touch 2G -- Should not be in plat-a4
 	{"n72", 0xB, 0xA4CB80, 0xA3, 320, 0xC, 0xC, 0x10, 480, 6, 6, 8, 0, 0, 0, 0, 24, 3, 0x222},
+// aTV 2G
+	{"720p", 0xB, 0, 0xF3, 1280, 0xDC, 0x6E, 0x28, 720, 0x14, 5, 5, 0, 0, 0, 0, 24, 5, 0},
+};
+
+static uint32_t atv_values[] = {
+	0x10044, 0x11048, 0x1204C, 0x13050, 0x14050, 0x14054, 0x15058, 0x1605C, 0x17060, 0x18064, 0x19068, 0x1A06C,
+	0x1B06C, 0x1B070, 0x1C074, 0x1D078, 0x1E07C, 0x1F080, 0x20084, 0x21088, 0x22088, 0x2208C, 0x23090, 0x24094,
+	0x25098, 0x2609C, 0x270A0, 0x280A4, 0x290A4, 0x290A8, 0x2A0AC, 0x2B0B0, 0x2C0B4, 0x2D0B8, 0x2E0BC, 0x2F0C0,
+	0x300C4, 0x310C4, 0x310C8, 0x320CC, 0x330D0, 0x340D4, 0x350D8, 0x360DC, 0x370E0, 0x380E0, 0x380E4, 0x390E8,
+	0x3A0EC, 0x3B0F0, 0x3C0F4, 0x3D0F8, 0x3E0FC, 0x3F0FC, 0x3F100, 0x40104, 0x41108, 0x4210C, 0x43110, 0x44114,
+	0x45118, 0x46118, 0x4611C, 0x47120, 0x48124, 0x49128, 0x4A12C, 0x4B130, 0x4C134, 0x4D134, 0x4D138, 0x4E13C,
+	0x4F140, 0x50144, 0x51148, 0x5214C, 0x53150, 0x54154, 0x55154, 0x55158, 0x5615C, 0x57160, 0x58164, 0x59168,
+	0x5A16C, 0x5B170, 0x5C170, 0x5C174, 0x5D178, 0x5E17C, 0x5F180, 0x60184, 0x61188, 0x6218C, 0x6318C, 0x63190,
+	0x64194, 0x65198, 0x6619C, 0x671A0, 0x681A4, 0x691A8, 0x6A1A8, 0x6A1AC, 0x6B1B0, 0x6C1B4, 0x6D1B8, 0x6E1BC,
+	0x6F1C0, 0x701C4, 0x711C8, 0x721C8, 0x721CC, 0x731D0, 0x741D4, 0x751D8, 0x761DC, 0x771E0, 0x781E4, 0x791E4,
+	0x791E8, 0x7A1EC, 0x7B1F0, 0x7C1F4, 0x7D1F8, 0x7E1FC, 0x7F200, 0x80200, 0x80204, 0x81208, 0x8220C, 0x83210,
+	0x84214, 0x85218, 0x8621C, 0x8721C, 0x87220, 0x88224, 0x89228, 0x8A22C, 0x8B230, 0x8C234, 0x8D238, 0x8E238,
+	0x8E23C, 0x8F240, 0x90244, 0x91248, 0x9224C, 0x93250, 0x94254, 0x95258, 0x96258, 0x9625C, 0x97260, 0x98264,
+	0x99268, 0x9A26C, 0x9B270, 0x9C274, 0x9D274, 0x9D278, 0x9E27C, 0x9F280, 0xA0284, 0xA1288, 0xA228C, 0xA3290,
+	0xA4290, 0xA4294, 0xA5298, 0xA629C, 0xA72A0, 0xA82A4, 0xA92A8, 0xAA2AC, 0xAB2AC, 0xAB2B0, 0xAC2B4, 0xAD2B8,
+	0xAE2BC, 0xAF2C0, 0xB02C4, 0xB12C8, 0xB22CC, 0xB32CC, 0xB32D0, 0xB42D4, 0xB52D8, 0xB62DC, 0xB72E0, 0xB82E4,
+	0xB92E8, 0xBA2E8, 0xBA2EC, 0xBB2F0, 0xBC2F4, 0xBD2F8, 0xBE2FC, 0xBF300, 0xC0304, 0xC1304, 0xC1308, 0xC230C,
+	0xC3310, 0xC4314, 0xC5318, 0xC631C, 0xC7320, 0xC8320, 0xC8324, 0xC9328, 0xCA32C, 0xCB330, 0xCC334, 0xCD338,
+	0xCE33C, 0xCF33C, 0xCF340, 0xD0344, 0xD1348, 0xD234C, 0xD3350, 0xD4354, 0xD5358, 0xD635C, 0xD735C, 0xD7360,
+	0xD8364, 0xD9368, 0xDA36C, 0xDB370, 0xDC374, 0xDD378, 0xDE378, 0xDE37C, 0xDF380, 0xE0384, 0xE1388, 0xE238C,
+	0xE3390, 0xE4394, 0xE5394, 0xE5398, 0xE639C, 0xE73A0, 0xE83A4, 0xE93A8, 0xEA3AC, 0xEB3B0, 0xEC3B0, 0xEC3B4,
+	0xED3B8, 0xEE3BC, 0xEF3C0, 0xEF3C0
+};
+
+static const PMURegisterData backlightOffData = {0x68, 0x0};
+
+static const PMURegisterData backlightData[] = {
+	{0x66, 0xD4},
+	{0x67, 0x0},
+	{0x68, 0x15}
 };
 
 volatile uint32_t* CurFramebuffer;
@@ -119,7 +161,6 @@ uint32_t* FRAMEBUFFER;
 static LCDInfo* LCDTable;
 static uint32_t TimePerMillionFrames = 0;
 
-static uint32_t dword_5FF3D04C = 0x3D278480;
 static uint32_t dword_5FF3D0D0;
 
 static int gammaVar1;
@@ -129,6 +170,7 @@ static uint8_t gammaVar3;
 Window* currentWindow;
 
 static int LCDTableunkn1is0xA = 0;
+static int LCDTableunkn1is0xB = 0;
 
 OnOff SyncFramebufferToDisplayActivated = OFF;
 uint32_t framebufferLastFill = 0;
@@ -149,34 +191,13 @@ void displaytime_sleep(uint32_t time) {
 	task_sleep(time * TimePerMillionFrames / 1000);
 }
 
-int pmu_send_buffer(int bus, uint8_t buffer, uint8_t response, int check) {
-	uint8_t send_buffer[2] = { buffer, response };
-	uint8_t recv_buffer = 0;
-	int result;
-
-	i2c_tx(bus, 0xE9, (void*)&send_buffer, 2);
-	if (check && (i2c_rx(bus, 0xE8, (void*)&buffer, 1, (void*)&recv_buffer, 1), recv_buffer != response))
-		result = -1;
-	else
-		result = 0;
-	return result;
-}
-
 void sub_5FF08870(uint8_t arg) {
 	uint8_t v1;
 
 	v1 = (1049-50*arg)/50;
-	pmu_send_buffer(0, 0x6B, v1, 1);
+	pmu_write_reg(0x6B, v1, 1);
 	task_sleep(10);
-	pmu_send_buffer(0, 0x6C, v1 + 4, 1);
-}
-
-int signed_calculate_remainder(uint64_t x, uint64_t y) {
-	return (int)(x - y*(x/y));
-}
-
-uint32_t calculate_remainder(uint64_t x, uint64_t y) {
-	return (uint32_t)(x - y*(x/y));
+	pmu_write_reg(0x6C, v1 + 4, 1);
 }
 
 void lcd_fill_switch(OnOff on_off, uint32_t color) {
@@ -187,12 +208,18 @@ void lcd_fill_switch(OnOff on_off, uint32_t color) {
 		framebuffer_fill(&currentWindow->framebuffer, 0, 0, currentWindow->framebuffer.width, currentWindow->framebuffer.height, color);
 		if (LCDTableunkn1is0xA)
 			SET_REG(0x89200050, GET_REG(0x89200050) | 1);
+		if (LCDTableunkn1is0xB)
+			SET_REG(0x89600000, 9);
 	} else {
 		if (SyncFramebufferToDisplayActivated == OFF) // It used to return, when on_off == SyncFramebufferToDisplayActivated == ON, too -- Bluerise
 			return;
 		if (LCDTableunkn1is0xA) {
 			SET_REG(0x89200050, GET_REG(0x89200050) & (~1));
 			while (!(GET_REG(0x89200050) & 2)) ;
+		}
+		if (LCDTableunkn1is0xB) {
+			SET_REG(0x89600008, 1);
+			while(GET_REG(0x89600008) & 1);
 		}
 	}
 	SyncFramebufferToDisplayActivated = on_off;
@@ -202,25 +229,23 @@ void lcd_fill(uint32_t color) {
 	lcd_fill_switch(ON, color);
 }
 
-uint32_t configureLCDClock(uint32_t result, int zero0, int zero1, int zero2, int zero3, unsigned int divider) {
+void configureLCDClock(uint32_t unkn1, int zero0, int zero1, int zero2, int zero3, unsigned int divider) {
 	uint32_t v6;
 	uint32_t v7;
 	uint32_t v8;
 	uint32_t v10;
 
 	// I actually hate this part. -- Bluerise
-	// dword_5FF3D04C == CalculatedFrequencyTable[4] == 0x3D278480;
-	// or 0x5B8D8000 because of different frequencies but I don't think so...
 	// <CPICH> it's just result = r0 - r1*(r0/r1)
 	// <CPICH> uint64_t r0, r1;
 
-	if (result == 10) {
+	if (unkn1 == 0xA) {
 		v6 = 31;
-		v7 = dword_5FF3D04C;
-		v8 = dword_5FF3D04C / divider;
+		v7 = CalculatedFrequencyTable[3];
+		v8 = CalculatedFrequencyTable[3] / divider;
 		do
 		{
-			if (!calculate_remainder(v8, v6))
+			if (!(v8 % v6))
 				break;
 			--v6;
 		}
@@ -230,9 +255,7 @@ uint32_t configureLCDClock(uint32_t result, int zero0, int zero1, int zero2, int
 		SET_REG(0xBF100094, (GET_REG(0xBF100094) & 0xFFFFFFE0) | v10);
 //		unk_5FF3D078 = v7 / v6;
 		dword_5FF3D0D0 = v7 / v6 / v10;
-		result = dword_5FF3D0D0;
 	}
-	return result;
 }
 
 int displaypipe_init() {
@@ -255,6 +278,10 @@ int displaypipe_init() {
 		clock_gate_switch(0x12, ON);
 		clock_gate_switch(0xF, ON);
 		LCDTableunkn1is0xA = 1;
+	} else if (LCDTable->unkn1 == 0xB) {
+		clock_gate_switch(0x13, ON);
+		clock_gate_switch(0xD, ON);
+		LCDTableunkn1is0xB = 1;
 	}
 	SET_REG(CLCD + 0x104C, GET_REG(CLCD + 0x104C) | 0x10);
 	SET_REG(CLCD + 0x104C, (GET_REG(CLCD + 0x104C) & 0xFFFFF8FF) | 0x100);
@@ -272,7 +299,7 @@ int displaypipe_init() {
 	SET_REG(CLCD + 0x105C, 0x13880801);
 	SET_REG(CLCD + 0x2064, 0xBFF00000);
 	if (LCDTableunkn1is0xA) {
-		SET_REG(0x89200000, 256);
+		SET_REG(0x89200000, 0x100);
 		while (GET_REG(0x89200000) & 0x100);
 		udelay(1);
 		SET_REG(0x89200000, 4);
@@ -296,6 +323,31 @@ int displaypipe_init() {
 				+ LCDTable->horizontalSyncPulseWidth
 				+ LCDTable->width)
 			/ LCDTable->DrivingClockFrequency;
+	}
+	if (LCDTableunkn1is0xB) {
+		SET_REG(0x89600008, 1);
+		while(GET_REG(0x89600008) & 1);
+		SET_REG(0x8960001C, 0);
+		SET_REG(0x89600024, 0);
+		SET_REG(0x89600050, LCDTable->width - 1);
+		SET_REG(0x89600044, LCDTable->height - 1);
+		SET_REG(0x89600004, 0x23);
+		uint32_t some_value = GET_REG(0x89600054);
+		SET_REG(0x89600054, some_value & 0xFFFE0F00);
+		uint32_t i;
+		for (i = 0; i <= 0x100; i++) {
+			SET_REG(0x89600054, i | some_value | 0x14000);
+			SET_REG(0x89600058, atv_values[i] & 0xFFFFF);
+		}
+		for (i = 0; i <= 0x100; i++) {
+			SET_REG(0x89600054, i | some_value | 0x15000);
+			SET_REG(0x89600058, atv_values[i] & 0xFFFFF);
+		}
+		for (i = 0; i <= 0x100; i++) {
+			SET_REG(0x89600054, i | some_value | 0x16000);
+			SET_REG(0x89600058, atv_values[i] & 0xFFFFF);
+		}
+		SET_REG(0x8960004C, 9);
 	}
 
 	ColorSpace colorSpace;
@@ -332,7 +384,7 @@ int displaypipe_init() {
 	uint32_t curBuf;
 	buffer1[0] = 1;
 	for (curBuf = 0; curBuf != 256; curBuf++) {
-		if (signed_calculate_remainder(curBuf+1, (256 >> (10 - (uint8_t)(LCDTable->bitsPerPixel / 3)))) == 1)
+		if ((curBuf+1 % (256 >> (10 - (uint8_t)(LCDTable->bitsPerPixel / 3)))) == 1)
 			buffer1[curBuf] = buffer1[curBuf] - 1;
 		buffer1[curBuf+1] = buffer1[curBuf] + 4;
 		buffer2[curBuf] = buffer1[curBuf];
@@ -369,14 +421,14 @@ int pinot_init(LCDInfo* LCDTable, ColorSpace colorspace, uint32_t* panelID, Wind
 
 	bufferPrintf("pinot_init()\r\n");
 	DotPitch = LCDTable->DotPitch;
-#if defined(CONFIG_IPAD)
+#if defined(CONFIG_IPAD_1G)
 	gpio_pin_output(0x1404, 0);
 #else
 	gpio_pin_output(0x206, 0);
 #endif
 	task_sleep(10);
 	mipi_dsim_init(LCDTable);
-#if defined(CONFIG_IPAD)
+#if defined(CONFIG_IPAD_1G)
 	gpio_pin_output(0x1404, 1);
 #else
 	gpio_pin_output(0x206, 1);
@@ -421,7 +473,7 @@ int pinot_init(LCDInfo* LCDTable, ColorSpace colorspace, uint32_t* panelID, Wind
 
 	*panelID = pinot_panel_id;
 
-#if !defined(CONFIG_IPAD)
+#if !defined(CONFIG_IPAD_1G)
 	if (!dword_5FF3AE0C)
 		return dword_5FF3AE0C;
 
@@ -680,3 +732,52 @@ static void createFramebuffer(Framebuffer* framebuffer, uint32_t framebufferAddr
 		framebuffer->vline = vline_rgb565;
 	}
 }
+
+#if !defined(CONFIG_IPAD_1G)
+void lcd_set_backlight_level(int level) {
+	if (level == 0) {
+		pmu_write_regs(&backlightOffData, 1);
+	} else { 
+		PMURegisterData myBacklightData[sizeof(backlightData)/sizeof(PMURegisterData)];
+
+		memcpy(myBacklightData, backlightData, sizeof(myBacklightData));
+
+		if (level <= LCD_MAX_BACKLIGHT) {
+			int i;
+			for (i = 0; i < (sizeof(myBacklightData)/sizeof(PMURegisterData)); i++) {
+				if (myBacklightData[i].reg == LCD_BACKLIGHT_HIGH_REG) {
+					myBacklightData[i].data = level >> LCD_BACKLIGHT_HIGH_SHIFT;
+				} else if (myBacklightData[i].reg == LCD_BACKLIGHT_LOW_REG) {
+					myBacklightData[i].data = level & LCD_BACKLIGHT_LOW_MASK;
+				}
+			}
+		}
+		pmu_write_regs(myBacklightData, sizeof(myBacklightData)/sizeof(PMURegisterData));
+	}
+}
+#else
+void lcd_set_backlight_level(int level) {
+	uint32_t _arg = 0x1000;
+	clock_gate_switch(0x3E, ON);
+	SET_REG(0xBF600000, (((((((((uint64_t)TicksPerSec+1999999)*(uint64_t)0x431BDE83) >> 32) >> 19) - 1) & 0xFF) << 8) | 0x3));
+	SET_REG(0xBF600018, ((_arg | 0x80) | (level & 0x7F )) | ((level & 0x780) << 1));
+	SET_REG(0xBF600014, 3);
+	while(!(GET_REG(0xBF600014) & 1));
+	if(level)
+		gpio_pin_output(0x1403, 1);
+	else
+		gpio_pin_output(0x1403, 0);
+}
+#endif
+
+void cmd_backlight(int argc, char** argv) {
+	if(argc < 2) {
+		bufferPrintf("Usage: %s <0-%d>\r\n", argv[0], LCD_MAX_BACKLIGHT);
+		return;
+	}
+
+	uint32_t level = parseNumber(argv[1]);
+	lcd_set_backlight_level(level);
+	bufferPrintf("backlight set to %d\r\n", level);
+}
+COMMAND("backlight", "set the backlight level", cmd_backlight);

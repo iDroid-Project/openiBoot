@@ -24,7 +24,7 @@
 #include "clock.h"
 #include "dma.h"
 #include "util.h"
-#include "openiboot-asmhelpers.h"
+#include "arm/arm.h"
 #include "gpio.h"
 
 const void* pcm_buffer;

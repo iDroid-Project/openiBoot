@@ -1,13 +1,14 @@
 #include "h2fmi.h"
 #include "hardware/h2fmi.h"
+#include "vfl/vfl.h"
 #include "timer.h"
 #include "tasks.h"
 #include "clock.h"
 #include "util.h"
 #include "cdma.h"
-#include "arm.h"
+#include "hardware/dma.h"
 #include "commands.h"
-#include "openiboot-asmhelpers.h"
+#include "arm/arm.h"
 #include "interrupt.h"
 
 typedef struct _nand_chipid
@@ -38,8 +39,8 @@ typedef struct _nand_chip_info
 
 typedef struct _nand_board_id
 {
-	uint32_t num_busses;
-	uint32_t num_symmetric;
+	uint8_t num_busses;
+	uint8_t num_symmetric;
 	nand_chipid_t chipID;
 	uint8_t unk3;
 	nand_chipid_t chipID2;
@@ -77,6 +78,7 @@ typedef struct _nand_info
 } nand_info_t;
 
 static nand_chip_info_t nand_chip_info[] = {
+#ifdef CONFIG_IPHONE_4
 	{ { 0x7294D7EC, 0x0, }, 0x1038, 0x80, 0x2000, 0x1B4, 0xC, 0, 8, 1, 0 },
 	{ { 0x72D5DEEC, 0x0, }, 0x2070, 0x80, 0x2000, 0x1B4, 0xC, 0, 8, 2, 0 },
 	{ { 0x29D5D7EC, 0x0, }, 0x2000, 0x80, 0x1000, 0xDA, 0x8, 0, 2, 2, 0 },
@@ -90,9 +92,39 @@ static nand_chip_info_t nand_chip_info[] = {
 	{ { 0x3295DE45, 0x0, }, 0x2000, 0x80, 0x2000, 0x178, 0x8, 0, 9, 2, 0 },
 	{ { 0x32944845, 0x0, }, 0x1000, 0x80, 0x2000, 0x1C0, 0x8, 0, 9, 1, 0 },
 	{ { 0x32956845, 0x0, }, 0x2000, 0x80, 0x2000, 0x1C0, 0x8, 0, 9, 2, 0 },
+#endif
+#ifdef CONFIG_IPOD_TOUCH_4G
+	{ { 0x7A94D7EC, 0, }, 0x1038, 0x80, 0x2000, 0x280, 0x10, 0, 8, 1, 0 },
+	{ { 0x7AD5DEEC, 0, }, 0x2070, 0x80, 0x2000, 0x280, 0x10, 0, 8, 2, 0 },
+	{ { 0x7294D7EC, 0, }, 0x1038, 0x80, 0x2000, 0x1B4, 0xC, 0, 8, 1, 0 },
+	{ { 0x72D5DEEC, 0, }, 0x2070, 0x80, 0x2000, 0x1B4, 0xC, 0, 8, 2, 0 },
+	{ { 0x9A94D7AD, 0, }, 0x800, 0x100, 0x2000, 0x1C0, 0x18, 0, 8, 1, 0 },
+	{ { 0x9A95DEAD, 0, }, 0x1000, 0x100, 0x2000, 0x1C0, 0x18, 0, 8, 2, 0 },
+	{ { 0x3294E798, 0, }, 0x1004, 0x80, 0x2000, 0x1C0, 0x10, 0, 1, 1, 0 },
+	{ { 0x3295EE98, 0, }, 0x2008, 0x80, 0x2000, 0x1C0, 0x18, 0, 1, 2, 0 },
+	{ { 0xCB05A82C, 0, }, 0x2000, 0x100, 0x2000, 0x1C0, 0x18, 0, 7, 2, 0 },
+	{ { 0x4B04882C, 0, }, 0x1000, 0x100, 0x2000, 0x1C0, 0x18, 0, 7, 1, 0 },
+	{ { 0x32956845, 0, }, 0x2000, 0x80, 0x2000, 0x1C0, 8, 0, 9, 2, 0 },
+#endif
+#ifdef CONFIG_IPAD_1G
+	{ { 0x7294D7EC, 0, }, 0x1038, 0x80, 0x2000, 0x1B4, 0xC, 0, 8, 1, 0 },
+	{ { 0x72D5DEEC, 0, }, 0x2070, 0x80, 0x2000, 0x1B4, 0xC, 0, 8, 2, 0 },
+	{ { 0xB614D5AD, 0, }, 0x1000, 0x80, 0x1000, 0x80, 4, 0, 3, 1, 0 },
+	{ { 0x2594D7AD, 0, }, 0x2000, 0x80, 0x1000, 0xE0, 0xC, 0, 3, 1, 0 },
+	{ { 0x3294E798, 0, }, 0x1004, 0x80, 0x2000, 0x1C0, 0x10, 0, 1, 1, 0 },
+	{ { 0x3294D798, 0, }, 0x1034, 0x80, 0x2000, 0x178, 8, 0, 1, 1, 0 },
+	{ { 0x3295DE98, 0, }, 0x2068, 0x80, 0x2000, 0x178, 8, 0, 1, 2, 0 },
+	{ { 0x3295EE98, 0, }, 0x2008, 0x80, 0x2000, 0x1C0, 0x18, 0, 1, 2, 0 },
+	{ { 0x4604682C, 0, }, 0x1000, 0x100, 0x1000, 0xE0, 0xC, 0, 7, 1, 0 },
+#endif
+#ifdef CONFIG_ATV_2G
+	{ { 0x7294D7EC, 0, }, 0x1038, 0x80, 0x2000, 0x1B4, 0xC, 0, 8, 1, 0 },
+	{ { 0x3294E798, 0, }, 0x1004, 0x80, 0x2000, 0x1C0, 0x10, 0, 1, 1, 0 },
+#endif
 };
 
 static nand_board_info_t nand_board_info[] = {
+#ifdef CONFIG_IPHONE_4
 	{ { 2, 1, { 0x4604682C, 0x0 }, 4, { 0x0, 0x0, }, 0, }, 0x14, 0x12, },
 	{ { 2, 1, { 0xC605882C, 0x0 }, 4, { 0x0, 0x0, }, 0, }, 0x14, 0x12, },
 	{ { 2, 1, { 0x3295DE98, 0x0 }, 4, { 0x0, 0x0, }, 0, }, 0x11, 0x15, },
@@ -110,9 +142,55 @@ static nand_board_info_t nand_board_info[] = {
 	{ { 2, 1, { 0x32944845, 0x0 }, 4, { 0x0, 0x0, }, 0, }, 0x11, 0x15, },
 	{ { 2, 1, { 0x32956845, 0x0 }, 4, { 0x0, 0x0, }, 0, }, 0x11, 0x15, },
 	{ { 2, 1, { 0x3295DE45, 0x0 }, 4, { 0x0, 0x0, }, 0, }, 0x11, 0x15, },
+#endif
+#ifdef CONFIG_IPOD_TOUCH_4G
+	{ { 2, 1, { 0x7A94D7EC, 0, }, 2, { 0, 0, }, 0, }, 0x14, 0x10 },
+	{ { 2, 1, { 0x7AD5DEEC, 0, }, 4, { 0, 0, }, 0, }, 0x14, 0x10 },
+	{ { 2, 1, { 0x7294D7EC, 0, }, 2, { 0, 0, }, 0, }, 0x14, 0x10 },
+	{ { 2, 1, { 0x7294D7EC, 0, }, 4, { 0, 0, }, 0, }, 0x14, 0x10 },
+	{ { 2, 1, { 0x72D5DEEC, 0, }, 4, { 0, 0, }, 0, }, 0x14, 0x10 },
+	{ { 2, 2, { 0x72D5DEEC, 0, }, 4, { 0x72D5DEEC, 0, }, 4, }, 0x14, 0x10 },
+	{ { 2, 1, { 0x72D5DEEC, 0, }, 8, { 0, 0, }, 0, }, 0x14, 0x10 },
+	{ { 2, 2, { 0x72D5DEEC, 0, }, 8, { 0x72D5DEEC, 0, }, 8, }, 0x14, 0x10 },
+	{ { 2, 1, { 0x9A94D7AD, 0, }, 2, { 0, 0, }, 0, }, 0x14, 0x10 },
+	{ { 2, 1, { 0x9A95DEAD, 0, }, 4, { 0, 0, }, 0, }, 0x14, 0x10 },
+	{ { 2, 1, { 0x3295EE98, 0, }, 4, { 0, 0, }, 0, }, 0x11, 0x15 },
+	{ { 2, 1, { 0x3294E798, 0, }, 4, { 0, 0, }, 0, }, 0x11, 0x15 },
+	{ { 2, 1, { 0x3294E798, 0, }, 2, { 0, 0, }, 0, }, 0x11, 0x15 },
+	{ { 2, 1, { 0x3295EE98, 0, }, 8, { 0, 0, }, 0, }, 0x11, 0x15 },
+	{ { 2, 1, { 0x32956845, 0, }, 4, { 0, 0, }, 0, }, 0x11, 0x15 },
+	{ { 2, 1, { 0xCB05A82C, 0, }, 4, { 0, 0, }, 0, }, 0x14, 0x12 },
+	{ { 2, 1, { 0x4B04882C, 0, }, 4, { 0, 0, }, 0, }, 0x14, 0x12 },
+#endif
+#ifdef CONFIG_IPAD_1G
+	{ { 2, 1, { 0x7294D7EC, 0, }, 2, { 0, 0, }, 0, }, 0x14, 0x10 },
+	{ { 2, 2, { 0x7294D7EC, 0, }, 2, { 0x7294D7EC, 0, }, 2, }, 0x14, 0x10 },
+	{ { 2, 2, { 0x7294D7EC, 0, }, 4, { 0x7294D7EC, 0, }, 4, }, 0x14, 0x10 },
+	{ { 2, 2, { 0x72D5DEEC, 0, }, 4, { 0x72D5DEEC, 0, }, 4, }, 0x14, 0x10 },
+	{ { 2, 1, { 0x4604682C, 0, }, 4, { 0, 0, }, 0 }, 0x14, 0x12 },
+	{ { 2, 2, { 0x4604682C, 0, }, 4, { 0x4604682C, 0, }, 4, }, 0x14, 0x12 },
+	{ { 2, 2, { 0x4604682C, 0, }, 2, { 0x4604682C, 0, }, 2, }, 0x14, 0x12 },
+	{ { 2, 2, { 0x3294D798, 0, }, 2, { 0x3294D798, 0, }, 2, }, 0x11, 0x15 },
+	{ { 2, 2, { 0x3294D798, 0, }, 4, { 0x3294D798, 0, }, 4, }, 0x11, 0x15 },
+	{ { 2, 2, { 0x3295DE98, 0, }, 4, { 0x3295DE98, 0, }, 4, }, 0x11, 0x15 },
+	{ { 2, 2, { 0x3294E798, 0, }, 4, { 0x3294E798, 0, }, 4, }, 0x11, 0x15 },
+	{ { 2, 2, { 0x3294E798, 0, }, 2, { 0x3294E798, 0, }, 2, }, 0x11, 0x15 },
+	{ { 2, 2, { 0x3295EE98, 0, }, 4, { 0x3295EE98, 0, }, 4, }, 0x11, 0x15 },
+	{ { 2, 2, { 0x2594D7AD, 0, }, 2, { 0x2594D7AD, 0, }, 2, }, 0x14, 0x10 },
+	{ { 1, 1, { 0xB614D5AD, 0, }, 4, { 0, 0, }, 0 }, 0x14, 0x10 },
+	{ { 2, 1, { 0xB614D5AD, 0, }, 4, { 0, 0, }, 0 }, 0x14, 0x10 },
+	{ { 2, 2, { 0xB614D5AD, 0, }, 4, { 0xB614D5AD, 0, }, 4, }, 0x14, 0x10 },
+#endif
+#ifdef CONFIG_ATV_2G
+	{ { 2, 1, { 0x7294D7EC, 0, }, 2, { 0, 0, }, 0, }, 0x14, 0x10 },
+	{ { 2, 2, { 0x7294D7EC, 0, }, 2, { 0x7294D7EC, 0, }, 2, }, 0x14, 0x10 },
+	{ { 2, 1, { 0x3294E798, 0, }, 2, { 0, 0, }, 0, }, 0x11, 0x15 },
+	{ { 2, 2, { 0x3294E798, 0, }, 2, { 0x3294E798, 0, }, 2, }, 0x11, 0x15 },
+#endif
 };
 
 static nand_timing_info_t nand_timing_info[] = {
+#ifdef CONFIG_IPHONE_4
 	{ { 2, 1, { 0x7294D7EC, 0x0, }, 2, { 0x0, 0x0, }, 0, }, 0x1E, 0xF, 0xA, 0x1E, 0xF, 0xA, 0x19, 0xF, },
 	{ { 2, 1, { 0x7294D7EC, 0x0, }, 4, { 0x0, 0x0, }, 0, }, 0x1E, 0xF, 0xA, 0x1E, 0xF, 0xA, 0x19, 0xF, },
 	{ { 2, 1, { 0x72D5DEEC, 0x0, }, 4, { 0x0, 0x0, }, 0, }, 0x1E, 0xF, 0xA, 0x1E, 0xF, 0xA, 0x14, 0xF, },
@@ -131,6 +209,51 @@ static nand_timing_info_t nand_timing_info[] = {
 	{ { 2, 1, { 0x3295DE45, 0x0, }, 4, { 0x0, 0x0, }, 0, }, 0x19, 0xC, 0xA, 0x19, 0xC, 0xA, 0x14, 0x1E, },
 	{ { 2, 1, { 0x32944845, 0x0, }, 4, { 0x0, 0x0, }, 0, }, 0x19, 0xC, 0xA, 0x19, 0xC, 0xA, 0x14, 0x19, },
 	{ { 2, 1, { 0x32956845, 0x0, }, 4, { 0x0, 0x0, }, 0, }, 0x19, 0xC, 0xA, 0x19, 0xC, 0xA, 0x14, 0x19, },
+#endif
+#ifdef CONFIG_IPOD_TOUCH_4G
+	{ { 2, 1, { 0x7A94D7EC, 0, }, 2, { 0, 0, }, 0, }, 0x19, 0xC, 0xA, 0x19, 0xC, 0xA, 0x14, 0xF },
+	{ { 2, 1, { 0x7AD5DEEC, 0, }, 4, { 0, 0, }, 0, }, 0x19, 0xC, 0xA, 0x19, 0xC, 0xA, 0x14, 0xF },
+	{ { 2, 1, { 0x7294D7EC, 0, }, 2, { 0, 0, }, 0, }, 0x1E, 0xF, 0xA, 0x1E, 0xF, 0xA, 0x19, 0xF },
+	{ { 2, 1, { 0x7294D7EC, 0, }, 4, { 0, 0, }, 0, }, 0x1E, 0xF, 0xA, 0x1E, 0xF, 0xA, 0x19, 0xF },
+	{ { 2, 1, { 0x72D5DEEC, 0, }, 4, { 0, 0, }, 0, }, 0x1E, 0xF, 0xA, 0x1E, 0xF, 0xA, 0x14, 0xF },
+	{ { 2, 2, { 0x72D5DEEC, 0, }, 4, { 0x72D5DEEC, 0, }, 4, }, 0x1E, 0xF, 0xA, 0x1E, 0xF, 0xA, 0x14, 0xF },
+	{ { 2, 1, { 0x72D5DEEC, 0, }, 8, { 0, 0, }, 0, }, 0x1E, 0xF, 0xA, 0x1E, 0xF, 0xA, 0x19, 0xF },
+	{ { 2, 2, { 0x72D5DEEC, 0, }, 8, { 0x72D5DEEC, 0, }, 8, }, 0x1E, 0xF, 0xA, 0x1E, 0xF, 0xA, 0x19, 0xF },
+	{ { 2, 1, { 0x9A94D7AD, 0, }, 2, { 0, 0, }, 0, }, 0x19, 0xC, 0xA, 0x19, 0xC, 0xA, 0x14, 0xF },
+	{ { 2, 1, { 0x9A95DEAD, 0, }, 4, { 0, 0, }, 0, }, 0x19, 0xC, 0xA, 0x19, 0xC, 0xA, 0x14, 0xF },
+	{ { 2, 1, { 0x3294E798, 0, }, 4, { 0, 0, }, 0, }, 0x19, 0xC, 0xA, 0x19, 0xC, 0xA, 0x14, 0x19 },
+	{ { 2, 1, { 0x3295EE98, 0, }, 4, { 0, 0, }, 0, }, 0x19, 0xC, 0xA, 0x19, 0xC, 0xA, 0x14, 0x19 },
+	{ { 2, 1, { 0x3295EE98, 0, }, 8, { 0, 0, }, 0, }, 0x19, 0xC, 0xA, 0x19, 0xC, 0xA, 0x14, 0x19 },
+	{ { 2, 1, { 0x3294E798, 0, }, 2, { 0, 0, }, 0, }, 0x19, 0xC, 0xA, 0x19, 0xC, 0xA, 0x14, 0x19 },
+	{ { 2, 1, { 0xCB05A82C, 0, }, 4, { 0, 0, }, 0, }, 0x14, 0xA, 7, 0x14, 0xA, 7, 0x10, 0xF },
+	{ { 2, 1, { 0x4B04882C, 0, }, 4, { 0, 0, }, 0, }, 0x14, 0xA, 7, 0x14, 0xA, 7, 0x10, 0xF },
+	{ { 2, 1, { 0x32956845, 0, }, 4, { 0, 0, }, 0, }, 0x19, 0xC, 0xA, 0x19, 0xC, 0xA, 0x14, 0x19 },
+#endif
+#ifdef CONFIG_IPAD_1G
+	{ { 2, 1, { 0x7294D7EC, 0, }, 2, { 0, 0, }, 0, }, 0x1E, 0xF, 0xA, 0x1E, 0xF, 0xA, 0x19, 0xF },
+	{ { 2, 2, { 0x7294D7EC, 0, }, 2, { 0x7294D7EC, 0, }, 2, }, 0x1E, 0xF, 0xA, 0x1E, 0xF, 0xA, 0x19, 0xF },
+	{ { 2, 2, { 0x7294D7EC, 0, }, 4, { 0x7294D7EC, 0, }, 4, }, 0x1E, 0xF, 0xA, 0x1E, 0xF, 0xA, 0x19, 0xF },
+	{ { 2, 2, { 0x72D5DEEC, 0, }, 4, { 0x72D5DEEC, 0, }, 4, }, 0x1E, 0xF, 0xA, 0x1E, 0xF, 0xA, 0x14, 0xF },
+	{ { 2, 2, { 0x2594D7AD, 0, }, 2, { 0x2594D7AD, 0, }, 2, }, 0x19, 0xC, 0xA, 0x19, 0xC, 0xA, 0x14, 0xF },
+	{ { 1, 1, { 0xB614D5AD, 0, }, 4, { 0, 0, }, 0, }, 0x19, 0xC, 0xA, 0x19, 0xC, 0xA, 0x14, 0xF },
+	{ { 2, 1, { 0xB614D5AD, 0, }, 4, { 0, 0, }, 0, }, 0x19, 0xC, 0xA, 0x19, 0xC, 0xA, 0x14, 0xF },
+	{ { 2, 2, { 0xB614D5AD, 0, }, 4, { 0xB614D5AD, 0, }, 4, }, 0x19, 0xC, 0xA, 0x19, 0xC, 0xA, 0x14, 0xF },
+	{ { 2, 2, { 0x3294D798, 0, }, 2, { 0x3294D798, 0, }, 2, }, 0x19, 0xC, 0xA, 0x19, 0xC, 0xA, 0x14, 0x19 },
+	{ { 2, 2, { 0x3294D798, 0, }, 4, { 0x3294D798, 0, }, 4, }, 0x19, 0xC, 0xA, 0x19, 0xC, 0xA, 0x14, 0x19 },
+	{ { 2, 2, { 0x3295DE98, 0, }, 4, { 0x3295DE98, 0, }, 4, }, 0x19, 0xC, 0xA, 0x19, 0xC, 0xA, 0x14, 0x19 },
+	{ { 2, 2, { 0x3294E798, 0, }, 2, { 0x3294E798, 0, }, 2, }, 0x19, 0xC, 0xA, 0x19, 0xC, 0xA, 0x14, 0x19 },
+	{ { 2, 2, { 0x3294E798, 0, }, 4, { 0x3294E798, 0, }, 4, }, 0x19, 0xC, 0xA, 0x19, 0xC, 0xA, 0x14, 0x19 },
+	{ { 2, 2, { 0x3295EE98, 0, }, 4, { 0x3295EE98, 0, }, 4, }, 0x19, 0xC, 0xA, 0x19, 0xC, 0xA, 0x14, 0x19 },
+	{ { 2, 1, { 0x4604682C, 0, }, 4, { 0, 0, }, 0, }, 0x19, 0xC, 0xA, 0x19, 0xC, 0xA, 0x14, 0xF },
+	{ { 2, 2, { 0x4604682C, 0, }, 4, { 0x4604682C, 0, }, 4, }, 0x19, 0xC, 0xA, 0x19, 0xC, 0xA, 0x14, 0xF },
+	{ { 2, 2, { 0x4604682C, 0, }, 2, { 0x4604682C, 0, }, 2, }, 0x19, 0xC, 0xA, 0x19, 0xC, 0xA, 0x14, 0xF },
+#endif
+#ifdef CONFIG_ATV_2G
+	{ { 2, 1, { 0x7294D7EC, 0, }, 2, { 0, 0, }, 0, }, 0x1E, 0xF, 0xA, 0x1E, 0xF, 0xA, 0x19, 0xF },
+	{ { 2, 2, { 0x7294D7EC, 0, }, 2, { 0x7294D7EC, 0, }, 2, }, 0x1E, 0xF, 0xA, 0x1E, 0xF, 0xA, 0x19, 0xF },
+	{ { 2, 2, { 0x3294E798, 0, }, 2, { 0x3294E798, 0, }, 2, }, 0x19, 0xC, 0xA, 0x19, 0xC, 0xA, 0x14, 0x19 },
+	{ { 2, 1, { 0x3294E798, 0, }, 2, { 0, 0, }, 0, }, 0x19, 0xC, 0xA, 0x19, 0xC, 0xA, 0x14, 0x19 },
+#endif
 };
 
 typedef struct _h2fmi_timing_setup
@@ -195,9 +318,11 @@ static h2fmi_struct_t *h2fmi_busses[] = {
 	&fmi1,
 };
 
-#define H2FMI_BUS_COUNT (array_size(h2fmi_busses))
+#define H2FMI_BUS_COUNT (ARRAY_SIZE(h2fmi_busses))
 
 h2fmi_geometry_t h2fmi_geometry;
+static nand_device_t h2fmi_device;
+static vfl_vfl_device_t h2fmi_vfl_device;
 
 typedef struct _h2fmi_map_entry
 {
@@ -207,13 +332,17 @@ typedef struct _h2fmi_map_entry
 
 static h2fmi_map_entry_t h2fmi_map[H2FMI_CHIP_COUNT];
 
-static uint32_t h2fmi_hash_table[1024];
+static uint32_t h2fmi_hash_table[256];
 static uint8_t *h2fmi_wmr_data = NULL;
 
 static uint32_t h2fmi_ftl_count = 0;
 static uint32_t h2fmi_ftl_databuf = 0;
 static uint32_t h2fmi_ftl_smth[2] = {0, 0};
-static uint32_t h2fmi_data_whitening_enabled = 0;
+uint32_t h2fmi_data_whitening_enabled = 1;
+
+void h2fmi_set_whitening(uint32_t _arg) {
+	h2fmi_data_whitening_enabled = _arg;
+}
 
 static int compare_board_ids(nand_board_id_t *a, nand_board_id_t *b)
 {
@@ -315,6 +444,21 @@ static int h2fmi_wait_dma_task_pending(h2fmi_struct_t *_fmi)
 	return 0;
 }
 
+/*
+static int h2fmi_pio_write_sector(h2fmi_struct_t *_fmi, void *_ptr, int _amt)
+{
+	if (h2fmi_wait_dma_task_pending(_fmi))
+		return -1;
+
+	uint32_t *ptr = _ptr;
+
+	int i;
+	for (i = 0; i < (_amt >> 2); i++) {
+		SET_REG(H2FMI_DATA(_fmi), ptr[i]);
+	}
+}
+*/
+
 static int h2fmi_pio_read_sector(h2fmi_struct_t *_fmi, void *_dest, int _amt)
 {
 	if (h2fmi_wait_dma_task_pending(_fmi))
@@ -325,7 +469,7 @@ static int h2fmi_pio_read_sector(h2fmi_struct_t *_fmi, void *_dest, int _amt)
 
 	int i;
 	for (i = 0; i < _amt; i++) {
-		dest[i] = GET_REG(H2FMI_UNKREG17(_fmi));
+		dest[i] = GET_REG(H2FMI_DATA(_fmi));
 	}
 
 	return 0;
@@ -445,7 +589,7 @@ static int h2fmi_check_chipid(h2fmi_struct_t *_fmi, char *_id, char *_base, int 
 	{
 		if(!memcmp(ptr, _base, 6))
 		{
-			bufferPrintf("fmi: Found chip ID %2x %2x %2x %2x %2x %2x on fmi%d:ce%d.\n",
+			bufferPrintf("fmi: Found chip ID %02x %02x %02x %02x %02x %02x on fmi%d:ce%d.\n",
 					ptr[0], ptr[1], ptr[2], ptr[3], ptr[4], ptr[5],
 					_fmi->bus_num, i);
 
@@ -453,7 +597,7 @@ static int h2fmi_check_chipid(h2fmi_struct_t *_fmi, char *_id, char *_base, int 
 			_fmi->num_chips++;
 		}
 		else if(memcmp(ptr, "\xff\xff\xff\xff\xff\xff", 6) && memcmp(ptr, "\0\0\0\0\0\0", 6))
-			bufferPrintf("fmi: Ignoring mismatched chip with ID %2x %2x %2x %2x %2x %2x on fmi%d:ce%d.\n",
+			bufferPrintf("fmi: Ignoring mismatched chip with ID %02x %02x %02x %02x %02x %02x on fmi%d:ce%d.\n",
 					ptr[0], ptr[1], ptr[2], ptr[3], ptr[4], ptr[5],
 					_fmi->bus_num, i);
 
@@ -489,7 +633,18 @@ static int h2fmi_reset_and_read_chipids(h2fmi_struct_t *_fmi, void *_buffer, uin
 
 static nand_info_t *h2fmi_nand_find_info(char *_id, h2fmi_struct_t **_busses, int _count)
 {
+#if defined(CONFIG_IPHONE_4)
 	static nand_smth_struct_t nand_smth = { { 0, 0, 0, 3, 4, 3, 4, 0 }, { 0xF0F, 0, 0 } };
+#endif
+#if defined(CONFIG_IPAD_1G)
+	static nand_smth_struct_t nand_smth = { { 0, 0, 0, 3, 3, 4, 4, 0 }, { 0x3333, 0xCCCC, 0 } };
+#endif
+#if defined(CONFIG_IPOD_TOUCH_4G)
+	static nand_smth_struct_t nand_smth = { { 0, 0, 0, 5, 5, 5, 5, 0 }, { 0x3333, 0xCCCC, 0 } };
+#endif
+#if defined(CONFIG_ATV_2G)
+	static nand_smth_struct_t nand_smth = { { 0, 0, 0, 3, 3, 3, 4, 0 }, { 0x3333, 0xCCCC, 0 } };
+#endif
 	static uint32_t nand_some_array[] = { 0xC, 0xA, 0 };
 
 	uint8_t chipID[H2FMI_CHIPID_LENGTH];
@@ -552,7 +707,7 @@ static nand_info_t *h2fmi_nand_find_info(char *_id, h2fmi_struct_t **_busses, in
 	info->some_array = nand_some_array;
 	info->some_mask = &nand_smth;
 
-	for(i = 0; i < array_size(nand_chip_info); i++)
+	for(i = 0; i < ARRAY_SIZE(nand_chip_info); i++)
 	{
 		nand_chip_info_t *ci = &nand_chip_info[i];
 
@@ -582,7 +737,7 @@ static nand_info_t *h2fmi_nand_find_info(char *_id, h2fmi_struct_t **_busses, in
 			board_id.num_busses, board_id.num_symmetric, board_id.chipID.chipID, board_id.chipID.unk1,
 			board_id.unk3, board_id.chipID2.chipID, board_id.chipID2.unk1, board_id.unk4);
 
-	for(i = 0; i < array_size(nand_board_info); i++)
+	for(i = 0; i < ARRAY_SIZE(nand_board_info); i++)
 	{
 		nand_board_info_t *bi = &nand_board_info[i];
 		if(compare_board_ids(&board_id, &bi->board_id))
@@ -595,7 +750,7 @@ static nand_info_t *h2fmi_nand_find_info(char *_id, h2fmi_struct_t **_busses, in
 		return NULL;
 	}
 
-	for(i = 0; i < array_size(nand_timing_info); i++)
+	for(i = 0; i < ARRAY_SIZE(nand_timing_info); i++)
 	{
 		nand_timing_info_t *ti = &nand_timing_info[i];
 		if(compare_board_ids(&board_id, &ti->board_id))
@@ -628,7 +783,7 @@ static void h2fmi_handle_dma(h2fmi_dma_state_t *_dma)
 	LinkedList *list = _dma->list.next;
 	while(list != &_dma->list)
 	{
-		h2fmi_dma_task_t *dma_task = container_of(h2fmi_dma_task_t, list, list);
+		h2fmi_dma_task_t *dma_task = CONTAINER_OF(h2fmi_dma_task_t, list, list);
 		task_wake(dma_task->task);
 		free(dma_task);
 	}
@@ -652,7 +807,7 @@ static void h2fmi_dma_execute_async(uint32_t _dir, uint32_t _channel, uint8_t *_
 		h2fmi_dma_state_initialized = 1;
 
 		int i;
-		for(i = 0; i < array_size(h2fmi_dma_state); i++)
+		for(i = 0; i < ARRAY_SIZE(h2fmi_dma_state); i++)
 			h2fmi_init_dma_event(&h2fmi_dma_state[i], 1, 0);
 	}
 	
@@ -679,7 +834,7 @@ static int h2fmi_dma_wait(uint32_t _channel, uint32_t _timeout)
 
 	uint32_t ret = 0;
 
-	bufferPrintf("fmi: dma_wait %d for %d.\r\n", _channel, _timeout);
+	//bufferPrintf("fmi: dma_wait %d for %d.\r\n", _channel, _timeout);
 
 	if(dma->signalled)
 		return 0;
@@ -723,7 +878,7 @@ static void h2fmi_set_address_inner(h2fmi_struct_t *_fmi, uint32_t _addr)
 
 static void h2fmi_set_address(h2fmi_struct_t *_fmi, uint32_t _addr)
 {
-	bufferPrintf("fmi: Aligning to page %d!\r\n", _addr);
+	//bufferPrintf("fmi: Aligning to page %d!\r\n", _addr);
 
 	h2fmi_set_address_inner(_fmi, _addr);
 
@@ -760,13 +915,13 @@ static void h2fmi_hw_reg_int_init(h2fmi_struct_t *_fmi)
 
 void nand_device_set_interrupt(h2fmi_struct_t *_fmi)
 {
-	sub_5FF17160((uint32_t*)_fmi + 0x6C, 1, 0);
+	sub_5FF17160((uint32_t*)_fmi + 0x1B, 1, 0);
 	_fmi->fmi_state = 0;
 	h2fmi_hw_reg_int_init(_fmi);
 	interrupt_set_int_type(_fmi->interrupt, 0);
 	interrupt_install(_fmi->interrupt, h2fmiIRQHandler, (uint32_t)_fmi);
 	interrupt_enable(_fmi->interrupt);
-	sub_5FF17160((uint32_t*)_fmi + 0x16C, 1, 0);
+	sub_5FF17160((uint32_t*)_fmi + 0x5B, 1, 0);
 	SET_REG(H2FMI_UNKREG3(_fmi), 0);
 }
 
@@ -787,37 +942,43 @@ static void h2fmi_set_ecc_bits(h2fmi_struct_t *_fmi, uint32_t _a)
 static uint32_t h2fmi_function_1(h2fmi_struct_t *_fmi,
 		uint32_t _val, uint8_t *_var, uint8_t *_a, uint32_t _b)
 {
-	if(_val & 0x40)
-	{
-		if(_a)
-			memset(_a, 0xFE, _b);
+	uint32_t a = 0;
+	uint32_t b = 0;
 
-		return 2;
-	}
+	uint32_t ret = (_val & 8)? ENAND_ECC: 1;
 
-	uint32_t ret = (_val & 8)? 0x80000024: 1;
-	if(!_var)
-		return ret;
+	if(_var)
+		*_var = (_val >> 16) & 0x1F;
 
-	uint32_t counter;
 	uint8_t *ptr = _a;
+	uint32_t counter;
 	for(counter = 0; counter != _b; counter++)
 	{
-		uint32_t reg = GET_REG(H2FMI_UNK80C(_fmi));
-		uint8_t c = (reg >> 16) & 0x1F;
-		if(c > *_var)
-			*_var = c;
-
-		if(_a)
+		uint32_t status = GET_REG(H2FMI_UNK80C(_fmi));
+		if (status & 2) // 1
 		{
-			if(reg & 1)
-				*ptr = 0xFF;
-			else
-				*ptr = c;
+			*ptr = 0xFE;
+			a++;
 		}
+		else if (status & 4) // 2
+		{
+			*ptr = 0xFF;
+			b++;
+		}
+		else if (status & 1) // 3
+			*ptr = 0xFF;
+		else // 0
+			*ptr = (status >> 16) & 0x1F;
 
 		ptr++;
 	}
+
+	SET_REG(H2FMI_UNK4(_fmi), GET_REG(H2FMI_UNK4(_fmi)) & ~(1<<7));
+
+	if (_b == b)
+		ret = 0x80000025;
+	if (_b == a)
+		ret = 2;
 
 	return ret;
 }
@@ -828,7 +989,7 @@ static void h2fmi_some_mysterious_function(h2fmi_struct_t *_fmi, uint32_t _val)
 	uint32_t ret = h2fmi_function_1(_fmi, _val, &var_10,
 			_fmi->field_158, _fmi->bbt_format);
 	
-	if(ret == 0x80000024)
+	if(ret == ENAND_ECC)
 		_fmi->field_154++;
 	else if(ret == 0x80000025)
 		_fmi->field_150++;
@@ -836,7 +997,7 @@ static void h2fmi_some_mysterious_function(h2fmi_struct_t *_fmi, uint32_t _val)
 		_fmi->field_14C++;
 	else
 	{
-		if(ret != 0x80000024 && ret != 0x80000025)
+		if(ret != ENAND_ECC && ret != 0x80000025)
 			goto skipBlock;
 	}
 
@@ -923,22 +1084,22 @@ static void h2fmi_rw_large_page(h2fmi_struct_t *_fmi)
 {
 	uint32_t dir = (_fmi->state.state == H2FMI_STATE_READ)? 2: 1;
 
-	bufferPrintf("fmi: rw_large_page.\r\n");
+	//bufferPrintf("fmi: rw_large_page.\r\n");
 
 	h2fmi_dma_execute_async(dir, _fmi->dma0, _fmi->data_ptr[_fmi->current_page_index],
-			H2FMI_UNK14(_fmi), _fmi->bytes_per_page * _fmi->num_pages_to_read,
+			H2FMI_DATA(_fmi), _fmi->bytes_per_page * _fmi->num_pages_to_read,
 			4, 8, _fmi->aes_info);
 
 	h2fmi_dma_execute_async(dir, _fmi->dma1, _fmi->wmr_ptr[_fmi->current_page_index],
 			H2FMI_UNK18(_fmi), _fmi->num_pages_to_read * _fmi->ecc_bytes,
 			1, 1, NULL);
 
-	bufferPrintf("fmi: rw_large_page done!\r\n");
+	//bufferPrintf("fmi: rw_large_page done!\r\n");
 }
 
 static uint32_t h2fmi_read_state_2_handler(h2fmi_struct_t *_fmi)
 {
-	bufferPrintf("fmi: read_state_2_handler.\r\n");
+	//bufferPrintf("fmi: read_state_2_handler.\r\n");
 
 	uint32_t val = h2fmi_function_2(_fmi);
 	if(val == 0)
@@ -948,12 +1109,10 @@ static uint32_t h2fmi_read_state_2_handler(h2fmi_struct_t *_fmi)
 		_fmi->field_13C = 0x8000001D;
 		_fmi->failure_details.overall_status = 0x8000001D;
 		_fmi->state.read_state = H2FMI_READ_DONE;
-		h2fmi_read_complete_handler(_fmi);
+		return h2fmi_read_complete_handler(_fmi);
 	}
 	else if(val != 1)
 	{
-		uint32_t reg = GET_REG(H2FMI_UNK810(_fmi));
-		SET_REG(H2FMI_UNK810(_fmi), reg);
 		h2fmi_hw_reg_int_init(_fmi);
 
 		SET_REG(H2FMI_UNKREG4(_fmi), 0);
@@ -963,27 +1122,31 @@ static uint32_t h2fmi_read_state_2_handler(h2fmi_struct_t *_fmi)
 
 		_fmi->state.read_state = H2FMI_READ_3;
 		SET_REG(H2FMI_UNK10(_fmi), 2);
-		SET_REG(H2FMI_UNK4(_fmi), 3);
 
 		if(_fmi->current_page_index == 0)
 		{
+			SET_REG(H2FMI_UNK4(_fmi), 3);
 			h2fmi_rw_large_page(_fmi);
 			_fmi->banks_per_ce_vfl = timer_get_system_microtime();
 		}
 		else
 		{
+			SET_REG(H2FMI_UNK4(_fmi), 0x82);
+			SET_REG(H2FMI_UNK4(_fmi), 3);
 			_fmi->field_124 = timer_get_system_microtime();
+			uint32_t reg = GET_REG(H2FMI_UNK810(_fmi));
+			SET_REG(H2FMI_UNK810(_fmi), reg);
 			h2fmi_some_mysterious_function(_fmi, reg);
 		}
 	}
 
-	bufferPrintf("fmi: read_state_2_handler done!\r\n");
+	//bufferPrintf("fmi: read_state_2_handler done!\r\n");
 	return 0;
 }
 
 static uint32_t h2fmi_read_state_4_handler(h2fmi_struct_t *_fmi)
 {
-	bufferPrintf("fmi: read_state_4_handler.\r\n");
+	//bufferPrintf("fmi: read_state_4_handler.\r\n");
 
 	if(GET_REG(H2FMI_UNK8(_fmi)) & 4)
 	{
@@ -999,14 +1162,12 @@ static uint32_t h2fmi_read_state_4_handler(h2fmi_struct_t *_fmi)
 	{
 		if(_fmi->current_page_index >= _fmi->num_pages_to_read)
 		{
-			bufferPrintf("ZZZ\r\n");
 			uint32_t val = GET_REG(H2FMI_UNK810(_fmi));
 			SET_REG(H2FMI_UNK810(_fmi), val);
 			h2fmi_some_mysterious_function(_fmi, val);
 		}
 		else
 		{
-			bufferPrintf("ZZ2\r\n");
 			h2fmi_another_function(_fmi);
 			_fmi->field_124 = timer_get_system_microtime();
 			_fmi->state.read_state = H2FMI_READ_2;
@@ -1022,7 +1183,7 @@ static uint32_t h2fmi_read_state_1_handler(h2fmi_struct_t *_fmi)
 {
 	uint32_t r5;
 
-	bufferPrintf("fmi: read_state_1_handler.\r\n");
+	//bufferPrintf("fmi: read_state_1_handler.\r\n");
 
 	if(_fmi->field_140 == 0)
 		r5 = (_fmi->current_page_index >= _fmi->num_pages_to_read)? 0: 1;
@@ -1034,7 +1195,7 @@ static uint32_t h2fmi_read_state_1_handler(h2fmi_struct_t *_fmi)
 		h2fmi_enable_and_set_address(_fmi, _fmi->current_page_index, _fmi->chips, _fmi->pages);
 	}	
 
-	if(_fmi->current_page_index < _fmi->num_pages_to_read)
+	if(_fmi->current_page_index + 1 < _fmi->num_pages_to_read)
 	{
 		if(_fmi->chips[_fmi->current_page_index + 1] == _fmi->current_chip)
 		{
@@ -1066,16 +1227,18 @@ static uint32_t h2fmi_read_state_1_handler(h2fmi_struct_t *_fmi)
 
 static uint32_t h2fmi_read_state_3_handler(h2fmi_struct_t *_fmi)
 {
-	bufferPrintf("fmi: read_state_3_handler.\r\n");
+	//bufferPrintf("fmi: read_state_3_handler.\r\n");
 
-	if((GET_REG(H2FMI_UNKC(_fmi)) & 2) == 0)
+	_fmi->field_48 = GET_REG(H2FMI_UNKC(_fmi));
+
+	if((_fmi->field_48 & 2) == 0)
 	{
 		if(timer_get_system_microtime() - _fmi->field_124 > _fmi->field_12C)
 		{
 			_fmi->field_13C = 0;
 			_fmi->failure_details.overall_status = 0x8000001C;
 			_fmi->state.read_state = H2FMI_READ_DONE;
-			h2fmi_read_complete_handler(_fmi);
+			return h2fmi_read_complete_handler(_fmi);
 		}
 	}
 	else
@@ -1083,6 +1246,7 @@ static uint32_t h2fmi_read_state_3_handler(h2fmi_struct_t *_fmi)
 		SET_REG(H2FMI_UNK10(_fmi), 0);
 		_fmi->current_page_index++;
 		_fmi->state.read_state = H2FMI_READ_1;
+		return h2fmi_read_state_1_handler(_fmi);
 	}
 
 	return 0;
@@ -1116,7 +1280,7 @@ static uint32_t h2fmi_read_idle_handler(h2fmi_struct_t *_fmi)
 
 	_fmi->current_chip = *_fmi->chips;
 
-	bufferPrintf("fmi: read_idle_handler.\r\n");
+	//bufferPrintf("fmi: read_idle_handler.\r\n");
 
 	h2fmi_some_read_timing_thing(_fmi);
 
@@ -1134,7 +1298,7 @@ static uint32_t h2fmi_read_state_machine(h2fmi_struct_t *_fmi)
 	}
 
 	uint32_t state = _fmi->state.read_state;
-	bufferPrintf("fmi: read_state_machine %d.\r\n", state);
+	//bufferPrintf("fmi: read_state_machine %d.\r\n", state);
 
 	static uint32_t (*state_functions[])(h2fmi_struct_t *) =
 	{
@@ -1146,15 +1310,15 @@ static uint32_t h2fmi_read_state_machine(h2fmi_struct_t *_fmi)
 		h2fmi_read_complete_handler,
 	};
 
-	if(_fmi->state.read_state >= array_size(state_functions))
+	if(_fmi->state.read_state >= ARRAY_SIZE(state_functions))
 	{
 		bufferPrintf("fmi: invalid read state!\r\n");
 		_fmi->state.read_state = H2FMI_READ_DONE;
 		return -1;
 	}
 
-	uint32_t ret = state_functions[_fmi->state.read_state](_fmi);
-	bufferPrintf("fmi: state machine %d done!\r\n", state);
+	uint32_t ret = state_functions[state](_fmi);
+	//bufferPrintf("fmi: state machine %d done!\r\n", state);
 	return ret;
 }
 
@@ -1182,7 +1346,7 @@ int h2fmi_read_multi(h2fmi_struct_t *_fmi, uint16_t _num_pages, uint16_t *_chips
 
 	LeaveCriticalSection();
 	
-	bufferPrintf("fmi: read_multi.\r\n");
+	//bufferPrintf("fmi: read_multi.\r\n");
 
 	h2fmi_store_80c_810(_fmi);
 
@@ -1195,7 +1359,7 @@ int h2fmi_read_multi(h2fmi_struct_t *_fmi, uint16_t _num_pages, uint16_t *_chips
 		task_yield();
 	}
 
-	bufferPrintf("fmi: state machine done.\r\n");
+	//bufferPrintf("fmi: state machine done.\r\n");
 
 	if(_fmi->field_13C != 0)
 	{
@@ -1209,7 +1373,7 @@ int h2fmi_read_multi(h2fmi_struct_t *_fmi, uint16_t _num_pages, uint16_t *_chips
 		_fmi->failure_details.overall_status = 0;
 	}
 	
-	bufferPrintf("fmi: Time to cancel the DMA!\r\n");
+	//bufferPrintf("fmi: Time to cancel the DMA!\r\n");
 	
 	h2fmi_dma_cancel(_fmi->dma0);
 	h2fmi_dma_cancel(_fmi->dma1);
@@ -1218,7 +1382,7 @@ int h2fmi_read_multi(h2fmi_struct_t *_fmi, uint16_t _num_pages, uint16_t *_chips
 
 	if(_fmi->failure_details.overall_status != 0)
 	{
-		bufferPrintf("h2fmi: overall_status is failure.\r\n");
+		//bufferPrintf("h2fmi: overall_status is failure.\r\n");
 		return _fmi->failure_details.overall_status;
 	}
 	else
@@ -1226,43 +1390,43 @@ int h2fmi_read_multi(h2fmi_struct_t *_fmi, uint16_t _num_pages, uint16_t *_chips
 		uint32_t a = _fmi->field_150;
 		uint32_t b = _fmi->field_14C;
 
-		bufferPrintf("fmi: Some error thing. 0x%08x 0x%08x.\r\n", a, b);
+		//bufferPrintf("fmi: Some error thing. 0x%08x 0x%08x.\r\n", a, b);
 
 		if(b != 0)
 		{
-			_fmi->failure_details.overall_status = b > _num_pages? 2 : 0x80000023;
+			_fmi->failure_details.overall_status = b > _num_pages? 2 : ENAND_EMPTY;
 		}
 		else
 		{
 			if(a != 0)
 			{
-				_fmi->failure_details.overall_status  = a > _num_pages? 0x80000025: 0x80000024;
+				_fmi->failure_details.overall_status  = a > _num_pages? 0x80000025: ENAND_ECC;
 			}
 			else if(_fmi->field_154 != 0)
 			{
-				_fmi->failure_details.overall_status = 0x80000024;
+				_fmi->failure_details.overall_status = ENAND_ECC;
 			}
 		}
 	}
 
 	h2fmi_hw_reg_int_init(_fmi);
 
-	bufferPrintf("fmi: read_multi done 0x%08x.\r\n", _fmi->failure_details.overall_status);
+	//bufferPrintf("fmi: read_multi done 0x%08x.\r\n", _fmi->failure_details.overall_status);
 
 	return _fmi->failure_details.overall_status;
 }
 
 uint32_t h2fmi_read_single(h2fmi_struct_t *_fmi, uint16_t _chip, uint32_t _page, uint8_t *_data, uint8_t *_wmr, uint8_t *_6, uint8_t *_7)
 {
-	bufferPrintf("fmi: read_single.\r\n");
+	//bufferPrintf("fmi: read_single.\r\n");
 	return h2fmi_read_multi(_fmi, 1, &_chip, &_page, &_data, &_wmr, _6, _7);
 }
 
-static void h2fmi_aes_handler_1(uint32_t dataBuffer, uint32_t dmaAES_setting2, uint32_t* unknAESSetting1)
+static void h2fmi_aes_handler_1(uint32_t _param, uint32_t _segment, uint32_t* _iv)
 {
 	//bufferPrintf("fmi: aes_handler_1.\r\n");
 
-	uint32_t val = ((dataBuffer - h2fmi_ftl_databuf) / (h2fmi_geometry.bbt_format << 9)) + h2fmi_ftl_smth[0];
+	uint32_t val = ((_param - h2fmi_ftl_databuf) / (h2fmi_geometry.bbt_format << 10)) + h2fmi_ftl_smth[0];
 	uint32_t i;
 	for(i = 0; i < 4; i++)
 	{
@@ -1271,7 +1435,7 @@ static void h2fmi_aes_handler_1(uint32_t dataBuffer, uint32_t dmaAES_setting2, u
 		else
 			val = (val >> 1);
 
-		unknAESSetting1[i] = val;
+		_iv[i] = val;
 	}
 }
 
@@ -1282,19 +1446,18 @@ static uint32_t h2fmi_aes_key_1[] = {
 	0xCEEE78FC,
 };
 
-static void h2fmi_aes_handler_2(uint32_t dataBuffer, uint32_t dmaAES_setting2, uint32_t* unknAESSetting1)
+static void h2fmi_aes_handler_2(uint32_t _param, uint32_t _segment, uint32_t* _iv)
 {
 	//bufferPrintf("fmi: aes_handler_2.\r\n");
-	//bufferPrintf("fmi: aes_handler_2 0x%08x, 0x%08x, 0x%08x.\r\n", dataBuffer, dmaAES_setting2, unknAESSetting1);
 
-	h2fmi_struct_t *fmi = (h2fmi_struct_t*)dataBuffer;
-	if(fmi->some_aes_field)
+	h2fmi_struct_t *fmi = (h2fmi_struct_t*)_param;
+	if(fmi->aes_iv_pointer)
 	{
-		memcpy(unknAESSetting1, ((char*)&fmi->some_aes_field) + (16*dmaAES_setting2), 16);
+		memcpy(_iv, fmi->aes_iv_pointer + (16*_segment), 16);
 	}
 	else
 	{
-		uint32_t val = fmi->pages[dmaAES_setting2];
+		uint32_t val = fmi->pages[_segment];
 		uint32_t i;
 		for(i = 0; i < 4; i++)
 		{
@@ -1303,8 +1466,12 @@ static void h2fmi_aes_handler_2(uint32_t dataBuffer, uint32_t dmaAES_setting2, u
 			else
 				val = (val >> 1);
 
-			unknAESSetting1[i] = val;
+			_iv[i] = val;
 		}
+
+		//bufferPrintf("fmi: iv = ");
+		//bytesToHex((uint8_t*)_iv, sizeof(*_iv)*4);
+		//bufferPrintf("\r\n");
 	}
 }
 
@@ -1315,40 +1482,44 @@ static uint32_t h2fmi_aes_key_2[] = {
 	0xA579CCD3,
 };
 
-static uint32_t h2fmi_aes_counter = 1;
+uint32_t h2fmi_aes_enabled = 1;
 
-static void h2fmi_setup_aes(h2fmi_struct_t *_fmi, uint32_t _enabled, uint32_t a2, uint32_t a3)
+void h2fmi_set_encryption(uint32_t _arg) {
+	h2fmi_aes_enabled = _arg;
+}
+
+static void h2fmi_setup_aes(h2fmi_struct_t *_fmi, uint32_t _enabled, uint32_t _encrypt, uint32_t _offset)
 {
 	if(_enabled)
 	{
-		uint32_t type;
-		if(a3 < (_fmi->bytes_per_page * h2fmi_ftl_count) + h2fmi_ftl_databuf)
-			type = 1;
-		else
-			type = 0;
-
-		if(h2fmi_ftl_databuf > a3)
-			type = 0;
-
-		if(type == 0)
+		if(h2fmi_ftl_databuf <= _offset
+				&& _offset < (_fmi->bytes_per_page * h2fmi_ftl_count) + h2fmi_ftl_databuf)
 		{
-			_fmi->aes_struct.dataBuffer = a3;
+			// FTL
 			_fmi->aes_struct.dataSize = _fmi->bytes_per_page;
-			_fmi->aes_struct.handler = h2fmi_aes_handler_1;
+			_fmi->aes_struct.ivParameter = _offset;
+			_fmi->aes_struct.ivGenerator = h2fmi_aes_handler_1;
 			_fmi->aes_struct.key = h2fmi_aes_key_1;
-			_fmi->aes_struct.unkn0 = (a2 == 0)? 0: 1;
-			_fmi->aes_struct.AESType = 0;
+			_fmi->aes_struct.inverse = !_encrypt;
+			_fmi->aes_struct.type = 0; // AES-128
 		}
 		else
 		{
-			_fmi->aes_struct.dataBuffer = (uint32_t)_fmi;
+			// VFL
 			_fmi->aes_struct.dataSize = _fmi->bytes_per_page;
-			_fmi->aes_struct.handler = h2fmi_aes_handler_2;
+			_fmi->aes_struct.ivParameter = (uint32_t)_fmi;
+			_fmi->aes_struct.ivGenerator = h2fmi_aes_handler_2;
 			_fmi->aes_struct.key = h2fmi_aes_key_2;
-			_fmi->aes_struct.unkn0 = (1 - a2 > 1)? 0: (1 - a2);
-			_fmi->aes_struct.AESType = 0;
+			_fmi->aes_struct.inverse = !_encrypt;
+			_fmi->aes_struct.type = 0; // AES-128
+
 		}
 
+		//bufferPrintf("fmi: key = ");
+		//bytesToHex((uint8_t*)_fmi->aes_struct.key, sizeof(uint32_t)*4);
+		//bufferPrintf("\r\n");
+
+		_fmi->aes_iv_pointer = NULL;
 		_fmi->aes_info = &_fmi->aes_struct;
 	}
 	else
@@ -1356,58 +1527,89 @@ static void h2fmi_setup_aes(h2fmi_struct_t *_fmi, uint32_t _enabled, uint32_t a2
 
 }
 
-uint32_t h2fmi_read_single_page(uint32_t _ce, uint32_t _page, uint8_t *_ptr, uint8_t *_meta_ptr, uint8_t *_6, uint8_t *_7, uint32_t _8)
+error_t h2fmi_read_multi_ftl(uint32_t _ce, uint32_t _page, uint8_t *_ptr)
 {
 	uint32_t bus = h2fmi_map[_ce].bus;
 	uint32_t chip = h2fmi_map[_ce].chip;
 
 	h2fmi_struct_t *fmi = h2fmi_busses[bus];
 
-	uint32_t var_28 = fmi->meta_per_logical_page - fmi->ecc_bytes;
+	DataCacheOperation(3, (uint32_t)_ptr, ROUND_UP(fmi->bytes_per_page, 64));
+
+	h2fmi_setup_aes(fmi, h2fmi_aes_enabled, 0, (uint32_t)_ptr);
+
+	uint32_t read_ret = h2fmi_read_single(fmi, chip, _page, _ptr, h2fmi_wmr_data, NULL, NULL);
+
+	uint32_t ret = 0;
+
+	if(read_ret == 2)
+		ret = 1;
+	else if(read_ret > 2) {
+		if(read_ret + 0x80000000 - 0x23 > 2)
+			ret = 0x80000001;
+		else
+			ret = 0x80000002;
+	}
+	else if(read_ret != 0)
+		ret = 0x80000001;
+	else
+		ret = 0;
+
+	DataCacheOperation(3, (uint32_t)_ptr, ROUND_UP(fmi->bytes_per_page, 64));
+
+	return ret;
+}
+
+error_t h2fmi_read_single_page(uint32_t _ce, uint32_t _page, uint8_t *_ptr, uint8_t *_meta_ptr, uint8_t *_6, uint8_t *_7, uint32_t _8)
+{
+	uint32_t bus = h2fmi_map[_ce].bus;
+	uint32_t chip = h2fmi_map[_ce].chip;
+
+	h2fmi_struct_t *fmi = h2fmi_busses[bus];
 
 	if(_meta_ptr)
 		_meta_ptr[0] = 0;
 
-	DataCacheOperation(3, (uint32_t)_ptr, round_up(fmi->bytes_per_page, 64));
-	DataCacheOperation(3, (uint32_t)h2fmi_wmr_data, round_up(fmi->meta_per_logical_page, 64));
+	DataCacheOperation(3, (uint32_t)_ptr, ROUND_UP(fmi->bytes_per_page, 64));
+	DataCacheOperation(3, (uint32_t)h2fmi_wmr_data, ROUND_UP(fmi->meta_per_logical_page, 64));
 
 	uint32_t flag = (1 - _8);
 	if(flag > 1)
 		flag = 0;
 
-	if(h2fmi_aes_counter == 0)
+	if(h2fmi_aes_enabled == 0)
 		flag = 0;
-//	else
-//		flag++;
 
 	h2fmi_setup_aes(fmi, flag, 0, (uint32_t)_ptr);
 
 	uint32_t read_ret = h2fmi_read_single(fmi, chip, _page, _ptr, h2fmi_wmr_data, _6, _7);
 
 	if(_meta_ptr)
+	{
 		memcpy(_meta_ptr, h2fmi_wmr_data, fmi->meta_per_logical_page);
 
-	if(h2fmi_data_whitening_enabled)
-	{
-		uint32_t i;
-		for(i = 0; i < 4; i++)
-			((uint32_t*)_ptr)[i] ^= h2fmi_hash_table[i + _page];
+		if(h2fmi_data_whitening_enabled)
+		{
+			uint32_t i;
+			for(i = 0; i < 3; i++)
+				((uint32_t*)_meta_ptr)[i] ^= h2fmi_hash_table[(i + _page) % ARRAY_SIZE(h2fmi_hash_table)];
+		}
 	}
 
-	uint32_t ret = 0;
-	if(read_ret == 0x80000023)
-		ret = 0x80000002;
-	else if(read_ret == 0x80000024)
+	uint32_t ret = EIO;
+	if(read_ret == ENAND_EMPTY)
+		ret = ENOENT;
+	else if(read_ret == ENAND_ECC)
 	{
 		bufferPrintf("fmi: UECC ce %d page 0x%08x.\r\n", _ce, _page);
-		ret = 0x80000002;
+		ret = ENOENT;
 	}
 	else if(read_ret == 0)
 	{
 		if(_meta_ptr)
 		{
 			uint32_t i;
-			for(i = 1; i < var_28; i++)
+			for(i = 0; i < fmi->meta_per_logical_page - fmi->ecc_bytes; i++)
 				_meta_ptr[fmi->ecc_bytes + i] = 0xFF;
 		}
 
@@ -1420,8 +1622,8 @@ uint32_t h2fmi_read_single_page(uint32_t _ce, uint32_t _page, uint8_t *_ptr, uin
 		bufferPrintf("fmi: read_single_page hardware error 0x%08x.\r\n", read_ret);
 	}
 
-	DataCacheOperation(3, (uint32_t)_ptr, round_up(fmi->bytes_per_page, 64));
-	DataCacheOperation(3, (uint32_t)h2fmi_wmr_data, round_up(fmi->meta_per_logical_page, 64));
+	DataCacheOperation(3, (uint32_t)_ptr, ROUND_UP(fmi->bytes_per_page, 64));
+	DataCacheOperation(3, (uint32_t)h2fmi_wmr_data, ROUND_UP(fmi->meta_per_logical_page, 64));
 
 	return ret;
 }
@@ -1517,6 +1719,137 @@ static void h2fmi_init_virtual_physical_map()
 			count[bus]++;
 		}
 	}
+}
+
+// NAND Device Functions
+static error_t h2fmi_device_read_single_page(nand_device_t *_dev, uint32_t _chip, uint32_t _block,
+		uint32_t _page, uint8_t *_buffer, uint8_t *_spareBuffer)
+{
+	return h2fmi_read_single_page(_chip, _block*h2fmi_geometry.pages_per_block + _page,
+			_buffer, _spareBuffer, NULL, NULL, 0);
+}
+
+static void h2fmi_device_enable_encryption(nand_device_t *_dev, int _enabled)
+{
+	h2fmi_aes_enabled = _enabled;
+}
+
+static uint32_t h2fmi_device_get_info(nand_device_t *_dev, nand_device_info_t _info)
+{
+	switch(_info)
+	{
+	case diReturnOne:
+		return 1;
+
+	case diBanksPerCE:
+		return h2fmi_geometry.banks_per_ce;
+
+	case diPagesPerBlock2:
+		return h2fmi_geometry.pages_per_block_2;
+
+	case diPagesPerBlock:
+		return h2fmi_geometry.pages_per_block;
+
+	case diBlocksPerCE:
+		return h2fmi_geometry.blocks_per_ce;
+
+	case diBytesPerPage:
+		return h2fmi_geometry.bbt_format << 10;
+
+	case diBytesPerSpare:
+		return h2fmi_geometry.bytes_per_spare;
+
+	case diVendorType:
+		return h2fmi_geometry.vendor_type;
+
+	case diECCBits:
+		return h2fmi_geometry.ecc_bits;
+
+	case diECCBits2:
+		return fmi0.ecc_bits;
+
+	case diTotalBanks_VFL:
+		return h2fmi_geometry.banks_per_ce_vfl * h2fmi_geometry.num_ce;
+
+	case diBlocksPerBank_dw:
+		return h2fmi_geometry.blocks_per_bank_32;
+
+	case diBanksPerCE_dw:
+		return h2fmi_geometry.banks_per_ce_32;
+
+	case diPagesPerBlock_dw:
+		return h2fmi_geometry.pages_per_block_32;
+
+	case diPagesPerBlock2_dw:
+		return h2fmi_geometry.pages_per_block_2_32;
+
+	case diPageNumberBitWidth:
+		return h2fmi_geometry.page_number_bit_width;
+
+	case diPageNumberBitWidth2:
+		return h2fmi_geometry.page_number_bit_width_2;
+
+	case diNumCEPerBus:
+		if(h2fmi_geometry.num_fmi == 0)
+			return 0;
+
+		return h2fmi_geometry.num_ce / h2fmi_geometry.num_fmi;
+
+	case diPPN:
+		return h2fmi_geometry.is_ppn;
+
+	case diBanksPerCE_VFL:
+		return h2fmi_geometry.banks_per_ce_vfl;
+
+	case diNumECCBytes:
+		return h2fmi_geometry.num_ecc_bytes;
+
+	case diMetaPerLogicalPage:
+		return h2fmi_geometry.meta_per_logical_page;
+
+	case diPagesPerCE:
+		return h2fmi_geometry.pages_per_ce;
+
+	case diNumCE:
+		return h2fmi_geometry.num_ce;
+
+	default:
+		system_panic("h2fmi: Tried to get unimplemented device info: %d.\r\n", _info);
+		return 0;
+	}
+}
+
+static void h2fmi_device_set_info(nand_device_t *_dev, nand_device_info_t _info, uint32_t _val)
+{
+	switch(_info)
+	{
+	case diVendorType:
+		break;
+
+	case diBanksPerCE_VFL:
+		h2fmi_geometry.banks_per_ce_vfl = _val;
+		break;
+
+	default:
+		system_panic("h2fmi: Invalid device info to set: %d.\r\n", _val);
+		break;
+	}
+}
+
+static void h2fmi_init_device()
+{
+	nand_device_init(&h2fmi_device);
+	h2fmi_device.read_single_page = h2fmi_device_read_single_page;
+	h2fmi_device.enable_encryption = h2fmi_device_enable_encryption;
+	h2fmi_device.get_info = h2fmi_device_get_info;
+	h2fmi_device.set_info = h2fmi_device_set_info;
+
+	vfl_vfl_device_init(&h2fmi_vfl_device);
+	/*if(vfl_open(&h2fmi_vfl_device.vfl, &h2fmi_device))
+	{
+		bufferPrintf("fmi: Failed to open VFL!\r\n");
+		return;
+	}*/
 }
 
 int isPPN = 0;
@@ -1631,6 +1964,7 @@ void h2fmi_init()
 		h2fmi_geometry.num_ce = chip_count;
 		h2fmi_geometry.blocks_per_ce = fmi0.blocks_per_ce;
 		h2fmi_geometry.pages_per_block = fmi0.pages_per_block;
+		h2fmi_geometry.bytes_per_page = fmi0.bytes_per_page;
 		h2fmi_geometry.bbt_format = fmi0.bbt_format;
 		h2fmi_geometry.bytes_per_spare = fmi0.bytes_per_spare;
 		h2fmi_geometry.banks_per_ce_vfl = fmi0.banks_per_ce_vfl;
@@ -1698,7 +2032,7 @@ void h2fmi_init()
 			h2fmi_geometry.pages_per_ce
 				= h2fmi_geometry.banks_per_ce_vfl * h2fmi_geometry.pages_per_block;
 			h2fmi_geometry.unk1C = info->chip_info->unk7;
-			h2fmi_geometry.vendorType = info->board_info->unk1;
+			h2fmi_geometry.vendor_type = info->board_info->unk1;
 
 		}
 
@@ -1719,7 +2053,7 @@ void h2fmi_init()
 							| ((timing_info[1] & 0xF) << 8)
 							| ((timing_info[0] & 0xF) << 12)
 							| ((timing_info[2] & 0xF) << 16);
-			bufferPrintf("fmi: bus %d, new tval = 0x%08x\r\n", fmi->bus_num, tVal);
+			//bufferPrintf("fmi: bus %d, new tval = 0x%08x\r\n", fmi->bus_num, tVal);
 			fmi->timing_register_cache_408 = tVal;
 			SET_REG(H2FMI_UNKREG1(fmi), tVal);
 		}
@@ -1727,18 +2061,18 @@ void h2fmi_init()
 
 	h2fmi_init_virtual_physical_map();
 
-	for(i = 0; i < array_size(h2fmi_map); i++)
-	{
-		h2fmi_map_entry_t *e = &h2fmi_map[i];
-		bufferPrintf("fmi: Map %d: %d, %d.\r\n", i, e->bus, e->chip);
-	}
+	//for(i = 0; i < ARRAY_SIZE(h2fmi_map); i++)
+	//{
+		//h2fmi_map_entry_t *e = &h2fmi_map[i];
+		//bufferPrintf("fmi: Map %d: %d, %d.\r\n", i, e->bus, e->chip);
+	//}
 
 	// This is a very simple PRNG with
 	// a preset seed. What are you
 	// up to Apple? -- Ricky26
 	// Same as in 3GS NAND -- Bluerise
 	uint32_t val = 0x50F4546A;
-	for(i = 0; i < 1024; i++)
+	for(i = 0; i < 256; i++)
 	{
 		val = (0x19660D * val) + 0x3C6EF35F;
 
@@ -1746,16 +2080,18 @@ void h2fmi_init()
 		for(j = 1; j < 763; j++)
 		{
 			val = (0x19660D * val) + 0x3C6EF35F;
-		} while(j < 763);
+		}
 
 		h2fmi_hash_table[i] = val;
-	} while(i < 1024);
+	}
 
 	bufferPrintf("fmi: Initialized NAND memory! %d bytes per page, %d pages per block, %d blocks per CE.\r\n",
 		fmi0.bytes_per_page, h2fmi_geometry.pages_per_block, h2fmi_geometry.blocks_per_ce);
 
 	if(info)
 		free(info);
+
+	h2fmi_init_device();
 
 	free(buff1);
 }
@@ -1784,3 +2120,25 @@ void cmd_nand_test(int argc, char** argv)
 	bufferPrintf("fmi: Command completed with result 0x%08x.\r\n", ret);
 }
 COMMAND("nand_test", "H2FMI NAND test", cmd_nand_test);
+
+static void cmd_vfl_read(int argc, char** argv)
+{
+	if(argc < 6)
+	{
+		bufferPrintf("Usage: %s [page] [data] [metadata] [buf1] [buf2] [flag]\r\n", argv[0]);
+		return;
+	}
+	
+	uint32_t page = parseNumber(argv[1]);
+	uint32_t data = parseNumber(argv[2]);
+	uint32_t meta = parseNumber(argv[3]);
+	uint32_t empty_ok = parseNumber(argv[4]);
+	uint32_t refresh = parseNumber(argv[5]);
+
+	uint32_t ret = vfl_read_single_page(&h2fmi_vfl_device.vfl, page,
+			(uint8_t*)data, (uint8_t*)meta, empty_ok, (int32_t*)refresh);
+
+	bufferPrintf("vfl: Command completed with result 0x%08x.\r\n", ret);
+}
+COMMAND("vfl_read", "H2FMI NAND test", cmd_vfl_read);
+

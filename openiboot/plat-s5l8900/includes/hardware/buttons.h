@@ -4,7 +4,7 @@
 // Device
 #define BUTTONS_HOLD 0x1605
 
-#ifdef CONFIG_IPOD
+#ifdef CONFIG_IPOD_TOUCH_1G
 #define BUTTONS_HOME 0x1606
 #define BUTTONS_HOME_IRQ 0x2E
 #else

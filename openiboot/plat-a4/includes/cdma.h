@@ -2,12 +2,12 @@
 #define  _CDMA_H
 
 typedef struct dmaAES {
-	uint32_t unkn0;
-	uint32_t AESType;
+	uint32_t inverse;
+	uint32_t type;
 	uint32_t *key;
 	uint32_t dataSize;
-	void (*handler)(uint32_t dataBuffer, uint32_t dmaAES_setting2, uint32_t* unknAESSetting1);
-	uint32_t dataBuffer;
+	void (*ivGenerator)(uint32_t _param, uint32_t _segment, uint32_t* _iv);
+	uint32_t ivParameter;
 } dmaAES;
 
 int dma_setup();

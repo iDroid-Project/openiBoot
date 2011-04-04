@@ -1,6 +1,6 @@
 #include "openiboot.h"
 #include "commands.h"
-#include "openiboot-asmhelpers.h"
+#include "arm/arm.h"
 #include "gpio.h"
 #include "interrupt.h"
 #include "hardware/gpio.h"

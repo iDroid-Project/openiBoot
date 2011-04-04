@@ -1,94 +1,85 @@
-#ifndef NAND_H
-#define NAND_H
+#ifndef  NAND_H
+#define  NAND_H
 
 #include "openiboot.h"
 
-#define ERROR_ARG 0x80010000
-#define ERROR_NAND 0x80020000
-#define ERROR_TIMEOUT 0x1F
-#define ERROR_ECC 0x17
-#define ERROR_EMPTYBLOCK 0x1
+enum
+{
+	ENAND_EMPTY = ERROR(0x23),
+	ENAND_ECC = ERROR(0x24),
+};
 
-typedef struct NANDDeviceType {
-	uint32_t id;
-	uint16_t blocksPerBank;
-	uint16_t pagesPerBlock;
-	uint16_t sectorsPerPage;
-	uint16_t bytesPerSpare;
-	uint8_t WPPulseTime;
-	uint8_t WEHighHoldTime;
-	uint8_t NANDSetting3;
-	uint8_t NANDSetting4;
-	uint32_t userSuBlksTotal;
-	uint32_t ecc1;
-	uint32_t ecc2;
-} NANDDeviceType;
+typedef enum _nand_device_info
+{
+	diPagesPerBlock,
+	diNumCE,
+	diBlocksPerCE,
+	diBytesPerPage,
+	diBytesPerSpare,
+	diVendorType,
+	diECCBits,
+	diBanksPerCE_VFL,
+	diTotalBanks_VFL,
+	diPagesPerBlock2,
+	diECCBits2,
+	diBanksPerCE,
+	diBlocksPerBank,
+	diBlocksPerBank_dw,
+	diBanksPerCE_dw,
+	diPagesPerBlock_dw,
+	diPagesPerBlock2_dw,
+	diPageNumberBitWidth,
+	diPageNumberBitWidth2,
+	diNumBusses,
+	diNumCEPerBus,
+	diPPN,
+	diReturnOne,
+	diNumECCBytes,
+	diMetaPerLogicalPage,
+	diPagesPerCE,
+} nand_device_info_t;
 
-typedef struct NANDFTLData {
-	uint16_t sysSuBlks;
-	uint16_t field_2;
-	uint16_t field_4;		// reservoir blocks?
-	uint16_t field_6;
-	uint16_t field_8;
-} NANDFTLData;
+// NAND Device Prototypes
+struct _nand_device;
 
-typedef struct SpareData {
-	union {
-		struct {
-			uint32_t logicalPageNumber;
-			uint32_t usn;
-		} __attribute__ ((packed)) user;
+typedef error_t (*nand_device_read_single_page_t)(struct _nand_device *, uint32_t _chip,
+		uint32_t _block, uint32_t _page, uint8_t *_buffer, uint8_t *_spareBuffer);
 
-		struct {
-			uint32_t usnDec;
-			uint16_t idx;
-			uint8_t field_6;
-			uint8_t field_7;
-		} __attribute__ ((packed)) meta;
-	};
+typedef error_t (*nand_device_write_single_page_t)(struct _nand_device *, uint32_t _chip,
+		uint32_t _block, uint32_t _page, uint8_t *_buffer, uint8_t *_spareBuffer);
 
-	uint8_t type2;
-	uint8_t type1;
-	uint8_t eccMark;
-	uint8_t field_B;
+typedef void (*nand_device_enable_encryption_t)(struct _nand_device *, int _enabled);
 
-} __attribute__ ((packed)) SpareData;
+typedef uint32_t (*nand_device_get_info_t)(struct _nand_device *, nand_device_info_t _item);
+typedef void (*nand_device_set_info_t)(struct _nand_device *, nand_device_info_t _item, uint32_t _val);
 
-typedef struct NANDData {
-	uint32_t field_0;
-	uint16_t field_4;
-	uint16_t sectorsPerPage;
-	uint16_t pagesPerBlock;
-	uint16_t pagesPerSuBlk;
-	uint32_t pagesPerBank;
-	uint32_t pagesTotal;
-	uint16_t suBlksTotal;
-	uint16_t userSuBlksTotal;
-	uint32_t userPagesTotal;
-	uint16_t blocksPerBank;
-	uint16_t bytesPerPage;
-	uint16_t bytesPerSpare;
-	uint16_t field_22;
-	uint32_t field_24;
-	uint32_t DeviceID;
-	uint16_t banksTotal;
-	uint8_t field_2E;
-	uint8_t field_2F;
-	int* banksTable;
-} NANDData;
+// NAND Device Struct
+typedef struct _nand_device
+{
+	nand_device_read_single_page_t read_single_page;
+	nand_device_write_single_page_t write_single_page;
 
-extern int HasNANDInit;
+	nand_device_enable_encryption_t enable_encryption;
 
-int nand_setup();
-int nand_bank_reset(int bank, int timeout);
-int nand_read(int bank, int page, uint8_t* buffer, uint8_t* spare, int doECC, int checkBadBlocks);
-int nand_read_multiple(uint16_t* bank, uint32_t* pages, uint8_t* main, SpareData* spare, int pagesCount);
-int nand_read_alternate_ecc(int bank, int page, uint8_t* buffer);
-int nand_erase(int bank, int block);
-int nand_write(int bank, int page, uint8_t* buffer, uint8_t* spare, int doECC);
-int nand_read_status();
-int nand_calculate_ecc(uint8_t* data, uint8_t* ecc);
-NANDData* nand_get_geometry();
-NANDFTLData* nand_get_ftl_data();
+	nand_device_get_info_t get_info;
+	nand_device_set_info_t set_info;
+} nand_device_t;
 
-#endif
+// NAND Device Functions
+void nand_device_init(nand_device_t *_nand);
+void nand_device_cleanup(nand_device_t *_nand);
+
+nand_device_t *nand_device_allocate();
+
+error_t nand_device_read_single_page(nand_device_t *_dev, uint32_t _chip, uint32_t _block,
+		uint32_t _page, uint8_t *_buffer, uint8_t *_spareBuffer);
+
+error_t nand_device_write_single_page(nand_device_t *_dev, uint32_t _chip, uint32_t _block,
+		uint32_t _page, uint8_t *_buffer, uint8_t *_spareBuffer);
+
+void nand_device_enable_encryption(nand_device_t *_dev, int _enabled);
+
+uint32_t nand_device_get_info(nand_device_t *_dev, nand_device_info_t _item);
+void nand_device_set_info(nand_device_t *_dev, nand_device_info_t _item, uint32_t _val);
+
+#endif //NAND_H

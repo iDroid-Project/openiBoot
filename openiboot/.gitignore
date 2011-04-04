@@ -1,0 +1,8 @@
+.sconsign.dblite
+*.img3
+*.img2
+*.bin
+*_openiboot
+*_installer
+iBSS.*
+*.o

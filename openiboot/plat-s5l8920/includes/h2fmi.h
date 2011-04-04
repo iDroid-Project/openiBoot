@@ -2,12 +2,8 @@
 #define  H2FMI_H
 
 #include "openiboot.h"
+#include "nand.h"
 #include "cdma.h"
-
-typedef struct _h2fmi_failure_details
-{
-	uint32_t overall_status;
-} h2fmi_failure_details_t;
 
 #define H2FMI_STATE_IDLE	0
 #define H2FMI_STATE_READ	1
@@ -20,18 +16,13 @@ typedef struct _h2fmi_failure_details
 #define H2FMI_READ_4	4
 #define H2FMI_READ_DONE 5
 
-typedef struct _h2fmi_state
-{
-	uint32_t state;
-	uint32_t read_state;
-} h2fmi_state_t;
-
 typedef struct _h2fmi_geometry
 {
 	uint32_t field_0;
 	uint16_t num_ce;
 	uint16_t blocks_per_ce;
 	uint16_t pages_per_block;
+	uint16_t bytes_per_page;
 	uint16_t bbt_format;
 	uint16_t bytes_per_spare;
 	uint16_t banks_per_ce_vfl;
@@ -42,7 +33,7 @@ typedef struct _h2fmi_geometry
 	uint16_t unk18;
 	uint16_t unk1A;
 	uint32_t unk1C;
-	uint32_t vendorType;
+	uint32_t vendor_type;
 	uint8_t ecc_bits;
 	uint8_t ecc_tag;
 
@@ -61,6 +52,17 @@ typedef struct _h2fmi_geometry
 	uint32_t pages_per_ce;
 
 } h2fmi_geometry_t;
+
+typedef struct _h2fmi_failure_details
+{
+	uint32_t overall_status;
+} h2fmi_failure_details_t;
+
+typedef struct _h2fmi_state
+{
+	uint32_t state;
+	uint32_t read_state;
+} h2fmi_state_t;
 
 typedef struct _h2fmi_struct
 {
@@ -90,9 +92,10 @@ typedef struct _h2fmi_struct
 	uint32_t page_size; // 3C
 	uint8_t ecc_bits; // 44
 	int8_t ecc_tag; // 45
+	uint32_t field_48; // 48
 	dmaAES aes_struct;
 	dmaAES *aes_info; // 64
-	uint32_t some_aes_field; // 68
+	uint8_t *aes_iv_pointer; // 68
 	h2fmi_state_t state; // 6C
 	uint32_t current_page_index; // 78
 	uint32_t num_pages_to_read;
@@ -121,7 +124,8 @@ typedef struct _h2fmi_struct
 	
 } h2fmi_struct_t;
 
-extern h2fmi_geometry_t h2fmi_geometry;
+void h2fmi_setup_ftl(uint32_t _start_page, uint32_t _smth, uint32_t _dataBuf, uint32_t _count);
+void h2fmi_clear_ftl();
 
 uint32_t h2fmi_read_single_page(uint32_t _ce, uint32_t _page, uint8_t *_ptr, uint8_t *_meta_ptr, uint8_t *_6, uint8_t *_7, uint32_t _8);
 

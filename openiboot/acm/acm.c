@@ -1,5 +1,5 @@
 #include "openiboot.h"
-#include "openiboot-asmhelpers.h"
+#include "arm/arm.h"
 #include "hardware/power.h"
 #include "hardware/usb.h"
 #include "hardware/platform.h"

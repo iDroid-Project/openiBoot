@@ -1,5 +1,5 @@
 #include "openiboot.h"
-#include "openiboot-asmhelpers.h"
+#include "arm/arm.h"
 #include "tasks.h"
 #include "event.h"
 #include "clock.h"
@@ -178,6 +178,14 @@ void task_stop()
 {
 	EnterCriticalSection();
 
+	if(CurrentRunning == IRQTask)
+	{
+		LeaveCriticalSection();
+
+		bufferPrintf("tasks: Cannot stop IRQ task.\r\n");
+		return;
+	}
+
 	TaskDescriptor *next = CurrentRunning->taskList.next;
 	if(next == CurrentRunning)
 	{
@@ -244,7 +252,11 @@ void task_wake_event(Event *_evt, void *_obj)
 {
 	TaskDescriptor *task = _obj;
 	//bufferPrintf("tasks: Resuming sleeping task %p.\n", task);
-	task_add_after(task, CurrentRunning); // Add us back to the queue.
+	
+	if(CurrentRunning == IRQTask)
+		task_add_before(task, IRQBackupTask);
+	else
+		task_add_before(task, CurrentRunning); // Add us back to the queue.
 }
 
 int task_sleep(int _ms)

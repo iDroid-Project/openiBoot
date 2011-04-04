@@ -2,12 +2,11 @@ Import("*")
 
 env = env.Clone()
 env.Append(CPPPATH = [Dir('includes')])
-env.Append(ASFLAGS = ['-L'+str(Dir('includes'))])
 env.Append(CPPDEFINES = ['CONFIG_ARM'])
 
 arch_arm_src = env.Localize([
-	'entry.S',
-	'openiboot-asmhelpers.S',
+	'entry.sx',
+	'asmhelpers.sx',
 	'arm.c',
 	])
 Export('arch_arm_src')

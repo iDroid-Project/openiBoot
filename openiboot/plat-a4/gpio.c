@@ -1,5 +1,5 @@
 #include "openiboot.h"
-#include "openiboot-asmhelpers.h"
+#include "arm/arm.h"
 #include "gpio.h"
 #include "interrupt.h"
 #include "hardware/gpio.h"
@@ -35,7 +35,7 @@ GPIOInterruptGroup InterruptGroups[GPIO_NUMINTGROUPS];
 void gpio_switch(int pinport, OnOff on_off);
 void gpio_custom_io(int pinport, int mode);
 
-#if !defined(CONFIG_IPAD)
+#if !defined(CONFIG_IPAD_1G)
 const uint16_t gpio_reset_table[] = {
 	0x210, 0x210, 0x390, 0x390, 0x210, 0x290, 0x213, 0x212,
 	0x213, 0x212, 0x213, 0x290, 0x290, 0x390, 0x212, 0x1E,
@@ -89,15 +89,11 @@ const uint16_t gpio_reset_table[] = {
 
 
 int gpio_setup() {
-/*	When resetting the GPIO Interrupts we'll also fuck the framebuffer hook.
-	Once LCD is ported we can enable this again.
-
 	// Reset everything
 	int i;
 	for (i = 0; i < 0xB0; i++) {
 		SET_REG(GPIO + i * sizeof(uint32_t), gpio_reset_table[i]);
 	}
-*/
 
 	// Initialise it
 	uint8_t v[8];
@@ -255,41 +251,50 @@ void gpio_custom_io(int pinport, int mode) {
 		//spi_on_off(pin, mode);
 	} else {
 		pin_register = GPIO + (8 * port + pin) * sizeof(uint32_t);
-		switch(mode) {
-			default:
-				return;
+		switch(mode)
+		{
 		case 0: // use_as_input
 			value = 0x210;
 			bitmask = 0x27E;
 			break;
+
 		case 1: // use_as_output
 			value = 0x212;
 			bitmask = 0x27E;
 			break;
+
 		case 2: // clear_output
 			value = 0x212;
 			bitmask = 0x27F;
 			break;
+
 		case 3: // set_output
 			value = 0x213;
 			bitmask = 0x27F;
 			break;
+
 		case 4: // reset
 			value = gpio_reset_table[8 * port + pin];
 			bitmask = 0x3FF;
 			break;
+
 		case 5:
 			value = 0x230;
 			bitmask = 0x27E;
 			break;
+
 		case 6:
 			value = 0x250;
 			bitmask = 0x27E;
 			break;
+
 		case 7:
 			value = 0x270;
 			bitmask = 0x27E;
 			break;
+
+		default:
+			return;
 		}
 	SET_REG(pin_register, (GET_REG(pin_register) & (~bitmask)) | (value & bitmask));
 	}

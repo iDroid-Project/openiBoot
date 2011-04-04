@@ -12,21 +12,13 @@ def generate_actions(source, target, env, for_signature=False):
 
 env.Append(BUILDERS = {'Bin2C': Builder(generator=generate_actions)})
 
-images = [
-	'Console',
-	'ConsoleSelected',
-	'Header',
-	'iPhoneOS',
-	'iPhoneOSSelected',
-	'AndroidOSSelected',
-	'AndroidOS',
-	'installerLogo',
-	'installerBarEmpty',
-	'installerBarFull',
-	]
-
-for i in images:
-	j = i + '.png'
-	k = i + 'PNG.h'
-	t = env.Bin2C(k, j, BASE=('data' + i + 'PNG'))
-	Default(t)
+def Bin2CList(env, sources, src_pattern, dest_pattern, data_pattern):
+	ret = []
+	for s in sources:
+		src = src_pattern % s
+		dest = dest_pattern % s
+		data = data_pattern % s
+		target = env.Bin2C(dest, src, BASE=data)
+		ret.append(target)
+	return ret
+env.AddMethod(Bin2CList, "Bin2CList")

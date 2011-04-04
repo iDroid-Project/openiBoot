@@ -3,7 +3,7 @@
 #include "util.h"
 #include "hardware/clock.h"
 #include "timer.h"
-#include "openiboot-asmhelpers.h"
+#include "arm/arm.h"
 
 uint32_t ClockPLL;
 uint32_t PLLFrequencies[4];

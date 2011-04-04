@@ -14,6 +14,8 @@ typedef signed char int8_t;
 typedef signed int intptr_t;
 typedef uint32_t fourcc_t;
 
+#include "error.h"
+
 #ifdef DEBUG
 #define OPENIBOOT_VERSION_DEBUG " (DEBUG)"
 #else
@@ -28,7 +30,6 @@ typedef uint32_t fourcc_t;
 #define STRINGIFY(s) #s
 #define OPENIBOOT_VERSION_STR "openiboot " XSTRINGIFY(OPENIBOOT_VERSION) " commit " XSTRINGIFY(OPENIBOOT_VERSION_BUILD) OPENIBOOT_VERSION_DEBUG OPENIBOOT_VERSION_CONFIG
 
-
 #ifndef MIN
 #define MIN(a, b) (((a) < (b))? (a): (b))
 #endif
@@ -38,6 +39,8 @@ typedef uint32_t fourcc_t;
 #endif
 
 #define FOURCC(a, b, c, d) (d || (c << 8) || (b << 16) || (a << 24))
+
+#define NumLeadingZeros(x) (0 == (x)) ? sizeof(uint32_t) : __builtin_clz(x); 
 
 extern void* _start;
 extern void* OpenIBootEnd;
@@ -58,9 +61,9 @@ typedef enum OnOff {
 #endif
 #define uSecPerSec 1000000
 
-#define container_of(type, member, ptr) ((type*)(((char*)(ptr)) - ((char*)(&((type*)NULL)->member))))
-#define array_size(arr) (sizeof(arr)/sizeof((arr)[0]))
-#define round_up(val, amt) (((val + amt - 1) / amt) * amt)
+#define CONTAINER_OF(type, member, ptr) ((type*)(((char*)(ptr)) - ((char*)(&((type*)NULL)->member))))
+#define ARRAY_SIZE(arr) (sizeof(arr)/sizeof((arr)[0]))
+#define ROUND_UP(val, amt) (((val + amt - 1) / amt) * amt)
 
 typedef struct Event Event;
 

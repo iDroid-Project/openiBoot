@@ -112,8 +112,8 @@ typedef enum VFLStruct {
 extern int HasFTLInit;
 
 int ftl_setup();
-int VFL_Read(uint32_t virtualPageNumber, uint8_t* buffer, uint8_t* spare, int empty_ok, int* did_error);
-int VFL_Erase(uint16_t block);
+/*int VFL_Read(uint32_t virtualPageNumber, uint8_t* buffer, uint8_t* spare, int empty_ok, int* did_error);
+int VFL_Erase(uint16_t block);*/
 int FTL_Read(int logicalPageNumber, int totalPagesToRead, uint8_t* pBuf);
 int FTL_Write(int logicalPageNumber, int totalPagesToRead, uint8_t* pBuf);
 int ftl_read(void* buffer, uint64_t offset, int size);

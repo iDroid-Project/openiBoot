@@ -21,7 +21,6 @@
 #define H2FMI_UNKREG6(x)	(H2FMI_REG(x, 0x40044))
 #define H2FMI_CHIP_MASK(x)	(H2FMI_REG(x, 0x4000C))
 #define H2FMI_UNKREG8(x)	(H2FMI_REG(x, 0x40024))
-#define H2FMI_DATA(x)		(H2FMI_REG(x, 0x448))
 #define H2FMI_UNKREG9(x)	(H2FMI_REG(x, 0x40018))
 #define H2FMI_UNKREG10(x)	(H2FMI_REG(x, 0x40020))
 #define H2FMI_UNK4(x)		(H2FMI_REG(x, 0x4))
@@ -30,7 +29,7 @@
 #define H2FMI_UNK8(x)		(H2FMI_REG(x, 0x8))
 #define H2FMI_UNKC(x)		(H2FMI_REG(x, 0xC))
 #define H2FMI_UNK10(x)		(H2FMI_REG(x, 0x10))
-#define H2FMI_UNK14(x)		(H2FMI_REG(x, 0x14))
+#define H2FMI_DATA(x)		(H2FMI_REG(x, 0x14)) // UNK14
 #define H2FMI_UNK18(x)		(H2FMI_REG(x, 0x18))
 #define H2FMI_UNKREG15(x)	(H2FMI_REG(x, 0x34))
 #define H2FMI_UNKREG16(x)	(H2FMI_REG(x, 0x1C))

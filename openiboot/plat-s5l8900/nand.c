@@ -1,11 +1,11 @@
 #include "openiboot.h"
 #include "commands.h"
-#include "nand.h"
+#include "s5l8900/nand.h"
 #include "hardware/nand.h"
 #include "timer.h"
 #include "clock.h"
 #include "util.h"
-#include "openiboot-asmhelpers.h"
+#include "arm/arm.h"
 #include "dma.h"
 #include "hardware/interrupt.h"
 

@@ -1,6 +1,5 @@
 #include "openiboot.h"
-#include "openiboot-asmhelpers.h"
-#include "arm.h"
+#include "arm/arm.h"
 #include "hardware/a4.h"
 #include "uart.h"
 #include "usb.h"
@@ -15,34 +14,20 @@
 #include "dma.h"
 #include "spi.h"
 #include "i2c.h"
-#include "nor.h"
-#include "aes.h"
 #include "lcd.h"
 #include "tasks.h"
 #include "images.h"
 #include "syscfg.h"
 #include "nvram.h"
 #include "accel.h"
-#include "sdio.h"
-#include "wlan.h"
-#include "camera.h"
 #include "util.h"
 #include "commands.h"
 #include "framebuffer.h"
 #include "menu.h"
-#include "pmu.h"
-#include "nand.h"
-#include "ftl.h"
 #include "hfs/bdev.h"
 #include "hfs/fs.h"
 #include "scripting.h"
 #include "actions.h"
-
-#include "radio.h"
-#include "wmcodec.h"
-#include "wdt.h"
-#include "als.h"
-#include "multitouch.h"
 
 void platform_init()
 {
@@ -69,13 +54,14 @@ void platform_init()
 	uart_setup();
 	i2c_setup();
 
-//	dma_setup();
+	dma_setup();
 
 	LeaveCriticalSection();
 
 	displaypipe_init();
 	framebuffer_setup();
 	framebuffer_setdisplaytext(TRUE);
+	lcd_set_backlight_level(1500);
 }
 
 void platform_shutdown()

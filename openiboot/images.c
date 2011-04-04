@@ -6,7 +6,6 @@
 #include "sha1.h"
 #include "nvram.h"
 #include "mtd.h"
-#include "ftl.h"
 
 static const uint32_t NOREnd = 0xFC000;
 

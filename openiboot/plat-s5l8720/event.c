@@ -4,7 +4,7 @@
 #include "clock.h"
 #include "interrupt.h"
 #include "hardware/timer.h"
-#include "openiboot-asmhelpers.h"
+#include "arm/arm.h"
 
 Event EventList;
 

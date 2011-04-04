@@ -2,7 +2,7 @@
 #include "hardware/platform.h"
 #include "uart.h"
 #include "util.h"
-#include "openiboot-asmhelpers.h"
+#include "arm/arm.h"
 #include "framebuffer.h"
 
 static printf_handler_t printf_handler = NULL;
@@ -55,6 +55,15 @@ void* memcpy(void* dest, const void* src, uint32_t size) {
 int strcmp(const char* s1, const char* s2) {
 	while(*s1 == *(s2++)) {
 		if(*(s1++) == '\0')
+			return 0;
+	}
+
+	return (*(const unsigned char *)s1 - *(const unsigned char *)(s2 - 1));
+}
+
+int strncmp(const char* s1, const char* s2, size_t n) {
+	while(n-- > 0 && *s1 == *(s2++)) {
+		if(n == 0 || *(s1++) == '\0')
 			return 0;
 	}
 
@@ -418,14 +427,15 @@ void buffer_dump_memory2(uint32_t start, int length, int width) {
 }
 
 
-void hexdump(uint32_t start, int length) {
-	uint32_t curPos = start;
+void hexdump(void *start, int length) {
+	uint32_t curPos = (uint32_t)start;
+	uint32_t end = (uint32_t)start + length;
 	int x = 0;
 
 	uint8_t line[16];
 	int idx = 0;
 
-	while(curPos < (start + length)) {
+	while(curPos < end) {
 		if(x == 0) {
 			bufferPrintf("%08x ", (unsigned int) curPos);
 		}
