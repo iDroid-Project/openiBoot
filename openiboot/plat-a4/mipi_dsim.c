@@ -19,7 +19,7 @@ void mipi_dsim_on_off(OnOff on_off) {
 
 
 void mipi_dsim_framebuffer_on_off(OnOff on_off) {
-	if (on_off) {
+	if (on_off == ON) {
 		SET_REG(MIPI_DSIM + CLKCTRL, GET_REG(MIPI_DSIM + CLKCTRL) | 1 << 31);
 		while (!(GET_REG(MIPI_DSIM + STATUS) & STATUS_HS_READY));
 	} else {
@@ -39,12 +39,13 @@ int mipi_dsim_read_write(int a1, uint8_t* buffer, uint32_t* read) {
 	int i;
 	uint32_t to_read = *read;
 	SET_REG(MIPI_DSIM + INTSRC, 0xFFFFFFFF);
-	mipi_dsim_write_data(a1, *buffer, *(buffer+1));
+	mipi_dsim_write_data(a1, buffer[0], buffer[1]);
 
 	for (i = 0; i < 5; i++) {
-		if (GET_REG(MIPI_DSIM + INTSRC) & 0x10000 || GET_REG(MIPI_DSIM + INTSRC) & 0x200000)
+		uint32_t intsrc = GET_REG(MIPI_DSIM + INTSRC);
+		if ((intsrc & 0x10000) || (intsrc & 0x200000))
 			return -1;
-		if (GET_REG(MIPI_DSIM + INTSRC) & 0x40000)
+		if (intsrc & 0x40000)
 			break;
 		if (i == 4) {
 			bufferPrintf("mipi: timing out\r\n");
