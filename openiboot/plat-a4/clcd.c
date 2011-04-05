@@ -360,10 +360,7 @@ int displaypipe_init() {
 
 	ColorSpace colorSpace;
 //XXX:	It normally grabs it from nvram var "display-color-space" as string. -- Bluerise
-	if (LCDTable->bitsPerPixel <= 18)
-		colorSpace = RGB565;
-	else
-		colorSpace = RGB888;
+	colorSpace = RGB888;
 
 	currentWindow = createWindow(0, 0, LCDTable->width, LCDTable->height, colorSpace);
 	if (!currentWindow)
