@@ -508,7 +508,13 @@ void pinot_quiesce() {
 	displaytime_sleep(6);
 	mipi_dsim_framebuffer_on_off(OFF);
 	mipi_dsim_quiesce();
+
+#if defined(CONFIG_IPAD_1G)
+	gpio_pin_output(0x1404, 0);
+#else
 	gpio_pin_output(0x206, 0);
+#endif
+
 	return;
 }
 
