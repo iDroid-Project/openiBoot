@@ -394,7 +394,6 @@ int displaypipe_init() {
 		buffer1[curBuf+1] = buffer1[curBuf] + 4;
 		buffer2[curBuf] = buffer1[curBuf];
 		buffer3[curBuf] = buffer1[curBuf];
-		curBuf++;
 	}
 	buffer3[256] = buffer1[256];
 	buffer2[256] = buffer1[256];
