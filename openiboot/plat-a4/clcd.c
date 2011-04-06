@@ -156,7 +156,6 @@ static const PMURegisterData backlightData[] = {
 };
 
 volatile uint32_t* CurFramebuffer;
-uint32_t* FRAMEBUFFER;
 
 static LCDInfo* LCDTable;
 static uint32_t TimePerMillionFrames = 0;
@@ -276,13 +275,9 @@ int displaypipe_init() {
 	uint32_t clcd_reg;
 	uint32_t panelID;
 
-	FRAMEBUFFER = malloc(0x800000);
-	if (!FRAMEBUFFER)
-		FRAMEBUFFER = (uint32_t*)CLCD_FRAMEBUFFER;
+	memset((void*)CLCD_FRAMEBUFFER, 0, 0x800000);
 
-	memset((void*)FRAMEBUFFER, 0, 0x800000);
-
-	bufferPrintf("displaypipe_init: framebuffer address: 0x%08x\n", (uint32_t)FRAMEBUFFER);
+	bufferPrintf("displaypipe_init: framebuffer address: 0x%08x\n", CLCD_FRAMEBUFFER);
 
 	if (!LCDTable)
 		LCDTable = &LCDInfoTable[DISPLAYID];
@@ -365,10 +360,7 @@ int displaypipe_init() {
 
 	ColorSpace colorSpace;
 //XXX:	It normally grabs it from nvram var "display-color-space" as string. -- Bluerise
-	if (LCDTable->bitsPerPixel <= 18)
-		colorSpace = RGB565;
-	else
-		colorSpace = RGB888;
+	colorSpace = RGB888;
 
 	currentWindow = createWindow(0, 0, LCDTable->width, LCDTable->height, colorSpace);
 	if (!currentWindow)
@@ -381,7 +373,7 @@ int displaypipe_init() {
 		result = pinot_init(LCDTable, colorSpace, &panelID, currentWindow);
 		if (result) {
 			lcd_fill_switch(OFF, 0);
-			LCDTable = 0;
+			LCDTable = NULL;
 			return result;
 		}
 	} else {
@@ -402,7 +394,6 @@ int displaypipe_init() {
 		buffer1[curBuf+1] = buffer1[curBuf] + 4;
 		buffer2[curBuf] = buffer1[curBuf];
 		buffer3[curBuf] = buffer1[curBuf];
-		curBuf++;
 	}
 	buffer3[256] = buffer1[256];
 	buffer2[256] = buffer1[256];
@@ -490,7 +481,7 @@ int pinot_init(LCDInfo* LCDTable, ColorSpace colorspace, uint32_t* panelID, Wind
 	mipi_dsim_write_data(5, 0x29, 0);
 	displaytime_sleep(7);
 
-	if(on_off)
+	if(!on_off)
 		mipi_dsim_on_off(ON);
 
 #if defined(CONFIG_IPHONE_4)
@@ -724,7 +715,7 @@ static Window* createWindow(int zero0, int zero2, int width, int height, ColorSp
 	newWindow->height = height;
 	newWindow->lineBytes = width * (bitsPerPixel / 8);
 
-	createFramebuffer(&newWindow->framebuffer, (uint32_t)FRAMEBUFFER, width, height, width, colorSpace);
+	createFramebuffer(&newWindow->framebuffer, CLCD_FRAMEBUFFER, width, height, width, colorSpace);
 
 	SET_REG(CLCD + 0x4040, (reg_bit << 8) | 1);
 	SET_REG(CLCD + 0x4044, (uint32_t)newWindow->framebuffer.buffer);

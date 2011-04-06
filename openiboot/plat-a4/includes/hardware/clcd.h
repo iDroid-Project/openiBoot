@@ -6,7 +6,11 @@
 #else
 #define CLCD 0x89100000
 #endif
+#if !defined(CONFIG_IPHONE_4)
 #define CLCD_FRAMEBUFFER 0x5F700000
+#else
+#define CLCD_FRAMEBUFFER 0x4F700000
+#endif
 
 #define VIDCON1_IVCLKSHIFT 3
 #define VIDCON1_IHSYNCSHIFT 2
