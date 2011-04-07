@@ -5,7 +5,7 @@
 #include "timer.h"
 #include "tasks.h"
 #include "gpio.h"
-#include "openiboot-asmhelpers.h"
+#include "arm/arm.h"
 
 static int mipi_dsim_has_init = 0;
 
@@ -84,16 +84,18 @@ int mipi_dsim_init(LCDInfo* LCDTable) {
 	mashFest = (GET_BITS(LCDTable->unkn18, 26, 6) << 13) | (GET_BITS(LCDTable->unkn18, 16, 9) << 4) | ((GET_BITS(LCDTable->unkn18, 11, 4) & 0xE));
 #if defined(CONFIG_IPAD_1G)
 	if (mashFest) {
+		bufferPrintf("Mashfest!!\r\n");
 		SET_REG(MIPI_DSIM + CLKCTRL, CLKCTRL_ESC_PRESCALER(LCDTable->unkn18 >> 4) | CLKCTRL_ESC_CLKEN);
-		SET_REG(MIPI_DSIM + PLLCTRL, (LCDTable->unkn18 << 10) & 0xF000000);
+		SET_REG(MIPI_DSIM + PLLCTRL, (LCDTable->unkn18 << 16) & 0xF000000);
 		SET_REG(MIPI_DSIM + PLLTMR, PLL_STABLE_TIME);
 		SET_REG(MIPI_DSIM + PLLCTRL, GET_REG(MIPI_DSIM + PLLCTRL) | mashFest);
 		SET_REG(MIPI_DSIM + PLLCTRL, GET_REG(MIPI_DSIM + PLLCTRL) | PLLCTRL_PLL_EN);
-		while ((GET_REG(MIPI_DSIM + STATUS) & STATUS_PLL_STABLE) != STATUS_PLL_STABLE);
+		while (!GET_BITS(GET_REG(MIPI_DSIM + STATUS), 31, 1));
 	} else {
+		bufferPrintf("No Mashfest!!\r\n");
 		SET_REG(MIPI_DSIM + CLKCTRL, CLKCTRL_ESC_PRESCALER(LCDTable->unkn18 >> 4) | CLKCTRL_ESC_CLKEN
 			| CLKCTRL_PLL_BYPASS | CLKCTRL_BYTE_CLK_SRC);
-		SET_REG(MIPI_DSIM + PLLCTRL, (LCDTable->unkn18 << 10) & 0xF000000);
+		SET_REG(MIPI_DSIM + PLLCTRL, (LCDTable->unkn18 << 16) & 0xF000000);
 	}
 	SET_REG(MIPI_DSIM + SWRST, SWRST_RESET);
 #else

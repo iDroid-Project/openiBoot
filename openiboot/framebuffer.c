@@ -8,7 +8,7 @@
 #else
 #include "pcf/6x10.h"
 #endif
-#include "openiboot-asmhelpers.h"
+#include "arm/arm.h"
 
 static int TWidth;
 static int THeight;

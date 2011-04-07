@@ -15,9 +15,6 @@ typedef void (*printf_handler_t)(const char *_str);
 void panic();
 void system_panic(const char* format, ...);
 
-signed int signed_calculate_remainder(uint64_t x, uint64_t y);
-uint32_t calculate_remainder(uint64_t x, uint64_t y);
-
 void __assert(const char* file, int line, const char* m);
 void* memset(void* x, int fill, uint32_t size);
 void* memcpy(void* dest, const void* src, uint32_t size);
@@ -37,7 +34,7 @@ unsigned long int strtoul(const char* str, char** endptr, int base);
 char** tokenize(char* commandline, int* argc);
 void dump_memory(uint32_t start, int length);
 void buffer_dump_memory(uint32_t start, int length);
-void hexdump(uint32_t start, int length);
+void hexdump(void *start, int length);
 void buffer_dump_memory2(uint32_t start, int length, int width);
 int addToBuffer(const char* toBuffer, int len);
 printf_handler_t addPrintfHandler(printf_handler_t);

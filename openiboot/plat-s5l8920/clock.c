@@ -1,5 +1,5 @@
 #include "openiboot.h"
-#include "openiboot-asmhelpers.h"
+#include "arm/arm.h"
 #include "commands.h"
 #include "clock.h"
 #include "timer.h"
@@ -126,7 +126,7 @@ void clock_init()
 {
 	uint64_t initPwr = 0x2103001000001LL;
 	clock_gate_many(initPwr, ON);
-	//clock_gate_many(~initPwr, OFF);
+	clock_gate_many(~initPwr, OFF);
 
 	int idx;
 	uint32_t reg = DYNAMIC_CLOCK_BASE;

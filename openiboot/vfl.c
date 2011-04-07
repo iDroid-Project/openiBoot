@@ -17,7 +17,7 @@ vfl_device_t *vfl_allocate()
 	return ret;
 }
 
-int vfl_open(vfl_device_t *_vfl, nand_device_t *_dev)
+error_t vfl_open(vfl_device_t *_vfl, nand_device_t *_dev)
 {
 	if(!_vfl->open)
 		return 0;
@@ -33,7 +33,7 @@ void vfl_close(vfl_device_t *_vfl)
 	_vfl->close(_vfl);
 }
 
-int vfl_read_single_page(vfl_device_t *_vfl, uint32_t _page, uint8_t* buffer, uint8_t* spare,
+error_t vfl_read_single_page(vfl_device_t *_vfl, uint32_t _page, uint8_t* buffer, uint8_t* spare,
 		int empty_ok, int* refresh_page)
 {
 	if(!_vfl->read_single_page)

@@ -26,7 +26,7 @@ typedef struct _nor_device
 
 static inline nor_device_t *nor_device_get(mtd_t *_dev)
 {
-	return container_of(nor_device_t, mtd, _dev);
+	return CONTAINER_OF(nor_device_t, mtd, _dev);
 }
 
 static int nor_spi_tx(nor_device_t *_dev, void *_tx, int _tx_amt)

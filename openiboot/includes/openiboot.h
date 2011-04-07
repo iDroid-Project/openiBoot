@@ -1,6 +1,8 @@
 #ifndef OPENIBOOT_H
 #define OPENIBOOT_H
 
+#include <stddef.h> // size_t
+
 typedef unsigned long long uint64_t;
 typedef unsigned int uint32_t;
 typedef unsigned short uint16_t;
@@ -9,9 +11,10 @@ typedef signed long long int64_t;
 typedef signed int int32_t;
 typedef signed short int16_t;
 typedef signed char int8_t;
-typedef long unsigned int size_t;
 typedef signed int intptr_t;
 typedef uint32_t fourcc_t;
+
+#include "error.h"
 
 #ifdef DEBUG
 #define OPENIBOOT_VERSION_DEBUG " (DEBUG)"
@@ -26,7 +29,6 @@ typedef uint32_t fourcc_t;
 #define XSTRINGIFY(s) STRINGIFY(s)
 #define STRINGIFY(s) #s
 #define OPENIBOOT_VERSION_STR "openiboot " XSTRINGIFY(OPENIBOOT_VERSION) " commit " XSTRINGIFY(OPENIBOOT_VERSION_BUILD) OPENIBOOT_VERSION_DEBUG OPENIBOOT_VERSION_CONFIG
-
 
 #ifndef MIN
 #define MIN(a, b) (((a) < (b))? (a): (b))
@@ -59,9 +61,9 @@ typedef enum OnOff {
 #endif
 #define uSecPerSec 1000000
 
-#define container_of(type, member, ptr) ((type*)(((char*)(ptr)) - ((char*)(&((type*)NULL)->member))))
-#define array_size(arr) (sizeof(arr)/sizeof((arr)[0]))
-#define round_up(val, amt) (((val + amt - 1) / amt) * amt)
+#define CONTAINER_OF(type, member, ptr) ((type*)(((char*)(ptr)) - ((char*)(&((type*)NULL)->member))))
+#define ARRAY_SIZE(arr) (sizeof(arr)/sizeof((arr)[0]))
+#define ROUND_UP(val, amt) (((val + amt - 1) / amt) * amt)
 
 typedef struct Event Event;
 
