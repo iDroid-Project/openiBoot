@@ -93,7 +93,7 @@ uint32_t update_specialBlockCache(uint32_t ce, char* infoTypeName, uint32_t _arg
 	return 1;
 }
 
-uint32_t sub_5FF2508C(uint32_t ce, uint32_t specialBlockNumber, uint32_t* headerBuffer, uint32_t* dataBuffer, uint32_t bytesToRead, char* infoTypeName, uint32_t nameSize, uint32_t zero1, uint32_t zero2) {
+uint32_t sub_5FF2508C(uint32_t ce, uint32_t specialBlockNumber, uint32_t* headerBuffer, uint8_t* dataBuffer, uint32_t bytesToRead, char* infoTypeName, uint32_t nameSize, uint32_t zero1, uint32_t zero2) {
 	Buff* buff = BUF_Get(0x10000000);
 	if(!buff)
 		return 0;
@@ -104,7 +104,8 @@ uint32_t sub_5FF2508C(uint32_t ce, uint32_t specialBlockNumber, uint32_t* header
 	uint32_t i;
 	uint32_t page = 0;
 	for (i = 0; i <= 2 && page < h2fmi_geometry.pages_per_block; page++) {
-		uint32_t specialPage = h2fmi_geometry.pages_per_block * ((h2fmi_geometry.unk14 * ((specialBlockNumber/h2fmi_geometry.blocks_per_bank) & 0xFFFF) + (specialBlockNumber % h2fmi_geometry.blocks_per_bank) ) & 0xFFFF) + page;
+		//uint32_t specialPage = h2fmi_geometry.pages_per_block * ((h2fmi_geometry.unk14 * ((specialBlockNumber/h2fmi_geometry.blocks_per_bank) & 0xFFFF) + (specialBlockNumber % h2fmi_geometry.blocks_per_bank) ) & 0xFFFF) + page;
+		uint32_t specialPage = (((specialBlockNumber / h2fmi_geometry.blocks_per_bank) & 0xFFFF) * h2fmi_geometry.unk14 + ((specialBlockNumber % h2fmi_geometry.blocks_per_bank) & 0xFFFF)) * h2fmi_geometry.pages_per_block + page;
 		uint32_t result = h2fmi_read_multi_ftl(ce, specialPage, (uint8_t*)(buff->data));
 		if(result) {
 			//if(result != 1)
@@ -135,7 +136,7 @@ uint32_t sub_5FF2508C(uint32_t ce, uint32_t specialBlockNumber, uint32_t* header
 		uint32_t bytes_to_read = (bytesToRead >= buff->data[13]) ? buff->data[13] : bytesToRead;
 		uint32_t bytes_read = (h2fmi_geometry.bbt_format << 10) - 0x38;
 
-		if(bytes_to_read < (h2fmi_geometry.bbt_format << 10) - 0x38) {
+		if(bytes_to_read <= (h2fmi_geometry.bbt_format << 10) - 0x38) {
 			memcpy(dataBuffer, &(buff->data[14]), bytes_to_read);
 			BUF_Release(buff);
 			if(zero2 == 1)
@@ -148,17 +149,18 @@ uint32_t sub_5FF2508C(uint32_t ce, uint32_t specialBlockNumber, uint32_t* header
 		
 		page++;
 
-		for (bytes_read = (h2fmi_geometry.bbt_format << 10) - 0x38; bytes_read < bytes_to_read && page <= h2fmi_geometry.pages_per_block; page++) {
-			uint32_t specialPage = h2fmi_geometry.pages_per_block * ((h2fmi_geometry.unk14 * ((specialBlockNumber/h2fmi_geometry.blocks_per_bank) & 0xFFFF) + (specialBlockNumber % h2fmi_geometry.blocks_per_bank) ) & 0xFFFF) + page;
+		for (bytes_read = (h2fmi_geometry.bbt_format << 10) - 0x38; bytes_read < bytesToRead && page < h2fmi_geometry.pages_per_block; page++) {
+			//uint32_t specialPage = h2fmi_geometry.pages_per_block * ((h2fmi_geometry.unk14 * ((specialBlockNumber/h2fmi_geometry.blocks_per_bank) & 0xFFFF) + (specialBlockNumber % h2fmi_geometry.blocks_per_bank) ) & 0xFFFF) + page;
+			uint32_t specialPage = (((specialBlockNumber / h2fmi_geometry.blocks_per_bank) & 0xFFFF) * h2fmi_geometry.unk14 + ((specialBlockNumber % h2fmi_geometry.blocks_per_bank) & 0xFFFF)) * h2fmi_geometry.pages_per_block + page;
 			result = h2fmi_read_multi_ftl(ce, specialPage, (uint8_t*)(buff->data));
 			if(result)
 				break;
 
-			memcpy(dataBuffer+(bytes_read/sizeof(uint32_t)), buff->data, (bytes_to_read-bytes_read >= (h2fmi_geometry.bbt_format<<10)) ? (h2fmi_geometry.bbt_format<<10) : (bytes_to_read-bytes_read));
-			bytes_read += (bytes_to_read-bytes_read >= (h2fmi_geometry.bbt_format<<10)) ? (h2fmi_geometry.bbt_format<<10) : (bytes_to_read-bytes_read);
+			memcpy(&dataBuffer[bytes_read], buff->data, (bytesToRead-bytes_read >= (h2fmi_geometry.bbt_format<<10)) ? (h2fmi_geometry.bbt_format<<10) : (bytesToRead-bytes_read));
+			bytes_read += (bytesToRead-bytes_read >= (h2fmi_geometry.bbt_format<<10)) ? (h2fmi_geometry.bbt_format<<10) : (bytesToRead-bytes_read);
 		}
 
-		if(bytes_read != bytes_to_read) {
+		if(bytes_read != bytesToRead) {
 			if(result == 1)
 				i++;
 			continue;
@@ -222,7 +224,7 @@ uint32_t get_scfg_info(uint32_t ce, uint32_t* headerBuffer, uint32_t* dataBuffer
 
 			/*if(!sub_5FF2508C(ce, *(pSpecialBlockCache+(4+2*turns)), headerBuffer, dataBuffer, bytesToRead, infoTypeName, nameSize, zero2, 0))
 				continue;*/
-			if(sub_5FF2508C(ce, tempBuffer[i*2 + 4], headerBuffer, dataBuffer, bytesToRead, infoTypeName, nameSize, zero2, 0))
+			if(sub_5FF2508C(ce, tempBuffer[i*2 + 4], headerBuffer, (uint8_t*)dataBuffer, bytesToRead, infoTypeName, nameSize, zero2, 0))
 				return 1;
 
 			if(!pSpecialBlockCache)
@@ -273,7 +275,7 @@ SETSPECIALBLOCKNUMBER:
 	//while(h2fmi_geometry.blocks_per_ce >= specialBlockNumber) {
 	while (specialBlockNumber >= block) {
 		specialBlockNumber--;
-		if(sub_5FF2508C(ce, specialBlockNumber, headerBuffer, dataBuffer, bytesToRead, infoTypeName, nameSize, zero2, 1)) {
+		if(sub_5FF2508C(ce, specialBlockNumber, headerBuffer, (uint8_t*)dataBuffer, bytesToRead, infoTypeName, nameSize, zero2, 1)) {
 			done = 1;
 			break;
 		}
@@ -309,9 +311,9 @@ uint32_t specialBlockCacheInit(uint32_t _arg) {
 	for (ce = 0; ce < h2fmi_geometry.num_ce; ce++) {
 		uint32_t i;
 		for (i = 0; i < 5; i++) {
-			*(pSpecialBlockCache + (ce << 6) + (i << 3) + 5) = 0;
-			*(pSpecialBlockCache + (ce << 6) + (i << 3) + 7) = 0;
-			memset(pSpecialBlockCache + (ce << 6) + (i << 3), 0xFF, 4 * sizeof(uint32_t));
+			pSpecialBlockCache[(ce << 6) + (i << 3) + 5] = 0;
+			pSpecialBlockCache[(ce << 6) + (i << 3) + 7] = 0;
+			memset(&pSpecialBlockCache[(ce << 6) + (i << 3)], 0xFF, 4 * sizeof(uint32_t));
 		}
 	}
 
