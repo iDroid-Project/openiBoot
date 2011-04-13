@@ -1573,12 +1573,7 @@ error_t h2fmi_read_single_page(uint32_t _ce, uint32_t _page, uint8_t *_ptr, uint
 	DataCacheOperation(3, (uint32_t)_ptr, ROUND_UP(fmi->bytes_per_page, 64));
 	DataCacheOperation(3, (uint32_t)h2fmi_wmr_data, ROUND_UP(fmi->meta_per_logical_page, 64));
 
-	uint32_t flag = (1 - _8);
-	if(flag > 1)
-		flag = 0;
-
-	if(h2fmi_aes_enabled == 0)
-		flag = 0;
+	uint32_t flag = (_8 == 0 && h2fmi_aes_enabled) ? 1 : 0;
 
 	h2fmi_setup_aes(fmi, flag, 0, (uint32_t)_ptr);
 
@@ -2120,6 +2115,67 @@ void cmd_nand_test(int argc, char** argv)
 	bufferPrintf("fmi: Command completed with result 0x%08x.\r\n", ret);
 }
 COMMAND("nand_test", "H2FMI NAND test", cmd_nand_test);
+
+static void cmd_nand_find(int argc, char** argv)
+{
+	if(argc < 5)
+	{
+		bufferPrintf("Usage: %s [start block] [end block] [flag] [string]\r\n", argv[0]);
+		return;
+	}
+	
+	int32_t block, page;
+	int32_t start_block  = parseNumber(argv[1]);
+	int32_t end_block    = parseNumber(argv[2]);
+	uint32_t flag        = parseNumber(argv[3]);
+	char*    string		 = argv[4];
+	uint32_t len		 = strlen(string);
+	
+	uint8_t* data = malloc(0x2000);
+	if (!data) {
+		bufferPrintf("fmi: failed to allocate data buffer.\r\n");
+		return;
+	}
+	
+	uint8_t* metadata = malloc(0x2000);
+	if (!metadata) {
+		bufferPrintf("fmi: failed to allocate metadata buffer.\r\n");
+		free(data);
+		return;
+	}
+	
+	bufferPrintf("fmi: searching for %s (length %d), down from %d to %d, flag=%d\r\n",
+		string, len, end_block, start_block, flag);
+	
+	int found = 0;
+	
+	for (block = end_block; block >= start_block && !found; block--) {
+		bufferPrintf("fmi: reading block %d\r\n", block);
+	
+		for (page = 0; page < 8 && !found; page++) {
+			// Read the page.
+			h2fmi_read_single_page(0, (block*128) + page, data, metadata, 0, 0, flag);
+		
+			// Search for the string.
+			uint32_t i;
+			for (i = 0; i < 0x2000; i++) {
+				if (memcmp(&data[i], string, len) == 0) {
+					found = 1;
+					break;
+				}
+			}
+		}
+	}
+	
+	free(data);
+	free(metadata);
+	
+	if (found)
+		bufferPrintf("fmi: found on block %d page %d!\r\n", block, page);
+	else
+		bufferPrintf("fmi: done, hasn't found.\r\n");
+}
+COMMAND("nand_find", "H2FMI NAND find a string", cmd_nand_find);
 
 static void cmd_vfl_read(int argc, char** argv)
 {

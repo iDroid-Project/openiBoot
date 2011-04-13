@@ -177,7 +177,7 @@ uint32_t get_scfg_info(uint32_t ce, uint32_t* headerBuffer, uint32_t* dataBuffer
 	uint32_t block;
 	uint32_t done = 0;
 	uint32_t specialBlockNumber;
-	uint32_t* tempBuffer[16];
+	uint32_t tempBuffer[16];
 	uint32_t CE_cacheBlockNumber;
 	memset(tempBuffer, 0, 32);
 
@@ -190,7 +190,7 @@ uint32_t get_scfg_info(uint32_t ce, uint32_t* headerBuffer, uint32_t* dataBuffer
 		if(!*pSpecialBlockCache)
 			goto SETSPECIALBLOCKNUMBER;
 
-		if(ce > h2fmi_geometry.num_ce)
+		if(ce >= h2fmi_geometry.num_ce)
 			goto SETSPECIALBLOCKNUMBER;
 
 		CE_cacheBlockNumber = ce << 6;
@@ -204,28 +204,34 @@ uint32_t get_scfg_info(uint32_t ce, uint32_t* headerBuffer, uint32_t* dataBuffer
 		}
 
 		uint32_t turns = 0;
-		memcpy(tempBuffer, (char*)((*pSpecialBlockCache)+(ce<<8)), 32);
+		//memcpy(tempBuffer, (char*)((*pSpecialBlockCache)+(ce<<8)), 32);
+		memcpy(tempBuffer, pSpecialBlockCache + (((ce << 3) + i) << 3), 32);
 		if(!strncmp((char*)tempBuffer, "NANDDRIVERSIGN\0\0", 16))
 			turns = 1;
 		else
 			turns = 2;
 
 		for (i = 0; i < turns; i++) {
-			if(*(pSpecialBlockCache+(5+2*i)) != 1)
+			//if(*(pSpecialBlockCache+(5+2*i)) != 1)
+			if (*(tempBuffer + (5 + 2*i)) != 1)
 				continue;
 
-			if(!sub_5FF2508C(ce, *(pSpecialBlockCache+(4+2*turns)), headerBuffer, dataBuffer, bytesToRead, infoTypeName, nameSize, zero2, 0))
-				continue;
+			/*if(!sub_5FF2508C(ce, *(pSpecialBlockCache+(4+2*turns)), headerBuffer, dataBuffer, bytesToRead, infoTypeName, nameSize, zero2, 0))
+				continue;*/
+			if(sub_5FF2508C(ce, *(tempBuffer+(4+2*i)), headerBuffer, dataBuffer, bytesToRead, infoTypeName, nameSize, zero2, 0))
+				return 1;
 
 			if(!*pSpecialBlockCache)
 				continue;
 
-			if(ce > h2fmi_geometry.num_ce)
+			//if(ce > h2fmi_geometry.num_ce)
+			if(ce >= h2fmi_geometry.num_ce)
 				continue;
 
 			uint32_t j;
 			for(j = 0; j < 5; j++) {
-				if(!strncmp(infoTypeName, (char*)((*pSpecialBlockCache)+CE_cacheBlockNumber+(j<<5)), 16)) {
+				//if(!strncmp(infoTypeName, (char*)((*pSpecialBlockCache)+CE_cacheBlockNumber+(j<<5)), 16)) {
+				if(!strncmp(infoTypeName, (char*)(pSpecialBlockCache+CE_cacheBlockNumber+(j<<3)), 16)) {
 					done = 1;
 					break;
 				}
@@ -234,15 +240,19 @@ uint32_t get_scfg_info(uint32_t ce, uint32_t* headerBuffer, uint32_t* dataBuffer
 			if(!done)
 				continue;
 
+			// The code below can't happen, although it appears in iBoot. -Oranav
 			if(i > 1)
 				continue;
 
-			uint32_t wtf = *((uint32_t*)((*pSpecialBlockCache)+CE_cacheBlockNumber+(((j<<2)+i)<<3)+20));
+			//uint32_t wtf = *((uint32_t*)((*pSpecialBlockCache)+CE_cacheBlockNumber+(((j<<2)+i)<<3)+20));
+			uint32_t wtf = *(pSpecialBlockCache + CE_cacheBlockNumber + ((i + (j << 2)) << 1) + 5);
 			if (wtf != 1)
 				continue;
 
-			*((uint32_t*)((*pSpecialBlockCache)+CE_cacheBlockNumber+(((j<<2)+i)<<3)+16)) = 0xFFFFFFFF;
-			*((uint32_t*)((*pSpecialBlockCache)+CE_cacheBlockNumber+(((j<<2)+i)<<3)+20)) = 0;
+			//*((uint32_t*)((*pSpecialBlockCache)+CE_cacheBlockNumber+(((j<<2)+i)<<3)+16)) = 0xFFFFFFFF;
+			//*((uint32_t*)((*pSpecialBlockCache)+CE_cacheBlockNumber+(((j<<2)+i)<<3)+20)) = 0;
+			*((uint32_t*)(pSpecialBlockCache + CE_cacheBlockNumber + ((i + (j << 2)) << 1) + 4)) = 0xFFFFFFFF;
+			*((uint32_t*)(pSpecialBlockCache + CE_cacheBlockNumber + ((i + (j << 2)) << 1) + 5)) = 0;
 		}
 
 SETSPECIALBLOCKNUMBER:
@@ -254,7 +264,8 @@ SETSPECIALBLOCKNUMBER:
 	}
 
 	done = 0;
-	while(h2fmi_geometry.blocks_per_ce >= specialBlockNumber) {
+	//while(h2fmi_geometry.blocks_per_ce >= specialBlockNumber) {
+	while (specialBlockNumber >= block) {
 		specialBlockNumber--;
 		if(sub_5FF2508C(ce, specialBlockNumber, headerBuffer, dataBuffer, bytesToRead, infoTypeName, nameSize, zero2, 1)) {
 			done = 1;
@@ -288,9 +299,9 @@ uint32_t specialBlockCacheInit(uint32_t _arg) {
 		pSpecialBlockCache = wmr_malloc(h2fmi_geometry.num_ce << 8);
 
 	uint32_t ce;
-	for (ce = 0; ce <= h2fmi_geometry.num_ce; ce++) {
+	for (ce = 0; ce < h2fmi_geometry.num_ce; ce++) {
 		uint32_t i;
-		for (i = 0; i <= 5; i++) {
+		for (i = 0; i < 5; i++) {
 			*(pSpecialBlockCache + (ce << 6) + (i << 3) + 5) = 0;
 			*(pSpecialBlockCache + (ce << 6) + (i << 3) + 7) = 0;
 			memset(pSpecialBlockCache + (ce << 6) + (i << 3), 0xFF, 4 * sizeof(uint32_t));
@@ -420,14 +431,14 @@ uint32_t FTL_Setup(uint32_t _arg0, uint32_t _arg1, uint32_t signature_style, uin
 
 	if(!h2fmi_geometry.num_ce) {
 		bufferPrintf("ftl: No NAND attached!\r\n");
-		return 0x80000001;
+		return ERROR(1);
 	}
 
 	if(BUF_Init(h2fmi_geometry.bbt_format << 10, 0xC, 0xA))
-		return 0x80000001;
+		return ERROR(1);
 
 	if(FPart_Init(signature_style, fsys_start_block))
-		return 0x80000001;
+		return ERROR(1);
 
 	uint32_t style;
 	if((signature_style >> 5) & 1)
@@ -453,7 +464,7 @@ uint32_t FTL_Setup(uint32_t _arg0, uint32_t _arg1, uint32_t signature_style, uin
 			nand_get_epoch() != GET_BITS(*nand_driver_signature, 0, 8)
 			) {
 		bufferPrintf("ftl: Incompatible signature.\r\n");
-		return 0x80000002;
+		return ERROR(2);
 	}
 
 /*	if(!(signature_style & 0x800) || (
