@@ -1,7 +1,6 @@
 #include "openiboot.h"
 #include "arm/arm.h"
 #include "util.h"
-#include "malloc.h"
 #include "hardware/dma.h"
 #include "cdma.h"
 #include "clock.h"

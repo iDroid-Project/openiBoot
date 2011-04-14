@@ -661,9 +661,9 @@ static nand_info_t *h2fmi_nand_find_info(char *_id, h2fmi_struct_t **_busses, in
 		{
 			if(found > 0)
 			{
-				if(memcmp(chipID, &_id[i*H2FMI_CHIPID_LENGTH], H2FMI_CHIPID_LENGTH) != 0)
+				if(memcmp(chipID, &_id[i*H2FMI_CHIPID_LENGTH], 4) != 0)
 				{
-					uint8_t *a = (uint8_t*)&board_id.chipID;
+					uint8_t *a = (uint8_t*)&chipID;
 					uint8_t *b = (uint8_t*)&_id[i*H2FMI_CHIPID_LENGTH];
 
 					bufferPrintf("fmi: ChipIDs do not match.\n");
