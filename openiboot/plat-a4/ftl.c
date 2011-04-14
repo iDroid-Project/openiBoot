@@ -179,73 +179,74 @@ uint32_t get_scfg_info(uint32_t ce, uint32_t* headerBuffer, uint32_t* dataBuffer
 	uint32_t specialBlockNumber;
 	uint32_t* tempBuffer[16];
 	uint32_t CE_cacheBlockNumber;
-	memset(tempBuffer, 0, 32);
+	memset(tempBuffer, 0, sizeof(tempBuffer));
 
 	if(!infoTypeName)
 		return 0;
 
 	memcpy(tempBuffer, infoTypeName, 16);
 
-	if(!zero1) {
-		if(!*pSpecialBlockCache)
-			goto SETSPECIALBLOCKNUMBER;
+	if(!zero1)
+	{
+		if(*pSpecialBlockCache)
+		{
+			if(ce <= h2fmi_geometry.num_ce)
+			{
+				CE_cacheBlockNumber = ce << 6;
 
-		if(ce > h2fmi_geometry.num_ce)
-			goto SETSPECIALBLOCKNUMBER;
+				uint32_t i;
+				for (i = 0; i < 5; i++) {
+					if(!strncmp((char*)tempBuffer, (char*)(pSpecialBlockCache+CE_cacheBlockNumber+(i<<3)), 16))
+						break;
+				}
 
-		CE_cacheBlockNumber = ce << 6;
+				if(i != 5)
+				{
+					uint32_t turns = 0;
+					memcpy(tempBuffer, (char*)((*pSpecialBlockCache)+(ce<<8)), 32);
+					if(!strncmp((char*)tempBuffer, "NANDDRIVERSIGN\0\0", 16))
+						turns = 1;
+					else
+						turns = 2;
 
-		uint32_t i;
-		for (i = 0; i < 5; i++) {
-			if(!strncmp((char*)tempBuffer, (char*)(pSpecialBlockCache+CE_cacheBlockNumber+(i<<3)), 16));
-				break;
-			if(i == 4)
-				goto SETSPECIALBLOCKNUMBER;
-		}
+					for (i = 0; i < turns; i++) {
+						if(*(pSpecialBlockCache+(5+2*i)) != 1)
+							continue;
 
-		uint32_t turns = 0;
-		memcpy(tempBuffer, (char*)((*pSpecialBlockCache)+(ce<<8)), 32);
-		if(!strncmp((char*)tempBuffer, "NANDDRIVERSIGN\0\0", 16))
-			turns = 1;
-		else
-			turns = 2;
+						if(!sub_5FF2508C(ce, *(pSpecialBlockCache+(4+2*turns)), headerBuffer, dataBuffer, bytesToRead, infoTypeName, nameSize, zero2, 0))
+							continue;
 
-		for (i = 0; i < turns; i++) {
-			if(*(pSpecialBlockCache+(5+2*i)) != 1)
-				continue;
+						if(!*pSpecialBlockCache)
+							continue;
 
-			if(!sub_5FF2508C(ce, *(pSpecialBlockCache+(4+2*turns)), headerBuffer, dataBuffer, bytesToRead, infoTypeName, nameSize, zero2, 0))
-				continue;
+						if(ce > h2fmi_geometry.num_ce)
+							continue;
 
-			if(!*pSpecialBlockCache)
-				continue;
+						uint32_t j;
+						for(j = 0; j < 5; j++) {
+							if(!strncmp(infoTypeName, (char*)((*pSpecialBlockCache)+CE_cacheBlockNumber+(j<<5)), 16)) {
+								done = 1;
+								break;
+							}
+						}
 
-			if(ce > h2fmi_geometry.num_ce)
-				continue;
+						if(!done)
+							continue;
 
-			uint32_t j;
-			for(j = 0; j < 5; j++) {
-				if(!strncmp(infoTypeName, (char*)((*pSpecialBlockCache)+CE_cacheBlockNumber+(j<<5)), 16)) {
-					done = 1;
-					break;
+						if(i > 1)
+							continue;
+
+						uint32_t wtf = *((uint32_t*)((*pSpecialBlockCache)+CE_cacheBlockNumber+(((j<<2)+i)<<3)+20));
+						if (wtf != 1)
+							continue;
+
+						*((uint32_t*)((*pSpecialBlockCache)+CE_cacheBlockNumber+(((j<<2)+i)<<3)+16)) = 0xFFFFFFFF;
+						*((uint32_t*)((*pSpecialBlockCache)+CE_cacheBlockNumber+(((j<<2)+i)<<3)+20)) = 0;
+					}
 				}
 			}
+		}	
 
-			if(!done)
-				continue;
-
-			if(i > 1)
-				continue;
-
-			uint32_t wtf = *((uint32_t*)((*pSpecialBlockCache)+CE_cacheBlockNumber+(((j<<2)+i)<<3)+20));
-			if (wtf != 1)
-				continue;
-
-			*((uint32_t*)((*pSpecialBlockCache)+CE_cacheBlockNumber+(((j<<2)+i)<<3)+16)) = 0xFFFFFFFF;
-			*((uint32_t*)((*pSpecialBlockCache)+CE_cacheBlockNumber+(((j<<2)+i)<<3)+20)) = 0;
-		}
-
-SETSPECIALBLOCKNUMBER:
 		block = ((uint32_t)((h2fmi_geometry.blocks_per_ce*0x2000)*0.96*0x2000)) & 0xFFFF;
 		specialBlockNumber = h2fmi_geometry.blocks_per_ce;
 	} else {

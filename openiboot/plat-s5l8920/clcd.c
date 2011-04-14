@@ -498,7 +498,7 @@ static Window* createWindow(int zero0, int zero2, int width, int height, ColorSp
 	newWindow->height = height;
 	newWindow->lineBytes = width * (bitsPerPixel / 8);
 
-	createFramebuffer(&newWindow->framebuffer, (uint32_t)malloc(newWindow->lineBytes*height), width, height, width, colorSpace);
+	createFramebuffer(&newWindow->framebuffer, (uint32_t)memalign(16, newWindow->lineBytes*height), width, height, width, colorSpace);
 	bufferPrintf("clcd: buffer 0x%08x\r\n", newWindow->framebuffer.buffer);
 
 	SET_REG(CLCD_BASE + 0x20, (reg_bit << 8) | 0x200000);

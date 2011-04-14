@@ -4,11 +4,20 @@
 #include "openiboot.h"
 #include "nand.h"
 
+// VFL Enums
+typedef enum _vfl_signature_style
+{
+	vfl_old_signature = 0x64,
+	vfl_new_signature = 0x65,
+} vfl_signature_style_t;
+
 // VFL Device Prototypes
 struct _vfl_device;
 
 typedef error_t (*vfl_open_t)(struct _vfl_device *, nand_device_t *_dev);
 typedef void (*vfl_close_t)(struct _vfl_device *);
+
+typedef nand_device_t *(*vfl_get_device_t)(struct _vfl_device *);
 
 typedef error_t (*vfl_read_single_page_t)(struct _vfl_device *, uint32_t _page, uint8_t *_buffer,
 		uint8_t *_sparebuffer, int _empty_ok, int *_refresh);
@@ -16,14 +25,18 @@ typedef error_t (*vfl_read_single_page_t)(struct _vfl_device *, uint32_t _page, 
 typedef error_t (*vfl_write_single_page_t)(struct _vfl_device *, uint32_t _page, uint8_t *_buffer,
 		uint8_t *_sparebuffer);
 
+
 // VFL Device Struct
 typedef struct _vfl_device
 {
 	vfl_open_t open;
 	vfl_close_t close;
 
+	vfl_get_device_t get_device;
+
 	vfl_read_single_page_t read_single_page;
 	vfl_write_single_page_t write_single_page;
+
 } vfl_device_t;
 
 // VFL Device Functions
@@ -35,9 +48,13 @@ vfl_device_t *vfl_allocate();
 error_t vfl_open(vfl_device_t *_vfl, nand_device_t *_dev);
 void vfl_close(vfl_device_t *_vfl);
 
+nand_device_t *vfl_get_device(vfl_device_t *_vfl);
+
 error_t vfl_read_single_page(vfl_device_t *_vfl, uint32_t _page, uint8_t* _buffer, uint8_t* _spare,
 		int _empty_ok, int* _refresh_page);
 
 error_t vfl_write_single_page(vfl_device_t *_vfl, uint32_t _page, uint8_t* _buffer, uint8_t* _spare);
+
+error_t vfl_detect(vfl_device_t **_vfl, nand_device_t *_nand, vfl_signature_style_t _sign);
 
 #endif //VFL_H

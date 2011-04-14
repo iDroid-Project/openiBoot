@@ -6,3 +6,4 @@ vfl_vfl_src = env.Localize([
 
 vfl_vfl = env.CreateModule('vfl-vfl', vfl_vfl_src)
 vfl_vfl.Append(CPPPATH = [Dir('includes')])
+vfl_vfl.Append(CPPDEFINES = ['CONFIG_VFL_VFL'])

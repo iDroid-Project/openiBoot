@@ -113,7 +113,7 @@ int gpio_setup() {
 		gpio_switch(0x304, ON);
 		gpio_switch(0x305, ON);
 		udelay(100);
-		v[0] = chipid_get_gpio();
+		v[0] = chipid_get_gpio_epoch();
 		v[1] = gpio_pin_state(0x504);
 		v[2] = gpio_pin_state(0x503);
 		v[3] = gpio_pin_state(0x502);
