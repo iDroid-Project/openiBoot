@@ -103,6 +103,7 @@ typedef struct _h2fmi_struct
 	uint32_t num_pages_to_read;
 	uint32_t field_80;
 	uint32_t field_100;
+	uint32_t field_110;
 	uint16_t *chips;
 	uint32_t *pages;
 	uint8_t **data_ptr; // 114
