@@ -156,7 +156,6 @@ static const PMURegisterData backlightData[] = {
 };
 
 volatile uint32_t* CurFramebuffer;
-uint32_t* FRAMEBUFFER;
 
 static LCDInfo* LCDTable;
 static uint32_t TimePerMillionFrames = 0;
@@ -276,13 +275,9 @@ int displaypipe_init() {
 	uint32_t clcd_reg;
 	uint32_t panelID;
 
-	FRAMEBUFFER = malloc(0x800000);
-	if (!FRAMEBUFFER)
-		FRAMEBUFFER = (uint32_t*)CLCD_FRAMEBUFFER;
+	memset((void*)CLCD_FRAMEBUFFER, 0, 0x800000);
 
-	memset((void*)FRAMEBUFFER, 0, 0x800000);
-
-	bufferPrintf("displaypipe_init: framebuffer address: 0x%08x\n", (uint32_t)FRAMEBUFFER);
+	bufferPrintf("displaypipe_init: framebuffer address: 0x%08x\n", CLCD_FRAMEBUFFER);
 
 	if (!LCDTable)
 		LCDTable = &LCDInfoTable[DISPLAYID];
@@ -365,10 +360,7 @@ int displaypipe_init() {
 
 	ColorSpace colorSpace;
 //XXX:	It normally grabs it from nvram var "display-color-space" as string. -- Bluerise
-	if (LCDTable->bitsPerPixel <= 18)
-		colorSpace = RGB565;
-	else
-		colorSpace = RGB888;
+	colorSpace = RGB888;
 
 	currentWindow = createWindow(0, 0, LCDTable->width, LCDTable->height, colorSpace);
 	if (!currentWindow)
@@ -381,7 +373,7 @@ int displaypipe_init() {
 		result = pinot_init(LCDTable, colorSpace, &panelID, currentWindow);
 		if (result) {
 			lcd_fill_switch(OFF, 0);
-			LCDTable = 0;
+			LCDTable = NULL;
 			return result;
 		}
 	} else {
@@ -397,12 +389,11 @@ int displaypipe_init() {
 	uint32_t curBuf;
 	buffer1[0] = 1;
 	for (curBuf = 0; curBuf != 256; curBuf++) {
-		if ((curBuf+1 % (256 >> (10 - (uint8_t)(LCDTable->bitsPerPixel / 3)))) == 1)
+		if (((curBuf+1) % (256 >> (10 - (uint8_t)(LCDTable->bitsPerPixel / 3)))) == 1)
 			buffer1[curBuf] = buffer1[curBuf] - 1;
 		buffer1[curBuf+1] = buffer1[curBuf] + 4;
 		buffer2[curBuf] = buffer1[curBuf];
 		buffer3[curBuf] = buffer1[curBuf];
-		curBuf++;
 	}
 	buffer3[256] = buffer1[256];
 	buffer2[256] = buffer1[256];
@@ -423,7 +414,7 @@ int displaypipe_init() {
 	return result;
 }
 
-static uint8_t PanelIDInfo[5];
+static uint8_t* PanelIDInfo;
 static uint32_t DotPitch;
 static uint8_t dword_5FF3AE0C;
 
@@ -455,8 +446,10 @@ int pinot_init(LCDInfo* LCDTable, ColorSpace colorspace, uint32_t* panelID, Wind
 	if (!pinot_panel_id) {
 		uint32_t read_length;
 		read_length = 15;
+		PanelIDInfo = malloc(16);
+		memset(PanelIDInfo, 0x0, 16);
 		PanelIDInfo[0] = 0xB1; // -79
-		if (mipi_dsim_read_write(0x14, &PanelIDInfo[0], &read_length) || read_length <= 2) {
+		if (mipi_dsim_read_write(0x14, PanelIDInfo, &read_length) || read_length <= 2) {
 			bufferPrintf("pinot_init(): read of pinot panel id failed\r\n");
 		} else {
 			pinot_panel_id = (PanelIDInfo[0] << 24) | (PanelIDInfo[1] << 16) | ((PanelIDInfo[3] & 0xF0) << 8) | ((PanelIDInfo[2] & 0xF8) << 4) | ((PanelIDInfo[3] & 0xF) << 3) | (PanelIDInfo[2] & 0x7);
@@ -468,8 +461,17 @@ int pinot_init(LCDInfo* LCDTable, ColorSpace colorspace, uint32_t* panelID, Wind
 	bufferPrintf("pinot_init(): pinot_panel_id:      0x%08lx\r\n", pinot_panel_id);
 	bufferPrintf("pinot_init(): pinot_default_color: 0x%08lx\r\n", pinot_default_color);
 	bufferPrintf("pinot_init(): pinot_backlight_cal: 0x%08lx\r\n", pinot_backlight_cal);
+
+	uint32_t on_off = 0;
+	if ((GET_BITS(pinot_panel_id, 8, 8) - 3) <= 1 || GET_BITS(pinot_panel_id, 8, 8) == 7 || GET_BITS(pinot_panel_id, 8, 8) == 8) {
+		mipi_dsim_on_off(ON);
+		on_off = 1;
+	}
+
 	lcd_fill_switch(ON, pinot_default_color);
+
 	udelay(100);
+
 	if (!pinot_panel_id) {
 		lcd_fill_switch(OFF, 0);
 		mipi_dsim_quiesce();
@@ -480,6 +482,10 @@ int pinot_init(LCDInfo* LCDTable, ColorSpace colorspace, uint32_t* panelID, Wind
 	displaytime_sleep(7);
 	mipi_dsim_write_data(5, 0x29, 0);
 	displaytime_sleep(7);
+
+	if(!on_off)
+		mipi_dsim_on_off(ON);
+
 #if defined(CONFIG_IPHONE_4)
 	gpio_switch(0x207, OFF);
 #endif
@@ -502,7 +508,13 @@ void pinot_quiesce() {
 	displaytime_sleep(6);
 	mipi_dsim_framebuffer_on_off(OFF);
 	mipi_dsim_quiesce();
+
+#if defined(CONFIG_IPAD_1G)
+	gpio_pin_output(0x1404, 0);
+#else
 	gpio_pin_output(0x206, 0);
+#endif
+
 	return;
 }
 
@@ -711,7 +723,7 @@ static Window* createWindow(int zero0, int zero2, int width, int height, ColorSp
 	newWindow->height = height;
 	newWindow->lineBytes = width * (bitsPerPixel / 8);
 
-	createFramebuffer(&newWindow->framebuffer, (uint32_t)FRAMEBUFFER, width, height, width, colorSpace);
+	createFramebuffer(&newWindow->framebuffer, CLCD_FRAMEBUFFER, width, height, width, colorSpace);
 
 	SET_REG(CLCD + 0x4040, (reg_bit << 8) | 1);
 	SET_REG(CLCD + 0x4044, (uint32_t)newWindow->framebuffer.buffer);
