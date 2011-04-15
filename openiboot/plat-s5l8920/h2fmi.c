@@ -6,7 +6,7 @@
 #include "util.h"
 #include "cdma.h"
 #include "commands.h"
-#include "vfl/vfl.h"
+#include "vfl.h"
 #include "arm/arm.h"
 
 typedef struct _nand_chipid
@@ -233,7 +233,7 @@ static h2fmi_struct_t *h2fmi_busses[] = {
 
 static h2fmi_geometry_t h2fmi_geometry;
 static nand_device_t h2fmi_device;
-static vfl_vfl_device_t h2fmi_vfl_device;
+static vfl_device_t *h2fmi_vfl_device;
 
 typedef struct _h2fmi_map_entry
 {
@@ -1546,105 +1546,157 @@ static error_t h2fmi_device_read_single_page(nand_device_t *_dev, uint32_t _chip
 			_buffer, _spareBuffer, NULL, NULL, 0);
 }
 
-static uint32_t h2fmi_device_get_info(nand_device_t *_dev, nand_device_info_t _info)
+static inline void auto_store(void *_ptr, size_t _sz, uint32_t _val)
 {
-	switch(_info)
+	switch(_sz)
 	{
-	case diReturnOne:
-		return 1;
+	case 0:
+		return;
 
-	case diBanksPerCE:
-		return h2fmi_geometry.banks_per_ce;
+	case 1:
+		*((uint8_t*)_ptr) = _val;
+		return;
 
-	case diPagesPerBlock2:
-		return h2fmi_geometry.pages_per_block_2;
+	case 2:
+		*((uint16_t*)_ptr) = _val;
+		return;
 
-	case diPagesPerBlock:
-		return h2fmi_geometry.pages_per_block;
-
-	case diBlocksPerCE:
-		return h2fmi_geometry.blocks_per_ce;
-
-	case diBytesPerPage:
-		return h2fmi_geometry.bbt_format << 9;
-
-	case diBytesPerSpare:
-		return h2fmi_geometry.bytes_per_spare;
-
-	case diVendorType:
-		return h2fmi_geometry.vendor_type;
-
-	case diECCBits:
-		return h2fmi_geometry.ecc_bits;
-
-	case diECCBits2:
-		return fmi0.ecc_bits;
-
-	case diTotalBanks_VFL:
-		return h2fmi_geometry.banks_per_ce_vfl * h2fmi_geometry.num_ce;
-
-	case diBlocksPerBank_dw:
-		return h2fmi_geometry.blocks_per_bank_32;
-
-	case diBanksPerCE_dw:
-		return h2fmi_geometry.banks_per_ce_32;
-
-	case diPagesPerBlock_dw:
-		return h2fmi_geometry.pages_per_block_32;
-
-	case diPagesPerBlock2_dw:
-		return h2fmi_geometry.pages_per_block_2_32;
-
-	case diPageNumberBitWidth:
-		return h2fmi_geometry.page_number_bit_width;
-
-	case diPageNumberBitWidth2:
-		return h2fmi_geometry.page_number_bit_width_2;
-
-	case diNumCEPerBus:
-		if(h2fmi_geometry.num_fmi == 0)
-			return 0;
-
-		return h2fmi_geometry.num_ce / h2fmi_geometry.num_fmi;
-
-	case diPPN:
-		return h2fmi_geometry.is_ppn;
-
-	case diBanksPerCE_VFL:
-		return h2fmi_geometry.banks_per_ce_vfl;
-
-	case diNumECCBytes:
-		return h2fmi_geometry.num_ecc_bytes;
-
-	case diMetaPerLogicalPage:
-		return h2fmi_geometry.meta_per_logical_page;
-
-	case diPagesPerCE:
-		return h2fmi_geometry.pages_per_ce;
-
-	case diNumCE:
-		return h2fmi_geometry.num_ce;
-
-	default:
-		system_panic("h2fmi: Tried to get unimplemented device info: %d.\r\n", _info);
-		return 0;
+	case 4:
+		*((uint32_t*)_ptr) = _val;
+		return;
 	}
 }
 
-static void h2fmi_device_set_info(nand_device_t *_dev, nand_device_info_t _info, uint32_t _val)
+static error_t h2fmi_device_get_info(device_t *_dev, device_info_t _info, void *_result, size_t _size)
 {
+	if(_size > 4 || _size == 3)
+		return EINVAL;
+
+	switch(_info)
+	{
+	case diReturnOne:
+		auto_store(_result, _size, 1);
+		return SUCCESS;
+
+	case diBanksPerCE:
+		auto_store(_result, _size, h2fmi_geometry.banks_per_ce);
+		return SUCCESS;
+
+	case diPagesPerBlock2:
+		auto_store(_result, _size, h2fmi_geometry.pages_per_block_2);
+		return SUCCESS;
+
+	case diPagesPerBlock:
+		auto_store(_result, _size, h2fmi_geometry.pages_per_block);
+		return SUCCESS;
+
+	case diBlocksPerCE:
+		auto_store(_result, _size, h2fmi_geometry.blocks_per_ce);
+		return SUCCESS;
+
+	case diBytesPerPage:
+		auto_store(_result, _size, h2fmi_geometry.bbt_format << 9);
+		return SUCCESS;
+
+	case diBytesPerSpare:
+		auto_store(_result, _size, h2fmi_geometry.bytes_per_spare);
+		return SUCCESS;
+
+	case diVendorType:
+		auto_store(_result, _size, h2fmi_geometry.vendor_type);
+		return SUCCESS;
+
+	case diECCBits:
+		auto_store(_result, _size, h2fmi_geometry.ecc_bits);
+		return SUCCESS;
+
+	case diECCBits2:
+		auto_store(_result, _size, fmi0.ecc_bits);
+		return SUCCESS;
+
+	case diTotalBanks_VFL:
+		auto_store(_result, _size, h2fmi_geometry.banks_per_ce_vfl * h2fmi_geometry.num_ce);
+		return SUCCESS;
+
+	case diBlocksPerBank_dw:
+		auto_store(_result, _size, h2fmi_geometry.blocks_per_bank_32);
+		return SUCCESS;
+
+	case diBanksPerCE_dw:
+		auto_store(_result, _size, h2fmi_geometry.banks_per_ce_32);
+		return SUCCESS;
+
+	case diPagesPerBlock_dw:
+		auto_store(_result, _size, h2fmi_geometry.pages_per_block_32);
+		return SUCCESS;
+
+	case diPagesPerBlock2_dw:
+		auto_store(_result, _size, h2fmi_geometry.pages_per_block_2_32);
+		return SUCCESS;
+
+	case diPageNumberBitWidth:
+		auto_store(_result, _size, h2fmi_geometry.page_number_bit_width);
+		return SUCCESS;
+
+	case diPageNumberBitWidth2:
+		auto_store(_result, _size, h2fmi_geometry.page_number_bit_width_2);
+		return SUCCESS;
+
+	case diNumCEPerBus:
+		if(h2fmi_geometry.num_fmi == 0)
+			auto_store(_result, _size, 0);
+		else
+			auto_store(_result, _size, h2fmi_geometry.num_ce / h2fmi_geometry.num_fmi);
+
+		return SUCCESS;
+
+	case diPPN:
+		auto_store(_result, _size, h2fmi_geometry.is_ppn);
+		return SUCCESS;
+
+	case diBanksPerCE_VFL:
+		auto_store(_result, _size, h2fmi_geometry.banks_per_ce_vfl);
+		return SUCCESS;
+
+	case diNumECCBytes:
+		auto_store(_result, _size, h2fmi_geometry.num_ecc_bytes);
+		return SUCCESS;
+
+	case diMetaPerLogicalPage:
+		auto_store(_result, _size, h2fmi_geometry.meta_per_logical_page);
+		return SUCCESS;
+
+	case diPagesPerCE:
+		auto_store(_result, _size, h2fmi_geometry.pages_per_ce);
+		return SUCCESS;
+
+	case diNumCE:
+		auto_store(_result, _size, h2fmi_geometry.num_ce);
+		return SUCCESS;
+
+	default:
+		return ENOENT;
+	}
+}
+
+static error_t h2fmi_device_set_info(device_t *_dev, device_info_t _info, void *_val, size_t _sz)
+{
+	if(_sz != sizeof(uint32_t))
+		return EINVAL;
+
+	uint32_t *u32res = _val;
+
 	switch(_info)
 	{
 	case diVendorType:
-		break;
+		return SUCCESS;
 
 	case diBanksPerCE_VFL:
-		h2fmi_geometry.banks_per_ce_vfl = _val;
-		break;
+		h2fmi_geometry.banks_per_ce_vfl = *u32res;
+		return SUCCESS;
 
 	default:
-		system_panic("h2fmi: Invalid device info to set: %d.\r\n", _info);
-		break;
+		return ENOENT;
 	}
 }
 
@@ -1658,13 +1710,13 @@ static void h2fmi_init_device()
 	nand_device_init(&h2fmi_device);
 	h2fmi_device.read_single_page = h2fmi_device_read_single_page;
 	h2fmi_device.enable_encryption = h2fmi_device_enable_encryption;
-	h2fmi_device.get_info = h2fmi_device_get_info;
-	h2fmi_device.set_info = h2fmi_device_set_info;
+	h2fmi_device.device.get_info = h2fmi_device_get_info;
+	h2fmi_device.device.set_info = h2fmi_device_set_info;
 
-	vfl_vfl_device_init(&h2fmi_vfl_device);
-	if(vfl_open(&h2fmi_vfl_device.vfl, &h2fmi_device))
+	error_t ret = vfl_detect(&h2fmi_vfl_device, &h2fmi_device, vfl_new_signature);
+	if(FAILED(ret))
 	{
-		bufferPrintf("fmi: Failed to open VFL!\r\n");
+		bufferPrintf("fmi: Failed to open VFL (%s)!\r\n", strerr(ret));
 		return;
 	}
 }
@@ -1940,7 +1992,7 @@ static void cmd_vfl_read(int argc, char** argv)
 	uint32_t empty_ok = parseNumber(argv[4]);
 	uint32_t refresh = parseNumber(argv[5]);
 
-	uint32_t ret = vfl_read_single_page(&h2fmi_vfl_device.vfl, page,
+	uint32_t ret = vfl_read_single_page(h2fmi_vfl_device, page,
 			(uint8_t*)data, (uint8_t*)meta, empty_ok, (int32_t*)refresh);
 
 	bufferPrintf("vfl: Command completed with result 0x%08x.\r\n", ret);

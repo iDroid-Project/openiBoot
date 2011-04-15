@@ -1,6 +1,8 @@
 #ifndef OPENIBOOT_H
 #define OPENIBOOT_H
 
+#include <stddef.h> // size_t
+
 typedef unsigned long long uint64_t;
 typedef unsigned int uint32_t;
 typedef unsigned short uint16_t;
@@ -9,7 +11,6 @@ typedef signed long long int64_t;
 typedef signed int int32_t;
 typedef signed short int16_t;
 typedef signed char int8_t;
-typedef long unsigned int size_t;
 typedef signed int intptr_t;
 typedef uint32_t fourcc_t;
 
@@ -63,6 +64,7 @@ typedef enum OnOff {
 #define CONTAINER_OF(type, member, ptr) ((type*)(((char*)(ptr)) - ((char*)(&((type*)NULL)->member))))
 #define ARRAY_SIZE(arr) (sizeof(arr)/sizeof((arr)[0]))
 #define ROUND_UP(val, amt) (((val + amt - 1) / amt) * amt)
+#define CEIL_DIVIDE(val, amt) ((val + amt - 1) / amt)
 
 typedef struct Event Event;
 

@@ -414,7 +414,7 @@ int displaypipe_init() {
 	return result;
 }
 
-static uint8_t PanelIDInfo[5];
+static uint8_t* PanelIDInfo;
 static uint32_t DotPitch;
 static uint8_t dword_5FF3AE0C;
 
@@ -446,6 +446,8 @@ int pinot_init(LCDInfo* LCDTable, ColorSpace colorspace, uint32_t* panelID, Wind
 	if (!pinot_panel_id) {
 		uint32_t read_length;
 		read_length = 15;
+		PanelIDInfo = malloc(16);
+		memset(PanelIDInfo, 0x0, 16);
 		PanelIDInfo[0] = 0xB1; // -79
 		if (mipi_dsim_read_write(0x14, PanelIDInfo, &read_length) || read_length <= 2) {
 			bufferPrintf("pinot_init(): read of pinot panel id failed\r\n");
@@ -506,7 +508,13 @@ void pinot_quiesce() {
 	displaytime_sleep(6);
 	mipi_dsim_framebuffer_on_off(OFF);
 	mipi_dsim_quiesce();
+
+#if defined(CONFIG_IPAD_1G)
+	gpio_pin_output(0x1404, 0);
+#else
 	gpio_pin_output(0x206, 0);
+#endif
+
 	return;
 }
 

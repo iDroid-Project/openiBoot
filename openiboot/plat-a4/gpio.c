@@ -89,12 +89,6 @@ const uint16_t gpio_reset_table[] = {
 
 
 int gpio_setup() {
-	// Reset everything
-	int i;
-	for (i = 0; i < 0xB0; i++) {
-		SET_REG(GPIO + i * sizeof(uint32_t), gpio_reset_table[i]);
-	}
-
 	// Initialise it
 	uint8_t v[8];
 	if (!(GET_REG(POWER + POWER_ID) & 1)) {
@@ -113,7 +107,7 @@ int gpio_setup() {
 		gpio_switch(0x304, ON);
 		gpio_switch(0x305, ON);
 		udelay(100);
-		v[0] = chipid_get_gpio();
+		v[0] = chipid_get_gpio_epoch();
 		v[1] = gpio_pin_state(0x504);
 		v[2] = gpio_pin_state(0x503);
 		v[3] = gpio_pin_state(0x502);

@@ -207,7 +207,7 @@ int displaypipe_init() {
 	uint32_t curBuf;
 	buffer1[0] = 1;
 	for (curBuf = 0; curBuf != 256; curBuf++) {
-		if (((curBuf+1) % (256 >> (10 - (uint8_t)(LCDTable->bitsPerPixel / 3)))) == 1)
+		if ((curBuf+1) % (256 >> (10 - (uint8_t)(LCDTable->bitsPerPixel / 3))) == 1)
 			buffer1[curBuf] = buffer1[curBuf] - 1;
 		buffer1[curBuf+1] = buffer1[curBuf] + 4;
 		buffer2[curBuf] = buffer1[curBuf];
@@ -242,7 +242,7 @@ void display_module_init()
 }
 MODULE_INIT(display_module_init);
 
-static uint8_t PanelIDInfo[5];
+static uint8_t PanelIDInfo[6];
 static uint32_t DotPitch;
 static uint8_t dword_5FF3AE0C;
 
@@ -498,7 +498,7 @@ static Window* createWindow(int zero0, int zero2, int width, int height, ColorSp
 	newWindow->height = height;
 	newWindow->lineBytes = width * (bitsPerPixel / 8);
 
-	createFramebuffer(&newWindow->framebuffer, (uint32_t)malloc(newWindow->lineBytes*height), width, height, width, colorSpace);
+	createFramebuffer(&newWindow->framebuffer, (uint32_t)memalign(16, newWindow->lineBytes*height), width, height, width, colorSpace);
 	bufferPrintf("clcd: buffer 0x%08x\r\n", newWindow->framebuffer.buffer);
 
 	SET_REG(CLCD_BASE + 0x20, (reg_bit << 8) | 0x200000);

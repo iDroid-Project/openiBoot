@@ -25,6 +25,7 @@
 #define H2FMI_UNKREG10(x)	(H2FMI_REG(x, 0x40020))
 #define H2FMI_UNK4(x)		(H2FMI_REG(x, 0x4))
 #define H2FMI_UNK440(x)		(H2FMI_REG(x, 0x40040))
+#define H2FMI_UNK448(x)		(H2FMI_REG(x, 0x40048))
 #define H2FMI_UNK44C(x)		(H2FMI_REG(x, 0x4004C))
 #define H2FMI_UNK8(x)		(H2FMI_REG(x, 0x8))
 #define H2FMI_UNKC(x)		(H2FMI_REG(x, 0xC))

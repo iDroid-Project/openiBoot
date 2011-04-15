@@ -87,7 +87,7 @@ int gpio_setup() {
 		gpio_pin_use_as_input(0x100);
 		udelay(50);
 
-		v[0] = CHIPID_GET_GPIO(chipid_get_gpio());
+		v[0] = CHIPID_GET_GPIO(chipid_get_gpio_epoch());
 		v[1] = gpio_pin_state(0x104);
 		v[2] = gpio_pin_state(0x105);
 		v[3] = gpio_pin_state(0x106);

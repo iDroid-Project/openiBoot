@@ -483,7 +483,7 @@ int uart_read(int ureg, char *buffer, uint32_t length, uint64_t timeout) {
 			}
 		}
 	} else if (settings->mode == UART_IRQ_MODE) {
-		while((timer_get_system_microtime() - startTime) < timeout) {
+		do {
 			if(!settings->buffer_written)
 				continue;
 			SET_REG(uart->UCON, GET_REG(uart->UCON) & (~0x1000));
@@ -495,7 +495,7 @@ int uart_read(int ureg, char *buffer, uint32_t length, uint64_t timeout) {
 				settings->buffer_written--;
 			}
 			SET_REG(uart->UCON, GET_REG(uart->UCON) | 0x1000);
-		}
+		} while((timer_get_system_microtime() - startTime) < timeout);
 	}
 
 	return written;
