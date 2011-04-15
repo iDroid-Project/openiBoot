@@ -191,12 +191,9 @@ uint32_t get_scfg_info(uint32_t ce, uint32_t* headerBuffer, uint32_t* dataBuffer
 
 	memcpy(tempBuffer, infoTypeName, 16);
 
-	if(!zero1)
-	{
-		if(pSpecialBlockCache)
-		{
-			if(ce <= h2fmi_geometry.num_ce)
-			{
+	if(!zero1) {
+		if(pSpecialBlockCache) {
+			if(ce <= h2fmi_geometry.num_ce) {
 				CE_cacheBlockNumber = ce << 6;
 
 				uint32_t i;
@@ -205,8 +202,7 @@ uint32_t get_scfg_info(uint32_t ce, uint32_t* headerBuffer, uint32_t* dataBuffer
 						break;
 				}
 
-				if(i != 5)
-				{
+				if(i != 5) {
 					uint32_t turns = 0;
 					// Not sure about this, needs investigating. -Oranav
 					memcpy(tempBuffer, &pSpecialBlockCache[CE_cacheBlockNumber], 32);
@@ -220,7 +216,7 @@ uint32_t get_scfg_info(uint32_t ce, uint32_t* headerBuffer, uint32_t* dataBuffer
 							continue;
 
 						// Not sure about this as well.
-						if(sub_5FF2508C(ce, pSpecialBlockCache[4+2*turns], headerBuffer, dataBuffer, bytesToRead, infoTypeName, nameSize, zero2, 0))
+						if(sub_5FF2508C(ce, pSpecialBlockCache[4+2*turns], headerBuffer, (uint8_t*)dataBuffer, bytesToRead, infoTypeName, nameSize, zero2, 0))
 							continue;
 
 						if(!pSpecialBlockCache)
@@ -252,10 +248,10 @@ uint32_t get_scfg_info(uint32_t ce, uint32_t* headerBuffer, uint32_t* dataBuffer
 						//*((uint32_t*)((*pSpecialBlockCache)+CE_cacheBlockNumber+(((j<<2)+i)<<3)+20)) = 0;
 						pSpecialBlockCache[CE_cacheBlockNumber + ((i + (j << 2)) << 1) + 4] = 0xFFFFFFFF;
 						pSpecialBlockCache[CE_cacheBlockNumber + ((i + (j << 2)) << 1) + 5] = 0;
+					}
 				}
 			}
-		}	
-
+		}
 
 		//block = ((uint32_t)((h2fmi_geometry.blocks_per_ce*0x2000)*0.96*0x2000)) & 0xFFFF;
 		block = ((96 << (31 - (uint8_t)__builtin_clz((uint16_t)h2fmi_geometry.blocks_per_ce))) / 0x64u) & 0xFFFF;
