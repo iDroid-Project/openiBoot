@@ -10,6 +10,6 @@ unsigned int chipid_get_power_epoch() {
 	return CHIPID_GET_POWER_EPOCH(GET_REG(CHIPID));
 }
 
-unsigned int chipid_get_gpio() {
+unsigned int chipid_get_gpio_epoch() {
 	return CHIPID_GET_GPIO(GET_REG(CHIPID));
 }

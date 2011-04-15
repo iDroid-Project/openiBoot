@@ -742,3 +742,29 @@ uint32_t adler32(uint8_t *buf, int32_t len)
     return (s2 << 16) | s1;
 }
 
+const char *strerr(error_t _err)
+{
+	if(SUCCEEDED(_err))
+		return "Success";
+
+	static char buffer[20];
+
+	switch(_err)
+	{
+	case EIO:
+		return "IO error";
+
+	case EINVAL:
+		return "Invalid parameter";
+		
+	case ENOENT:
+		return "No such item";
+
+	case ENOMEM:
+		return "No memory.";
+
+	default:
+		sprintf(buffer, "Error %u", _err);
+		return buffer;
+	}
+}

@@ -103,7 +103,7 @@ uint32_t sub_5FF2508C(uint32_t ce, uint32_t specialBlockNumber, uint32_t* header
 
 	uint32_t i;
 	uint32_t page = 0;
-	for (i = 0; i <= 2 && page < h2fmi_geometry.pages_per_block; page++) {
+	for (i = 0; i <= 2 && page <= h2fmi_geometry.pages_per_block; page++) {
 		//uint32_t specialPage = h2fmi_geometry.pages_per_block * ((h2fmi_geometry.unk14 * ((specialBlockNumber/h2fmi_geometry.blocks_per_bank) & 0xFFFF) + (specialBlockNumber % h2fmi_geometry.blocks_per_bank) ) & 0xFFFF) + page;
 		uint32_t specialPage = (((specialBlockNumber / h2fmi_geometry.blocks_per_bank) & 0xFFFF) * h2fmi_geometry.unk14 + ((specialBlockNumber % h2fmi_geometry.blocks_per_bank) & 0xFFFF)) * h2fmi_geometry.pages_per_block + page;
 		uint32_t result = h2fmi_read_multi_ftl(ce, specialPage, (uint8_t*)(buff->data));
@@ -191,77 +191,72 @@ uint32_t get_scfg_info(uint32_t ce, uint32_t* headerBuffer, uint32_t* dataBuffer
 
 	memcpy(tempBuffer, infoTypeName, 16);
 
-	if(!zero1) {
-		//if(!*pSpecialBlockCache)
-		if(!pSpecialBlockCache)
-			goto SETSPECIALBLOCKNUMBER;
+	if(!zero1)
+	{
+		if(pSpecialBlockCache)
+		{
+			if(ce <= h2fmi_geometry.num_ce)
+			{
+				CE_cacheBlockNumber = ce << 6;
 
-		if(ce >= h2fmi_geometry.num_ce)
-			goto SETSPECIALBLOCKNUMBER;
+				uint32_t i;
+				for (i = 0; i < 5; i++) {
+					if(!memcmp(tempBuffer, &pSpecialBlockCache[CE_cacheBlockNumber+(i<<3)], 16))
+						break;
+				}
 
-		CE_cacheBlockNumber = ce << 6;
+				if(i != 5)
+				{
+					uint32_t turns = 0;
+					// Not sure about this, needs investigating. -Oranav
+					memcpy(tempBuffer, &pSpecialBlockCache[CE_cacheBlockNumber], 32);
+					if(!memcmp(tempBuffer, "NANDDRIVERSIGN\0\0", 16))
+						turns = 1;
+					else
+						turns = 2;
 
-		uint32_t i;
-		for (i = 0; i < 5; i++) {
-			if(!memcmp(tempBuffer, &pSpecialBlockCache[CE_cacheBlockNumber+(i<<3)], 16));
-				break;
-			if(i == 4)
-				goto SETSPECIALBLOCKNUMBER;
-		}
+					for (i = 0; i < turns; i++) {
+						if(*(pSpecialBlockCache+(5+2*i)) != 1)
+							continue;
 
-		uint32_t turns = 0;
-		//memcpy(tempBuffer, (char*)((*pSpecialBlockCache)+(ce<<8)), 32);
-		memcpy(tempBuffer, &pSpecialBlockCache[((ce << 3) + i) << 3], 32);
-		if(!memcmp(tempBuffer, "NANDDRIVERSIGN\0\0", 16))
-			turns = 1;
-		else
-			turns = 2;
+						// Not sure about this as well.
+						if(sub_5FF2508C(ce, pSpecialBlockCache[4+2*turns], headerBuffer, dataBuffer, bytesToRead, infoTypeName, nameSize, zero2, 0))
+							continue;
 
-		for (i = 0; i < turns; i++) {
-			//if(*(pSpecialBlockCache+(5+2*i)) != 1)
-			if (tempBuffer[i*2 + 5] != 1)
-				continue;
+						if(!pSpecialBlockCache)
+							continue;
 
-			/*if(!sub_5FF2508C(ce, *(pSpecialBlockCache+(4+2*turns)), headerBuffer, dataBuffer, bytesToRead, infoTypeName, nameSize, zero2, 0))
-				continue;*/
-			if(sub_5FF2508C(ce, tempBuffer[i*2 + 4], headerBuffer, (uint8_t*)dataBuffer, bytesToRead, infoTypeName, nameSize, zero2, 0))
-				return 1;
+						if(ce >= h2fmi_geometry.num_ce)
+							continue;
 
-			if(!pSpecialBlockCache)
-				continue;
+						uint32_t j;
+						for(j = 0; j < 5; j++) {
+							if(!memcmp(infoTypeName,&pSpecialBlockCache[CE_cacheBlockNumber+(j<<3)], 16)) {
+								done = 1;
+								break;
+							}
+						}
 
-			//if(ce > h2fmi_geometry.num_ce)
-			if(ce >= h2fmi_geometry.num_ce)
-				continue;
+						if(!done)
+							continue;
 
-			uint32_t j;
-			for(j = 0; j < 5; j++) {
-				//if(!strncmp(infoTypeName, (char*)((*pSpecialBlockCache)+CE_cacheBlockNumber+(j<<5)), 16)) {
-				if(!memcmp(infoTypeName, &pSpecialBlockCache[CE_cacheBlockNumber+(j<<3)], 16)) {
-					done = 1;
-					break;
+						if(i > 1)
+							continue;
+
+						//uint32_t wtf = *((uint32_t*)((*pSpecialBlockCache)+CE_cacheBlockNumber+(((j<<2)+i)<<3)+20));
+						uint32_t wtf = pSpecialBlockCache[CE_cacheBlockNumber + ((i + (j << 2)) << 1) + 5];
+						if (wtf != 1)
+							continue;
+
+						//*((uint32_t*)((*pSpecialBlockCache)+CE_cacheBlockNumber+(((j<<2)+i)<<3)+16)) = 0xFFFFFFFF;
+						//*((uint32_t*)((*pSpecialBlockCache)+CE_cacheBlockNumber+(((j<<2)+i)<<3)+20)) = 0;
+						pSpecialBlockCache[CE_cacheBlockNumber + ((i + (j << 2)) << 1) + 4] = 0xFFFFFFFF;
+						pSpecialBlockCache[CE_cacheBlockNumber + ((i + (j << 2)) << 1) + 5] = 0;
 				}
 			}
+		}	
 
-			if(!done)
-				continue;
 
-			// The code below can't happen, although it appears in iBoot. -Oranav
-			if(i > 1)
-				continue;
-
-			//uint32_t wtf = *((uint32_t*)((*pSpecialBlockCache)+CE_cacheBlockNumber+(((j<<2)+i)<<3)+20));
-			uint32_t wtf = pSpecialBlockCache[CE_cacheBlockNumber + ((i + (j << 2)) << 1) + 5];
-			if (wtf != 1)
-				continue;
-
-			//*((uint32_t*)((*pSpecialBlockCache)+CE_cacheBlockNumber+(((j<<2)+i)<<3)+16)) = 0xFFFFFFFF;
-			//*((uint32_t*)((*pSpecialBlockCache)+CE_cacheBlockNumber+(((j<<2)+i)<<3)+20)) = 0;
-			pSpecialBlockCache[CE_cacheBlockNumber + ((i + (j << 2)) << 1) + 4] = 0xFFFFFFFF;
-			pSpecialBlockCache[CE_cacheBlockNumber + ((i + (j << 2)) << 1) + 5] = 0;
-		}
-
-SETSPECIALBLOCKNUMBER:
 		//block = ((uint32_t)((h2fmi_geometry.blocks_per_ce*0x2000)*0.96*0x2000)) & 0xFFFF;
 		block = ((96 << (31 - (uint8_t)__builtin_clz((uint16_t)h2fmi_geometry.blocks_per_ce))) / 0x64u) & 0xFFFF;
 		specialBlockNumber = h2fmi_geometry.blocks_per_ce;

@@ -80,12 +80,28 @@ device_t *device_find(device_t *_where, fourcc_t _fcc, device_t *_dev)
 	return NULL;
 }
 
-int device_ioctl(device_t *_dev, uint32_t _id, void *_in, size_t _in_amt, void *_out, size_t _out_amt)
+error_t device_ioctl(device_t *_dev, uint32_t _id, void *_in, size_t _in_amt, void *_out, size_t _out_amt)
 {
 	if(!_dev->ioctl)
-		return -1;
+		return ENOENT;
 
 	return _dev->ioctl(_dev, _id, _in, _in_amt, _out, _out_amt);
+}
+
+error_t device_get_info(device_t *_dev, device_info_t _item, void *_result, size_t _sz)
+{
+	if(_dev->get_info)
+		return _dev->get_info(_dev, _item, _result, _sz);
+
+	return ENOENT;
+}
+
+error_t device_set_info(device_t *_dev, device_info_t _item, void *_val, size_t _sz)
+{
+	if(_dev->set_info)
+		return _dev->set_info(_dev, _item, _val, _sz);
+
+	return ENOENT;
 }
 
 static void cmd_device_list(int _argc, char **_argv)

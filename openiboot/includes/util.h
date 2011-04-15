@@ -50,6 +50,8 @@ void bytesToHex(const uint8_t* buffer, int bytes);
 uint32_t crc32(uint32_t* ckSum, const void *buffer, size_t len);
 uint32_t adler32(uint8_t *buf, int32_t len);
 
+const char *strerr(error_t _e);
+
 #include "printf.h"
 #include "malloc-2.8.3.h"
 

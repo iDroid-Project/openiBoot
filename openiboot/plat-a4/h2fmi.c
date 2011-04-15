@@ -322,7 +322,7 @@ static h2fmi_struct_t *h2fmi_busses[] = {
 
 h2fmi_geometry_t h2fmi_geometry;
 static nand_device_t h2fmi_device;
-static vfl_vfl_device_t h2fmi_vfl_device;
+static vfl_device_t *h2fmi_vfl_device;
 
 typedef struct _h2fmi_map_entry
 {
@@ -444,37 +444,6 @@ static int h2fmi_wait_dma_task_pending(h2fmi_struct_t *_fmi)
 	return 0;
 }
 
-/*
-static int h2fmi_pio_write_sector(h2fmi_struct_t *_fmi, void *_ptr, int _amt)
-{
-	if (h2fmi_wait_dma_task_pending(_fmi))
-		return -1;
-
-	uint32_t *ptr = _ptr;
-
-	int i;
-	for (i = 0; i < (_amt >> 2); i++) {
-		SET_REG(H2FMI_DATA(_fmi), ptr[i]);
-	}
-}
-*/
-
-static int h2fmi_pio_read_sector(h2fmi_struct_t *_fmi, void *_dest, int _amt)
-{
-	if (h2fmi_wait_dma_task_pending(_fmi))
-		return -1;
-
-	uint32_t *dest = _dest;
-	_amt = (_amt+sizeof(uint32_t)-1)/sizeof(uint32_t);
-
-	int i;
-	for (i = 0; i < _amt; i++) {
-		dest[i] = GET_REG(H2FMI_DATA(_fmi));
-	}
-
-	return 0;
-}
-
 static void h2fmi_device_reset(h2fmi_struct_t *_fmi)
 {
 	clock_gate_reset(_fmi->clock_gate);
@@ -502,6 +471,202 @@ static void h2fmi_disable_chip(uint8_t _chip)
 	h2fmi_struct_t *fmi = (_chip & 0x8) ? &fmi1: &fmi0;
 	SET_REG(H2FMI_CHIP_MASK(fmi),
 			GET_REG(H2FMI_CHIP_MASK(fmi)) &~ (1 << (_chip & 0x7)));
+}
+
+static void h2fmi_set_address_inner(h2fmi_struct_t *_fmi, uint32_t _addr)
+{
+	SET_REG(H2FMI_UNK41C(_fmi), (_addr >> 16) & 0xFF);
+	SET_REG(H2FMI_UNKREG9(_fmi), ((_addr & 0xFF) << 16) | ((_addr >> 8) << 24));
+	SET_REG(H2FMI_UNKREG10(_fmi), 4);
+}
+
+static int h2fmi_pio_write_sector(h2fmi_struct_t *_fmi, void *_ptr, int _amt)
+{
+	if (h2fmi_wait_dma_task_pending(_fmi))
+		return -1;
+
+	uint32_t *ptr = _ptr;
+
+	int i;
+	for (i = 0; i < (_amt >> 2); i++) {
+		SET_REG(H2FMI_DATA(_fmi), ptr[i]);
+	}
+	return 0;
+}
+
+static void h2fmi_set_address_pio_write(h2fmi_struct_t* _fmi, uint32_t page)
+{
+	h2fmi_set_address_inner(_fmi, page);
+
+	if (_fmi->num_pages_to_read && ((_fmi->field_110 == 1) || _fmi->field_110 == 5)) {
+		if (_fmi->current_page_index & 1)
+			SET_REG(H2FMI_UNKREG4(_fmi), 0x81);
+		else
+			SET_REG(H2FMI_UNKREG4(_fmi), 0x80);
+	} else {
+		SET_REG(H2FMI_UNKREG4(_fmi), 0x80);
+	}
+
+	SET_REG(H2FMI_UNKREG5(_fmi), 0x9);
+	while((GET_REG(H2FMI_UNKREG6(_fmi)) & 0x9) != 0x9);
+
+	SET_REG(H2FMI_UNKREG6(_fmi), 0x9);
+}
+
+static void h2fmi_set_pio_write(h2fmi_struct_t* _fmi)
+{
+	if (_fmi->num_pages_to_read) {
+		switch (_fmi->field_110)
+		{
+		case 1:
+		case 2:
+		case 3:
+		case 5:
+			if (_fmi->current_page_index & 1)
+				SET_REG(H2FMI_UNKREG4(_fmi), 0x10 << (1 << 3));
+			else
+				SET_REG(H2FMI_UNKREG4(_fmi), 0x11 << (1 << 3));
+			break;
+		default:
+			SET_REG(H2FMI_UNKREG4(_fmi), 0x10 << (1 << 3));
+		}
+	} else
+		SET_REG(H2FMI_UNKREG4(_fmi), 0x10 << (1 << 3));
+}
+
+static void h2fmi_rw_bootpage_ready(h2fmi_struct_t* _fmi)
+{
+	SET_REG(H2FMI_PAGE_SIZE(_fmi), 0xF0);
+	SET_REG(H2FMI_UNKREGUNK40(_fmi), 0x20001);
+}
+
+static int h2fmi_tx_wait_page_done(h2fmi_struct_t* _fmi) {
+	task_sleep(2000); // or task_yield() ??
+
+	if(!(_fmi->field_48 & 2)) {
+		bufferPrintf("h2fmi_tx_wait_page_done: fail !!\r\n");
+		return -1;
+	}
+	return 0;
+}
+
+static void h2fmi_inner_function(h2fmi_struct_t *_fmi, uint8_t _a, uint8_t _b);
+static int h2fmi_wait_status(h2fmi_struct_t* _fmi, uint32_t a1, uint32_t a2, uint32_t* status)
+{
+	h2fmi_inner_function(_fmi, (uint8_t)a1, (uint8_t)a2);
+
+	SET_REG(H2FMI_UNK440(_fmi), 0x20);
+	SET_REG(H2FMI_UNK10(_fmi), 0x100);
+
+	task_sleep(2000); // or task_yield()??
+
+	int result;
+	result = _fmi->field_48 & 0x100;
+
+	if (status != NULL) 
+		*status = GET_REG(H2FMI_UNK448(_fmi));
+
+	SET_REG(H2FMI_UNKREG5(_fmi), 0);
+
+	if (!result) {
+		bufferPrintf("h2fmi_wait_status: fail !!\r\n");
+		return -1;
+	}
+
+	return 0;
+}
+
+static void h2fmi_tx_pio_ready(h2fmi_struct_t* _fmi)
+{
+	SET_REG(H2FMI_UNKREG5(_fmi), 2);
+
+	while((GET_REG(H2FMI_UNKREG6(_fmi)) & 0x2) != 0x2);
+
+	SET_REG(H2FMI_UNKREG6(_fmi), 2);
+}
+
+static int h2fmi_tx_bootpage_pio(h2fmi_struct_t* _fmi, uint16_t chip, uint32_t page, uint32_t* buffer)
+{
+	int regValue = GET_REG(H2FMI_UNKREG1(_fmi));
+
+	h2fmi_enable_chip(_fmi, chip);
+	SET_REG(H2FMI_UNKREG1(_fmi), regValue | 0x200000);
+
+	h2fmi_set_address_pio_write(_fmi, page);
+	h2fmi_set_pio_write(_fmi);
+	h2fmi_rw_bootpage_ready(_fmi);
+
+	int numRawBlob;
+	for (numRawBlob = 0; numRawBlob != 3; numRawBlob++) {
+		SET_REG(H2FMI_UNK10(_fmi), 2);
+		SET_REG(H2FMI_UNK4(_fmi), 5);
+		h2fmi_pio_write_sector(_fmi, buffer, 0x200);
+
+		buffer = buffer + (0x200/sizeof(uint32_t));
+
+		if (h2fmi_tx_wait_page_done(_fmi)) {
+			bufferPrintf("h2fmi_tx_wait_page_done: fail !!\r\n");
+			return (0x8000001C);
+		}
+	}
+
+	h2fmi_tx_pio_ready(_fmi);
+
+	uint32_t status;
+	if (h2fmi_wait_status(_fmi, 0x40, 0x40, &status))
+		return (0x8000001D);
+	else {
+		SET_REG(H2FMI_UNK10(_fmi), 0);
+		SET_REG(H2FMI_UNKREG1(_fmi), regValue);
+
+		h2fmi_disable_chip(chip);
+		h2fmi_device_reset(_fmi);
+
+		if(status & 1)
+			return (0x80200000);
+
+		return 0;
+	}
+}
+
+
+/* call this function for raw pio write */
+int h2fmi_write_bootpage(uint16_t _ce, uint32_t page, uint32_t* buffer)
+{
+	uint32_t bus = h2fmi_map[_ce].bus;
+	uint32_t chip = h2fmi_map[_ce].chip;
+
+	h2fmi_struct_t *fmi = h2fmi_busses[bus];
+
+	DataCacheOperation(1, (uint32_t)buffer, 0x600);
+
+	int result;
+	result = h2fmi_tx_bootpage_pio(fmi, chip, page, buffer);
+
+	if (result) {
+		if (result != 0x80200000)
+			return (0x80000001);
+		bufferPrintf("H2fmiwritebootpage fail!! \r\n");
+		return (0x80000005);
+	}
+
+	return 0;
+}
+
+static int h2fmi_pio_read_sector(h2fmi_struct_t *_fmi, void *_dest, int _amt)
+{
+	if (h2fmi_wait_dma_task_pending(_fmi))
+		return -1;
+
+	uint32_t *dest = _dest;
+	_amt = (_amt+sizeof(uint32_t)-1)/sizeof(uint32_t);
+
+	int i;
+	for (i = 0; i < _amt; i++) {
+		dest[i] = GET_REG(H2FMI_DATA(_fmi));
+	}
+
+	return 0;
 }
 
 static void h2fmi_disable_bus(h2fmi_struct_t *_fmi)
@@ -661,9 +826,9 @@ static nand_info_t *h2fmi_nand_find_info(char *_id, h2fmi_struct_t **_busses, in
 		{
 			if(found > 0)
 			{
-				if(memcmp(chipID, &_id[i*H2FMI_CHIPID_LENGTH], H2FMI_CHIPID_LENGTH) != 0)
+				if(memcmp(chipID, &_id[i*H2FMI_CHIPID_LENGTH], 4) != 0)
 				{
-					uint8_t *a = (uint8_t*)&board_id.chipID;
+					uint8_t *a = (uint8_t*)&chipID;
 					uint8_t *b = (uint8_t*)&_id[i*H2FMI_CHIPID_LENGTH];
 
 					bufferPrintf("fmi: ChipIDs do not match.\n");
@@ -867,13 +1032,6 @@ static void h2fmi_dma_cancel(uint32_t _channel)
 static void h2fmi_store_810(h2fmi_struct_t *_fmi)
 {
 	SET_REG(H2FMI_UNK810(_fmi), 0x1A8);
-}
-
-static void h2fmi_set_address_inner(h2fmi_struct_t *_fmi, uint32_t _addr)
-{
-	SET_REG(H2FMI_UNK41C(_fmi), (_addr >> 16) & 0xFF);
-	SET_REG(H2FMI_UNKREG9(_fmi), ((_addr & 0xFF) << 16) | ((_addr >> 8) << 24));
-	SET_REG(H2FMI_UNKREG10(_fmi), 4);
 }
 
 static void h2fmi_set_address(h2fmi_struct_t *_fmi, uint32_t _addr)
@@ -1624,6 +1782,115 @@ error_t h2fmi_read_single_page(uint32_t _ce, uint32_t _page, uint8_t *_ptr, uint
 	return ret;
 }
 
+error_t h2fmi_read_sequential_pages(uint32_t *_page_ptr, uint8_t *_ptr, uint8_t *_meta_ptr, uint32_t pagesToRead, uint8_t *status, uint8_t *a1, uint32_t a2)
+{
+	uint32_t banks = h2fmi_geometry.num_ce * h2fmi_geometry.banks_per_ce_vfl;
+
+	if(status != NULL)
+		*status = 0;
+
+	uint32_t seq_pages_read;
+	uint32_t pagesRead = 0;
+	uint32_t pageCount = 0;
+	uint32_t permutation;
+	uint32_t result = 0;
+	uint32_t ret;
+	uint8_t state;
+
+	for (seq_pages_read = 0; seq_pages_read < pagesToRead; seq_pages_read += banks) {
+		for (permutation = 0; permutation <= banks; permutation++) {
+			uint32_t bus = h2fmi_map[pageCount % banks].bus;
+			h2fmi_struct_t *fmi = h2fmi_busses[bus];
+
+			state = 0;
+			ret = h2fmi_read_single_page((pageCount % banks), (_page_ptr[pageCount] + permutation / banks), _ptr, _meta_ptr, &state, a1, a2);
+
+			if (ret != 0) {
+				if ((ret != 1) && (ret != 0x80000002)) {
+					bufferPrintf("fmi: h2fmi_pead_sequential_pages hardware error 0x%08x.\r\n", ret);
+					result = 0x80000001;
+				}
+				else 
+					result = ret;
+
+				if (ret == 0x80000002)
+					bufferPrintf("fmi: h2fmi_read_requential_pages uncorrectable page.\r\n");
+				if (ret == 1)
+					pagesRead++;
+			}
+			
+			if (status != NULL) {
+				if ((uint8_t)*status < (uint8_t)state)
+					*status = state;
+			}
+			
+			if (a1 != NULL)
+				a1 += (uint16_t)h2fmi_geometry.bbt_format;
+
+			pageCount++;
+			_ptr += (h2fmi_geometry.bbt_format << 10);
+			_meta_ptr += fmi->meta_per_logical_page;
+		}
+
+	}
+
+	if (pagesRead && pagesRead != pagesToRead)
+		result = 0x80000002;
+
+	return result;
+}
+
+error_t h2fmi_read_scattered_pages(uint16_t* _ce_ptr, uint32_t* _page_ptr, uint8_t* _ptr, uint8_t* _meta_ptr, uint32_t pagesToRead, uint8_t* status, uint8_t* a1, uint32_t a2)
+{
+	if(status != NULL)
+		*status = 0;
+
+	uint32_t pagesRead = 0;
+	uint32_t result = 0;
+	uint32_t ret;
+	uint8_t state;
+
+	uint32_t i;
+	for (i = 0; i != pagesToRead; i++) {
+		uint32_t bus = h2fmi_map[_ce_ptr[i]].bus;
+		h2fmi_struct_t *fmi = h2fmi_busses[bus];
+
+		state = 0;
+		ret = h2fmi_read_single_page(_ce_ptr[i], _page_ptr[i], _ptr, _meta_ptr, &state, a1, a2);
+
+		if (ret != 0) {
+				if ((ret != 1) && (ret != 0x80000002)) {
+					bufferPrintf("h2fmi_Read_Scatterd_Pages: hardware error!!\r\n");
+					result = 0x80000001;
+				}
+				else
+					result = ret;
+
+				if (ret == 0x80000002)
+					bufferPrintf("h2fmi_Read_Scattered_Pages: uncorrectable page!!\r\n");
+				if (ret == 1)
+					pagesRead++;
+			}
+
+		if (status != NULL) {
+			if ((uint8_t)*status < (uint8_t)state)
+				*status = state;
+		}
+
+		if (a1 != NULL)
+				a1 += (uint16_t)h2fmi_geometry.bbt_format;
+
+		_ptr += (h2fmi_geometry.bbt_format << 0xA);
+		_meta_ptr += fmi->meta_per_logical_page;
+
+	}
+
+	if (pagesRead && pagesRead != pagesToRead)
+		result = 0x80000002;
+
+	return result;
+}
+
 static uint8_t h2fmi_calculate_ecc_bits(h2fmi_struct_t *_fmi)
 {
 	uint32_t val = (_fmi->bytes_per_spare - _fmi->ecc_bytes) / (_fmi->bytes_per_page >> 10);
@@ -1730,105 +1997,157 @@ static void h2fmi_device_enable_encryption(nand_device_t *_dev, int _enabled)
 	h2fmi_aes_enabled = _enabled;
 }
 
-static uint32_t h2fmi_device_get_info(nand_device_t *_dev, nand_device_info_t _info)
+static inline void auto_store(void *_ptr, size_t _sz, uint32_t _val)
 {
-	switch(_info)
+	switch(_sz)
 	{
-	case diReturnOne:
-		return 1;
+	case 0:
+		return;
 
-	case diBanksPerCE:
-		return h2fmi_geometry.banks_per_ce;
+	case 1:
+		*((uint8_t*)_ptr) = _val;
+		return;
 
-	case diPagesPerBlock2:
-		return h2fmi_geometry.pages_per_block_2;
+	case 2:
+		*((uint16_t*)_ptr) = _val;
+		return;
 
-	case diPagesPerBlock:
-		return h2fmi_geometry.pages_per_block;
-
-	case diBlocksPerCE:
-		return h2fmi_geometry.blocks_per_ce;
-
-	case diBytesPerPage:
-		return h2fmi_geometry.bbt_format << 10;
-
-	case diBytesPerSpare:
-		return h2fmi_geometry.bytes_per_spare;
-
-	case diVendorType:
-		return h2fmi_geometry.vendor_type;
-
-	case diECCBits:
-		return h2fmi_geometry.ecc_bits;
-
-	case diECCBits2:
-		return fmi0.ecc_bits;
-
-	case diTotalBanks_VFL:
-		return h2fmi_geometry.banks_per_ce_vfl * h2fmi_geometry.num_ce;
-
-	case diBlocksPerBank_dw:
-		return h2fmi_geometry.blocks_per_bank_32;
-
-	case diBanksPerCE_dw:
-		return h2fmi_geometry.banks_per_ce_32;
-
-	case diPagesPerBlock_dw:
-		return h2fmi_geometry.pages_per_block_32;
-
-	case diPagesPerBlock2_dw:
-		return h2fmi_geometry.pages_per_block_2_32;
-
-	case diPageNumberBitWidth:
-		return h2fmi_geometry.page_number_bit_width;
-
-	case diPageNumberBitWidth2:
-		return h2fmi_geometry.page_number_bit_width_2;
-
-	case diNumCEPerBus:
-		if(h2fmi_geometry.num_fmi == 0)
-			return 0;
-
-		return h2fmi_geometry.num_ce / h2fmi_geometry.num_fmi;
-
-	case diPPN:
-		return h2fmi_geometry.is_ppn;
-
-	case diBanksPerCE_VFL:
-		return h2fmi_geometry.banks_per_ce_vfl;
-
-	case diNumECCBytes:
-		return h2fmi_geometry.num_ecc_bytes;
-
-	case diMetaPerLogicalPage:
-		return h2fmi_geometry.meta_per_logical_page;
-
-	case diPagesPerCE:
-		return h2fmi_geometry.pages_per_ce;
-
-	case diNumCE:
-		return h2fmi_geometry.num_ce;
-
-	default:
-		system_panic("h2fmi: Tried to get unimplemented device info: %d.\r\n", _info);
-		return 0;
+	case 4:
+		*((uint32_t*)_ptr) = _val;
+		return;
 	}
 }
 
-static void h2fmi_device_set_info(nand_device_t *_dev, nand_device_info_t _info, uint32_t _val)
+static error_t h2fmi_device_get_info(device_t *_dev, device_info_t _info, void *_result, size_t _size)
 {
+	if(_size > 4 || _size == 3)
+		return EINVAL;
+
+	switch(_info)
+	{
+	case diReturnOne:
+		auto_store(_result, _size, 1);
+		return SUCCESS;
+
+	case diBanksPerCE:
+		auto_store(_result, _size, h2fmi_geometry.banks_per_ce);
+		return SUCCESS;
+
+	case diPagesPerBlock2:
+		auto_store(_result, _size, h2fmi_geometry.pages_per_block_2);
+		return SUCCESS;
+
+	case diPagesPerBlock:
+		auto_store(_result, _size, h2fmi_geometry.pages_per_block);
+		return SUCCESS;
+
+	case diBlocksPerCE:
+		auto_store(_result, _size, h2fmi_geometry.blocks_per_ce);
+		return SUCCESS;
+
+	case diBytesPerPage:
+		auto_store(_result, _size, h2fmi_geometry.bbt_format << 9);
+		return SUCCESS;
+
+	case diBytesPerSpare:
+		auto_store(_result, _size, h2fmi_geometry.bytes_per_spare);
+		return SUCCESS;
+
+	case diVendorType:
+		auto_store(_result, _size, h2fmi_geometry.vendor_type);
+		return SUCCESS;
+
+	case diECCBits:
+		auto_store(_result, _size, h2fmi_geometry.ecc_bits);
+		return SUCCESS;
+
+	case diECCBits2:
+		auto_store(_result, _size, fmi0.ecc_bits);
+		return SUCCESS;
+
+	case diTotalBanks_VFL:
+		auto_store(_result, _size, h2fmi_geometry.banks_per_ce_vfl * h2fmi_geometry.num_ce);
+		return SUCCESS;
+
+	case diBlocksPerBank_dw:
+		auto_store(_result, _size, h2fmi_geometry.blocks_per_bank_32);
+		return SUCCESS;
+
+	case diBanksPerCE_dw:
+		auto_store(_result, _size, h2fmi_geometry.banks_per_ce_32);
+		return SUCCESS;
+
+	case diPagesPerBlock_dw:
+		auto_store(_result, _size, h2fmi_geometry.pages_per_block_32);
+		return SUCCESS;
+
+	case diPagesPerBlock2_dw:
+		auto_store(_result, _size, h2fmi_geometry.pages_per_block_2_32);
+		return SUCCESS;
+
+	case diPageNumberBitWidth:
+		auto_store(_result, _size, h2fmi_geometry.page_number_bit_width);
+		return SUCCESS;
+
+	case diPageNumberBitWidth2:
+		auto_store(_result, _size, h2fmi_geometry.page_number_bit_width_2);
+		return SUCCESS;
+
+	case diNumCEPerBus:
+		if(h2fmi_geometry.num_fmi == 0)
+			auto_store(_result, _size, 0);
+		else
+			auto_store(_result, _size, h2fmi_geometry.num_ce / h2fmi_geometry.num_fmi);
+
+		return SUCCESS;
+
+	case diPPN:
+		auto_store(_result, _size, h2fmi_geometry.is_ppn);
+		return SUCCESS;
+
+	case diBanksPerCE_VFL:
+		auto_store(_result, _size, h2fmi_geometry.banks_per_ce_vfl);
+		return SUCCESS;
+
+	case diNumECCBytes:
+		auto_store(_result, _size, h2fmi_geometry.num_ecc_bytes);
+		return SUCCESS;
+
+	case diMetaPerLogicalPage:
+		auto_store(_result, _size, h2fmi_geometry.meta_per_logical_page);
+		return SUCCESS;
+
+	case diPagesPerCE:
+		auto_store(_result, _size, h2fmi_geometry.pages_per_ce);
+		return SUCCESS;
+
+	case diNumCE:
+		auto_store(_result, _size, h2fmi_geometry.num_ce);
+		return SUCCESS;
+
+	default:
+		return ENOENT;
+	}
+}
+
+static error_t h2fmi_device_set_info(device_t *_dev, device_info_t _info, void *_val, size_t _sz)
+{
+	if(_sz != sizeof(uint32_t))
+		return EINVAL;
+
+	uint32_t *u32res = _val;
+
 	switch(_info)
 	{
 	case diVendorType:
-		break;
+		return SUCCESS;
 
 	case diBanksPerCE_VFL:
-		h2fmi_geometry.banks_per_ce_vfl = _val;
-		break;
+		h2fmi_geometry.banks_per_ce_vfl = *u32res;
+		return SUCCESS;
 
 	default:
-		system_panic("h2fmi: Invalid device info to set: %d.\r\n", _val);
-		break;
+		return ENOENT;
 	}
 }
 
@@ -1837,11 +2156,10 @@ static void h2fmi_init_device()
 	nand_device_init(&h2fmi_device);
 	h2fmi_device.read_single_page = h2fmi_device_read_single_page;
 	h2fmi_device.enable_encryption = h2fmi_device_enable_encryption;
-	h2fmi_device.get_info = h2fmi_device_get_info;
-	h2fmi_device.set_info = h2fmi_device_set_info;
+	h2fmi_device.device.get_info = h2fmi_device_get_info;
+	h2fmi_device.device.set_info = h2fmi_device_set_info;
 
-	vfl_vfl_device_init(&h2fmi_vfl_device);
-	/*if(vfl_open(&h2fmi_vfl_device.vfl, &h2fmi_device))
+	/*if(vfl_detect(&h2fmi_vfl_device, &h2fmi_device, vfl_new_signature))
 	{
 		bufferPrintf("fmi: Failed to open VFL!\r\n");
 		return;
@@ -2192,7 +2510,7 @@ static void cmd_vfl_read(int argc, char** argv)
 	uint32_t empty_ok = parseNumber(argv[4]);
 	uint32_t refresh = parseNumber(argv[5]);
 
-	uint32_t ret = vfl_read_single_page(&h2fmi_vfl_device.vfl, page,
+	uint32_t ret = vfl_read_single_page(h2fmi_vfl_device, page,
 			(uint8_t*)data, (uint8_t*)meta, empty_ok, (int32_t*)refresh);
 
 	bufferPrintf("vfl: Command completed with result 0x%08x.\r\n", ret);
