@@ -1367,7 +1367,7 @@ int h2fmi_read_multi(h2fmi_struct_t *_fmi, uint16_t _num_pages, uint16_t *_chips
 				|| h2fmi_dma_wait(_fmi->dma1, 2000000) != 0)
 		{
 			bufferPrintf("h2fmi: dma wait failed.\r\n");
-			return 1;
+			return ERROR(1);
 		}
 	
 		_fmi->failure_details.overall_status = 0;
@@ -1550,7 +1550,8 @@ error_t h2fmi_read_multi_ftl(uint32_t _ce, uint32_t _page, uint8_t *_ptr)
 		else
 			ret = 0x80000002;
 	}
-	else if(read_ret != 0)
+//	else if(read_ret != 0)
+	else if(read_ret != 1)
 		ret = 0x80000001;
 	else
 		ret = 0;

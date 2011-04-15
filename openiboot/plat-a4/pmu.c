@@ -323,3 +323,19 @@ void cmd_pmu_powersupply(int argc, char** argv) {
 	bufferPrintf("\r\n");
 }
 COMMAND("pmu_powersupply", "get the power supply type", cmd_pmu_powersupply);
+
+void cmd_pmu_nvram(int argc, char** argv) {
+	uint8_t reg;
+
+	pmu_get_gpmem_reg(PMU_IBOOTSTATE, &reg);
+	bufferPrintf("0: [iBootState] %02x\r\n", reg);
+	pmu_get_gpmem_reg(PMU_IBOOTDEBUG, &reg);
+	bufferPrintf("1: [iBootDebug] %02x\r\n", reg);
+	pmu_get_gpmem_reg(PMU_IBOOTSTAGE, &reg);
+	bufferPrintf("2: [iBootStage] %02x\r\n", reg);
+	pmu_get_gpmem_reg(PMU_IBOOTERRORCOUNT, &reg);
+	bufferPrintf("3: [iBootErrorCount] %02x\r\n", reg);
+	pmu_get_gpmem_reg(PMU_IBOOTERRORSTAGE, &reg);
+	bufferPrintf("4: [iBootErrorStage] %02x\r\n", reg);
+}
+COMMAND("pmu_nvram", "list powernvram registers", cmd_pmu_nvram);
