@@ -149,18 +149,20 @@ uint32_t sub_5FF2508C(uint32_t ce, uint32_t specialBlockNumber, uint32_t* header
 		
 		page++;
 
-		for (bytes_read = (h2fmi_geometry.bbt_format << 10) - 0x38; bytes_read < bytesToRead && page < h2fmi_geometry.pages_per_block; page++) {
+		for (bytes_read = (h2fmi_geometry.bbt_format << 10) - 0x38; bytes_read < bytes_to_read && page < h2fmi_geometry.pages_per_block; page++) {
 			//uint32_t specialPage = h2fmi_geometry.pages_per_block * ((h2fmi_geometry.unk14 * ((specialBlockNumber/h2fmi_geometry.blocks_per_bank) & 0xFFFF) + (specialBlockNumber % h2fmi_geometry.blocks_per_bank) ) & 0xFFFF) + page;
 			uint32_t specialPage = (((specialBlockNumber / h2fmi_geometry.blocks_per_bank) & 0xFFFF) * h2fmi_geometry.unk14 + ((specialBlockNumber % h2fmi_geometry.blocks_per_bank) & 0xFFFF)) * h2fmi_geometry.pages_per_block + page;
 			result = h2fmi_read_multi_ftl(ce, specialPage, (uint8_t*)(buff->data));
 			if(result)
 				break;
 
-			memcpy(&dataBuffer[bytes_read], buff->data, (bytesToRead-bytes_read >= (h2fmi_geometry.bbt_format<<10)) ? (h2fmi_geometry.bbt_format<<10) : (bytesToRead-bytes_read));
-			bytes_read += (bytesToRead-bytes_read >= (h2fmi_geometry.bbt_format<<10)) ? (h2fmi_geometry.bbt_format<<10) : (bytesToRead-bytes_read);
+			uint32_t currentRead = (bytes_to_read-bytes_read >= (h2fmi_geometry.bbt_format<<10)) ? (h2fmi_geometry.bbt_format<<10) : (bytes_to_read-bytes_read);
+				
+			memcpy(&dataBuffer[bytes_read], buff->data, currentRead);
+			bytes_read += currentRead;
 		}
 
-		if(bytes_read != bytesToRead) {
+		if(bytes_read != bytes_to_read) {
 			if(result == 1)
 				i++;
 			continue;
@@ -204,20 +206,18 @@ uint32_t get_scfg_info(uint32_t ce, uint32_t* headerBuffer, uint32_t* dataBuffer
 
 				if(i != 5) {
 					uint32_t turns = 0;
-					// Not sure about this, needs investigating. -Oranav
-					memcpy(tempBuffer, &pSpecialBlockCache[CE_cacheBlockNumber], 32);
+					memcpy(tempBuffer, &pSpecialBlockCache[CE_cacheBlockNumber + (i << 3)], 32);
 					if(!memcmp(tempBuffer, "NANDDRIVERSIGN\0\0", 16))
 						turns = 1;
 					else
 						turns = 2;
 
 					for (i = 0; i < turns; i++) {
-						if(*(pSpecialBlockCache+(5+2*i)) != 1)
+						if(pSpecialBlockCache[i*2 + 5] != 1)
 							continue;
 
-						// Not sure about this as well.
-						if(sub_5FF2508C(ce, pSpecialBlockCache[4+2*turns], headerBuffer, (uint8_t*)dataBuffer, bytesToRead, infoTypeName, nameSize, zero2, 0))
-							continue;
+						if(sub_5FF2508C(ce, pSpecialBlockCache[i*2 + 4], headerBuffer, (uint8_t*)dataBuffer, bytesToRead, infoTypeName, nameSize, zero2, 0))
+							return 1;
 
 						if(!pSpecialBlockCache)
 							continue;
@@ -227,27 +227,19 @@ uint32_t get_scfg_info(uint32_t ce, uint32_t* headerBuffer, uint32_t* dataBuffer
 
 						uint32_t j;
 						for(j = 0; j < 5; j++) {
-							if(!memcmp(infoTypeName,&pSpecialBlockCache[CE_cacheBlockNumber+(j<<3)], 16)) {
-								done = 1;
+							if(!memcmp(infoTypeName, &pSpecialBlockCache[CE_cacheBlockNumber+(j<<3)], 16))
 								break;
-							}
 						}
 
-						if(!done)
-							continue;
-
-						if(i > 1)
+						if(j == 5 || i > 1 || pSpecialBlockCache[CE_cacheBlockNumber + (i * 2) + (j << 3) + 5] != 1)
 							continue;
 
 						//uint32_t wtf = *((uint32_t*)((*pSpecialBlockCache)+CE_cacheBlockNumber+(((j<<2)+i)<<3)+20));
-						uint32_t wtf = pSpecialBlockCache[CE_cacheBlockNumber + ((i + (j << 2)) << 1) + 5];
-						if (wtf != 1)
-							continue;
 
 						//*((uint32_t*)((*pSpecialBlockCache)+CE_cacheBlockNumber+(((j<<2)+i)<<3)+16)) = 0xFFFFFFFF;
 						//*((uint32_t*)((*pSpecialBlockCache)+CE_cacheBlockNumber+(((j<<2)+i)<<3)+20)) = 0;
-						pSpecialBlockCache[CE_cacheBlockNumber + ((i + (j << 2)) << 1) + 4] = 0xFFFFFFFF;
-						pSpecialBlockCache[CE_cacheBlockNumber + ((i + (j << 2)) << 1) + 5] = 0;
+						pSpecialBlockCache[CE_cacheBlockNumber + (i * 2) + (j << 3) + 4] = 0xFFFFFFFF;
+						pSpecialBlockCache[CE_cacheBlockNumber + (i * 2) + (j << 3) + 5] = 0;
 					}
 				}
 			}
@@ -278,10 +270,11 @@ uint32_t get_scfg_info(uint32_t ce, uint32_t* headerBuffer, uint32_t* dataBuffer
 	if(memcmp(tempBuffer, "DEVICEINFOBBT\0\0\0", 16))
 		return 1;
 
-	if(ce != 0)
-		update_specialBlockCache(ce, "DEVICEINFOBBT\0\0\0", headerBuffer[6]);
-	else {
-		update_specialBlockCache(ce, "DEVICEINFOBBT\0\0\0", headerBuffer[6]);
+	// Every CE has a BBT.
+	update_specialBlockCache(ce, "DEVICEINFOBBT\0\0\0", headerBuffer[6]);
+		
+	// Only CE0 got all the others.
+	if(ce == 0) {
 		update_specialBlockCache(ce, "DEVICEUNIQUEINFO", headerBuffer[7]);
 		update_specialBlockCache(ce, "DEVICEUNIQUEINFO", headerBuffer[8]);
 		update_specialBlockCache(ce, "NANDDRIVERSIGN\0\0", headerBuffer[9]);
