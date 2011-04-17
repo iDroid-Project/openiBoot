@@ -89,7 +89,7 @@ void platform_init()
 
 	aes_setup();
 
-	nor_setup();
+//	nor_setup();
 	syscfg_setup();
 	images_setup();
 	nvram_setup();

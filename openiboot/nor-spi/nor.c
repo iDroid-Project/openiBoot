@@ -20,9 +20,26 @@ typedef struct _nor_device
 	uint32_t spi;
 	uint32_t vendor;
 	uint32_t device;
+	
+	Boolean supports_aai;
+	uint32_t erase_block_size;
+	uint32_t block_protect_bits;
+	uint32_t bytes_per_write;
+	uint32_t write_timeout;
 
 	int write_enabled;
 } nor_device_t;
+
+
+// Functions
+static uint8_t nor_get_status(nor_device_t *_dev);
+static void nor_write_status(nor_device_t *_dev, uint8_t status);
+static int nor_wait_for_ready(nor_device_t *_dev, int timeout);
+
+static void nor_write_enable(nor_device_t *_dev);
+static void nor_write_disable(nor_device_t *_dev);
+
+static int nor_setup_chip_info(nor_device_t *_dev);
 
 static inline nor_device_t *nor_device_get(mtd_t *_dev)
 {
@@ -58,6 +75,25 @@ static uint8_t nor_get_status(nor_device_t *_dev)
 	return data[0];
 }
 
+static void nor_write_status(nor_device_t *_dev, uint8_t status)
+{
+	if(nor_wait_for_ready(_dev, 100) != 0)
+		return;
+
+	nor_write_enable(_dev);
+
+	uint8_t command[2];
+	command[0] = NOR_SPI_WRSR;
+	command[1] = status;
+
+	nor_spi_tx(_dev, command, sizeof(command));
+	
+	if(nor_wait_for_ready(_dev, 100) != 0)
+		return;
+	
+	nor_write_disable(_dev);
+}
+
 static int nor_wait_for_ready(nor_device_t *_dev, int timeout)
 {
 	if((nor_get_status(_dev) & (1 << NOR_SPI_SR_BUSY)) == 0)
@@ -88,21 +124,13 @@ static void nor_finish(mtd_t *_dev)
 static int nor_device_init(nor_device_t *_dev)
 {
 	nor_prepare(&_dev->mtd);
-	uint8_t command[1] = {NOR_SPI_JEDECID};
-	uint8_t deviceID[3];
-	memset(deviceID, 0, sizeof(deviceID));
-	nor_spi_txrx(_dev, command, sizeof(command), deviceID, sizeof(deviceID));
-
-	_dev->vendor = deviceID[0];
-	_dev->device = deviceID[2];
-
-	if(deviceID[0] == 0)
-	{
-		bufferPrintf("NOR not detected.\n");
+	
+	// Load values specific to the actual NOR chip
+	if (nor_setup_chip_info(_dev) != 0)
 		return -1;
-	}
 
 	// Unprotect NOR
+	uint8_t command[1];
 	command[0] = NOR_SPI_EWSR;
 	nor_spi_tx(_dev, command, sizeof(command));
 
@@ -111,9 +139,19 @@ static int nor_device_init(nor_device_t *_dev)
 
 	nor_finish(&_dev->mtd);
 
-	bufferPrintf("NOR vendor=%x, device=%x\r\n", _dev->vendor, _dev->device);
-
 	return mtd_init(&_dev->mtd);
+}
+
+static void nor_disable_block_protect(nor_device_t *_dev)
+{
+	uint8_t status = nor_get_status(_dev);
+	nor_write_status(_dev, status & ~NOR_SPI_SR_BP_ALL);
+}
+
+static void nor_enable_block_protect(nor_device_t *_dev)
+{
+	uint8_t status = nor_get_status(_dev);
+	nor_write_status(_dev, status | NOR_SPI_SR_BP_ALL);
 }
 
 static void nor_write_enable(nor_device_t *_dev)
@@ -150,9 +188,11 @@ static void nor_write_disable(nor_device_t *_dev)
 
 static int nor_erase_sector(nor_device_t *_dev, uint32_t _offset)
 {
+	bufferPrintf("nor_erase: %x\r\n", _offset);
 	if(nor_wait_for_ready(_dev, 100) != 0)
 		return -1;
 
+	nor_disable_block_protect(_dev);
 	nor_write_enable(_dev);
 
 	uint8_t command[4];
@@ -164,6 +204,7 @@ static int nor_erase_sector(nor_device_t *_dev, uint32_t _offset)
 	nor_spi_tx(_dev, command, sizeof(command));
 
 	nor_write_disable(_dev);
+	nor_enable_block_protect(_dev);
 
 	return 0;
 }
@@ -218,6 +259,7 @@ static int nor_read(mtd_t *_dev, void *_dest, uint32_t _off, int _amt)
 
 static int nor_write(mtd_t *_dev, void *_src, uint32_t _off, int _amt)
 {
+	bufferPrintf("writing %08x to %08x\r\n", _src, _off);
 	nor_device_t *dev = nor_device_get(_dev);
 	int startSector = _off / NOR_BLOCK_SIZE;
 	int endSector = (_off + _amt) / NOR_BLOCK_SIZE;
@@ -232,10 +274,12 @@ static int nor_write(mtd_t *_dev, void *_src, uint32_t _off, int _amt)
 
 	int i;
 	for(i = 0; i < numSectors; i++) {
+		bufferPrintf("writing sector #%d\r\n", i);
 		if(nor_erase_sector(dev, (i + startSector) * NOR_BLOCK_SIZE) != 0)
 			return -1;
 
-		nor_write_enable(dev);
+		nor_disable_block_protect(dev);
+		//nor_write_enable(dev);
 
 		int j;
 		uint8_t* curSector = (uint8_t*)(sectorsToChange + (i * NOR_BLOCK_SIZE));
@@ -243,12 +287,14 @@ static int nor_write(mtd_t *_dev, void *_src, uint32_t _off, int _amt)
 		{
 			if(nor_write_byte(dev, ((i + startSector) * NOR_BLOCK_SIZE) + j, curSector[j]) != 0)
 			{
+				nor_enable_block_protect(dev);
 				nor_write_disable(dev);
 				return -1;
 			}
 		}
 
-		nor_write_disable(dev);
+		//nor_write_disable(dev);
+		nor_enable_block_protect(dev);
 	}
 
 	free(sectorsToChange);
@@ -264,6 +310,89 @@ static int nor_size(mtd_t *_dev)
 static int nor_block_size(mtd_t *_dev)
 {
 	return NOR_BLOCK_SIZE;
+}
+
+static int nor_setup_chip_info(nor_device_t *_dev)
+{
+	// Get the vendor and device IDs from the chip
+	uint8_t command[1] = {NOR_SPI_JEDECID};
+	uint8_t deviceID[3];
+	memset(deviceID, 0, sizeof(deviceID));
+	nor_spi_txrx(_dev, command, sizeof(command), deviceID, sizeof(deviceID));
+
+	_dev->vendor = deviceID[0];
+	_dev->device = deviceID[2];
+
+	if(deviceID[0] == 0)
+	{
+		bufferPrintf("NOR not detected.\n");
+		return -1;
+	}
+
+	bufferPrintf("NOR vendor=%x, device=%x\r\n", _dev->vendor, _dev->device);
+
+	Boolean chipRecognized = FALSE;
+	switch(_dev->vendor) {
+		// massive list of ids: http://flashrom.org/trac/flashrom/browser/trunk/flashchips.h
+		case 0xBF:
+			// vendor: SST, device: 0x41 or 0x8e
+			if (_dev->device != 0x41 && _dev->device != 0x8e) {
+				break;
+			}
+			chipRecognized = TRUE;
+			_dev->supports_aai = TRUE;
+			_dev->erase_block_size = 0x1000;
+			_dev->block_protect_bits = 0x3C;
+			_dev->bytes_per_write = 0x1;
+			_dev->write_timeout = 10;
+			break;
+		case 0x1F:
+			// vendor: atmel, device: 0x02 -> AT25DF081A
+			// datasheet: http://www.atmel.com/dyn/resources/prod_documents/doc8715.pdf
+			if (_dev->device != 0x02) {
+				break;
+			}
+			chipRecognized = TRUE;
+			_dev->supports_aai = FALSE;
+			_dev->erase_block_size = 0x1000;
+			_dev->block_protect_bits = 0xC;
+			_dev->bytes_per_write = 0x100;
+			_dev->write_timeout = 5000;
+			break;
+		case 0x20:
+			// vendor: SGS/Thomson, device: 0x18, 0x16 or 0x14
+			if (_dev->device != 0x18 && _dev->device != 0x16 && _dev->device != 0x14) {
+				break;
+			}
+			chipRecognized = TRUE;
+			_dev->supports_aai = FALSE;
+			_dev->erase_block_size = 0x1000;
+			_dev->block_protect_bits = 0x1C;
+			_dev->bytes_per_write = 0x100;
+			_dev->write_timeout = 5000;
+			break;
+		case 0x01:
+			// vendor: AMD, device: 0x18
+			if (_dev->device != 0x18) {
+				break;
+			}
+			chipRecognized = TRUE;
+			_dev->supports_aai = FALSE;
+			_dev->erase_block_size = 0x1000;
+			_dev->block_protect_bits = 0x1C;
+			_dev->bytes_per_write = 0x100;
+			_dev->write_timeout = 5000;
+			break;
+		default:
+			break;
+	}
+
+	if (!chipRecognized) {
+		bufferPrintf("Unknown NOR chip!\r\n");
+		return -1;
+	}
+	
+	return 0;
 }
 
 static nor_device_t nor_device = {

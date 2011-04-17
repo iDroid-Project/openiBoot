@@ -1,25 +1,7 @@
 #ifndef HW_NOR_H
 #define HW_NOR_H
 
-// Device
-#define NOR 0x24000000
-
-// Registers
-#define NOR_COMMAND 0xAAAA
-#define LOCK 0x5554
-#define VENDOR 0
-#define DEVICE 2
-
 // Values
-#define DATA_MODE 0xFFFF
-#define COMMAND_UNLOCK 0xAAAA
-#define COMMAND_LOCK 0xF0F0
-#define COMMAND_IDENTIFY 0x9090
-#define COMMAND_WRITE 0xA0A0
-#define COMMAND_ERASE 0x8080
-#define ERASE_DATA 0x3030
-#define LOCK_UNLOCK 0x5555
-
 #define NOR_SPI_READ 0x03           // read bytes
 #define NOR_SPI_WREN 0x06           // write enable
 #define NOR_SPI_WRDI 0x04           // write disable
@@ -39,16 +21,28 @@
 #define NOR_SPI_SR_BP3 5            // block protect 3
 #define NOR_SPI_SR_AAI 6            // auto address increment programming
 #define NOR_SPI_SR_BPL 7            // block protect write disable
+#define NOR_SPI_SR_BP_ALL	((1<<NOR_SPI_SR_BP0)|(1<<NOR_SPI_SR_BP1)|(1<<NOR_SPI_SR_BP2)|(1<<NOR_SPI_SR_BP3))
 
 #define NOR_T_BP 10000
 #define NOR_T_SE 25000
 
-#define NOR_CLOCKGATE 0x1E
-
-#define NOR_SPI_CS0 GPIO_SPI1_CS0
-#define NOR_SPI_PORT 1
+#if defined(CONFIG_S5L8720)
+	#define NOR_CS 0x406
+	#define NOR_SPI 1
+	#define NOR_MAX_READ 4			//TODO: can this be bumped up to 16? look into this. --kleemajo
+#elif defined(CONFIG_S5L8920)
+	#define NOR_CS 0x1204
+	#define NOR_SPI 0
+	#define NOR_MAX_READ 4
+#elif defined(CONFIG_S5L8900)
+	#define NOR_CS	GPIO_SPI0_CS0
+	#define NOR_SPI	0
+	#define NOR_MAX_READ 16
+#endif
 
 #define NOR_TIMEOUT 50000
+
+#define NOR_BLOCK_SIZE 4096
 
 #endif
 

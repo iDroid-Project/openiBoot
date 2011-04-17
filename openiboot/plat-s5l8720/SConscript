@@ -6,6 +6,7 @@ env.Append(CPPDEFINES = ['ARM11', 'CONFIG_S5L8720'])
 
 env.AddModules([
 	"acm",
+	"nor-spi",
 	"usb-synopsys",
 	])
 
@@ -48,7 +49,6 @@ plat_s5l8720_src = arch_arm_src + env.Localize([
 	'miu.c',
 	'mmu.c',
 #	'nand.c',
-	'nor.c',
 	'pmu.c',
 	'power.c',
 #	'sdio.c',
