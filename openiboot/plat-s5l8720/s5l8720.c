@@ -94,13 +94,12 @@ void platform_init()
 	images_setup();
 	nvram_setup();
 
-//	lcd_setup();
-	framebuffer_hook();	// TODO: Remove once LCD implemented
+	displaypipe_init();
 	framebuffer_setup();
+	framebuffer_setdisplaytext(TRUE);
+//	lcd_set_backlight_level(1500);
 
 //	audiohw_init();
-
-	framebuffer_setdisplaytext(TRUE);
 
 
 	gpio_register_interrupt(BUTTONS_HOLD_IRQ, BUTTONS_HOLD_IRQTYPE, BUTTONS_HOLD_IRQLEVEL, BUTTONS_HOLD_IRQAUTOFLIP, gpio_test_handler, 0);

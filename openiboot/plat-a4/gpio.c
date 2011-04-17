@@ -231,6 +231,9 @@ void gpio_pulldown_configure(int port, GPIOPDSetting setting)
 }
 
 void gpio_switch(int pinport, OnOff on_off) {
+	// This function actually configures the pull up/pull down resistors for a pin/port
+	// 2nd param: code, -1 = pull down, 0 = none, 1 = pull up
+	// -- kleemajo
 	uint32_t pin_register = GPIO + (((pinport >> 5) & 0x7F8) + ((pinport & 0x7)<<2));
 
 	if (on_off == ON) {
