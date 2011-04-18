@@ -8,8 +8,8 @@ iphone_4_src = [plat_a4_src,
 				env.Localize([
 				'#audiohw-null.c',
 				'h2fmi.c',
-				'ftl.c',
-				'vfl.c',
+#				'ftl.c',
+#				'vfl.c',
 				])]
 Export('iphone_4_src')
 
