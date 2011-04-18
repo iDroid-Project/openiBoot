@@ -427,6 +427,8 @@ static nor_device_t nor_device = {
 
 		.usage = mtd_boot_images,
 	},
+	
+	.block_protect_count = 0,
 
 	.gpio = NOR_CS,
 	.spi = NOR_SPI,
