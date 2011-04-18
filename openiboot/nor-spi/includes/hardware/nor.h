@@ -1,6 +1,10 @@
 #ifndef HW_NOR_H
 #define HW_NOR_H
 
+// The same prototocol works for a few different chips. The datasheet for
+// one of them (atmel AT25DF081A) can be found here:
+// http://www.atmel.com/dyn/resources/prod_documents/doc8715.pdf
+
 // Values
 #define NOR_SPI_READ 0x03           // read bytes
 #define NOR_SPI_WREN 0x06           // write enable

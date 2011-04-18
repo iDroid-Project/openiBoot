@@ -27,7 +27,7 @@ typedef struct _nor_device
 	uint32_t bytes_per_write;
 	uint32_t write_timeout;
 
-	int write_enabled;
+	int block_protect_count;
 } nor_device_t;
 
 
@@ -64,6 +64,18 @@ static int nor_spi_txrx(nor_device_t *_dev, void *_tx, int _tx_amt, void *_rx, i
 	return ret;
 }
 
+static int nor_prepare(mtd_t *_dev)
+{
+	nor_device_t *dev = nor_device_get(_dev);
+	spi_set_baud(dev->spi, 12000000, SPIWordSize8, 1, 0, 0);
+	return 0;
+}
+
+static void nor_finish(mtd_t *_dev)
+{
+}
+
+
 static uint8_t nor_get_status(nor_device_t *_dev)
 {
 	uint8_t data[1];
@@ -74,6 +86,7 @@ static uint8_t nor_get_status(nor_device_t *_dev)
 
 	return data[0];
 }
+
 
 static void nor_write_status(nor_device_t *_dev, uint8_t status)
 {
@@ -88,11 +101,9 @@ static void nor_write_status(nor_device_t *_dev, uint8_t status)
 
 	nor_spi_tx(_dev, command, sizeof(command));
 	
-	if(nor_wait_for_ready(_dev, 100) != 0)
-		return;
-	
 	nor_write_disable(_dev);
 }
+
 
 static int nor_wait_for_ready(nor_device_t *_dev, int timeout)
 {
@@ -110,16 +121,33 @@ static int nor_wait_for_ready(nor_device_t *_dev, int timeout)
 	return 0;
 }
 
-static int nor_prepare(mtd_t *_dev)
+
+static void nor_write_enable(nor_device_t *_dev)
 {
-	nor_device_t *dev = nor_device_get(_dev);
-	spi_set_baud(dev->spi, 12000000, SPIWordSize8, 1, 0, 0);
-	return 0;
+	// The write enable latch needs to be enabled before pretty much everything other than reading.
+	// From AT25DF081A datasheet: "When the CS pin is deasserted, the WEL (write enable latch) bit
+	// in the Status Register will be set to a logical '1'."
+	// This therefore needs to be set everytime the CS pin is pulled low. iBoot implements a
+	// counter to count enables/disables and only enable if the count is 0 but that is wrong.
+	// Apple actually hacked it to not use the counter! If something really weird is going on, it
+	// probably has to do with this. --kleemajo
+
+	uint8_t command[1];
+	command[0] = NOR_SPI_WREN;
+	nor_spi_tx(_dev, command, sizeof(command));
 }
 
-static void nor_finish(mtd_t *_dev)
+
+static void nor_write_disable(nor_device_t *_dev)
 {
+	// See nor_write_enable note. This function is essentially useless (on the AT25DF081A chip at
+	// least). It is implemented in case some other chip has different behaviour. --kleemajo
+	
+	uint8_t command[1];
+	command[0] = NOR_SPI_WRDI;
+	nor_spi_tx(_dev, command, sizeof(command));
 }
+
 
 static int nor_device_init(nor_device_t *_dev)
 {
@@ -142,59 +170,41 @@ static int nor_device_init(nor_device_t *_dev)
 	return mtd_init(&_dev->mtd);
 }
 
+
 static void nor_disable_block_protect(nor_device_t *_dev)
 {
-	uint8_t status = nor_get_status(_dev);
-	nor_write_status(_dev, status & ~NOR_SPI_SR_BP_ALL);
+	if (_dev->block_protect_count == 0)
+	{
+		uint8_t status = nor_get_status(_dev);
+		nor_write_status(_dev, status & ~NOR_SPI_SR_BP_ALL);
+	}
+	
+	_dev->block_protect_count++;
 }
+
 
 static void nor_enable_block_protect(nor_device_t *_dev)
 {
-	uint8_t status = nor_get_status(_dev);
-	nor_write_status(_dev, status | NOR_SPI_SR_BP_ALL);
-}
-
-static void nor_write_enable(nor_device_t *_dev)
-{
-	if(nor_wait_for_ready(_dev, 100) != 0)
-		return;
-
-	if(_dev->write_enabled == 0)
+	if (_dev->block_protect_count == 1)
 	{
-		uint8_t command[1];
-		command[0] = NOR_SPI_WREN;
-		nor_spi_tx(_dev, command, sizeof(command));
+		uint8_t status = nor_get_status(_dev);
+		nor_write_status(_dev, status | NOR_SPI_SR_BP_ALL);
 	}
-
-	_dev->write_enabled++;
+	
+	if (_dev->block_protect_count > 0)
+		_dev->block_protect_count--;
 }
 
-static void nor_write_disable(nor_device_t *_dev)
-{
-	if(nor_wait_for_ready(_dev, 100) != 0)
-		return;
-
-	if(_dev->write_enabled == 1)
-	{
-		uint8_t command[1];
-		command[0] = NOR_SPI_WRDI;
-		nor_spi_tx(_dev, command, sizeof(command));
-	}
-
-	_dev->write_enabled--;
-	if(_dev->write_enabled < 0)
-		_dev->write_enabled = 0;
-}
 
 static int nor_erase_sector(nor_device_t *_dev, uint32_t _offset)
 {
-	bufferPrintf("nor_erase: %x\r\n", _offset);
+	nor_disable_block_protect(_dev);
+
 	if(nor_wait_for_ready(_dev, 100) != 0)
 		return -1;
 
-	nor_disable_block_protect(_dev);
 	nor_write_enable(_dev);
-
+	
 	uint8_t command[4];
 	command[0] = NOR_SPI_ERSE_4KB;
 	command[1] = (_offset >> 16) & 0xFF;
@@ -204,6 +214,7 @@ static int nor_erase_sector(nor_device_t *_dev, uint32_t _offset)
 	nor_spi_tx(_dev, command, sizeof(command));
 
 	nor_write_disable(_dev);
+	
 	nor_enable_block_protect(_dev);
 
 	return 0;
@@ -236,6 +247,9 @@ static int nor_read(mtd_t *_dev, void *_dest, uint32_t _off, int _amt)
 	uint8_t* data = _dest;
 	nor_device_t *dev = nor_device_get(_dev);
 	int len = _amt;
+
+	if(nor_wait_for_ready(dev, 100) != 0)
+		return -1;
 
 	while(len > 0)
 	{
@@ -272,14 +286,16 @@ static int nor_write(mtd_t *_dev, void *_src, uint32_t _off, int _amt)
 
 	memcpy(sectorsToChange + offsetFromStart, _src, _amt);
 
+	nor_disable_block_protect(dev);
+
 	int i;
 	for(i = 0; i < numSectors; i++) {
 		bufferPrintf("writing sector #%d\r\n", i);
 		if(nor_erase_sector(dev, (i + startSector) * NOR_BLOCK_SIZE) != 0)
+		{
+			nor_enable_block_protect(dev);
 			return -1;
-
-		nor_disable_block_protect(dev);
-		//nor_write_enable(dev);
+		}
 
 		int j;
 		uint8_t* curSector = (uint8_t*)(sectorsToChange + (i * NOR_BLOCK_SIZE));
@@ -288,14 +304,12 @@ static int nor_write(mtd_t *_dev, void *_src, uint32_t _off, int _amt)
 			if(nor_write_byte(dev, ((i + startSector) * NOR_BLOCK_SIZE) + j, curSector[j]) != 0)
 			{
 				nor_enable_block_protect(dev);
-				nor_write_disable(dev);
 				return -1;
 			}
 		}
-
-		//nor_write_disable(dev);
-		nor_enable_block_protect(dev);
 	}
+	
+	nor_enable_block_protect(dev);
 
 	free(sectorsToChange);
 
@@ -413,8 +427,6 @@ static nor_device_t nor_device = {
 
 		.usage = mtd_boot_images,
 	},
-
-	.write_enabled = 0,
 
 	.gpio = NOR_CS,
 	.spi = NOR_SPI,
