@@ -273,7 +273,6 @@ static int nor_read(mtd_t *_dev, void *_dest, uint32_t _off, int _amt)
 
 static int nor_write(mtd_t *_dev, void *_src, uint32_t _off, int _amt)
 {
-	bufferPrintf("writing %08x to %08x\r\n", _src, _off);
 	nor_device_t *dev = nor_device_get(_dev);
 	int startSector = _off / NOR_BLOCK_SIZE;
 	int endSector = (_off + _amt) / NOR_BLOCK_SIZE;
@@ -290,7 +289,6 @@ static int nor_write(mtd_t *_dev, void *_src, uint32_t _off, int _amt)
 
 	int i;
 	for(i = 0; i < numSectors; i++) {
-		bufferPrintf("writing sector #%d\r\n", i);
 		if(nor_erase_sector(dev, (i + startSector) * NOR_BLOCK_SIZE) != 0)
 		{
 			nor_enable_block_protect(dev);
