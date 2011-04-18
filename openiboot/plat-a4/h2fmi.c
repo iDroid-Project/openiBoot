@@ -2050,7 +2050,7 @@ static error_t h2fmi_device_get_info(device_t *_dev, device_info_t _info, void *
 		return SUCCESS;
 
 	case diBytesPerPage:
-		auto_store(_result, _size, h2fmi_geometry.bbt_format << 9);
+		auto_store(_result, _size, h2fmi_geometry.bbt_format << 10);
 		return SUCCESS;
 
 	case diBytesPerSpare:
@@ -2163,11 +2163,11 @@ static void h2fmi_init_device()
 	h2fmi_device.device.get_info = h2fmi_device_get_info;
 	h2fmi_device.device.set_info = h2fmi_device_set_info;
 
-	/*if(vfl_detect(&h2fmi_vfl_device, &h2fmi_device, vfl_new_signature))
+	if(FAILED(vfl_detect(&h2fmi_vfl_device, &h2fmi_device, vfl_new_signature)))
 	{
 		bufferPrintf("fmi: Failed to open VFL!\r\n");
 		return;
-	}*/
+	}
 }
 
 int isPPN = 0;
