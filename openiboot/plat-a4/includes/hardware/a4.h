@@ -9,12 +9,11 @@
 #define MemoryEnd 0xFFFFFFFF
 #define RAMStart 0x40000000
 #if defined(CONFIG_IPHONE_4)
-#define LargeMemoryStart 0x60000000
 #define RAMEnd 0x60000000
 #else
-#define LargeMemoryStart 0x50000000
 #define RAMEnd 0x50000000
 #endif
+#define LargeMemoryStart 0x46000000
 #define MemoryHigher 0xC0000000
 #define ExceptionVector MemoryStart
 #ifdef SMALL
