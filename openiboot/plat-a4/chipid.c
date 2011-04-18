@@ -13,3 +13,12 @@ unsigned int chipid_get_power_epoch() {
 unsigned int chipid_get_gpio_epoch() {
 	return CHIPID_GET_GPIO(GET_REG(CHIPID));
 }
+
+uint32_t chipid_get_nand_epoch()
+{
+	uint32_t ret = chipid_get_power_epoch();
+	if(ret == 0)
+		return 1;
+
+	return ret;
+}

@@ -1,4 +1,5 @@
 #include "nand.h"
+#include "hardware/platform.h"
 #include "util.h"
 
 void nand_device_init(nand_device_t *_nand)
@@ -56,7 +57,7 @@ error_t nand_device_read_special_page(nand_device_t *_dev, uint32_t _ce, char _p
 	if(FAILED(ret))
 		return EINVAL;
 
-	uint8_t* buffer = malloc(bytesPerPage);
+	uint8_t* buffer = memalign(DMA_ALIGN, bytesPerPage);
 	int lowestBlock = blocksPerCE - (blocksPerCE / 10);
 	int block;
 	for(block = blocksPerCE - 1; block >= lowestBlock; block--)
@@ -76,11 +77,11 @@ error_t nand_device_read_special_page(nand_device_t *_dev, uint32_t _ce, char _p
 			{
 				if(ret == 1)
 				{
-					DebugPrintf("vfl: read_special_page - found 'badBlock' on ce %d, page %d\r\n", (block * pagesPerBlock) + page);
+					DebugPrintf("vfl: read_special_page - found 'badBlock' on ce %d, page %d\r\n", _ce, (block * pagesPerBlock) + page);
 					badBlockCount++;
 				}
 
-				DebugPrintf("vfl: read_special_page - skipping ce %d, page %d\r\n", (block * pagesPerBlock) + page);
+				DebugPrintf("vfl: read_special_page - skipping ce %d, page %d\r\n", _ce, (block * pagesPerBlock) + page);
 				continue;
 			}
 
@@ -99,7 +100,7 @@ error_t nand_device_read_special_page(nand_device_t *_dev, uint32_t _ce, char _p
 				return SUCCESS;
 			}
 			else
-				DebugPrintf("vfl: did not find signature on ce %d, page %d\r\n", (block * pagesPerBlock) + page);
+				DebugPrintf("vfl: did not find signature on ce %d, page %d\r\n", _ce, (block * pagesPerBlock) + page);
 		}
 	}
 

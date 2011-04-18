@@ -75,9 +75,9 @@ error_t vfl_detect(vfl_device_t **_vfl, nand_device_t *_nand, vfl_signature_styl
 	if(FAILED(ret))
 		return ret;
 
-	if(sigbuf[0] != '3' || sigbuf[3] != 'C'
+	if(sigbuf[0] != ('0' + chipid_get_nand_epoch()) || sigbuf[3] != 'C'
 			|| sigbuf[1] > '1' || sigbuf[2] > '1'
-			 || sigbuf[4] > 6 || chipid_get_power_epoch() + '0' != sigbuf[2])
+			 || sigbuf[4] > 6)
 	{
 		bufferPrintf("vfl: Incompatible signature.\r\n");
 		return ENOENT;

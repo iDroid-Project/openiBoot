@@ -3,6 +3,8 @@
 *.img2
 *.bin
 *_openiboot
+*_openiboot_debug
 *_installer
+*_installer_debug
 iBSS.*
 *.o
