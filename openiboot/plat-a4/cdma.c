@@ -62,7 +62,7 @@ static DMAInfo dmaInfo[32];
 static uint32_t dmaAES_channel_used = 0;
 
 static void dmaIRQHandler(uint32_t token);
-int dma_continue_async(int channel);
+void dma_continue_async(int channel);
 
 int dma_setup() {
 	clock_gate_switch(0x14, ON);
@@ -95,9 +95,10 @@ signed int dma_init_channel(uint8_t direction, uint32_t channel, int segmentatio
 
 	if (!dma->signalled) {
 		dma->segmentBuffer = memalign(0x20, 32 * sizeof(*dma->segmentBuffer));
+		memset(dma->segmentBuffer, 0, (32 * sizeof(*dma->segmentBuffer)));
 
 		if (!dma->segmentBuffer)
-			system_panic("CDMA: can't allocate command chain");
+			system_panic("CDMA: can't allocate command chain\r\n");
 
 		for (i = 0; i != 32; i ++)
 			dma->segmentBuffer[i].address = get_physical_address((uint32_t)(&dma->segmentBuffer[i+1]));
@@ -193,18 +194,21 @@ signed int dma_init_channel(uint8_t direction, uint32_t channel, int segmentatio
 	return 0;
 }
 
-int dma_continue_async(int channel) {
+void dma_continue_async(int channel) {
 	uint32_t endOffset;
 	uint8_t segmentId;
 	uint32_t segmentLength;
 	uint32_t value;
 	DMAInfo* dma = &dmaInfo[channel];
+
 	if (!dma->unsegmentedSize)
 		system_panic("CDMA: ASSERT FAILED\r\n");
+
 	dma->previousUnsegmentedSize = dma->unsegmentedSize;
 	dma->previousDmaSegmentNumber = dma->dmaSegmentNumber;
 	dma->previousSegmentOffset = dma->segmentOffset;
-	if (dma->dmaAESInfo) {
+	if (dma->dmaAESInfo)
+	{
 		endOffset = dma->segmentationSetting + 8 * dma->dmaSegmentNumber;
 		for (segmentId = 0; segmentId != 28;) {
 			if (!dma->unsegmentedSize)
@@ -212,8 +216,8 @@ int dma_continue_async(int channel) {
 
 			dma->segmentBuffer[segmentId].value = 2;
 			dma->dmaAESInfo->ivGenerator(dma->dmaAESInfo->ivParameter, dma->current_segment, dma->segmentBuffer[segmentId].iv);
-			++segmentId;
-			++dma->current_segment;
+			segmentId++;
+			dma->current_segment++;
 			segmentLength = 0;
 
 			int encryptedSegmentOffset;
@@ -294,8 +298,6 @@ int dma_continue_async(int channel) {
 		value |= (dma->dmaAES_channel << 8);
 
 	SET_REG(DMA + channel_reg, value);
-
-	return (DMA + channel_reg);
 }
 
 int dma_set_aes(int channel, dmaAES* dmaAESInfo) {
@@ -411,16 +413,15 @@ void dmaIRQHandler(uint32_t token) {
 	uint32_t wholeSegment;
 	uint32_t currentSegment;
 	uint8_t segmentId;
-	uint32_t status;
 	int channel = token;
 	uint32_t channel_reg = channel << 12;
 	DMAInfo* dma = &dmaInfo[channel];
 
 	GET_REG(DMA + channel_reg);
-	status = GET_REG(DMA + channel_reg);
+	uint32_t status = GET_REG(DMA + channel_reg);
 
 	if (status & 0x40000)
-		system_panic("CDMA: channel %d error interrupt, error status 0x%0x\r\n", channel, GET_REG(DMA + DMA_INTERRUPT_ERROR + channel_reg));
+		system_panic("CDMA: channel %d error interrupt\r\n", channel);
 
 	if (status & 0x100000)
 		system_panic("CDMA: channel %d spurious CIR\r\n", channel);
