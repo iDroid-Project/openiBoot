@@ -44,9 +44,5 @@
 	#define NOR_MAX_READ 16
 #endif
 
-#define NOR_TIMEOUT 50000
-
-#define NOR_BLOCK_SIZE 4096
-
 #endif
 

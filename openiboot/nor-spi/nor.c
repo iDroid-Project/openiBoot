@@ -12,7 +12,9 @@
 #include "syscfg.h"
 #include "nvram.h"
 
-typedef struct _nor_device
+typedef struct _nor_device nor_device_t;
+
+struct _nor_device
 {
 	mtd_t mtd;
 
@@ -20,15 +22,14 @@ typedef struct _nor_device
 	uint32_t spi;
 	uint32_t vendor;
 	uint32_t device;
-	
-	Boolean supports_aai;
-	uint32_t erase_block_size;
+
+	int (*block_write_function)(nor_device_t*, uint32_t, uint8_t*);
+	uint32_t block_size;
 	uint32_t block_protect_bits;
-	uint32_t bytes_per_write;
-	uint32_t write_timeout;
+	uint32_t page_size;
 
 	int block_protect_count;
-} nor_device_t;
+};
 
 
 // Functions
@@ -241,6 +242,50 @@ static int nor_write_byte(nor_device_t *_dev, uint32_t offset, uint8_t data)
 	return 0;
 }
 
+static int nor_write_block_by_byte(nor_device_t *_dev, uint32_t offset, uint8_t *data)
+{
+	// This is the default writing function, and should be supported by every chip. It is slow.
+	int j;
+	for (j = 0; j < _dev->block_size; j++)
+	{
+		if (nor_write_byte(_dev, offset + j, data[j]) != 0)
+			return -1;
+	}
+	
+	return 0;
+}
+
+static int nor_write_block_by_page(nor_device_t *_dev, uint32_t offset, uint8_t *data)
+{
+	// This writing method should be supported by most chips and is usually the fastest option.
+	int j;
+	uint8_t* command = malloc(4 + _dev->page_size);
+	for (j = 0; j < _dev->block_size / _dev->page_size; j++)
+	{
+		if(nor_wait_for_ready(_dev, 100) != 0)
+		{
+			free(command);
+			return -1;
+		}
+
+		nor_write_enable(_dev);
+	
+		uint32_t pageOffset = offset + j * _dev->page_size;
+		command[0] = NOR_SPI_PRGM;
+		command[1] = (pageOffset >> 16) & 0xFF;
+		command[2] = (pageOffset >> 8) & 0xFF;
+		command[3] = pageOffset & 0xFF;
+		memcpy(command + 4, data + j * _dev->page_size, _dev->page_size);
+		
+		nor_spi_tx(_dev, command, 4 + _dev->page_size);
+		
+		nor_write_disable(_dev);
+	}
+	
+	free(command);
+	return 0;
+}
+
 static int nor_read(mtd_t *_dev, void *_dest, uint32_t _off, int _amt)
 {
 	uint8_t command[4];
@@ -274,36 +319,34 @@ static int nor_read(mtd_t *_dev, void *_dest, uint32_t _off, int _amt)
 static int nor_write(mtd_t *_dev, void *_src, uint32_t _off, int _amt)
 {
 	nor_device_t *dev = nor_device_get(_dev);
-	int startSector = _off / NOR_BLOCK_SIZE;
-	int endSector = (_off + _amt) / NOR_BLOCK_SIZE;
+	int startSector = _off / dev->block_size;
+	int endSector = (_off + _amt) / dev->block_size;
 
 	int numSectors = endSector - startSector + 1;
-	uint8_t* sectorsToChange = (uint8_t*) malloc(NOR_BLOCK_SIZE * numSectors);
-	nor_read(_dev, sectorsToChange, startSector * NOR_BLOCK_SIZE, NOR_BLOCK_SIZE * numSectors);
+	uint8_t* sectorsToChange = (uint8_t*) malloc(dev->block_size * numSectors);
+	nor_read(_dev, sectorsToChange, startSector * dev->block_size, dev->block_size * numSectors);
 
-	int offsetFromStart = _off - (startSector * NOR_BLOCK_SIZE);
+	int offsetFromStart = _off - (startSector * dev->block_size);
 
 	memcpy(sectorsToChange + offsetFromStart, _src, _amt);
 
 	nor_disable_block_protect(dev);
 
 	int i;
-	for(i = 0; i < numSectors; i++) {
-		if(nor_erase_sector(dev, (i + startSector) * NOR_BLOCK_SIZE) != 0)
+	int retVal = 0;
+	for(i = 0; i < numSectors; i++)
+	{
+		if(nor_erase_sector(dev, (i + startSector) * dev->block_size) != 0)
 		{
-			nor_enable_block_protect(dev);
-			return -1;
+			retVal = -1;
+			break;
 		}
-
-		int j;
-		uint8_t* curSector = (uint8_t*)(sectorsToChange + (i * NOR_BLOCK_SIZE));
-		for(j = 0; j < NOR_BLOCK_SIZE; j++)
+		
+		uint8_t* curSector = (uint8_t*)(sectorsToChange + (i * dev->block_size));
+		if (dev->block_write_function(dev, (i + startSector) * dev->block_size, curSector) != 0)
 		{
-			if(nor_write_byte(dev, ((i + startSector) * NOR_BLOCK_SIZE) + j, curSector[j]) != 0)
-			{
-				nor_enable_block_protect(dev);
-				return -1;
-			}
+			retVal = -1;
+			break;
 		}
 	}
 	
@@ -311,7 +354,7 @@ static int nor_write(mtd_t *_dev, void *_src, uint32_t _off, int _amt)
 
 	free(sectorsToChange);
 
-	return 0;
+	return retVal;
 }
 
 static int nor_size(mtd_t *_dev)
@@ -321,7 +364,8 @@ static int nor_size(mtd_t *_dev)
 
 static int nor_block_size(mtd_t *_dev)
 {
-	return NOR_BLOCK_SIZE;
+	nor_device_t *dev = nor_device_get(_dev);
+	return dev->block_size;
 }
 
 static int nor_setup_chip_info(nor_device_t *_dev)
@@ -352,11 +396,11 @@ static int nor_setup_chip_info(nor_device_t *_dev)
 				break;
 			}
 			chipRecognized = TRUE;
-			_dev->supports_aai = TRUE;
-			_dev->erase_block_size = 0x1000;
+			//TODO: this chip supports AAI, and will be much faster when implemented --kleemajo
+			_dev->block_write_function = &nor_write_block_by_byte;
+			_dev->block_size = 0x1000;
 			_dev->block_protect_bits = 0x3C;
-			_dev->bytes_per_write = 0x1;
-			_dev->write_timeout = 10;
+			_dev->page_size = 0x1;
 			break;
 		case 0x1F:
 			// vendor: atmel, device: 0x02 -> AT25DF081A
@@ -365,11 +409,10 @@ static int nor_setup_chip_info(nor_device_t *_dev)
 				break;
 			}
 			chipRecognized = TRUE;
-			_dev->supports_aai = FALSE;
-			_dev->erase_block_size = 0x1000;
+			_dev->block_write_function = &nor_write_block_by_page;
+			_dev->block_size = 0x1000;
 			_dev->block_protect_bits = 0xC;
-			_dev->bytes_per_write = 0x100;
-			_dev->write_timeout = 5000;
+			_dev->page_size = 0x100;
 			break;
 		case 0x20:
 			// vendor: SGS/Thomson, device: 0x18, 0x16 or 0x14
@@ -377,11 +420,10 @@ static int nor_setup_chip_info(nor_device_t *_dev)
 				break;
 			}
 			chipRecognized = TRUE;
-			_dev->supports_aai = FALSE;
-			_dev->erase_block_size = 0x1000;
+			_dev->block_write_function = &nor_write_block_by_page;
+			_dev->block_size = 0x1000;
 			_dev->block_protect_bits = 0x1C;
-			_dev->bytes_per_write = 0x100;
-			_dev->write_timeout = 5000;
+			_dev->page_size = 0x100;
 			break;
 		case 0x01:
 			// vendor: AMD, device: 0x18
@@ -389,11 +431,10 @@ static int nor_setup_chip_info(nor_device_t *_dev)
 				break;
 			}
 			chipRecognized = TRUE;
-			_dev->supports_aai = FALSE;
-			_dev->erase_block_size = 0x1000;
+			_dev->block_write_function = &nor_write_block_by_page;
+			_dev->block_size = 0x1000;
 			_dev->block_protect_bits = 0x1C;
-			_dev->bytes_per_write = 0x100;
-			_dev->write_timeout = 5000;
+			_dev->page_size = 0x100;
 			break;
 		default:
 			break;
@@ -430,6 +471,11 @@ static nor_device_t nor_device = {
 
 	.gpio = NOR_CS,
 	.spi = NOR_SPI,
+	
+	.block_write_function = &nor_write_block_by_byte,
+	.block_size = 0x1000,
+	.block_protect_bits = NOR_SPI_SR_BP_ALL,
+	.page_size = 0x1,
 };
 
 static void nor_init()
