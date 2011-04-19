@@ -484,9 +484,9 @@ static int h2fmi_pio_write_sector(h2fmi_struct_t *_fmi, void *_ptr, int _amt)
 	uint32_t *ptr = _ptr;
 
 	int i;
-	for (i = 0; i < (_amt >> 2); i++) {
+	for (i = 0; i < _amt / sizeof(*ptr); i++)
 		SET_REG(H2FMI_DATA(_fmi), ptr[i]);
-	}
+
 	return 0;
 }
 
@@ -494,7 +494,7 @@ static void h2fmi_set_address_pio_write(h2fmi_struct_t* _fmi, uint32_t page)
 {
 	h2fmi_set_address_inner(_fmi, page);
 
-	if (_fmi->num_pages_to_read && ((_fmi->field_110 == 1) || _fmi->field_110 == 5)) {
+	if (_fmi->num_pages && ((_fmi->write_setting == 1) || _fmi->write_setting == 5)) {
 		if (_fmi->current_page_index & 1)
 			SET_REG(H2FMI_UNKREG4(_fmi), 0x81);
 		else
@@ -511,8 +511,8 @@ static void h2fmi_set_address_pio_write(h2fmi_struct_t* _fmi, uint32_t page)
 
 static void h2fmi_set_pio_write(h2fmi_struct_t* _fmi)
 {
-	if (_fmi->num_pages_to_read) {
-		switch (_fmi->field_110)
+	if (_fmi->num_pages) {
+		switch (_fmi->write_setting)
 		{
 		case 1:
 		case 2:
@@ -624,7 +624,7 @@ static void h2fmi_tx_pio_ready(h2fmi_struct_t* _fmi)
 	SET_REG(H2FMI_UNKREG6(_fmi), 2);
 }
 
-static int h2fmi_tx_bootpage_pio(h2fmi_struct_t* _fmi, uint16_t chip, uint32_t page, uint32_t* buffer)
+static int h2fmi_tx_bootpage_pio(h2fmi_struct_t* _fmi, uint16_t chip, uint32_t page, uint8_t* buffer)
 {
 	int regValue = GET_REG(H2FMI_UNKREG1(_fmi));
 
@@ -641,7 +641,7 @@ static int h2fmi_tx_bootpage_pio(h2fmi_struct_t* _fmi, uint16_t chip, uint32_t p
 		SET_REG(H2FMI_UNK4(_fmi), 5);
 		h2fmi_pio_write_sector(_fmi, buffer, 0x200);
 
-		buffer = buffer + (0x200/sizeof(uint32_t));
+		buffer += 0x200;
 
 		if (h2fmi_tx_wait_page_done(_fmi)) {
 			bufferPrintf("h2fmi_tx_wait_page_done: fail !!\r\n");
@@ -669,7 +669,7 @@ static int h2fmi_tx_bootpage_pio(h2fmi_struct_t* _fmi, uint16_t chip, uint32_t p
 	}
 }
 
-int h2fmi_write_bootpage(uint16_t _ce, uint32_t page, uint32_t* buffer)
+uint32_t h2fmi_write_bootpage(uint16_t _ce, uint32_t page, uint8_t* buffer)
 {
 	uint32_t bus = h2fmi_map[_ce].bus;
 	uint32_t chip = h2fmi_map[_ce].chip;
@@ -1094,7 +1094,7 @@ static void h2fmi_enable_and_set_address(h2fmi_struct_t *_fmi, uint16_t _bank,
 	h2fmi_set_address(_fmi, _addrs[_bank]);
 
 	_fmi->field_80 = _chips[_bank];
-	_fmi->field_15C++;
+	_fmi->pages_done++;
 }
 
 static void h2fmi_store_80c_810(h2fmi_struct_t *_fmi)
@@ -1188,14 +1188,14 @@ static void h2fmi_some_mysterious_function(h2fmi_struct_t *_fmi, uint32_t _val)
 {
 	uint8_t var_10 = 0;
 	uint32_t ret = h2fmi_function_1(_fmi, _val, &var_10,
-			_fmi->field_158, _fmi->bbt_format);
+			_fmi->ecc_ptr, _fmi->bbt_format);
 	
 	if(ret == ENAND_ECC)
-		_fmi->field_154++;
+		_fmi->num_pages_ecc_failed++;
 	else if(ret == 0x80000025)
-		_fmi->field_150++;
+		_fmi->num_pages_failed++;
 	else if(ret == 2)
-		_fmi->field_14C++;
+		_fmi->num_pages_empty++;
 	else
 	{
 		if(ret != ENAND_ECC && ret != 0x80000025)
@@ -1207,11 +1207,11 @@ static void h2fmi_some_mysterious_function(h2fmi_struct_t *_fmi, uint32_t _val)
 
 skipBlock:
 
-	if(_fmi->field_148)
-		_fmi->field_148[_fmi->current_page_index-1] = var_10;
+	if(_fmi->page_ecc_output)
+		_fmi->page_ecc_output[_fmi->current_page_index-1] = var_10;
 
-	if(_fmi->field_158)
-		_fmi->field_158 += _fmi->bbt_format;
+	if(_fmi->ecc_ptr)
+		_fmi->ecc_ptr += _fmi->bbt_format;
 }
 
 static uint32_t h2fmi_function_2(h2fmi_struct_t *_fmi)
@@ -1223,7 +1223,7 @@ static uint32_t h2fmi_function_2(h2fmi_struct_t *_fmi)
 	else
 	{
 		uint8_t val = 0;
-		if(timer_get_system_microtime() - _fmi->field_124 > _fmi->field_12C)
+		if(timer_get_system_microtime() - _fmi->last_action_time > _fmi->time_interval)
 			val = 1;
 
 		return val ^ 1;
@@ -1245,11 +1245,11 @@ static void h2fmi_rw_large_page(h2fmi_struct_t *_fmi)
 	//bufferPrintf("fmi: rw_large_page.\r\n");
 
 	h2fmi_dma_execute_async(dir, _fmi->dma0, _fmi->data_ptr[_fmi->current_page_index],
-			H2FMI_DATA(_fmi), _fmi->bytes_per_page * _fmi->num_pages_to_read,
+			H2FMI_DATA(_fmi), _fmi->bytes_per_page * _fmi->num_pages,
 			4, 8, _fmi->aes_info);
 
-	h2fmi_dma_execute_async(dir, _fmi->dma1, _fmi->wmr_ptr[_fmi->current_page_index],
-			H2FMI_UNK18(_fmi), _fmi->num_pages_to_read * _fmi->ecc_bytes,
+	h2fmi_dma_execute_async(dir, _fmi->dma1, _fmi->meta_ptr[_fmi->current_page_index],
+			H2FMI_UNK18(_fmi), _fmi->num_pages * _fmi->ecc_bytes,
 			1, 1, NULL);
 
 	//bufferPrintf("fmi: rw_large_page done!\r\n");
@@ -1264,7 +1264,7 @@ static uint32_t h2fmi_read_state_2_handler(h2fmi_struct_t *_fmi)
 	{
 		SET_REG(H2FMI_UNKREG5(_fmi), 0);
 		h2fmi_disable_bus(_fmi);
-		_fmi->field_13C = 0x8000001D;
+		_fmi->current_status = 0x8000001D;
 		_fmi->failure_details.overall_status = 0x8000001D;
 		_fmi->state.read_state = H2FMI_READ_DONE;
 		return h2fmi_read_complete_handler(_fmi);
@@ -1291,7 +1291,7 @@ static uint32_t h2fmi_read_state_2_handler(h2fmi_struct_t *_fmi)
 		{
 			SET_REG(H2FMI_UNK4(_fmi), 0x82);
 			SET_REG(H2FMI_UNK4(_fmi), 3);
-			_fmi->field_124 = timer_get_system_microtime();
+			_fmi->last_action_time = timer_get_system_microtime();
 			uint32_t reg = GET_REG(H2FMI_UNK810(_fmi));
 			SET_REG(H2FMI_UNK810(_fmi), reg);
 			h2fmi_some_mysterious_function(_fmi, reg);
@@ -1308,9 +1308,9 @@ static uint32_t h2fmi_read_state_4_handler(h2fmi_struct_t *_fmi)
 
 	if(GET_REG(H2FMI_UNK8(_fmi)) & 4)
 	{
-		if(timer_get_system_microtime() - _fmi->field_124 > _fmi->field_134)
+		if(timer_get_system_microtime() - _fmi->last_action_time > _fmi->stage_time_interval)
 		{
-			_fmi->field_13C = 0;
+			_fmi->current_status = 0;
 			_fmi->failure_details.overall_status = 0x8000001F;
 		}
 		else
@@ -1318,7 +1318,7 @@ static uint32_t h2fmi_read_state_4_handler(h2fmi_struct_t *_fmi)
 	}
 	else
 	{
-		if(_fmi->current_page_index >= _fmi->num_pages_to_read)
+		if(_fmi->current_page_index >= _fmi->num_pages)
 		{
 			uint32_t val = GET_REG(H2FMI_UNK810(_fmi));
 			SET_REG(H2FMI_UNK810(_fmi), val);
@@ -1327,7 +1327,7 @@ static uint32_t h2fmi_read_state_4_handler(h2fmi_struct_t *_fmi)
 		else
 		{
 			h2fmi_another_function(_fmi);
-			_fmi->field_124 = timer_get_system_microtime();
+			_fmi->last_action_time = timer_get_system_microtime();
 			_fmi->state.read_state = H2FMI_READ_2;
 			return h2fmi_read_state_2_handler(_fmi);
 		}
@@ -1343,25 +1343,25 @@ static uint32_t h2fmi_read_state_1_handler(h2fmi_struct_t *_fmi)
 
 	//bufferPrintf("fmi: read_state_1_handler.\r\n");
 
-	if(_fmi->field_140 == 0)
-		r5 = (_fmi->current_page_index >= _fmi->num_pages_to_read)? 0: 1;
+	if(_fmi->needs_address_set == 0)
+		r5 = (_fmi->current_page_index >= _fmi->num_pages)? 0: 1;
 	else
 	{
-		_fmi->field_140 = 0;
+		_fmi->needs_address_set = 0;
 		r5 = 0;
 
 		h2fmi_enable_and_set_address(_fmi, _fmi->current_page_index, _fmi->chips, _fmi->pages);
 	}	
 
-	if(_fmi->current_page_index + 1 < _fmi->num_pages_to_read)
+	if(_fmi->current_page_index + 1 < _fmi->num_pages)
 	{
 		if(_fmi->chips[_fmi->current_page_index + 1] == _fmi->current_chip)
 		{
-			_fmi->field_140 = 1;
+			_fmi->needs_address_set = 1;
 		}
 		else
 		{
-			_fmi->field_140 = 0;
+			_fmi->needs_address_set = 0;
 			h2fmi_enable_and_set_address(_fmi, _fmi->current_page_index, _fmi->chips, _fmi->pages);
 
 			r5 = 1;
@@ -1378,7 +1378,7 @@ static uint32_t h2fmi_read_state_1_handler(h2fmi_struct_t *_fmi)
 
 	SET_REG(H2FMI_UNK10(_fmi), 0x100000);
 	_fmi->state.read_state = H2FMI_READ_4;
-	_fmi->field_124 = timer_get_system_microtime();
+	_fmi->last_action_time = timer_get_system_microtime();
 
 	return h2fmi_read_state_4_handler(_fmi);
 }
@@ -1391,9 +1391,9 @@ static uint32_t h2fmi_read_state_3_handler(h2fmi_struct_t *_fmi)
 
 	if((_fmi->field_48 & 2) == 0)
 	{
-		if(timer_get_system_microtime() - _fmi->field_124 > _fmi->field_12C)
+		if(timer_get_system_microtime() - _fmi->last_action_time > _fmi->time_interval)
 		{
-			_fmi->field_13C = 0;
+			_fmi->current_status = 0;
 			_fmi->failure_details.overall_status = 0x8000001C;
 			_fmi->state.read_state = H2FMI_READ_DONE;
 			return h2fmi_read_complete_handler(_fmi);
@@ -1412,12 +1412,12 @@ static uint32_t h2fmi_read_state_3_handler(h2fmi_struct_t *_fmi)
 
 static uint32_t h2fmi_some_read_timing_thing(h2fmi_struct_t *_fmi)
 {
-	_fmi->field_15C = 0;
+	_fmi->pages_done = 0;
 	_fmi->field_170 = 0xFFFFFFFF;
 	_fmi->failure_details.overall_status = 0;
 
-	_fmi->field_12C = (clock_get_frequency(FrequencyBaseTimebase) / 1000000) * 2000000;
-	_fmi->field_134 = _fmi->field_12C / 4;
+	_fmi->time_interval = (clock_get_frequency(FrequencyBaseTimebase) / 1000000) * 2000000;
+	_fmi->stage_time_interval = _fmi->time_interval / 4;
 
 	if(_fmi->state.state == H2FMI_STATE_READ)
 		h2fmi_set_ecc_bits(_fmi, 0xF);
@@ -1433,8 +1433,8 @@ static uint32_t h2fmi_some_read_timing_thing(h2fmi_struct_t *_fmi)
 static uint32_t h2fmi_read_idle_handler(h2fmi_struct_t *_fmi)
 {
 	_fmi->current_page_index = 0;
-	_fmi->field_13C = 1;
-	_fmi->field_140 = 1;
+	_fmi->current_status = 1;
+	_fmi->needs_address_set = 1;
 
 	_fmi->current_chip = *_fmi->chips;
 
@@ -1488,14 +1488,14 @@ int h2fmi_read_multi(h2fmi_struct_t *_fmi, uint16_t _num_pages, uint16_t *_chips
 	_fmi->chips = _chips;
 	_fmi->pages = _pages;
 	_fmi->data_ptr = _ptr;
-	_fmi->num_pages_to_read = _num_pages;
-	_fmi->wmr_ptr = _wmr_ptr;
-	_fmi->field_148 = _6;
-	_fmi->field_158 = _7;
+	_fmi->num_pages = _num_pages;
+	_fmi->meta_ptr = _wmr_ptr;
+	_fmi->page_ecc_output = _6;
+	_fmi->ecc_ptr = _7;
 
-	_fmi->field_14C = 0;
-	_fmi->field_154 = 0;
-	_fmi->field_150 = 0;
+	_fmi->num_pages_empty = 0;
+	_fmi->num_pages_ecc_failed = 0;
+	_fmi->num_pages_failed = 0;
 
 	h2fmi_device_reset(_fmi);
 
@@ -1519,7 +1519,7 @@ int h2fmi_read_multi(h2fmi_struct_t *_fmi, uint16_t _num_pages, uint16_t *_chips
 
 	//bufferPrintf("fmi: state machine done.\r\n");
 
-	if(_fmi->field_13C != 0)
+	if(_fmi->current_status != 0)
 	{
 		if(h2fmi_dma_wait(_fmi->dma0, 2000000) != 0
 				|| h2fmi_dma_wait(_fmi->dma1, 2000000) != 0)
@@ -1545,8 +1545,8 @@ int h2fmi_read_multi(h2fmi_struct_t *_fmi, uint16_t _num_pages, uint16_t *_chips
 	}
 	else
 	{
-		uint32_t a = _fmi->field_150;
-		uint32_t b = _fmi->field_14C;
+		uint32_t a = _fmi->num_pages_failed;
+		uint32_t b = _fmi->num_pages_empty;
 
 		//bufferPrintf("fmi: Some error thing. 0x%08x 0x%08x.\r\n", a, b);
 
@@ -1560,7 +1560,7 @@ int h2fmi_read_multi(h2fmi_struct_t *_fmi, uint16_t _num_pages, uint16_t *_chips
 			{
 				_fmi->failure_details.overall_status  = a > _num_pages? 0x80000025: ENAND_ECC;
 			}
-			else if(_fmi->field_154 != 0)
+			else if(_fmi->num_pages_ecc_failed != 0)
 			{
 				_fmi->failure_details.overall_status = ENAND_ECC;
 			}
@@ -1585,11 +1585,11 @@ static int h2fmi_write_set_ce(h2fmi_struct_t *_fmi)
 	_fmi->current_chip = _fmi->chips[_fmi->current_page_index];
 	h2fmi_enable_chip(_fmi, _fmi->chips[_fmi->current_page_index]);
 	
-	if (!(_fmi->field_88 & (1 << _fmi->current_chip)))
+	if (!(_fmi->chips_done_mask & (1 << _fmi->current_chip)))
 		return 1;
 		
 	h2fmi_another_function(_fmi);
-	_fmi->field_88 = _fmi->field_88 & ~(1 << _fmi->current_chip);
+	_fmi->chips_done_mask = _fmi->chips_done_mask & ~(1 << _fmi->current_chip);
 	return 0;
 }
 
@@ -1617,7 +1617,7 @@ static void h2fmi_enable_set_address_pio_write(h2fmi_struct_t* _fmi, uint32_t pa
 
 static void h2fmi_write_set_page(h2fmi_struct_t *_fmi)
 {
-	_fmi->field_88 = _fmi->field_88 | (1 << _fmi->current_chip);
+	_fmi->chips_done_mask = _fmi->chips_done_mask | (1 << _fmi->current_chip);
 	_fmi->current_page = _fmi->pages[_fmi->current_page_index];
 	
 	h2fmi_enable_set_address_pio_write(_fmi, _fmi->current_page);
@@ -1625,8 +1625,8 @@ static void h2fmi_write_set_page(h2fmi_struct_t *_fmi)
 	SET_REG(H2FMI_UNK10(_fmi), 2);
 	SET_REG(H2FMI_UNK4(_fmi), 5);
 	
-	_fmi->field_124 = timer_get_system_microtime();
-	_fmi->field_15C++;
+	_fmi->last_action_time = timer_get_system_microtime();
+	_fmi->pages_done++;
 	
 	h2fmi_set_pio_write(_fmi);
 }
@@ -1641,7 +1641,7 @@ static uint32_t h2fmi_get_current_writable_CE_state(h2fmi_struct_t *_fmi)
 {
 	uint32_t val = h2fmi_function_2(_fmi);
 	
-	if(GET_REG(H2FMI_UNK448(_fmi)) & 0x80)
+	if((GET_REG(H2FMI_UNK448(_fmi)) & 0x80) != 0x80)
 		system_panic("h2fmi write failed to get CE state!\r\n");
 	
 	return val;
@@ -1656,7 +1656,7 @@ static uint32_t h2fmi_write_complete_handler(h2fmi_struct_t *_fmi)
 
 static uint32_t h2fmi_write_state_4_handler(h2fmi_struct_t* _fmi)
 {
-	if (!_fmi->field_88)
+	if (!_fmi->chips_done_mask)
 	{
 		h2fmi_disable_bus(_fmi);
 		_fmi->state.write_state = H2FMI_WRITE_DONE;
@@ -1664,7 +1664,7 @@ static uint32_t h2fmi_write_state_4_handler(h2fmi_struct_t* _fmi)
 	}
 	
 	uint32_t chip_pos = 0;
-	while (!(_fmi->field_88 & (1 << chip_pos)))
+	while (!(_fmi->chips_done_mask & (1 << chip_pos)))
 		chip_pos++;
 		
 	h2fmi_enable_chip(_fmi, chip_pos);
@@ -1674,7 +1674,7 @@ static uint32_t h2fmi_write_state_4_handler(h2fmi_struct_t* _fmi)
 	_fmi->current_chip = chip_pos;
 	
 	h2fmi_another_function(_fmi);
-	_fmi->field_124 = timer_get_system_microtime();
+	_fmi->last_action_time = timer_get_system_microtime();
 	_fmi->state.write_state = H2FMI_WRITE_5;
 
 	return 0;
@@ -1693,8 +1693,8 @@ static uint32_t h2fmi_write_state_5_handler(h2fmi_struct_t *_fmi)
 		
 		h2fmi_get_current_chip(_fmi, (uint8_t)ret);		
 		_fmi->state.write_state = H2FMI_WRITE_5;
-		_fmi->field_88 = _fmi->field_88 & ~(1 << _fmi->current_chip);
-		_fmi->field_13C = ret;
+		_fmi->chips_done_mask = _fmi->chips_done_mask & ~(1 << _fmi->current_chip);
+		_fmi->current_status = ret;
 	}
 	else
 	{
@@ -1705,23 +1705,23 @@ static uint32_t h2fmi_write_state_5_handler(h2fmi_struct_t *_fmi)
 		
 		if(!value)
 		{
-			_fmi->field_13C = 0;
+			_fmi->current_status = 0;
 			h2fmi_get_current_chip(_fmi, bValue);
 		}
 		
 		SET_REG(H2FMI_UNKREG5(_fmi), 0);
 		
 		uint32_t chip_pos = 0;
-		while (!(_fmi->field_88 & (1 << chip_pos)))
+		while (!(_fmi->chips_done_mask & (1 << chip_pos)))
 			chip_pos++;
 		
 		if ((_fmi->write_setting - 4) <= 1)
-			_fmi->field_88 = _fmi->field_88 & (1 << chip_pos);
+			_fmi->chips_done_mask = _fmi->chips_done_mask & (1 << chip_pos);
 		
 		if (_fmi->field_98 == 0)
 			_fmi->field_98 = 1;
 		else
-			_fmi->field_88 = _fmi->field_88 & ~(1 << chip_pos);
+			_fmi->chips_done_mask = _fmi->chips_done_mask & ~(1 << chip_pos);
 			
 		_fmi->current_page_index++;
 		_fmi->current_chip = chip_pos;
@@ -1745,8 +1745,8 @@ static uint32_t h2fmi_write_state_2_handler(h2fmi_struct_t *_fmi)
 			return 0;
 		
 		_fmi->state.write_state = H2FMI_WRITE_5;
-		_fmi->field_88 = _fmi->field_88 & ~(1 << _fmi->current_chip);
-		_fmi->field_13C = ret;
+		_fmi->chips_done_mask = _fmi->chips_done_mask & ~(1 << _fmi->current_chip);
+		_fmi->current_status = ret;
 	}
 	
 	else
@@ -1769,7 +1769,7 @@ static uint32_t h2fmi_write_state_2_handler(h2fmi_struct_t *_fmi)
 			return 0;
 		}
 		
-		_fmi->field_13C = 0;
+		_fmi->current_status = 0;
 		_fmi->state.write_state = H2FMI_WRITE_4;
 	}
 	
@@ -1788,7 +1788,7 @@ static uint32_t h2fmi_write_state_3_handler(h2fmi_struct_t* _fmi)
 		h2fmi_tx_pio_ready(_fmi);
 		
 		_fmi->current_page_index++;
-		if (_fmi->current_page_index >= _fmi->num_pages_to_read)
+		if (_fmi->current_page_index >= _fmi->num_pages)
 		{
 			_fmi->state.write_state = H2FMI_WRITE_4;
 			h2fmi_write_state_4_handler(_fmi);
@@ -1801,7 +1801,7 @@ static uint32_t h2fmi_write_state_3_handler(h2fmi_struct_t* _fmi)
 			else
 			{
 				_fmi->state.write_state = H2FMI_WRITE_2;
-				_fmi->field_124 = timer_get_system_microtime();
+				_fmi->last_action_time = timer_get_system_microtime();
 				return 0;
 			}
 		}
@@ -1809,9 +1809,9 @@ static uint32_t h2fmi_write_state_3_handler(h2fmi_struct_t* _fmi)
 	else
 	{
 		uint64_t current_time = timer_get_system_microtime();
-		if ((current_time - _fmi->field_124) > _fmi->field_12C) // _fmi->field_12C rename to _fmi->time_interval
+		if ((current_time - _fmi->last_action_time) > _fmi->time_interval) // _fmi->time_interval rename to _fmi->time_interval
 		{
-			_fmi->field_13C = setting;
+			_fmi->current_status = setting;
 			_fmi->state.write_state = H2FMI_WRITE_4;
 			return h2fmi_write_state_4_handler(_fmi);
 		}
@@ -1825,7 +1825,7 @@ static uint32_t h2fmi_write_state_1_handler(h2fmi_struct_t* _fmi)
 {
 	if (!h2fmi_write_set_ce(_fmi))
 	{
-		_fmi->field_124 = timer_get_system_microtime();
+		_fmi->last_action_time = timer_get_system_microtime();
 		_fmi->state.write_state = H2FMI_WRITE_2;
 		return 0;
 	}
@@ -1839,8 +1839,8 @@ static uint32_t h2fmi_write_state_1_handler(h2fmi_struct_t* _fmi)
 static uint32_t h2fmi_write_idle_handler(h2fmi_struct_t* _fmi)
 {
 	_fmi->current_page_index = 0; // rename to _fmi->array_index
-	_fmi->field_13C = 1;
-	_fmi->field_88 = 0;   // create field_88
+	_fmi->current_status = 1;
+	_fmi->chips_done_mask = 0;   // create chips_done_mask
 	_fmi->field_98 = 0;  // create field_98
 	
 	h2fmi_some_read_timing_thing(_fmi);  // rename this to h2fmi_some_rw_timing_thing
@@ -1892,7 +1892,7 @@ static int h2fmi_write_multi(h2fmi_struct_t *_fmi, uint16_t _num_pages, uint16_t
 	uint32_t reg_value;
 	
 	if (_fmi->current_mode != 0) 
-	    system_panic("h2fmi_write_multi: current_mode is fmiNone\r\n");
+	    system_panic("h2fmi_write_multi: tried to write whilst other action in progress.\r\n");
 	
 	reg_value = GET_REG(H2FMI_UNKREG1(_fmi));
 	
@@ -1901,8 +1901,8 @@ static int h2fmi_write_multi(h2fmi_struct_t *_fmi, uint16_t _num_pages, uint16_t
 	_fmi->chips = _chips;
 	_fmi->pages = _pages;
 	_fmi->data_ptr = _data_ptr;
-	_fmi->num_pages_to_read = _num_pages; // should change num_pages_to_read to num_pages
-	_fmi->wmr_ptr = _meta_ptr;
+	_fmi->num_pages = _num_pages; // should change num_pages to num_pages
+	_fmi->meta_ptr = _meta_ptr;
 	_fmi->write_setting = setting;
 	_fmi->fmi_state = 0;
 
@@ -1923,7 +1923,7 @@ static int h2fmi_write_multi(h2fmi_struct_t *_fmi, uint16_t _num_pages, uint16_t
 		task_yield();
 	}
 	
-	if(_fmi->field_13C != 0)
+	if(_fmi->current_status != 0)
 	{
 		if(h2fmi_dma_wait(_fmi->dma0, 2000000) != 0
 				|| h2fmi_dma_wait(_fmi->dma1, 2000000) != 0)
@@ -1932,20 +1932,18 @@ static int h2fmi_write_multi(h2fmi_struct_t *_fmi, uint16_t _num_pages, uint16_t
 			return 1;
 		}
 	}
-	else		// need to fix h2fmi_read_multi for this
-	{
-		h2fmi_dma_cancel(_fmi->dma0);
-		h2fmi_dma_cancel(_fmi->dma1);
-	}
+
+	h2fmi_dma_cancel(_fmi->dma0);
+	h2fmi_dma_cancel(_fmi->dma1);
 	
 	SET_REG(H2FMI_UNKREG1(_fmi), reg_value);
 	_fmi->current_mode = 0;
 	_fmi->state.state = H2FMI_STATE_IDLE;
 	
-	if (_fmi->field_148 != NULL)
-		*status = _fmi->field_13C != 0 ? 0 : 1;
+	if(_fmi->page_ecc_output != NULL)
+		*status = _fmi->current_status != 0 ? 0 : 1;
 	
-	return (_fmi->field_13C);
+	return (_fmi->current_status);
 	
 }
 		 			
@@ -2870,6 +2868,24 @@ void cmd_nand_write(int argc, char** argv)
 	bufferPrintf("fmi: Command completed with result 0x%08x.\r\n", ret);
 }
 COMMAND("nand_write", "H2FMI NAND test", cmd_nand_write);
+
+void cmd_nand_write_bootpage(int argc, char** argv)
+{
+	if(argc < 4)
+	{
+		bufferPrintf("Usage: %s [ce] [page] [data]\r\n", argv[0]);
+		return;
+	}
+	
+	uint32_t ce = parseNumber(argv[1]);
+	uint32_t page = parseNumber(argv[2]);
+	uint32_t data = parseNumber(argv[3]);
+
+	uint32_t ret = h2fmi_write_bootpage(ce, page, (uint8_t*)data);
+
+	bufferPrintf("fmi: Command completed with result 0x%08x.\r\n", ret);
+}
+COMMAND("nand_write_bootpage", "H2FMI NAND test", cmd_nand_write_bootpage);
 
 static void cmd_vfl_read(int argc, char** argv)
 {

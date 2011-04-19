@@ -86,7 +86,6 @@ typedef struct _h2fmi_struct
 	uint32_t dma1;
 
 	uint32_t current_page; // Somewhere in IOP
-	uint8_t write_setting; // Somewhere in IOP
 	uint32_t unkn_regvalue; // Somewhere in IOP
 
 	uint32_t field_8;
@@ -112,28 +111,28 @@ typedef struct _h2fmi_struct
 	uint8_t *aes_iv_pointer; // 68
 	h2fmi_state_t state; // 6C
 	uint32_t current_page_index; // 78
-	uint32_t num_pages_to_read;
+	uint32_t num_pages;
 	uint32_t field_80;
-	uint32_t field_88; // 88 in IOP
+	uint32_t chips_done_mask; // 88 in IOP
 	uint32_t field_98; // 98 in IOP
 	uint32_t field_100;
-	uint32_t field_110;
+	uint32_t write_setting; // 110
 	uint16_t *chips;
 	uint32_t *pages;
 	uint8_t **data_ptr; // 114
-	uint8_t **wmr_ptr; // 118
-	uint64_t field_124;
-	uint64_t field_12C;
-	uint64_t field_134;
-	uint32_t field_13C;
-	uint32_t field_140;
+	uint8_t **meta_ptr; // 118
+	uint64_t last_action_time; // 124
+	uint64_t time_interval; // 12C
+	uint64_t stage_time_interval; // 134
+	uint32_t current_status; // 13C
+	uint32_t needs_address_set; // 140
 	uint16_t current_chip; // 144
-	uint8_t *field_148;
-	uint32_t field_14C;
-	uint32_t field_150;
-	uint32_t field_154;
-	uint8_t *field_158;
-	uint32_t field_15C;
+	uint8_t *page_ecc_output; // 148
+	uint32_t num_pages_empty; // 14C
+	uint32_t num_pages_failed; // 150
+	uint32_t num_pages_ecc_failed; // 154
+	uint8_t *ecc_ptr; // 158
+	uint32_t pages_done; // 15C
 	h2fmi_failure_details_t failure_details; // 160
 	uint32_t field_170;
 	uint32_t field_180;
