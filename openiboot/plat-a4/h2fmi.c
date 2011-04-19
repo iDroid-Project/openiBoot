@@ -547,7 +547,49 @@ static int h2fmi_tx_wait_page_done(h2fmi_struct_t* _fmi)
 	return 0;
 }
 
-static void h2fmi_inner_function(h2fmi_struct_t *_fmi, uint8_t _a, uint8_t _b);
+static void h2fmi_inner_function(h2fmi_struct_t *_fmi, uint8_t _a, uint8_t _b)
+{
+	SET_REG(H2FMI_UNKREG1(_fmi), GET_REG(H2FMI_UNKREG1(_fmi)) &~ 0x100000);
+	SET_REG(H2FMI_UNK44C(_fmi), _a | (_b << 8));
+
+	uint32_t val;
+	if(_fmi->state.state == H2FMI_STATE_WRITE)
+	{
+		if(_fmi->field_100 == 4)
+		{
+			if(_fmi->current_page_index & 1)
+				val = 0xF2;
+			else
+				val = 0xF1;
+		}
+		else if(_fmi->field_100 == 5)
+		{
+			if(_fmi->current_page_index & 2)
+				val = 0xF2;
+			else
+				val = 0xF1;
+		}
+		else if(_fmi->field_100 == 2)
+		{
+			val = 0x71;
+		}
+		else
+			val = 0x70;
+	}
+	else
+		val = 0x70;
+
+	SET_REG(H2FMI_UNKREG4(_fmi), val);
+	SET_REG(H2FMI_UNKREG5(_fmi), 1);
+	while(!(GET_REG(H2FMI_UNKREG6(_fmi)) & 1));
+	SET_REG(H2FMI_UNKREG6(_fmi), 1);
+
+	h2fmi_hw_reg_int_init(_fmi);
+
+	SET_REG(H2FMI_UNKREG8(_fmi), 0);
+	SET_REG(H2FMI_UNKREG5(_fmi), 0x50);
+}
+
 static int h2fmi_wait_status(h2fmi_struct_t* _fmi, uint32_t a1, uint32_t a2, uint32_t* status)
 {
 	h2fmi_inner_function(_fmi, (uint8_t)a1, (uint8_t)a2);
@@ -1096,47 +1138,50 @@ static void h2fmi_set_ecc_bits(h2fmi_struct_t *_fmi, uint32_t _a)
 }
 
 static uint32_t h2fmi_function_1(h2fmi_struct_t *_fmi,
-		uint32_t _val, uint8_t *_var, uint8_t *_a, uint32_t _b)
+		uint32_t _val, uint8_t *_var, uint8_t *_meta_ptr, uint32_t _meta_len)
 {
-	uint32_t a = 0;
-	uint32_t b = 0;
-
-	uint32_t ret = (_val & 8)? ENAND_ECC: 1;
+	uint32_t num_empty = 0;
+	uint32_t num_failed = 0;
 
 	if(_var)
 		*_var = (_val >> 16) & 0x1F;
 
-	uint8_t *ptr = _a;
-	uint32_t counter;
-	for(counter = 0; counter != _b; counter++)
+	uint32_t i;
+	for(i = 0; i != _meta_len; i++)
 	{
 		uint32_t status = GET_REG(H2FMI_UNK80C(_fmi));
+		uint8_t val;
 		if (status & 2) // 1
 		{
-			*ptr = 0xFE;
-			a++;
+			val = 0xFE;
+			num_empty = (num_empty+1) % 256;
 		}
 		else if (status & 4) // 2
 		{
-			*ptr = 0xFF;
-			b++;
+			val = 0xFF;
+			num_failed = (num_failed+1) % 256;
 		}
 		else if (status & 1) // 3
-			*ptr = 0xFF;
+			val = 0xFF;
 		else // 0
-			*ptr = (status >> 16) & 0x1F;
+			val = (status >> 16) & 0x1F;
 
-		ptr++;
+		if(_meta_ptr)
+			_meta_ptr[i] = val;
 	}
 
 	SET_REG(H2FMI_UNK4(_fmi), GET_REG(H2FMI_UNK4(_fmi)) & ~(1<<7));
 
-	if (_b == b)
-		ret = 0x80000025;
-	if (_b == a)
-		ret = 2;
+	if(num_empty == _meta_len)
+		return 2;
 
-	return ret;
+	if(num_failed == _meta_len)
+		return 0x80000025;
+
+	if(_val & 8)
+		return ENAND_ECC;
+
+	return 1;
 }
 
 static void h2fmi_some_mysterious_function(h2fmi_struct_t *_fmi, uint32_t _val)
@@ -1183,49 +1228,6 @@ static uint32_t h2fmi_function_2(h2fmi_struct_t *_fmi)
 
 		return val ^ 1;
 	}
-}
-
-static void h2fmi_inner_function(h2fmi_struct_t *_fmi, uint8_t _a, uint8_t _b)
-{
-	SET_REG(H2FMI_UNKREG1(_fmi), GET_REG(H2FMI_UNKREG1(_fmi)) &~ 0x100000);
-	SET_REG(H2FMI_UNK44C(_fmi), _a | (_b << 8));
-
-	uint32_t val;
-	if(_fmi->state.state == H2FMI_STATE_WRITE)
-	{
-		if(_fmi->field_100 == 4)
-		{
-			if(_fmi->current_page_index & 1)
-				val = 0xF2;
-			else
-				val = 0xF1;
-		}
-		else if(_fmi->field_100 == 5)
-		{
-			if(_fmi->current_page_index & 2)
-				val = 0xF2;
-			else
-				val = 0xF1;
-		}
-		else if(_fmi->field_100 == 2)
-		{
-			val = 0x71;
-		}
-		else
-			val = 0x70;
-	}
-	else
-		val = 0x70;
-
-	SET_REG(H2FMI_UNKREG4(_fmi), val);
-	SET_REG(H2FMI_UNKREG5(_fmi), 1);
-	while(!(GET_REG(H2FMI_UNKREG6(_fmi)) & 1));
-	SET_REG(H2FMI_UNKREG6(_fmi), 1);
-
-	h2fmi_hw_reg_int_init(_fmi);
-
-	SET_REG(H2FMI_UNKREG8(_fmi), 0);
-	SET_REG(H2FMI_UNKREG5(_fmi), 0x50);
 }
 
 static void h2fmi_another_function(h2fmi_struct_t *_fmi)
@@ -1908,7 +1910,7 @@ static int h2fmi_write_multi(h2fmi_struct_t *_fmi, uint16_t _num_pages, uint16_t
 	SET_REG(H2FMI_UNKREG1(_fmi), reg_value | 0x200000);
 	_fmi->current_mode = 2;
 	_fmi->state.state = H2FMI_STATE_WRITE;
-	_fmi->state.write_state = H2FMI_WRITE_IDLE; // add write_state
+	_fmi->state.write_state = H2FMI_WRITE_IDLE;
 	
 	LeaveCriticalSection();
 
