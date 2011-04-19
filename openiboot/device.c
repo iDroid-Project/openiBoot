@@ -10,7 +10,7 @@ static inline device_t *device_get(LinkedList *_ptr)
 	return CONTAINER_OF(device_t, list_ptr, _ptr);
 }
 
-int device_init(device_t *_dev)
+error_t device_init(device_t *_dev)
 {
 	_dev->list_ptr.next = NULL;
 	_dev->list_ptr.prev = NULL;
@@ -18,10 +18,10 @@ int device_init(device_t *_dev)
 	_dev->children.next = &_dev->children;
 	_dev->children.prev = &_dev->children;
 
-	return 0;
+	return SUCCESS;
 }
 
-int device_register(device_t *_dev)
+error_t device_register(device_t *_dev)
 {
 	EnterCriticalSection();
 	LinkedList *prev = device_list.prev;
@@ -31,7 +31,7 @@ int device_register(device_t *_dev)
 	device_list.prev = &_dev->list_ptr;
 	LeaveCriticalSection();
 
-	return 0;
+	return SUCCESS;
 }
 
 void device_unregister(device_t *_dev)

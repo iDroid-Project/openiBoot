@@ -1,11 +1,12 @@
 #include "h2fmi.h"
 #include "hardware/h2fmi.h"
-#include "vfl/vfl.h"
 #include "timer.h"
 #include "tasks.h"
 #include "clock.h"
 #include "util.h"
 #include "cdma.h"
+#include "vfl.h"
+#include "ftl.h"
 #include "hardware/dma.h"
 #include "commands.h"
 #include "arm/arm.h"
@@ -321,8 +322,13 @@ static h2fmi_struct_t *h2fmi_busses[] = {
 #define H2FMI_BUS_COUNT (ARRAY_SIZE(h2fmi_busses))
 
 h2fmi_geometry_t h2fmi_geometry;
-static nand_device_t h2fmi_device;
+static nand_device_t h2fmi_device = {
+	.device = {
+		.name = "H2FMI",
+	},
+};
 static vfl_device_t *h2fmi_vfl_device;
+static ftl_device_t *h2fmi_ftl_device;
 
 typedef struct _h2fmi_map_entry
 {
@@ -2397,6 +2403,13 @@ static error_t h2fmi_device_read_single_page(nand_device_t *_dev, uint32_t _chip
 			_buffer, _spareBuffer, NULL, NULL, 0);
 }
 
+static error_t h2fmi_device_write_single_page(nand_device_t *_dev, uint32_t _chip, uint32_t _block,
+		uint32_t _page, uint8_t *_buffer, uint8_t *_spareBuffer)
+{
+	return h2fmi_write_single_page(_chip, _block*h2fmi_geometry.pages_per_block + _page,
+			_buffer, _spareBuffer, 0);
+}
+
 static error_t h2fmi_device_enable_encryption(nand_device_t *_dev, int _enabled)
 {
 	h2fmi_aes_enabled = _enabled;
@@ -2567,14 +2580,22 @@ static void h2fmi_init_device()
 {
 	nand_device_init(&h2fmi_device);
 	h2fmi_device.read_single_page = h2fmi_device_read_single_page;
+	h2fmi_device.write_single_page = h2fmi_device_write_single_page;
 	h2fmi_device.enable_encryption = h2fmi_device_enable_encryption;
 	h2fmi_device.enable_data_whitening = h2fmi_device_enable_data_whitening;
 	h2fmi_device.device.get_info = h2fmi_device_get_info;
 	h2fmi_device.device.set_info = h2fmi_device_set_info;
+	nand_device_register(&h2fmi_device);
 
 	if(FAILED(vfl_detect(&h2fmi_vfl_device, &h2fmi_device, vfl_new_signature)))
 	{
 		bufferPrintf("fmi: Failed to open VFL!\r\n");
+		return;
+	}
+
+	if(FAILED(ftl_detect(&h2fmi_ftl_device, h2fmi_vfl_device)))
+	{
+		bufferPrintf("fmi: Failed to open FTL!\r\n");
 		return;
 	}
 }

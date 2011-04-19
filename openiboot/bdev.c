@@ -9,7 +9,7 @@ static inline block_device_t *bdev_get(LinkedList *_ptr)
 	return CONTAINER_OF(block_device_t, list_ptr, _ptr);
 }
 
-static int block_device_prepare(block_device_t *_bdev)
+static error_t block_device_prepare(block_device_t *_bdev)
 {
 	if(_bdev->prepare)
 		return _bdev->prepare(_bdev);
@@ -23,7 +23,7 @@ static void block_device_finish(block_device_t *_bdev)
 		_bdev->finish(_bdev);
 }
 
-static int block_device_read_raw(block_device_t *_bdev, void *_dest, int _sz)
+static error_t block_device_read_raw(block_device_t *_bdev, void *_dest, int _sz)
 {
 	if(!_bdev->read)
 		return -1;
@@ -31,7 +31,7 @@ static int block_device_read_raw(block_device_t *_bdev, void *_dest, int _sz)
 	return _bdev->read(_bdev, _dest, _sz);
 }
 
-static int block_device_write_raw(block_device_t *_bdev, void *_src, int _sz)
+static error_t block_device_write_raw(block_device_t *_bdev, void *_src, int _sz)
 {
 	if(!_bdev->write)
 		return -1;
@@ -39,7 +39,7 @@ static int block_device_write_raw(block_device_t *_bdev, void *_src, int _sz)
 	return _bdev->write(_bdev, _src, _sz);
 }
 
-static int block_device_seek_raw(block_device_t *_bdev, seek_mode_t _mode, int64_t _amt)
+static error_t block_device_seek_raw(block_device_t *_bdev, seek_mode_t _mode, int64_t _amt)
 {
 	if(!_bdev->seek)
 		return -1;
@@ -47,7 +47,7 @@ static int block_device_seek_raw(block_device_t *_bdev, seek_mode_t _mode, int64
 	return _bdev->seek(_bdev, _mode, _amt);
 }
 
-static int block_device_sync_raw(block_device_t *_bdev)
+static error_t block_device_sync_raw(block_device_t *_bdev)
 {
 	if(!_bdev->sync)
 		return -1;
@@ -55,7 +55,7 @@ static int block_device_sync_raw(block_device_t *_bdev)
 	return _bdev->sync(_bdev);
 }
 
-int block_device_init(block_device_t *_bdev)
+error_t block_device_init(block_device_t *_bdev)
 {
 	memset(&_bdev->mbr, 0, sizeof(MBR));
 	memset(&_bdev->gpt, 0, sizeof(GPT));
@@ -67,22 +67,22 @@ int block_device_init(block_device_t *_bdev)
 	_bdev->mbr_records = _bdev->mbr.partitions;
 	_bdev->gpt_records = malloc(sizeof(GPTPartitionRecord)*128);
 
-	return 0;
+	return SUCCESS;
 }
 
-int block_device_setup(block_device_t *_bdev)
+error_t block_device_setup(block_device_t *_bdev)
 {
 	if(_bdev->setup_done)
 		return 0;
 
 	block_device_prepare(_bdev);
 
-	int ret = block_device_seek_raw(_bdev, seek_begin, 0);
-	if(!ret)
+	error_t ret = block_device_seek_raw(_bdev, seek_begin, 0);
+	if(SUCCEEDED(ret))
 	{
 		_bdev->part_mode = partitioning_mbr;
 		ret = block_device_read_raw(_bdev, &_bdev->mbr, sizeof(MBR));
-		if(ret >= 0)
+		if(SUCCEEDED(ret))
 		{
 			int i;
 			for(i = 0; i < ARRAY_SIZE(_bdev->mbr.partitions); i++)
@@ -100,10 +100,10 @@ int block_device_setup(block_device_t *_bdev)
 				if(block_size > 0)
 				{
 					ret = block_device_seek_raw(_bdev, seek_begin, block_size);
-					if(!ret)
+					if(SUCCEEDED(ret))
 					{
 						ret = block_device_read_raw(_bdev, &_bdev->gpt, sizeof(_bdev->gpt));
-						if(ret >= 0)
+						if(SUCCEEDED(ret))
 						{
 							uint32_t oldCRC32 = _bdev->gpt.headerChecksum;
 							uint32_t newCRC32 = 0;
@@ -121,10 +121,10 @@ int block_device_setup(block_device_t *_bdev)
 								bufferPrintf("bdev: guid partition table detected\n");
 
 								ret = block_device_seek_raw(_bdev, seek_begin, _bdev->gpt.partitionEntriesFirstLBA * block_size);
-								if(!ret)
+								if(SUCCEEDED(ret))
 								{
 									ret = block_device_read_raw(_bdev, _bdev->gpt_records, sizeof(GPTPartitionRecord) * (_bdev->gpt.numPartitions > 128 ? 128 : _bdev->gpt.numPartitions));
-									if(ret > 0)
+									if(SUCCEEDED(ret))
 									{
 										i = 0;
 										while(_bdev->gpt_records[i].type[1] != 0)
@@ -177,10 +177,10 @@ int block_device_setup(block_device_t *_bdev)
 
 	_bdev->setup_done = 1;
 
-	return 0;
+	return SUCCESS;
 }
 
-int block_device_register(block_device_t *_bdev)
+error_t block_device_register(block_device_t *_bdev)
 {
 	EnterCriticalSection();
 	LinkedList *prev = bdev_list.prev;
@@ -316,17 +316,17 @@ int block_device_get_start(block_device_handle_t _handle)
 	}
 }
 
-int block_device_read(block_device_handle_t _handle, void *_dest, int _sz)
+error_t block_device_read(block_device_handle_t _handle, void *_dest, int _sz)
 {
 	return block_device_read_raw(_handle->device, _dest, _sz);
 }
 
-int block_device_write(block_device_handle_t _handle, void *_src, int _sz)
+error_t block_device_write(block_device_handle_t _handle, void *_src, int _sz)
 {
 	return block_device_write_raw(_handle->device, _src, _sz);
 }
 
-int block_device_seek(block_device_handle_t _handle, seek_mode_t _mode, int64_t _amt)
+error_t block_device_seek(block_device_handle_t _handle, seek_mode_t _mode, int64_t _amt)
 {
 	block_device_t *bdev = _handle->device;
 
@@ -376,11 +376,11 @@ int block_device_seek(block_device_handle_t _handle, seek_mode_t _mode, int64_t 
 		}
 
 	default:
-		return -1;
+		return EINVAL;
 	};
 }
 
-int block_device_sync(block_device_handle_t _h)
+error_t block_device_sync(block_device_handle_t _h)
 {
 	return block_device_sync_raw(_h->device);
 }

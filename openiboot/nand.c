@@ -16,11 +16,18 @@ void nand_device_cleanup(nand_device_t *_nand)
 {
 }
 
-nand_device_t *nand_device_allocate()
+error_t nand_device_register(nand_device_t *_nand)
 {
-	nand_device_t *ret = malloc(sizeof(*ret));
-	nand_device_init(ret);
-	return ret;
+	error_t ret = device_register(&_nand->device);
+	if(FAILED(ret))
+		return ret;
+
+	return SUCCESS;
+}
+
+void nand_device_unregister(nand_device_t *_nand)
+{
+	device_unregister(&_nand->device);
 }
 
 error_t nand_device_read_single_page(nand_device_t *_dev, uint32_t _chip, uint32_t _block,

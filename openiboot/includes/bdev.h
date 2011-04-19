@@ -66,13 +66,13 @@ typedef enum _seek_mode
 } seek_mode_t;
 
 struct _block_device;
-typedef int (*block_device_prepare_t)(struct _block_device *);
+typedef error_t (*block_device_prepare_t)(struct _block_device *);
 typedef void (*block_device_finish_t)(struct _block_device *);
 
-typedef int (*block_device_read_t)(struct _block_device *, void *_dest, int _sz);
-typedef int (*block_device_write_t)(struct _block_device *, void *_src, int _sz);
-typedef int (*block_device_seek_t)(struct _block_device *, seek_mode_t _mode, int64_t _amt);
-typedef int (*block_device_sync_t)(struct _block_device *);
+typedef error_t (*block_device_read_t)(struct _block_device *, void *_dest, int _sz);
+typedef error_t (*block_device_write_t)(struct _block_device *, void *_src, int _sz);
+typedef error_t (*block_device_seek_t)(struct _block_device *, seek_mode_t _mode, int64_t _amt);
+typedef error_t (*block_device_sync_t)(struct _block_device *);
 
 typedef int (*block_device_get_attribute_t)(struct _block_device *);
 
@@ -114,8 +114,8 @@ typedef struct _block_device_handle_struct
 typedef block_device_handle_t bdev_handle_t;
 
 // For drivers
-int block_device_init(block_device_t *_bdev);
-int block_device_register(block_device_t *_bdev);
+error_t block_device_init(block_device_t *_bdev);
+error_t block_device_register(block_device_t *_bdev);
 void block_device_unregister(block_device_t *_bdev);
 
 // For clients
@@ -130,9 +130,9 @@ void block_device_close(block_device_handle_t);
 
 int block_device_get_start(block_device_handle_t _handle);
 
-int block_device_read(block_device_handle_t, void *_dest, int _sz);
-int block_device_write(block_device_handle_t, void *_src, int _sz);
-int block_device_seek(block_device_handle_t, seek_mode_t _mode, int64_t _amt);
-int block_device_sync(block_device_handle_t);
+error_t block_device_read(block_device_handle_t, void *_dest, int _sz);
+error_t block_device_write(block_device_handle_t, void *_src, int _sz);
+error_t block_device_seek(block_device_handle_t, seek_mode_t _mode, int64_t _amt);
+error_t block_device_sync(block_device_handle_t);
 
 #endif //BDEV_H

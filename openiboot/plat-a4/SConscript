@@ -19,6 +19,7 @@ plat_a4_src = arch_arm_src + env.Localize([
 	'#bdev.c',
 	'#nand.c',
 	'#vfl.c',
+	'#ftl.c',
 	'#openiboot.c',
 	'#util.c',
 	'#malloc.c',

@@ -40,7 +40,8 @@ typedef struct _nand_device
 void nand_device_init(nand_device_t *_nand);
 void nand_device_cleanup(nand_device_t *_nand);
 
-nand_device_t *nand_device_allocate();
+error_t nand_device_register(nand_device_t *_nand);
+void nand_device_unregister(nand_device_t *_nand);
 
 error_t nand_device_read_single_page(nand_device_t *_dev, uint32_t _chip, uint32_t _block,
 		uint32_t _page, uint8_t *_buffer, uint8_t *_spareBuffer);
