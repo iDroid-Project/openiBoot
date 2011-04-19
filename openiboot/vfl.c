@@ -100,6 +100,14 @@ error_t vfl_detect(vfl_device_t **_vfl, nand_device_t *_nand, vfl_signature_styl
 		return ENOENT;
 #else
 		*_vfl = &vfl_vsvfl_device_allocate()->vfl;
+
+		if(_sign != vfl_new_signature)
+			system_panic("vfl: VSVFL requires new signature!\r\n");
+
+		int whitening = flags & 0x10000;
+		if(FAILED(nand_device_enable_data_whitening(_nand, whitening))
+				&& whitening)
+			system_panic("vfl: Failed to enable data whitening!\r\n");
 #endif
 	}
 	else if(sigbuf[1] == '0')

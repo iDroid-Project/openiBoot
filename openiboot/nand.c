@@ -108,9 +108,18 @@ error_t nand_device_read_special_page(nand_device_t *_dev, uint32_t _ce, char _p
 	return ENOENT;
 }
 
-void nand_device_enable_encryption(nand_device_t *_dev, int _enabled)
+error_t nand_device_enable_encryption(nand_device_t *_dev, int _enabled)
 {
 	if(_dev->enable_encryption)
-		_dev->enable_encryption(_dev, _enabled);
+		return _dev->enable_encryption(_dev, _enabled);
+
+	return ENOENT;
 }
 
+error_t nand_device_enable_data_whitening(nand_device_t *_dev, int _enabled)
+{
+	if(_dev->enable_data_whitening)
+		return _dev->enable_data_whitening(_dev, _enabled);
+
+	return ENOENT;
+}

@@ -9,12 +9,20 @@
 #define H2FMI_STATE_READ	1
 #define H2FMI_STATE_WRITE	2
 
-#define H2FMI_READ_IDLE	0
-#define H2FMI_READ_1	1
-#define H2FMI_READ_2	2
-#define H2FMI_READ_3	3
-#define H2FMI_READ_4	4
-#define H2FMI_READ_DONE	5
+#define H2FMI_READ_IDLE		0
+#define H2FMI_READ_1		1
+#define H2FMI_READ_2		2
+#define H2FMI_READ_3		3
+#define H2FMI_READ_4		4
+#define H2FMI_READ_DONE		5
+
+#define H2FMI_WRITE_IDLE	0
+#define H2FMI_WRITE_1		1
+#define H2FMI_WRITE_2		2
+#define H2FMI_WRITE_3		3
+#define H2FMI_WRITE_4		4
+#define H2FMI_WRITE_5		5
+#define H2FMI_WRITE_DONE	6
 
 typedef struct _h2fmi_failure_details
 {
@@ -25,8 +33,8 @@ typedef struct _h2fmi_state
 {
 	uint32_t state;
 	uint32_t read_state;
+	uint32_t write_state;
 } h2fmi_state_t;
-
 
 typedef struct _h2fmi_geometry
 {
@@ -77,6 +85,10 @@ typedef struct _h2fmi_struct
 	uint32_t dma0;
 	uint32_t dma1;
 
+	uint32_t current_page; // Somewhere in IOP
+	uint8_t write_setting; // Somewhere in IOP
+	uint32_t unkn_regvalue; // Somewhere in IOP
+
 	uint32_t field_8;
 	uint32_t field_C;
 	uint32_t is_ppn; // 10
@@ -102,6 +114,8 @@ typedef struct _h2fmi_struct
 	uint32_t current_page_index; // 78
 	uint32_t num_pages_to_read;
 	uint32_t field_80;
+	uint32_t field_88; // 88 in IOP
+	uint32_t field_98; // 98 in IOP
 	uint32_t field_100;
 	uint32_t field_110;
 	uint16_t *chips;
@@ -126,7 +140,7 @@ typedef struct _h2fmi_struct
 	uint8_t field_182;
 
 	uint32_t fmi_state; // 48
-	uint32_t currentmode; // 7C
+	uint32_t current_mode; // 7C
 	uint8_t field_1A0;
 	uint8_t field_1A2;
 

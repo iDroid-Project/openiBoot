@@ -489,4 +489,3 @@ void ftl_init() {
 	uint32_t pointer2 = 0;
 	FTL_Setup(pointer1, pointer2, 0, 1);
 }
-MODULE_INIT(ftl_init);

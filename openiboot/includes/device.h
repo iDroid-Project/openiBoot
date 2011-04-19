@@ -5,6 +5,7 @@
 
 typedef enum _device_info
 {
+	// NAND
 	diPagesPerBlock,
 	diNumCE,
 	diBlocksPerCE,
@@ -31,6 +32,7 @@ typedef enum _device_info
 	diNumECCBytes,
 	diMetaPerLogicalPage,
 	diPagesPerCE,
+
 } device_info_t;
 
 struct _device;

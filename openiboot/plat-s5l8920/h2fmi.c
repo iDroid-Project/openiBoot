@@ -1700,9 +1700,16 @@ static error_t h2fmi_device_set_info(device_t *_dev, device_info_t _info, void *
 	}
 }
 
-static void h2fmi_device_enable_encryption(nand_device_t *_dev, int _enabled)
+static error_t h2fmi_device_enable_encryption(nand_device_t *_dev, int _enabled)
 {
 	h2fmi_aes_enabled = _enabled;
+	return SUCCESS;
+}
+
+static error_t h2fmi_device_enable_data_whitening(nand_device_t *_dev, int _enabled)
+{
+	h2fmi_data_whitening_enabled = _enabled;
+	return SUCCESS;
 }
 
 static void h2fmi_init_device()
@@ -1710,6 +1717,7 @@ static void h2fmi_init_device()
 	nand_device_init(&h2fmi_device);
 	h2fmi_device.read_single_page = h2fmi_device_read_single_page;
 	h2fmi_device.enable_encryption = h2fmi_device_enable_encryption;
+	h2fmi_device.enable_data_whitening = h2fmi_device_enable_data_whitening;
 	h2fmi_device.device.get_info = h2fmi_device_get_info;
 	h2fmi_device.device.set_info = h2fmi_device_set_info;
 
