@@ -36,6 +36,7 @@
 #include "actions.h"
 #include "wdt.h"
 
+#include "buttons.h"
 
 //TODO: remove
 #include "actions.h"
@@ -56,25 +57,6 @@ void load_iboot() {
 	void* imageData;
 	images_read(image, &imageData);
 	chainload((uint32_t)imageData);
-}
-
-//TODO: remove
-#include "buttons.h"
-static void gpio_test_handler(uint32_t token) {
-	switch(token) {
-		case 0:
-			bufferPrintf("Hold button changed state!\r\n");
-			break;
-		case 1:
-			bufferPrintf("Home button changed state!\r\n");
-			break;
-		case 2:
-			bufferPrintf("Volume up changed state!\r\n");
-			break;
-		case 3:
-			bufferPrintf("Volume down button changed state!\r\n");
-			break;
-	}
 }
 
 //TODO: remove
@@ -131,7 +113,7 @@ void platform_init()
 	wdt_setup();
 
 	// Other devices
-//	uart_setup();
+	uart_setup();
 	i2c_setup();
 
 //	dma_setup();
@@ -142,27 +124,12 @@ void platform_init()
 
 	aes_setup();
 
-//	nor_setup();
-	syscfg_setup();
-	images_setup();
-	nvram_setup();
-
 	displaypipe_init();
 	framebuffer_setup();
 	framebuffer_setdisplaytext(TRUE);
 	lcd_set_backlight_level(186);
 
 //	audiohw_init();
-
-
-	gpio_register_interrupt(BUTTONS_HOLD_IRQ, BUTTONS_HOLD_IRQTYPE, BUTTONS_HOLD_IRQLEVEL, BUTTONS_HOLD_IRQAUTOFLIP, gpio_test_handler, 0);
-	gpio_interrupt_enable(BUTTONS_HOLD_IRQ);
-	gpio_register_interrupt(BUTTONS_HOME_IRQ, BUTTONS_HOME_IRQTYPE, BUTTONS_HOME_IRQLEVEL, BUTTONS_HOME_IRQAUTOFLIP, gpio_test_handler, 1);
-	gpio_interrupt_enable(BUTTONS_HOME_IRQ);
-	gpio_register_interrupt(BUTTONS_VOLUP_IRQ, BUTTONS_VOLUP_IRQTYPE, BUTTONS_VOLUP_IRQLEVEL, BUTTONS_VOLUP_IRQAUTOFLIP, gpio_test_handler, 2);
-	gpio_interrupt_enable(BUTTONS_VOLUP_IRQ);
-	gpio_register_interrupt(BUTTONS_VOLDOWN_IRQ, BUTTONS_VOLDOWN_IRQTYPE, BUTTONS_VOLDOWN_IRQLEVEL, BUTTONS_VOLDOWN_IRQAUTOFLIP, gpio_test_handler, 3);
-	gpio_interrupt_enable(BUTTONS_VOLDOWN_IRQ);
 	
 	//TODO: remove
 	task_init(&iboot_loader_task, "iboot loader");
