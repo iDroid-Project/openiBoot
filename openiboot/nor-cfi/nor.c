@@ -18,8 +18,6 @@ typedef struct _nor_device
 {
 	mtd_t mtd;
 
-	uint32_t gpio;
-	uint32_t spi;
 	uint32_t vendor;
 	uint32_t device;
 
@@ -31,19 +29,17 @@ static inline nor_device_t *nor_device_get(mtd_t *_dev)
 	return CONTAINER_OF(nor_device_t, mtd, _dev);
 }
 
-static int nor_prepare(mtd_t *_dev)
+static error_t nor_prepare(mtd_t *_dev)
 {
-	return 0;
+	return SUCCESS;
 }
 
 static void nor_finish(mtd_t *_dev)
 {
 }
 
-static int nor_device_init(nor_device_t *_dev)
+static error_t nor_device_init(nor_device_t *_dev)
 {
-	nor_prepare(&_dev->mtd);
-
 	SET_REG16(NOR + NOR_COMMAND, COMMAND_UNLOCK);
 	SET_REG16(NOR + LOCK, LOCK_UNLOCK);
 
@@ -62,17 +58,14 @@ static int nor_device_init(nor_device_t *_dev)
 	if(_dev->vendor == 0)
 	{
 		bufferPrintf("NOR not detected.\n");
-		return -1;
+		return ENOENT;
 	}
 
-	nor_finish(&_dev->mtd);
-
 	bufferPrintf("NOR vendor=%x, device=%x\r\n", _dev->vendor, _dev->device);
-
 	return mtd_init(&_dev->mtd);
 }
 
-static int nor_erase_sector(nor_device_t *_dev, uint32_t _offset)
+static error_t nor_erase_sector(nor_device_t *_dev, uint32_t _offset)
 {
 	SET_REG16(NOR + NOR_COMMAND, COMMAND_UNLOCK);
 	SET_REG16(NOR + LOCK, LOCK_UNLOCK);
@@ -93,10 +86,10 @@ static int nor_erase_sector(nor_device_t *_dev, uint32_t _offset)
 			break;
 	}
 
-	return 0;
+	return SUCCESS;
 }
 
-static int nor_write_short(nor_device_t *_dev, uint32_t offset, uint16_t data)
+static error_t nor_write_short(nor_device_t *_dev, uint32_t offset, uint16_t data)
 {
 	SET_REG16(NOR + NOR_COMMAND, COMMAND_UNLOCK);
 	SET_REG16(NOR + LOCK, LOCK_UNLOCK);
@@ -113,10 +106,10 @@ static int nor_write_short(nor_device_t *_dev, uint32_t offset, uint16_t data)
 			break;
 	}
 
-	return 0;
+	return SUCCESS;
 }
 
-static int nor_read(mtd_t *_dev, void *_dest, uint32_t _off, int _amt)
+static error_t nor_read(mtd_t *_dev, void *_dest, uint32_t _off, int _amt)
 {
 	uint16_t* alignedBuffer = (uint16_t*)_dest;
 	int len = _amt;
@@ -133,10 +126,10 @@ static int nor_read(mtd_t *_dev, void *_dest, uint32_t _off, int _amt)
 		*unalignedBuffer = *((uint8_t*)(&lastWord));
 	}
 
-	return _amt;
+	return SUCCESS_VALUE(_amt);
 }
 
-static int nor_write(mtd_t *_dev, void *_src, uint32_t _off, int _amt)
+static error_t nor_write(mtd_t *_dev, void *_src, uint32_t _off, int _amt)
 {
 	nor_device_t *dev = nor_device_get(_dev);
 	int startSector = _off / NOR_BLOCK_SIZE;
@@ -150,23 +143,25 @@ static int nor_write(mtd_t *_dev, void *_src, uint32_t _off, int _amt)
 
 	memcpy(sectorsToChange + offsetFromStart, _src, _amt);
 
+	error_t ret;
 	int i;
 	for(i = 0; i < numSectors; i++) {
-		if(nor_erase_sector(dev, (i + startSector) * NOR_BLOCK_SIZE) != 0)
-			return -1;
+		ret = nor_erase_sector(dev, (i + startSector) * NOR_BLOCK_SIZE);
+		if(FAILED(ret))
+			return ret;
 
 		int j;
 		uint16_t* curSector = (uint16_t*)(sectorsToChange + (i * NOR_BLOCK_SIZE));
 		for(j = 0; j < NOR_BLOCK_SIZE; j += 2)
 		{
-			if(nor_write_short(dev, ((i + startSector) * NOR_BLOCK_SIZE) + j, curSector[j/2]) != 0)
-				return -1;
+			ret = nor_write_short(dev, ((i + startSector) * NOR_BLOCK_SIZE) + j, curSector[j/2]);
+			if(FAILED(ret))
+				return ret;
 		}
 	}
 
 	free(sectorsToChange);
-
-	return 0;
+	return SUCCESS;
 }
 
 static int nor_size(mtd_t *_dev)
@@ -199,9 +194,6 @@ static nor_device_t nor_device = {
 	},
 
 	.write_enabled = 0,
-
-	.gpio = NOR_CS,
-	.spi = NOR_SPI,
 };
 
 static void nor_init()

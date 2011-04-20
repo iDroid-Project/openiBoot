@@ -12,9 +12,7 @@
 #include "syscfg.h"
 #include "nvram.h"
 
-typedef struct _nor_device nor_device_t;
-
-struct _nor_device
+typedef struct _nor_device
 {
 	mtd_t mtd;
 
@@ -23,24 +21,15 @@ struct _nor_device
 	uint32_t vendor;
 	uint32_t device;
 
-	int (*block_write_function)(nor_device_t*, uint32_t, uint8_t*);
+	error_t (*block_write_function)(struct _nor_device*, uint32_t, uint8_t*);
 	uint32_t block_size;
 	uint32_t block_protect_bits;
 	uint32_t page_size;
 
 	int block_protect_count;
-};
-
+} nor_device_t;
 
 // Functions
-static uint8_t nor_get_status(nor_device_t *_dev);
-static void nor_write_status(nor_device_t *_dev, uint8_t status);
-static int nor_wait_for_ready(nor_device_t *_dev, int timeout);
-
-static void nor_write_enable(nor_device_t *_dev);
-static void nor_write_disable(nor_device_t *_dev);
-
-static int nor_setup_chip_info(nor_device_t *_dev);
 
 static inline nor_device_t *nor_device_get(mtd_t *_dev)
 {
@@ -65,17 +54,16 @@ static int nor_spi_txrx(nor_device_t *_dev, void *_tx, int _tx_amt, void *_rx, i
 	return ret;
 }
 
-static int nor_prepare(mtd_t *_dev)
+static error_t nor_prepare(mtd_t *_dev)
 {
 	nor_device_t *dev = nor_device_get(_dev);
 	spi_set_baud(dev->spi, 12000000, SPIWordSize8, 1, 0, 0);
-	return 0;
+	return SUCCESS;
 }
 
 static void nor_finish(mtd_t *_dev)
 {
 }
-
 
 static uint8_t nor_get_status(nor_device_t *_dev)
 {
@@ -88,40 +76,21 @@ static uint8_t nor_get_status(nor_device_t *_dev)
 	return data[0];
 }
 
-
-static void nor_write_status(nor_device_t *_dev, uint8_t status)
-{
-	if(nor_wait_for_ready(_dev, 100) != 0)
-		return;
-
-	nor_write_enable(_dev);
-
-	uint8_t command[2];
-	command[0] = NOR_SPI_WRSR;
-	command[1] = status;
-
-	nor_spi_tx(_dev, command, sizeof(command));
-	
-	nor_write_disable(_dev);
-}
-
-
-static int nor_wait_for_ready(nor_device_t *_dev, int timeout)
+static error_t nor_wait_for_ready(nor_device_t *_dev, int timeout)
 {
 	if((nor_get_status(_dev) & (1 << NOR_SPI_SR_BUSY)) == 0)
-		return 0;
+		return SUCCESS;
 
 	uint64_t startTime = timer_get_system_microtime();
 	while((nor_get_status(_dev) & (1 << NOR_SPI_SR_BUSY)) != 0) {
 		if(has_elapsed(startTime, timeout * 1000)) {
 			bufferPrintf("nor: timed out waiting for ready\r\n");
-			return -1;
+			return ETIMEDOUT;
 		}
 	}
 
-	return 0;
+	return SUCCESS;
 }
-
 
 static void nor_write_enable(nor_device_t *_dev)
 {
@@ -138,7 +107,6 @@ static void nor_write_enable(nor_device_t *_dev)
 	nor_spi_tx(_dev, command, sizeof(command));
 }
 
-
 static void nor_write_disable(nor_device_t *_dev)
 {
 	// See nor_write_enable note. This function is essentially useless (on the AT25DF081A chip at
@@ -149,26 +117,90 @@ static void nor_write_disable(nor_device_t *_dev)
 	nor_spi_tx(_dev, command, sizeof(command));
 }
 
-
-static int nor_device_init(nor_device_t *_dev)
+static void nor_write_status(nor_device_t *_dev, uint8_t status)
 {
-	nor_prepare(&_dev->mtd);
-	
-	// Load values specific to the actual NOR chip
-	if (nor_setup_chip_info(_dev) != 0)
-		return -1;
+	error_t ret = nor_wait_for_ready(_dev, 100);
+	if(FAILED(ret))
+		return;
 
-	// Unprotect NOR
-	uint8_t command[1];
-	command[0] = NOR_SPI_EWSR;
+	nor_write_enable(_dev);
+
+	uint8_t command[2];
+	command[0] = NOR_SPI_WRSR;
+	command[1] = status;
+
+	nor_spi_tx(_dev, command, sizeof(command));
+	
+	nor_write_disable(_dev);
+}
+
+static error_t nor_write_byte(nor_device_t *_dev, uint32_t offset, uint8_t data)
+{
+	error_t ret = nor_wait_for_ready(_dev, 100);
+	if(FAILED(ret))
+		return ret;
+
+	nor_write_enable(_dev);
+
+	uint8_t command[5];
+	command[0] = NOR_SPI_PRGM;
+	command[1] = (offset >> 16) & 0xFF;
+	command[2] = (offset >> 8) & 0xFF;
+	command[3] = offset & 0xFF;
+	command[4] = data & 0xFF;
+
 	nor_spi_tx(_dev, command, sizeof(command));
 
-	uint8_t wrsrCommand[2] = {NOR_SPI_WRSR, 0};
-	nor_spi_tx(_dev, wrsrCommand, sizeof(wrsrCommand));
+	nor_write_disable(_dev);
 
-	nor_finish(&_dev->mtd);
+	return SUCCESS;
+}
 
-	return mtd_init(&_dev->mtd);
+// This is the default writing function, and should be supported by every chip. It is slow.
+static error_t nor_write_block_by_byte(nor_device_t *_dev, uint32_t offset, uint8_t *data)
+{
+	int j;
+	for (j = 0; j < _dev->block_size; j++)
+	{
+		error_t ret = nor_write_byte(_dev, offset + j, data[j]);
+		if(FAILED(ret))
+			return ret;
+	}
+	
+	return SUCCESS;
+}
+
+// This writing method should be supported by most chips and is usually the fastest option.
+static error_t nor_write_block_by_page(nor_device_t *_dev, uint32_t offset, uint8_t *data)
+{
+	error_t ret;
+	int j;
+	uint8_t* command = malloc(4 + _dev->page_size);
+	for (j = 0; j < _dev->block_size / _dev->page_size; j++)
+	{
+		ret = nor_wait_for_ready(_dev, 100);
+		if(FAILED(ret))
+		{
+			free(command);
+			return ret;
+		}
+
+		nor_write_enable(_dev);
+	
+		uint32_t pageOffset = offset + j * _dev->page_size;
+		command[0] = NOR_SPI_PRGM;
+		command[1] = (pageOffset >> 16) & 0xFF;
+		command[2] = (pageOffset >> 8) & 0xFF;
+		command[3] = pageOffset & 0xFF;
+		memcpy(command + 4, data + j * _dev->page_size, _dev->page_size);
+		
+		nor_spi_tx(_dev, command, 4 + _dev->page_size);
+		
+		nor_write_disable(_dev);
+	}
+	
+	free(command);
+	return SUCCESS;
 }
 
 
@@ -197,12 +229,13 @@ static void nor_enable_block_protect(nor_device_t *_dev)
 }
 
 
-static int nor_erase_sector(nor_device_t *_dev, uint32_t _offset)
+static error_t nor_erase_sector(nor_device_t *_dev, uint32_t _offset)
 {
 	nor_disable_block_protect(_dev);
 
-	if(nor_wait_for_ready(_dev, 100) != 0)
-		return -1;
+	error_t ret = nor_wait_for_ready(_dev, 100);
+	if(FAILED(ret))
+		return ret;
 
 	nor_write_enable(_dev);
 	
@@ -218,83 +251,19 @@ static int nor_erase_sector(nor_device_t *_dev, uint32_t _offset)
 	
 	nor_enable_block_protect(_dev);
 
-	return 0;
+	return SUCCESS;
 }
 
-static int nor_write_byte(nor_device_t *_dev, uint32_t offset, uint8_t data)
-{
-	if(nor_wait_for_ready(_dev, 100) != 0)
-		return -1;
-
-	nor_write_enable(_dev);
-
-	uint8_t command[5];
-	command[0] = NOR_SPI_PRGM;
-	command[1] = (offset >> 16) & 0xFF;
-	command[2] = (offset >> 8) & 0xFF;
-	command[3] = offset & 0xFF;
-	command[4] = data & 0xFF;
-
-	nor_spi_tx(_dev, command, sizeof(command));
-
-	nor_write_disable(_dev);
-
-	return 0;
-}
-
-static int nor_write_block_by_byte(nor_device_t *_dev, uint32_t offset, uint8_t *data)
-{
-	// This is the default writing function, and should be supported by every chip. It is slow.
-	int j;
-	for (j = 0; j < _dev->block_size; j++)
-	{
-		if (nor_write_byte(_dev, offset + j, data[j]) != 0)
-			return -1;
-	}
-	
-	return 0;
-}
-
-static int nor_write_block_by_page(nor_device_t *_dev, uint32_t offset, uint8_t *data)
-{
-	// This writing method should be supported by most chips and is usually the fastest option.
-	int j;
-	uint8_t* command = malloc(4 + _dev->page_size);
-	for (j = 0; j < _dev->block_size / _dev->page_size; j++)
-	{
-		if(nor_wait_for_ready(_dev, 100) != 0)
-		{
-			free(command);
-			return -1;
-		}
-
-		nor_write_enable(_dev);
-	
-		uint32_t pageOffset = offset + j * _dev->page_size;
-		command[0] = NOR_SPI_PRGM;
-		command[1] = (pageOffset >> 16) & 0xFF;
-		command[2] = (pageOffset >> 8) & 0xFF;
-		command[3] = pageOffset & 0xFF;
-		memcpy(command + 4, data + j * _dev->page_size, _dev->page_size);
-		
-		nor_spi_tx(_dev, command, 4 + _dev->page_size);
-		
-		nor_write_disable(_dev);
-	}
-	
-	free(command);
-	return 0;
-}
-
-static int nor_read(mtd_t *_dev, void *_dest, uint32_t _off, int _amt)
+static error_t nor_read(mtd_t *_dev, void *_dest, uint32_t _off, int _amt)
 {
 	uint8_t command[4];
 	uint8_t* data = _dest;
 	nor_device_t *dev = nor_device_get(_dev);
 	int len = _amt;
 
-	if(nor_wait_for_ready(dev, 100) != 0)
-		return -1;
+	error_t ret = nor_wait_for_ready(dev, 100);
+	if(FAILED(ret))
+		return ret;
 
 	while(len > 0)
 	{
@@ -313,10 +282,10 @@ static int nor_read(mtd_t *_dev, void *_dest, uint32_t _off, int _amt)
 		_off += toRead;
 	}
 
-	return _amt;
+	return SUCCESS_VALUE(_amt);
 }
 
-static int nor_write(mtd_t *_dev, void *_src, uint32_t _off, int _amt)
+static error_t nor_write(mtd_t *_dev, void *_src, uint32_t _off, int _amt)
 {
 	nor_device_t *dev = nor_device_get(_dev);
 	int startSector = _off / dev->block_size;
@@ -333,28 +302,22 @@ static int nor_write(mtd_t *_dev, void *_src, uint32_t _off, int _amt)
 	nor_disable_block_protect(dev);
 
 	int i;
-	int retVal = 0;
+	error_t ret = SUCCESS;
 	for(i = 0; i < numSectors; i++)
 	{
-		if(nor_erase_sector(dev, (i + startSector) * dev->block_size) != 0)
-		{
-			retVal = -1;
+		ret = nor_erase_sector(dev, (i + startSector) * dev->block_size);
+		if(FAILED(ret))
 			break;
-		}
 		
 		uint8_t* curSector = (uint8_t*)(sectorsToChange + (i * dev->block_size));
-		if (dev->block_write_function(dev, (i + startSector) * dev->block_size, curSector) != 0)
-		{
-			retVal = -1;
+		ret = dev->block_write_function(dev, (i + startSector) * dev->block_size, curSector);
+		if(FAILED(ret))
 			break;
-		}
 	}
 	
 	nor_enable_block_protect(dev);
-
 	free(sectorsToChange);
-
-	return retVal;
+	return ret;
 }
 
 static int nor_size(mtd_t *_dev)
@@ -368,7 +331,7 @@ static int nor_block_size(mtd_t *_dev)
 	return dev->block_size;
 }
 
-static int nor_setup_chip_info(nor_device_t *_dev)
+static error_t nor_setup_chip_info(nor_device_t *_dev)
 {
 	// Get the vendor and device IDs from the chip
 	uint8_t command[1] = {NOR_SPI_JEDECID};
@@ -382,7 +345,7 @@ static int nor_setup_chip_info(nor_device_t *_dev)
 	if(deviceID[0] == 0)
 	{
 		bufferPrintf("NOR not detected.\n");
-		return -1;
+		return ENOENT;
 	}
 
 	bufferPrintf("NOR vendor=%x, device=%x\r\n", _dev->vendor, _dev->device);
@@ -442,10 +405,32 @@ static int nor_setup_chip_info(nor_device_t *_dev)
 
 	if (!chipRecognized) {
 		bufferPrintf("Unknown NOR chip!\r\n");
-		return -1;
+		return EINVAL;
 	}
 	
-	return 0;
+	return SUCCESS;
+}
+
+static error_t nor_device_init(nor_device_t *_dev)
+{
+	nor_prepare(&_dev->mtd);
+	
+	// Load values specific to the actual NOR chip
+	error_t ret = nor_setup_chip_info(_dev);
+	if(FAILED(ret))
+		return ret;
+
+	// Unprotect NOR
+	uint8_t command[1];
+	command[0] = NOR_SPI_EWSR;
+	nor_spi_tx(_dev, command, sizeof(command));
+
+	uint8_t wrsrCommand[2] = {NOR_SPI_WRSR, 0};
+	nor_spi_tx(_dev, wrsrCommand, sizeof(wrsrCommand));
+
+	nor_finish(&_dev->mtd);
+
+	return mtd_init(&_dev->mtd);
 }
 
 static nor_device_t nor_device = {

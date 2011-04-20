@@ -3260,14 +3260,22 @@ void ftl_printdata() {
 
 }
 
-static int ftl_read_mtd(mtd_t *_dev, void *_dest, uint32_t _off, int _amt)
+static error_t ftl_read_mtd(mtd_t *_dev, void *_dest, uint32_t _off, int _amt)
 {
-	return ftl_read(_dest, _off, _amt);
+	int ret = ftl_read(_dest, _off, _amt);
+	if(ret < 0)
+		return ERROR(-ret);
+
+	return SUCCESS_VALUE(ret);
 }
 
-static int ftl_write_mtd(mtd_t *_dev, void *_src, uint32_t _off, int _amt)
+static error_t ftl_write_mtd(mtd_t *_dev, void *_src, uint32_t _off, int _amt)
 {
-	return ftl_write(_src, _off, _amt);
+	int ret = ftl_write(_src, _off, _amt);
+	if(ret < 0)
+		return ERROR(-ret);
+	
+	return SUCCESS_VALUE(ret);
 }
 
 static int ftl_block_size(mtd_t *_dev)

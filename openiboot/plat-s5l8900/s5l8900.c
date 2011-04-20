@@ -14,7 +14,6 @@
 #include "dma.h"
 #include "spi.h"
 #include "i2c.h"
-#include "nor.h"
 #include "aes.h"
 #include "lcd.h"
 #include "tasks.h"

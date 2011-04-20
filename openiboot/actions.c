@@ -436,7 +436,6 @@ static BootEntry rootEntry;
 static BootEntry *currentEntry;
 static BootEntry *defaultEntry;
 
-/*
 static void setup_init()
 {
 	memset(&rootEntry, 0, sizeof(rootEntry));
@@ -448,7 +447,6 @@ static void setup_init()
 	defaultEntry = &rootEntry;
 }
 MODULE_INIT_BOOT(setup_init);
-*/
 
 BootEntry *setup_root()
 {

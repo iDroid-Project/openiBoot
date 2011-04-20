@@ -9,7 +9,6 @@
 #include "spi.h"
 #include "syscfg.h"
 #include "framebuffer.h"
-#include "nor.h"
 #include "images.h"
 
 static void multitouch_atn(uint32_t token);
