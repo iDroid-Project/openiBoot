@@ -295,7 +295,7 @@ void cmd_mtd_write(int argc, char **argv)
 	int len = parseNumber(argv[4]);
 
 	mtd_prepare(dev);
-	mtd_read(dev, src, offset, len);
+	mtd_write(dev, src, offset, len);
 	mtd_finish(dev);
 }
 COMMAND("mtd_write", "Write to a MTD device.", cmd_mtd_write);
