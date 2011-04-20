@@ -190,8 +190,8 @@ int pmu_set_gpmem_reg(int reg, uint8_t data) {
 
 static int query_adc(int mux) {
 	uint8_t buf[2];
-	uint32_t mux_masked, result;
-	uint64_t timeout;
+	uint32_t mux_masked, result = 0;
+	uint64_t startTime;
 
 	mux_masked = mux & 0xF;
 	result = pmu_get_reg(PMU_ADC_REG);
@@ -204,17 +204,14 @@ static int query_adc(int mux) {
 	
 	pmu_write_reg(PMU_MUXSEL_REG, mux_masked | 0x10, 0);
 	
-	timeout = timer_get_system_microtime() + 50000;
-	while (TRUE) {
+	startTime = timer_get_system_microtime();
+	do {
 		udelay(1000);
-		if (timer_get_system_microtime() > timeout)
+		if (has_elapsed(startTime, 50000))
 			return -1;
 			
 		result = pmu_get_reg(PMU_ADC_REG);
-		
-		if (result & 0x20)
-			break;
-	}
+	} while (!(result & 0x20));
 	
 	pmu_get_regs(PMU_ADCVAL_REG, buf, 2);
 	pmu_write_reg(PMU_MUXSEL_REG, 0, 0);
