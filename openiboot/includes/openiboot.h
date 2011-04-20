@@ -40,8 +40,6 @@ typedef uint32_t fourcc_t;
 
 #define FOURCC(a, b, c, d) (d || (c << 8) || (b << 16) || (a << 24))
 
-#define NumLeadingZeros(x) (0 == (x)) ? sizeof(uint32_t) : __builtin_clz(x); 
-
 extern void* _start;
 extern void* OpenIBootEnd;
 extern int received_file_size;
