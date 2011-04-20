@@ -104,8 +104,7 @@ uint32_t sub_5FF2508C(uint32_t ce, uint32_t specialBlockNumber, uint32_t* header
 	uint32_t i;
 	uint32_t page = 0;
 	for (i = 0; i <= 2 && page <= h2fmi_geometry.pages_per_block; page++) {
-		//uint32_t specialPage = h2fmi_geometry.pages_per_block * ((h2fmi_geometry.unk14 * ((specialBlockNumber/h2fmi_geometry.blocks_per_bank) & 0xFFFF) + (specialBlockNumber % h2fmi_geometry.blocks_per_bank) ) & 0xFFFF) + page;
-		uint32_t specialPage = (((specialBlockNumber / h2fmi_geometry.blocks_per_bank) & 0xFFFF) * h2fmi_geometry.unk14 + ((specialBlockNumber % h2fmi_geometry.blocks_per_bank) & 0xFFFF)) * h2fmi_geometry.pages_per_block + page;
+		uint32_t specialPage = specialBlockNumber * h2fmi_geometry.pages_per_block + page;
 		uint32_t result = h2fmi_read_multi_ftl(ce, specialPage, (uint8_t*)(buff->data));
 		if(result) {
 			//if(result != 1)
@@ -150,8 +149,7 @@ uint32_t sub_5FF2508C(uint32_t ce, uint32_t specialBlockNumber, uint32_t* header
 		page++;
 
 		for (bytes_read = (h2fmi_geometry.bbt_format << 10) - 0x38; bytes_read < bytes_to_read && page < h2fmi_geometry.pages_per_block; page++) {
-			//uint32_t specialPage = h2fmi_geometry.pages_per_block * ((h2fmi_geometry.unk14 * ((specialBlockNumber/h2fmi_geometry.blocks_per_bank) & 0xFFFF) + (specialBlockNumber % h2fmi_geometry.blocks_per_bank) ) & 0xFFFF) + page;
-			uint32_t specialPage = (((specialBlockNumber / h2fmi_geometry.blocks_per_bank) & 0xFFFF) * h2fmi_geometry.unk14 + ((specialBlockNumber % h2fmi_geometry.blocks_per_bank) & 0xFFFF)) * h2fmi_geometry.pages_per_block + page;
+			uint32_t specialPage = specialBlockNumber * h2fmi_geometry.pages_per_block + page;
 			result = h2fmi_read_multi_ftl(ce, specialPage, (uint8_t*)(buff->data));
 			if(result)
 				break;

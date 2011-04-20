@@ -48,9 +48,9 @@ typedef struct _h2fmi_geometry
 	uint16_t banks_per_ce_vfl;
 	uint16_t banks_per_ce;
 	uint16_t blocks_per_bank;
-	uint16_t unk14;
+	uint16_t bank_address_space;
 	uint16_t pages_per_block_2;
-	uint16_t unk18;
+	uint16_t total_block_space;
 	uint16_t unk1A;
 	uint32_t unk1C;
 	uint32_t vendor_type;
