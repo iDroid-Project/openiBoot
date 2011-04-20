@@ -43,8 +43,6 @@ typedef struct _vfl_device
 void vfl_init(vfl_device_t *_vfl);
 void vfl_cleanup(vfl_device_t *_vfl);
 
-vfl_device_t *vfl_allocate();
-
 error_t vfl_open(vfl_device_t *_vfl, nand_device_t *_dev);
 void vfl_close(vfl_device_t *_vfl);
 

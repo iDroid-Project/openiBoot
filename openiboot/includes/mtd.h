@@ -5,10 +5,10 @@
 #include "bdev.h"
 
 struct _mtd;
-typedef int (*mtd_prepare_t)(struct _mtd *);
+typedef error_t (*mtd_prepare_t)(struct _mtd *);
 typedef void (*mtd_finish_t)(struct _mtd *);
-typedef int (*mtd_read_t)(struct _mtd *, void *_dest, uint32_t _off, int _sz);
-typedef int (*mtd_write_t)(struct _mtd *, void *_src, uint32_t _off, int _sz);
+typedef error_t (*mtd_read_t)(struct _mtd *, void *_dest, uint32_t _off, int _sz);
+typedef error_t (*mtd_write_t)(struct _mtd *, void *_src, uint32_t _off, int _sz);
 
 typedef int (*mtd_get_attribute_t)(struct _mtd *);
 
@@ -41,21 +41,23 @@ typedef struct _mtd
 } mtd_t;
 
 // Used by drivers
-int mtd_init(mtd_t *_mtd);
-int mtd_register(mtd_t *_mtd);
+error_t mtd_init(mtd_t *_mtd);
+void mtd_cleanup(mtd_t *_mtd);
+
+error_t mtd_register(mtd_t *_mtd);
 void mtd_unregister(mtd_t *_mtd);
 
 // Used by clients
 mtd_t *mtd_find(mtd_t *_prev);
 
-int mtd_prepare(mtd_t *_mtd);
+error_t mtd_prepare(mtd_t *_mtd);
 void mtd_finish(mtd_t *_mtd);
 
 int mtd_size(mtd_t *_mtd);
 int mtd_block_size(mtd_t *_mtd);
 
-int mtd_read(mtd_t *_mtd, void *_dest, uint32_t _off, int _sz);
-int mtd_write(mtd_t *_mtd, void *_src, uint32_t _off, int _sz);
+error_t mtd_read(mtd_t *_mtd, void *_dest, uint32_t _off, int _sz);
+error_t mtd_write(mtd_t *_mtd, void *_src, uint32_t _off, int _sz);
 
 void mtd_list_devices();
 

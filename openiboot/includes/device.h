@@ -5,6 +5,7 @@
 
 typedef enum _device_info
 {
+	// NAND
 	diPagesPerBlock,
 	diNumCE,
 	diBlocksPerCE,
@@ -31,6 +32,7 @@ typedef enum _device_info
 	diNumECCBytes,
 	diMetaPerLogicalPage,
 	diPagesPerCE,
+
 } device_info_t;
 
 struct _device;
@@ -57,9 +59,9 @@ typedef struct _device
 } device_t;
 
 // Used by drivers
-int device_init(device_t *_device);
+error_t device_init(device_t *_device);
 
-int device_register(device_t *_device);
+error_t device_register(device_t *_device);
 void device_unregister(device_t *_device);
 
 // Used by clients

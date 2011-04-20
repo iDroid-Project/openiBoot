@@ -1,4 +1,5 @@
 #include "nand.h"
+#include "hardware/platform.h"
 #include "util.h"
 
 void nand_device_init(nand_device_t *_nand)
@@ -15,11 +16,18 @@ void nand_device_cleanup(nand_device_t *_nand)
 {
 }
 
-nand_device_t *nand_device_allocate()
+error_t nand_device_register(nand_device_t *_nand)
 {
-	nand_device_t *ret = malloc(sizeof(*ret));
-	nand_device_init(ret);
-	return ret;
+	error_t ret = device_register(&_nand->device);
+	if(FAILED(ret))
+		return ret;
+
+	return SUCCESS;
+}
+
+void nand_device_unregister(nand_device_t *_nand)
+{
+	device_unregister(&_nand->device);
 }
 
 error_t nand_device_read_single_page(nand_device_t *_dev, uint32_t _chip, uint32_t _block,
@@ -56,7 +64,7 @@ error_t nand_device_read_special_page(nand_device_t *_dev, uint32_t _ce, char _p
 	if(FAILED(ret))
 		return EINVAL;
 
-	uint8_t* buffer = malloc(bytesPerPage);
+	uint8_t* buffer = memalign(DMA_ALIGN, bytesPerPage);
 	int lowestBlock = blocksPerCE - (blocksPerCE / 10);
 	int block;
 	for(block = blocksPerCE - 1; block >= lowestBlock; block--)
@@ -76,11 +84,11 @@ error_t nand_device_read_special_page(nand_device_t *_dev, uint32_t _ce, char _p
 			{
 				if(ret == 1)
 				{
-					DebugPrintf("vfl: read_special_page - found 'badBlock' on ce %d, page %d\r\n", (block * pagesPerBlock) + page);
+					DebugPrintf("vfl: read_special_page - found 'badBlock' on ce %d, page %d\r\n", _ce, (block * pagesPerBlock) + page);
 					badBlockCount++;
 				}
 
-				DebugPrintf("vfl: read_special_page - skipping ce %d, page %d\r\n", (block * pagesPerBlock) + page);
+				DebugPrintf("vfl: read_special_page - skipping ce %d, page %d\r\n", _ce, (block * pagesPerBlock) + page);
 				continue;
 			}
 
@@ -99,7 +107,7 @@ error_t nand_device_read_special_page(nand_device_t *_dev, uint32_t _ce, char _p
 				return SUCCESS;
 			}
 			else
-				DebugPrintf("vfl: did not find signature on ce %d, page %d\r\n", (block * pagesPerBlock) + page);
+				DebugPrintf("vfl: did not find signature on ce %d, page %d\r\n", _ce, (block * pagesPerBlock) + page);
 		}
 	}
 
@@ -107,9 +115,18 @@ error_t nand_device_read_special_page(nand_device_t *_dev, uint32_t _ce, char _p
 	return ENOENT;
 }
 
-void nand_device_enable_encryption(nand_device_t *_dev, int _enabled)
+error_t nand_device_enable_encryption(nand_device_t *_dev, int _enabled)
 {
 	if(_dev->enable_encryption)
-		_dev->enable_encryption(_dev, _enabled);
+		return _dev->enable_encryption(_dev, _enabled);
+
+	return ENOENT;
 }
 
+error_t nand_device_enable_data_whitening(nand_device_t *_dev, int _enabled)
+{
+	if(_dev->enable_data_whitening)
+		return _dev->enable_data_whitening(_dev, _enabled);
+
+	return ENOENT;
+}

@@ -74,7 +74,7 @@ env.AddMethod(AddModules, "AddModules")
 
 def OpenIBootTarget(env, name, fname, flag, sources, img3template=None):
 	env = env.Clone()
-	env['OBJPREFIX'] = name + '_'	
+	env['OBJPREFIX'] = name + '_' + env['OBJPREFIX']
 	env.Append(CPPDEFINES=[flag])
 
 	if env['MODULE_SRC'] is not None:
@@ -84,10 +84,18 @@ def OpenIBootTarget(env, name, fname, flag, sources, img3template=None):
 	if env['MODULE_DEPS'] is not None:
 		deps = env['MODULE_DEPS']
 
+	denv = env.Clone()
+	denv['OBJSUFFIX'] = '_debug' + denv['OBJSUFFIX']
+	denv.Append(CPPDEFINES=['DEBUG'])
+	denv.Append(CPPFLAGS=['-g'])
+
 	# Work out filenames
 	elf_name = '#' + fname
+	delf_name = elf_name + '_debug'
 	bin_name = elf_name + '.bin'
+	dbin_name = delf_name + '.bin'
 	img3_name = elf_name + '.img3'
+	dimg3_name = delf_name + '.img3'
 
 	def listify(ls):
 		ret = []
@@ -106,20 +114,31 @@ def OpenIBootTarget(env, name, fname, flag, sources, img3template=None):
 	# Add Targets
 	elf = env.Program(elf_name, sources)
 	Depends(elf, deps)
+	delf = denv.Program(delf_name, sources)
+	Depends(delf, deps)
 
 	bin = env.Make8900Image(bin_name, elf)
+	dbin = denv.Make8900Image(dbin_name, delf)
 	if img3template is not None:
 		img3 = env.Make8900Image(img3_name, elf+['#mk8900image/%s.img3' % img3template])
+		dimg3 = denv.Make8900Image(dimg3_name, delf+['#mk8900image/%s.img3' % img3template])
 		Alias(name, img3)
+		Alias(name+'D', dimg3)
 	else:
 		img3 = None
+		dimg3 = None
 		Alias(name, bin)
-	
+		Alias(name+'D', dbin)
 
 	locals()[elf_name] = elf
+	locals()[delf_name] = delf
 	locals()[bin_name] = bin
+	locals()[dbin_name] = dbin
 	locals()[img3_name] = img3
-	Export([elf_name, bin_name, img3_name])
+	locals()[dimg3_name] = dimg3
+
+	Export([elf_name, bin_name, img3_name,
+			delf_name, dbin_name, dimg3_name])
 
 	return elf, bin, img3
 env.AddMethod(OpenIBootTarget, "OpenIBootTarget")
