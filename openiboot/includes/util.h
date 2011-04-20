@@ -52,6 +52,8 @@ uint32_t adler32(uint8_t *buf, int32_t len);
 
 const char *strerr(error_t _e);
 
+uint32_t next_power_of_two(uint32_t n);
+
 #include "printf.h"
 #include "malloc-2.8.3.h"
 

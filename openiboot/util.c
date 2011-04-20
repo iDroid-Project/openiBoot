@@ -768,3 +768,12 @@ const char *strerr(error_t _err)
 		return buffer;
 	}
 }
+
+uint32_t next_power_of_two(uint32_t n) {
+	uint32_t val = 1 << (31 - __builtin_clz(n));
+	
+	if (n % val)
+		val *= 2;
+		
+	return val;
+}

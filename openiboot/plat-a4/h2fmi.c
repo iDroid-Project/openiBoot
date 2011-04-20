@@ -1531,7 +1531,7 @@ int h2fmi_read_multi(h2fmi_struct_t *_fmi, uint16_t _num_pages, uint16_t *_chips
 				|| h2fmi_dma_wait(_fmi->dma1, 2000000) != 0)
 		{
 			bufferPrintf("h2fmi: dma wait failed.\r\n");
-			return 1;
+			return ERROR(1);
 		}
 	
 		_fmi->failure_details.overall_status = 0;
@@ -1583,7 +1583,14 @@ int h2fmi_read_multi(h2fmi_struct_t *_fmi, uint16_t _num_pages, uint16_t *_chips
 uint32_t h2fmi_read_single(h2fmi_struct_t *_fmi, uint16_t _chip, uint32_t _page, uint8_t *_data, uint8_t *_wmr, uint8_t *_6, uint8_t *_7)
 {
 	//bufferPrintf("fmi: read_single.\r\n");
-	return h2fmi_read_multi(_fmi, 1, &_chip, &_page, &_data, &_wmr, _6, _7);
+	
+	// Calculate physical page number (according to banks layout).
+	uint32_t block = _page / h2fmi_geometry.pages_per_block;
+	block = (block % h2fmi_geometry.blocks_per_bank) + ((block / h2fmi_geometry.blocks_per_bank) * h2fmi_geometry.bank_address_space);
+	
+	uint32_t physPage = (block * h2fmi_geometry.pages_per_block) + (_page % h2fmi_geometry.pages_per_block);
+	
+	return h2fmi_read_multi(_fmi, 1, &_chip, &physPage, &_data, &_wmr, _6, _7);
 }
 
 static int h2fmi_write_set_ce(h2fmi_struct_t *_fmi)
@@ -2081,7 +2088,8 @@ error_t h2fmi_read_multi_ftl(uint32_t _ce, uint32_t _page, uint8_t *_ptr)
 		else
 			ret = 0x80000002;
 	}
-	else if(read_ret != 0)
+//	else if(read_ret != 0)
+	else if(read_ret != 1)
 		ret = 0x80000001;
 	else
 		ret = 0;
@@ -2104,12 +2112,7 @@ error_t h2fmi_read_single_page(uint32_t _ce, uint32_t _page, uint8_t *_ptr, uint
 	DataCacheOperation(3, (uint32_t)_ptr, ROUND_UP(fmi->bytes_per_page, 64));
 	DataCacheOperation(3, (uint32_t)h2fmi_wmr_data, ROUND_UP(fmi->meta_per_logical_page, 64));
 
-	uint32_t flag = (1 - _8);
-	if(flag > 1)
-		flag = 0;
-
-	if(h2fmi_aes_enabled == 0)
-		flag = 0;
+	uint32_t flag = (_8 == 0 && h2fmi_aes_enabled) ? 1 : 0;
 
 	h2fmi_setup_aes(fmi, flag, 0, (uint32_t)_ptr);
 
@@ -2720,42 +2723,27 @@ void h2fmi_init()
 		h2fmi_geometry.blocks_per_bank = h2fmi_geometry.blocks_per_ce / h2fmi_geometry.banks_per_ce;
 		
 		// Check that blocks per CE is a POT.
+		// Each bank should have its own address space (which should have the size of a power of two). - Oranav
 		if((h2fmi_geometry.blocks_per_ce & (h2fmi_geometry.blocks_per_ce-1)) == 0)
 		{
-			h2fmi_geometry.unk14 = h2fmi_geometry.blocks_per_bank;
-			h2fmi_geometry.unk18 = h2fmi_geometry.blocks_per_ce;
+			// Already a power of two.
+			h2fmi_geometry.bank_address_space = h2fmi_geometry.blocks_per_bank;
+			h2fmi_geometry.total_block_space = h2fmi_geometry.blocks_per_ce;
 			h2fmi_geometry.unk1A = h2fmi_geometry.blocks_per_ce;
 		}
 		else
 		{
-			// Find next biggest power of two.
-			uint32_t nextPOT = 1;
-			if((h2fmi_geometry.blocks_per_bank & 0x80000000) == 0)
-				while(nextPOT < h2fmi_geometry.blocks_per_bank)
-					nextPOT <<= 1;
-
-			uint32_t unk14;
-			if(nextPOT - h2fmi_geometry.blocks_per_bank != 0)
-				unk14 = nextPOT << 1;
-			else
-				unk14 = nextPOT;
-
-			h2fmi_geometry.unk14 = unk14;
-			h2fmi_geometry.unk18 = ((h2fmi_geometry.banks_per_ce-1)*unk14)
+			// Calculate the bank address space.
+			uint32_t bank_address_space = next_power_of_two(h2fmi_geometry.blocks_per_bank);
+			
+			h2fmi_geometry.bank_address_space = bank_address_space;
+			h2fmi_geometry.total_block_space = ((h2fmi_geometry.banks_per_ce-1)*bank_address_space)
 				+ h2fmi_geometry.blocks_per_bank;
-			h2fmi_geometry.unk1A = unk14;
+			h2fmi_geometry.unk1A = bank_address_space;
 		}
 
 		// Find next biggest power of two.
-		uint32_t nextPOT = 1;
-		if((h2fmi_geometry.pages_per_block & 0x80000000) == 0)
-			while(nextPOT < h2fmi_geometry.pages_per_block)
-				nextPOT <<= 1;
-
-		if(nextPOT - h2fmi_geometry.pages_per_block != 0)
-			h2fmi_geometry.pages_per_block_2 = nextPOT << 1;
-		else
-			h2fmi_geometry.pages_per_block_2 = nextPOT;
+		h2fmi_geometry.pages_per_block_2 = next_power_of_two(h2fmi_geometry.pages_per_block);
 		
 		h2fmi_geometry.is_ppn = fmi0.is_ppn;
 		if(fmi0.is_ppn)
@@ -2770,13 +2758,10 @@ void h2fmi_init()
 			h2fmi_geometry.pages_per_block_2_32 = h2fmi_geometry.pages_per_block;
 			h2fmi_geometry.banks_per_ce_32 = h2fmi_geometry.banks_per_ce;
 
-			nextPOT = 1;
-			if(((h2fmi_geometry.pages_per_block - 1) & 0x80000000) == 0)
-				while(nextPOT < h2fmi_geometry.pages_per_block - 1)
-					nextPOT <<= 1;
+			uint32_t page_number_bit_width = next_power_of_two(h2fmi_geometry.pages_per_block);
 
-			h2fmi_geometry.page_number_bit_width = nextPOT;
-			h2fmi_geometry.page_number_bit_width_2 = nextPOT;
+			h2fmi_geometry.page_number_bit_width = page_number_bit_width;
+			h2fmi_geometry.page_number_bit_width_2 = page_number_bit_width;
 			h2fmi_geometry.pages_per_ce
 				= h2fmi_geometry.banks_per_ce_vfl * h2fmi_geometry.pages_per_block;
 			h2fmi_geometry.unk1C = info->chip_info->unk7;
