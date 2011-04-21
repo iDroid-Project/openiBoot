@@ -313,15 +313,15 @@ void YAFTL_Init() {
 	yaftl_info.total_pages_ftl = ((nand_geometry_ftl.pages_per_block_total_banks - yaftl_info.unkFactor_0x1) - (nand_geometry_ftl.usable_blocks_per_bank - 8)) - (nand_geometry_ftl.usable_blocks_per_bank * nand_geometry_ftl.pages_per_block_total_banks);
 
 	yaftl_info.unknCalculatedValue3 = ((nand_geometry_ftl.pages_per_block_total_banks * nand_geometry_ftl.usable_blocks_per_bank) << 2) / nand_geometry_ftl.bytes_per_page_ftl;
-	yaftl_info.indexPageBuf = wmr_malloc(DMA_ALIGN, yaftl_info.unknCalculatedValue3 << 3);
+	yaftl_info.indexPageBuf = wmr_malloc(yaftl_info.unknCalculatedValue3 << 3);
 	if(!yaftl_info.indexPageBuf)
 		system_panic("No buffer.\r\n");
 
-	yaftl_info.unknBuffer2_ftl = wmr_malloc(DMA_ALIGN, nand_geometry_ftl.usable_blocks_per_bank * 0xC);
+	yaftl_info.unknBuffer2_ftl = wmr_malloc(nand_geometry_ftl.usable_blocks_per_bank * 0xC);
 	if(!yaftl_info.unknBuffer2_ftl)
 		system_panic("No buffer.\r\n");
 
-	yaftl_info.unknBuffer3_ftl = wmr_malloc(DMA_ALIGN, nand_geometry_ftl.pages_per_block_total_banks << 2);
+	yaftl_info.unknBuffer3_ftl = wmr_malloc(nand_geometry_ftl.pages_per_block_total_banks << 2);
 	if(!yaftl_info.unknBuffer3_ftl)
 		system_panic("No buffer.\r\n");
 
@@ -360,4 +360,18 @@ void YAFTL_Init() {
 	yaFTL_inited = 1;
 
 	return 0;
+}
+
+uint32_t yaFTL_Open(uint32_t* pagesAvailable, uint32_t* bytesPerPage, uint32_t signature_bit) {
+	uint32_t unkn1 = 1;
+
+	memset(yaftl_info.indexPageBuf, 0xFF, yaft_info.unknCalculatedValue3<<3);
+	memset(yaftl_info.unknBuffer2_ftl, 0xFF, nand_geometry_ftl.usable_blocks_per_bank * 0xC);
+
+	// Still figuring shit out.
+
+	uint32_t i;
+	for (i = 0; i <= nand_geometry_ftl.usable_blocks_per_bank) {
+		yaftl_unknBuffer2_ftl
+	}
 }
