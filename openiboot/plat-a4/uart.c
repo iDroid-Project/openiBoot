@@ -127,7 +127,7 @@ int uart_setup() {
 		return 0;
 	}
 
-	task_init(&uart_task, "uart reader");
+	task_init(&uart_task, "uart reader", TASK_DEFAULT_STACK_SIZE);
 
 	UartCommandBuffer = malloc(UartCommandBufferSize);
 	memset(UartCommandBuffer, 0, UartCommandBufferSize);

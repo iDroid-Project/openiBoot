@@ -4,7 +4,23 @@
 #include "openiboot.h"
 #include "nand.h"
 
-// VFL Enums
+/**
+ * @file
+ *
+ * This file contains the definition of the VFL interface.
+ *
+ * Functions in this file are to do with manipulating a NAND device
+ * as a contiguous block of data.
+ *
+ * @defgroup VFL
+ */
+
+/**
+ * The VFL signature style enumeration.
+ *
+ * This is used to determine how the signature will
+ * be read by vfl_detect.
+ */
 typedef enum _vfl_signature_style
 {
 	vfl_old_signature = 0x64,
@@ -27,32 +43,140 @@ typedef error_t (*vfl_write_single_page_t)(struct _vfl_device *, uint32_t _page,
 
 
 // VFL Device Struct
+
+/**
+ * The VFL device structure.
+ *
+ * This structure represents a VFL device,
+ * which is basically a driver for a specific
+ * VFL on a specific NAND device. One vfl_device_t
+ * is created for each NAND device.
+ *
+ * @ingroup VFL
+ */
 typedef struct _vfl_device
 {
-	vfl_open_t open;
-	vfl_close_t close;
+	vfl_open_t open; /**< Used by vfl_open(). */
+	vfl_close_t close; /**< Used by vfl_close(). */
 
-	vfl_get_device_t get_device;
+	vfl_get_device_t get_device; /**< Used by vfl_get_device(). */
 
-	vfl_read_single_page_t read_single_page;
-	vfl_write_single_page_t write_single_page;
+	vfl_read_single_page_t read_single_page; /**< Used by vfl_read_single_page(). */
+	vfl_write_single_page_t write_single_page; /**< Used by vfl_write_single_page(). */
 
 } vfl_device_t;
 
+//
 // VFL Device Functions
+// 
+
+/**
+ * Initialise a VFL device.
+ *
+ * This should be called before any vfl_device_t structure
+ * is used. Usually, VFL device drivers call it in their
+ * own init function.
+ *
+ * @param _vfl the device to initialise.
+ *
+ * @ingroup VFL
+ */
 void vfl_init(vfl_device_t *_vfl);
+
+/**
+ * Clean up a VFL device.
+ *
+ * This should be called when a VFL structure is finished
+ * with (you should call close seperately too if you've
+ * opened it.
+ *
+ * @param _vfl the device to clean up.
+ *
+ * @ingroup VFL
+ */
 void vfl_cleanup(vfl_device_t *_vfl);
 
+/**
+ * Open the VFL on a given NAND device.
+ *
+ * This should be called to open the VFL before
+ * any other vfl functions are called (such as vfl_read_single_page).
+ *
+ * @param _vfl the VFL device to open.
+ * @param _dev the NAND device to open it from.
+ * @return Whether any problems occurred.
+ *
+ * @ingroup VFL
+ */
 error_t vfl_open(vfl_device_t *_vfl, nand_device_t *_dev);
+
+/**
+ * Close a VFL device.
+ *
+ * This should be called when operations on the VFL
+ * are finished with.
+ *
+ * @param _vfl the VFL device to close.
+ *
+ * @ingroup VFL
+ */
 void vfl_close(vfl_device_t *_vfl);
 
+/**
+ * Get the NAND device associated with this VFL device.
+ *
+ * @return The NAND device associated with this VFL device.
+ *
+ * @ingroup VFL
+ */
 nand_device_t *vfl_get_device(vfl_device_t *_vfl);
 
+/**
+ * Read a single page from the VFL.
+ *
+ * This reads a single page from the VFL, that is given a single page number,
+ * the physical location of the page is calculated and the page is read.
+ *
+ * @param _vfl the VFL device to read from.
+ * @param _page the page number to read.
+ * @param _buffer the buffer to store the page data into. You should use device_get_info
+ * 					to calculate the VFL's page size.
+ * @param _spare the buffer to store the spare data, this can be NULL.
+ * @param _empty_ok if this is non-zero, an empty page will not return an error.
+ * @param _refresh_page if the pointed integer is non-zero the read will be attempted twice.
+ * @return Whether an error occurred.
+ *
+ * @ingroup VFL
+ */
 error_t vfl_read_single_page(vfl_device_t *_vfl, uint32_t _page, uint8_t* _buffer, uint8_t* _spare,
 		int _empty_ok, int* _refresh_page);
 
+/**
+ * Write a single page to the VFL.
+ *
+ * Given a virtual page number, the VFL device calculates the physical location of the page,
+ * and writes the given data to it.
+ *
+ * @param _vfl the VFL device to read from.
+ * @param _page the page number to read.
+ * @param _buffer the buffer to store into the page. You should use device_get_info
+ * 					to calculate the VFL's page size.
+ * @param _spare the buffer to read the spare data from.
+ * @return Whether an error occurred.
+ *
+ * @ingroup VFL
+ */
 error_t vfl_write_single_page(vfl_device_t *_vfl, uint32_t _page, uint8_t* _buffer, uint8_t* _spare);
 
+/**
+ * Attempt to detect and open the VFL on a given NAND device.
+ *
+ * @param _vfl the pointer to store the output VFL device in.
+ * @param _nand the NAND device where the VFL resides.
+ * @param _sign the signature style.
+ *
+ * @ingroup VFL
+ */
 error_t vfl_detect(vfl_device_t **_vfl, nand_device_t *_nand, vfl_signature_style_t _sign);
 
 #endif //VFL_H

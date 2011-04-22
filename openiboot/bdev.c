@@ -2,7 +2,8 @@
 #include "arm/arm.h"
 #include "util.h"
 
-static LinkedList bdev_list = {&bdev_list, &bdev_list};
+static int bdev_init_done = 0;
+static LinkedList bdev_list;
 
 static inline block_device_t *bdev_get(LinkedList *_ptr)
 {
@@ -183,6 +184,14 @@ error_t block_device_setup(block_device_t *_bdev)
 error_t block_device_register(block_device_t *_bdev)
 {
 	EnterCriticalSection();
+
+	if(!bdev_init_done)
+	{
+		bdev_init_done = 1;
+		bdev_list.prev = &bdev_list;
+		bdev_list.next = &bdev_list;
+	}
+
 	LinkedList *prev = bdev_list.prev;
 	_bdev->list_ptr.prev = prev;
 	_bdev->list_ptr.next = &bdev_list;

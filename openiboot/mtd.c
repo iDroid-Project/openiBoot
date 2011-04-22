@@ -3,7 +3,8 @@
 #include "commands.h"
 #include "util.h"
 
-LinkedList mtd_list = {&mtd_list, &mtd_list};
+static int mtd_init_done = 0;
+static LinkedList mtd_list;
 
 #define mtd_get(ptr)		(CONTAINER_OF(mtd_t, list_ptr, (ptr)))
 #define mtd_get_bdev(ptr) 	(CONTAINER_OF(mtd_t, bdev, (ptr)))
@@ -118,6 +119,14 @@ error_t mtd_register(mtd_t *_mtd)
 		return ret;
 
 	EnterCriticalSection();
+
+	if(!mtd_init_done)
+	{
+		mtd_init_done = 1;
+		mtd_list.prev = &mtd_list;
+		mtd_list.next = &mtd_list;
+	}
+
 	LinkedList *prev = mtd_list.prev;
 	_mtd->list_ptr.prev = prev;
 	_mtd->list_ptr.next = &mtd_list;
