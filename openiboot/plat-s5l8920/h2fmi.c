@@ -1286,7 +1286,7 @@ static uint32_t h2fmi_aes_key_2[] = {
 	0xA579CCD3,
 };
 
-static uint32_t h2fmi_aes_enabled = 1;
+static uint32_t h2fmi_aes_enabled = 0;
 
 void h2fmi_setup_ftl(uint32_t _start_page, uint32_t _smth, uint32_t _dataBuf, uint32_t _count)
 {
@@ -1731,6 +1731,9 @@ static void h2fmi_init_device()
 
 void h2fmi_init()
 {
+	h2fmi_aes_enabled = 1;
+	h2fmi_enable_data_whitening = 0;
+
 	memset(h2fmi_dma_state, 0, sizeof(h2fmi_dma_state));
 	h2fmi_init_bus(&fmi0);
 	h2fmi_init_bus(&fmi1);

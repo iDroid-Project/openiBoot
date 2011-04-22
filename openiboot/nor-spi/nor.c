@@ -413,10 +413,19 @@ static error_t nor_setup_chip_info(nor_device_t *_dev)
 
 static error_t nor_device_init(nor_device_t *_dev)
 {
+	error_t ret = mtd_init(&_dev->mtd);
+	if(FAILED(ret))
+		return ret;
+
+	_dev->block_protect_count = 0;
+	_dev->block_write_function = &nor_write_block_by_byte;
+	_dev->block_protect_bits = NOR_SPI_SR_BP_ALL;
+	_dev->page_size = 1;
+
 	nor_prepare(&_dev->mtd);
 	
 	// Load values specific to the actual NOR chip
-	error_t ret = nor_setup_chip_info(_dev);
+	ret = nor_setup_chip_info(_dev);
 	if(FAILED(ret))
 		return ret;
 
@@ -430,7 +439,7 @@ static error_t nor_device_init(nor_device_t *_dev)
 
 	nor_finish(&_dev->mtd);
 
-	return mtd_init(&_dev->mtd);
+	return SUCCESS;
 }
 
 static nor_device_t nor_device = {
@@ -452,15 +461,8 @@ static nor_device_t nor_device = {
 		.usage = mtd_boot_images,
 	},
 	
-	.block_protect_count = 0,
-
 	.gpio = NOR_CS,
 	.spi = NOR_SPI,
-	
-	.block_write_function = &nor_write_block_by_byte,
-	.block_size = 0x1000,
-	.block_protect_bits = NOR_SPI_SR_BP_ALL,
-	.page_size = 0x1,
 };
 
 static void nor_init()

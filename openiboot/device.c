@@ -3,7 +3,8 @@
 #include "commands.h"
 #include "util.h"
 
-static LinkedList device_list = {&device_list, &device_list};
+static uint32_t device_init_done = 0;
+static LinkedList device_list;
 
 static inline device_t *device_get(LinkedList *_ptr)
 {
@@ -24,6 +25,14 @@ error_t device_init(device_t *_dev)
 error_t device_register(device_t *_dev)
 {
 	EnterCriticalSection();
+
+	if(!device_init_done)
+	{
+		device_init_done = 1;
+		device_list.prev = &device_list;
+		device_list.next = &device_list;
+	}
+
 	LinkedList *prev = device_list.prev;
 	_dev->list_ptr.prev = prev;
 	_dev->list_ptr.next = &device_list;

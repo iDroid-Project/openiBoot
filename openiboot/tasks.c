@@ -6,48 +6,10 @@
 #include "util.h"
 #include "timer.h"
 
-static uint64_t startTime = 0;
-
-const TaskDescriptor bootstrapTaskInit = {
-	TaskDescriptorIdentifier1,
-	{0, 0},
-	{0, 0},
-	TASK_RUNNING,
-	1,
-	{0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-	{{0, 0}, 0, 0, 0, 0},
-	{0, 0},
-	0,
-	0,
-	0,
-	0,
-	0,
-	"bootstrap",
-	TaskDescriptorIdentifier2
-	};
-
-const TaskDescriptor irqTaskInit = {
-	TaskDescriptorIdentifier1,
-	{0, 0},
-	{0, 0},
-	TASK_RUNNING,
-	1,
-	{0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-	{{0, 0}, 0, 0, 0, 0},
-	{0, 0},
-	0,
-	0,
-	0,
-	0,
-	0,
-	"irq",
-	TaskDescriptorIdentifier2
-	};
-
 static TaskDescriptor bootstrapTask;
 static TaskDescriptor irqTask;
 
-TaskDescriptor *IRQTask = &irqTask;
+TaskDescriptor *IRQTask = NULL;
 TaskDescriptor *IRQBackupTask = NULL;
 
 static void task_add_after(TaskDescriptor *_a, TaskDescriptor *_b)
@@ -92,28 +54,41 @@ static void task_remove(TaskDescriptor *_t)
 	prev->taskList.next = next;
 	next->taskList.prev = prev;
 
+	_t->taskList.next = _t;
+	_t->taskList.prev = _t;
+
 	LeaveCriticalSection();
 }
 
-int tasks_setup()
+void tasks_setup()
 {
-	memcpy(&bootstrapTask, &bootstrapTaskInit, sizeof(TaskDescriptor));
-	memcpy(&irqTask, &irqTaskInit, sizeof(TaskDescriptor));
-	bootstrapTask.taskList.next = &bootstrapTask;
-	bootstrapTask.taskList.prev = &bootstrapTask;
+	task_init(&bootstrapTask, "bootstrap", 0);
+	bootstrapTask.state = TASK_RUNNING;
+
+	task_init(&irqTask, "irq", 0);
+	irqTask.state = TASK_RUNNING;
+
+	IRQTask = &irqTask;
+	IRQBackupTask = NULL;
 	CurrentRunning = &bootstrapTask;
-	return 0;
 }
 
-void task_init(TaskDescriptor *_td, char *_name)
+void task_init(TaskDescriptor *_td, char *_name, size_t _stackSize)
 {
 	memset(_td, 0, sizeof(TaskDescriptor));
+
 	_td->identifier1 = TaskDescriptorIdentifier1;
 	_td->identifier2 = TaskDescriptorIdentifier2;
-	_td->state = TASK_STOPPED;
 	strcpy(_td->taskName, _name);
-	_td->storage = malloc(TASK_STACK_SIZE);
-	_td->storageSize = TASK_STACK_SIZE;
+
+	_td->criticalSectionNestCount = 1;
+	_td->state = TASK_STOPPED;
+
+	_td->storageSize = _stackSize;
+	_td->storage = _stackSize > 0? malloc(_stackSize): NULL;
+
+	_td->taskList.next = _td;
+	_td->taskList.prev = _td;
 
 	bufferPrintf("tasks: Initialized %s.\n", _td->taskName);
 }
@@ -140,7 +115,7 @@ void task_run(void (*_fn)(void*), void *_arg)
 	task_stop();
 }
 
-int task_start(TaskDescriptor *_td, void *_fn, void *_arg)
+error_t task_start(TaskDescriptor *_td, void *_fn, void *_arg)
 {
 	EnterCriticalSection();
 
@@ -166,12 +141,12 @@ int task_start(TaskDescriptor *_td, void *_fn, void *_arg)
 		LeaveCriticalSection();
 
 		//bufferPrintf("tasks: Added %s to tasks.\n", _td->taskName);
-		return 1;
+		return SUCCESS;
 	}
 		
 	LeaveCriticalSection();
 
-	return 0;
+	return EINVAL;
 }
 
 void task_stop()
@@ -208,7 +183,7 @@ void task_stop()
 	// the call to SwapTask... -- Ricky26
 }
 
-int task_yield()
+error_t task_yield()
 {
 	EnterCriticalSection();
 	if(CurrentRunning == IRQTask)
@@ -216,7 +191,7 @@ int task_yield()
 		LeaveCriticalSection();
 
 		bufferPrintf("tasks: Can't swap during ISR!\r\n");
-		return -1;
+		return EINVAL;
 	}
 
 	TaskDescriptor *next = CurrentRunning->taskList.next;
@@ -229,11 +204,11 @@ int task_yield()
 		//bufferPrintf("tasks: Swapped from %s to %s.\n", CurrentRunning->taskName, next->taskName);
 
 		LeaveCriticalSection();
-		return 1;
+		return SUCCESS_VALUE(1);
 	}
 
 	LeaveCriticalSection();
-	return 0; // didn't yield
+	return SUCCESS_VALUE(0); // didn't yield
 }
 
 void tasks_run()
@@ -259,7 +234,7 @@ void task_wake_event(Event *_evt, void *_obj)
 		task_add_before(task, CurrentRunning); // Add us back to the queue.
 }
 
-int task_sleep(int _ms)
+error_t task_sleep(int _ms)
 {
 	EnterCriticalSection();
 
@@ -268,25 +243,19 @@ int task_sleep(int _ms)
 		LeaveCriticalSection();
 
 		bufferPrintf("tasks: You can't suspend an ISR.\r\n");
-		return -1;
+		return EINVAL;
 	}
 
 	TaskDescriptor *next = CurrentRunning->taskList.next;
 	if(next == CurrentRunning)
 	{
 		LeaveCriticalSection();
+		
+		bufferPrintf("tasks: Last thread cannot sleep!\n");
 
-		if (!startTime) {
-			bufferPrintf("tasks: Last thread cannot sleep!\n");
-			startTime = timer_get_system_microtime();
-		}
-
-		if (!has_elapsed(startTime, (_ms * 1000)))
-			task_sleep(_ms);
-
-		startTime = 0;
-
-		return 0;
+		uint64_t start = timer_get_system_microtime();
+		while(!has_elapsed(start, _ms*1000));
+		return SUCCESS;
 	}
 
 	uint32_t ticks = _ms * 1000;
@@ -299,7 +268,7 @@ int task_sleep(int _ms)
 
 	LeaveCriticalSection();
 
-	return 0;
+	return SUCCESS;
 }
 
 void task_suspend()
@@ -334,12 +303,12 @@ void task_wait()
 	task_suspend();
 }
 
-int task_wait_timeout(int _ms)
+error_t task_wait_timeout(int _ms)
 {
 	CurrentRunning->wasWoken = 0;
 	task_sleep(_ms);
 
-	return CurrentRunning->wasWoken;
+	return SUCCESS_VALUE(CurrentRunning->wasWoken);
 }
 
 void task_wake(TaskDescriptor *_task)
