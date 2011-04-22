@@ -77,7 +77,16 @@ void WMR_BufZone_FinishedRebases(WMR_zone_t *_zone)
 		system_panic("WMR_BufZone_FinishedRebases: _zone->numAllocs != _zone->numRebases\r\n");
 }
 
-typedef struct YAFTL_INFO = {
+typedef struct {
+	uint32_t unkn0;
+	uint16_t unkn1;
+	uint16_t unkn2;
+	uint16_t unkn3;
+	uint8_t unkn4;
+	uint8_t unkn5;
+} UNKNBUFFER2STRUCT;
+
+typedef struct {
 	WMR_zone_t zone;
 	uint16_t unkFactor_0x1; // 38
 	uint16_t unkn3A_0x800; // 3A
@@ -102,7 +111,7 @@ typedef struct YAFTL_INFO = {
 	uint8_t unkStruct_ftl[0x20]; // BC
 	uint32_t* indexPageBuf; // EC
 	uint32_t* unknBuffer4_ftl; // F0
-	uint32_t* unknBuffer2_ftl; // F4
+	UNKNBUFFER2STRUCT* unknBuffer2_ftl; // F4
 	uint32_t* pageBuffer2;
 	uint32_t* buffer3;
 	uint32_t* buffer4;
@@ -145,7 +154,7 @@ typedef struct YAFTL_INFO = {
 } YAFTL_INFO;
 YAFTL_INFO yaftl_info;
 
-typedef struct NAND_GEOMETRY_FTL = {
+typedef struct {
 	uint16_t pages_per_block_total_banks;
 	uint16_t usable_blocks_per_bank;
 	uint16_t bytes_per_page_ftl;
@@ -368,10 +377,16 @@ uint32_t yaFTL_Open(uint32_t* pagesAvailable, uint32_t* bytesPerPage, uint32_t s
 	memset(yaftl_info.indexPageBuf, 0xFF, yaft_info.unknCalculatedValue3<<3);
 	memset(yaftl_info.unknBuffer2_ftl, 0xFF, nand_geometry_ftl.usable_blocks_per_bank * 0xC);
 
-	// Still figuring shit out.
-
 	uint32_t i;
 	for (i = 0; i <= nand_geometry_ftl.usable_blocks_per_bank) {
-		yaftl_unknBuffer2_ftl
+		yaftl_info.unknBuffer2_ftl[i].unkn0 = 0;
+		yaftl_info.unknBuffer2_ftl[i].unkn1 = 0;
+		yaftl_info.unknBuffer2_ftl[i].unkn2 = 0;
+		yaftl_info.unknBuffer2_ftl[i].unkn3 = 0;
+		yaftl_info.unknBuffer2_ftl[i].unkn4 = 0;
+		yaftl_info.unknBuffer2_ftl[i].unkn5 = 0;
 	}
+
+	// Still figuring shit out.
+	// Now there's something with VFLCxt. It's late. Night.
 }
