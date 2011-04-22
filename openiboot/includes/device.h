@@ -3,6 +3,29 @@
 
 #include "openiboot.h"
 
+/**
+ * @file
+ *
+ * This file defines the device interface.
+ *
+ * The device interface is designed to represent
+ * any kind of device that needs to be accessed in
+ * an abstract manor.
+ *
+ * It provides a way of getting information about a
+ * device and sending IO control messages to devices.
+ *
+ * @defgroup Device
+ */
+
+/**
+ * This is the device information enumeration.
+ *
+ * These are the items supported by device_get_info() and
+ * device_set_info().
+ *
+ * @ingroup Device
+ */
 typedef enum _device_info
 {
 	// NAND
@@ -42,6 +65,14 @@ typedef error_t (*device_ioctl_t)(struct _device *, uint32_t _id, void *_in, siz
 typedef error_t (*device_get_info_t)(struct _device *, device_info_t _item, void *_result, size_t _sz);
 typedef error_t (*device_set_info_t)(struct _device *, device_info_t _item, void *_val, size_t _sz);
 
+/**
+ * This is the device structure.
+ *
+ * This contains all the informations for
+ * the device_* functions to work.
+ *
+ * @ingroup Device
+ */
 typedef struct _device
 {
 	fourcc_t fourcc;

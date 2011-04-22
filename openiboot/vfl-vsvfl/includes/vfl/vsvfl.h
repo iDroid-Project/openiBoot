@@ -4,6 +4,17 @@
 #include "../../includes/vfl.h"
 #include "nand.h"
 
+/**
+ * @file
+ *
+ * This file is where the VSVFL VFL implementation is defined.
+ *
+ * VSVFL is the newer VFL implementation, which caters to
+ * newer devices using VSVFL on their NAND.
+ *
+ * This includes devices from the iPhone 3GS onwards.
+ */
+
 typedef struct _vfl_vsvfl_geometry
 {
 	uint16_t pages_per_block;
@@ -28,6 +39,12 @@ typedef struct _vfl_vsvfl_geometry
 struct _vfl_vsvfl_context;
 
 // VFL-VFL Device Struct
+/**
+ * This is the structure for the VSVFL device.
+ *
+ * @implements _vfl_device
+ * @ingroup VFL
+ */
 typedef struct _vfl_vsvfl_device
 {
 	vfl_device_t vfl;

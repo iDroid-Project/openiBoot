@@ -1,6 +1,23 @@
 #ifndef OPENIBOOT_H
 #define OPENIBOOT_H
 
+/**
+ * @file
+ *
+ * This is the main include for OpeniBoot.
+ *
+ * A lot of functionality that is used frequently in this
+ * program is defined here.
+ *
+ * @mainpage
+ *
+ * This is the documentation for OpeniBoot, which is generated
+ * from the OpeniBoot source code.
+ *
+ * To read the documentation for the various parts of OpeniBoot,
+ * please use the buttons above.
+ */
+
 #include <stddef.h> // size_t
 
 typedef unsigned long long uint64_t;
