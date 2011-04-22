@@ -95,7 +95,9 @@ typedef struct {
 	uint32_t unknCalculatedValue1; // 40
 	uint32_t total_pages_ftl; // 44
 	uint16_t unknCalculatedValue3; // 48
+	uint32_t unkn_0x2C; // 4C
 	uint32_t* ftl2_buffer_x;
+	uint32_t unkn_0x3C; // 5C
 	uint32_t* ftl2_buffer_x2000;
 	uint32_t unk74_4;
 	uint32_t unk78_counter;
@@ -107,8 +109,8 @@ typedef struct {
 	WMR_zone_t ftl_buffer2;
 	uint32_t unkAC_2;
 	uint32_t unkB0_1;
-	uint32_t unkB4_buffer_0x8;
-	uint32_t unkB8_buffer_0x8;
+	uint32_t unkB4_buffer;
+	uint32_t unkB8_buffer;
 	uint8_t unkStruct_ftl[0x20]; // BC
 	uint32_t* indexPageBuf; // EC
 	UNKNBUFFERSTRUCT* unknBuffer4_ftl; // F0
@@ -171,13 +173,13 @@ uint32_t BTOC_Init() {
 	yaftl_info.unkAC_2 = 2;
 	yaftl_info.unkB0_1 = 1;
 
-	yaftl_info.unk8c_buffer_0x10 = wmr_malloc(0x10);
-	yaftl_info.unk88_buffer_0x10 = wmr_malloc(yaftl_info.unk74_4 << 2);
-	yaftl_info.unk84_buffer_0x10 = wmr_malloc(yaftl_info.unk74_4 << 2);
-	yaftl_info.unkB8_buffer_0x8 = wmr_malloc(yaftl_info.unkAC_2 << 2);
-	yaftl_info.unkB4_buffer_0x8 = wmr_malloc(yaftl_info.unkAC_2 << 2);
+	yaftl_info.unk8c_buffer = wmr_malloc(0x10);
+	yaftl_info.unk88_buffer = wmr_malloc(yaftl_info.unk74_4 << 2);
+	yaftl_info.unk84_buffer = wmr_malloc(yaftl_info.unk74_4 << 2);
+	yaftl_info.unkB8_buffer = wmr_malloc(yaftl_info.unkAC_2 << 2);
+	yaftl_info.unkB4_buffer = wmr_malloc(yaftl_info.unkAC_2 << 2);
 
-	if(!yaftl_info.unk8c_buffer_0x10 || !yaftl_info.unk8c_buffer_0x10 || !yaftl_info.unk84_buffer_0x10 || !yaftl_info.unkB8_buffer_0x8 || !yaftl_info.unkB4_buffer_0x8)
+	if(!yaftl_info.unk8c_buffer || !yaftl_info.unk8c_buffer || !yaftl_info.unk84_buffer || !yaftl_info.unkB8_buffer || !yaftl_info.unkB4_buffer)
 		return -1;
 
 	uint32_t i;
@@ -186,9 +188,9 @@ uint32_t BTOC_Init() {
 	}
 
 	for(i = 0; i < yaftl_info.unkAC_2; i++) {
-		yaftl_info.unkB4_buffer_0x8[i] = -1;
-		yaftl_info.unkB8_buffer_0x8[i] = wmr_malloc(nand_geometry_ftl.pages_per_block_total_banks<<2);
-		memset(yaftl_info.unkB8_buffer_0x8[i], 0xFF, nand_geometry_ftl.pages_per_block_total_banks<<2);
+		yaftl_info.unkB4_buffer[i] = -1;
+		yaftl_info.unkB8_buffer[i] = wmr_malloc(nand_geometry_ftl.pages_per_block_total_banks<<2);
+		memset(yaftl_info.unkB8_buffer[i], 0xFF, nand_geometry_ftl.pages_per_block_total_banks<<2);
 	}
 
 	yaftl_info.unk7C_byteMask = (1 << yaftl_info.unk74_4) - 1;
@@ -215,9 +217,9 @@ uint32_t BTOC_Init() {
 uint32_t BTOC_Alloc(uint32_t _arg0, uint32_t _arg1) {
 	uint32_t inited = 0x7FFFFFFF;
 	yaftl_info.unkB0_1 = (yaftl_info.unkB0_1 + 1) % yaftl_info.unkAC_2;
-	yaftl_info.unkB4_buffer_0x8[yaftl_info.unkB0_1] = _arg0;
+	yaftl_info.unkB4_buffer[yaftl_info.unkB0_1] = _arg0;
 
-	memset(yaftl_info.unkB8_buffer_0x8[yaftl_info.unkB0_1], 0xFF, nand_geometry_ftl.pages_per_block_total_banks<<2);
+	memset(yaftl_info.unkB8_buffer[yaftl_info.unkB0_1], 0xFF, nand_geometry_ftl.pages_per_block_total_banks<<2);
 
 	yaftl_info.unk78_counter++;
 
@@ -238,6 +240,16 @@ uint32_t BTOC_Alloc(uint32_t _arg0, uint32_t _arg1) {
 	yaftl_info.unk88_buffer_0x10[i] = _arg0;
 	yaftl_info.unk8c_buffer_0x10[i] = yaftl_info.unk78_counter;
 	return yaftl_info.unk84_buffer_0x10[i];
+}
+
+void yaftl_loop_thingy() {
+	uint32_t i;
+	for (i = 0; i < yaftl_info.unk74_4; i++) {
+		if(yaftl_info.unk88_buffer[i] != 3)
+			yaftl_info.unk88_buffer[i] = yaftl_info.unkn_0x2C;
+		if(yaftl_info.unk88_buffer[i] != 2)
+			yaftl_info.unk88_buffer[i] = yaftl_info.unkn_0x3C;
+	}
 }
 
 void YAFTL_Init() {
