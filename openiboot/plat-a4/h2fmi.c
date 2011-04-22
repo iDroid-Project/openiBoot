@@ -605,20 +605,23 @@ static int h2fmi_wait_status(h2fmi_struct_t* _fmi, uint32_t a1, uint32_t a2, uin
 
 	task_sleep(2000); // or task_yield()??
 
+	// interrupt related, not implemented yet iirc
+	/*
 	int result;
 	result = _fmi->field_48 & 0x100;
+	
+	if (!result) {
+		bufferPrintf("h2fmi_wait_status: fail !!\r\n");
+		return 0;
+	}
+	*/
 
 	if (status != NULL) 
-		*status = GET_REG(H2FMI_UNK448(_fmi));
+		*status = (uint8_t)GET_REG(H2FMI_UNK448(_fmi));
 
 	SET_REG(H2FMI_UNKREG5(_fmi), 0);
 
-	if (!result) {
-		bufferPrintf("h2fmi_wait_status: fail !!\r\n");
-		return -1;
-	}
-
-	return 0;
+	return 1;
 }
 
 static void h2fmi_tx_pio_ready(h2fmi_struct_t* _fmi)
@@ -2305,6 +2308,183 @@ uint32_t h2fmi_write_single_page(uint32_t _ce, uint32_t _page, uint8_t* _data, u
 	
 }
 
+static int h2fmi_wait_erase_status(h2fmi_struct_t *_fmi, uint32_t a1, uint32_t a2, uint8_t* result)
+{
+	uint32_t status;
+	uint32_t ret;
+	
+	ret = h2fmi_wait_status(_fmi, a1, a2, &status);
+	
+	if(ret && !(status & 0x80))
+	{
+		system_panic("h2fmi wait for erase status failed !! \r\n");
+		return -1;
+	}
+	
+	if(result != NULL)
+		*result = (uint8_t)status;
+	
+	return ret;
+}
+
+static int h2fmi_erase_blocks(h2fmi_struct_t *_fmi, uint32_t num_blocks, uint16_t* chip_array, uint16_t* block_array, uint32_t* status)
+{	
+	uint32_t pageNum;
+	uint32_t reg_value;
+	uint32_t loc_array[H2FMI_CHIP_COUNT];
+	uint8_t result;
+	int ret;
+	int i;
+	
+	for (i = 0; i < num_blocks; i++)
+	{
+		if (chip_array[i] >= H2FMI_CHIP_COUNT)
+		{
+			bufferPrintf("h2fmi_erase_blocks: invalid chip id, aborting.\r\n");
+			return 0;
+		}
+	}
+
+	for (i = 0; i < H2FMI_CHIP_COUNT; i++)
+		loc_array[i] = 0;
+
+	reg_value = GET_REG(H2FMI_UNKREG1(_fmi));
+	SET_REG(H2FMI_UNKREG1(_fmi), reg_value | 0x200000);
+
+	_fmi->pages_done = 0;
+	_fmi->field_170 = 0xFFFFFFFF;
+	_fmi->failure_details.overall_status = 0;
+
+	int array_index = 0;
+
+	while (array_index < num_blocks)
+	{
+		if (loc_array[chip_array[array_index]] != 1)
+		{
+			int index = array_index;
+			do
+			{
+				if (loc_array[chip_array[index]] != 0)
+					break;
+
+				h2fmi_enable_chip(_fmi, chip_array[index]);
+
+				pageNum = h2fmi_geometry.pages_per_block * block_array[index];
+
+				SET_REG(H2FMI_UNKREG9(_fmi), (pageNum & 0xFF) | (pageNum & 0xFF00) | (pageNum & 0xFF0000));
+				SET_REG(H2FMI_UNKREG10(_fmi), 2);
+				SET_REG(H2FMI_UNKREG4(_fmi), 0xD060);
+				SET_REG(H2FMI_UNKREG5(_fmi), 0xB);
+
+				while ((GET_REG(H2FMI_UNKREG6(_fmi)) & 0xB) != 0xB);
+
+				SET_REG(H2FMI_UNKREG6(_fmi), 0xB);
+
+				_fmi->pages_done++;
+				index++;
+				loc_array[chip_array[index]] = 1;
+			}
+			while (index < num_blocks);
+		}
+		else
+		{
+			h2fmi_enable_chip(_fmi, chip_array[array_index]);
+			array_index++;
+
+			ret = h2fmi_wait_erase_status(_fmi, 0x40, 0x40, &result);
+			
+			if (!ret)
+			{
+				bufferPrintf("h2fmi_erase_blocks: h2fmi_wait_erase_status failed!\r\n");
+				loc_array[chip_array[array_index - 1]] = 2;
+				_fmi->field_170 = chip_array[array_index - 1];
+				break;
+			}
+			
+			if (result & 0x1)
+			{
+				bufferPrintf("h2fmi_erase_blocks: h2fmi_wait_erase_status bad result!\r\n");
+				loc_array[chip_array[array_index - 1]] = 3;
+				_fmi->field_170 = chip_array[array_index - 1];
+				ret = 0;
+				break;
+			}
+
+			loc_array[chip_array[array_index - 1]] = 0;
+		}
+
+		ret = 1;
+	}
+
+	for (i = array_index; i < num_blocks; i++)
+	{
+		if(loc_array[chip_array[i]] != 1)
+			continue;
+
+		h2fmi_enable_chip(_fmi, chip_array[i]);
+
+		int eraseStatusRet = h2fmi_wait_erase_status(_fmi, 0x40, 0x40, &result);
+		
+		if (!eraseStatusRet || (result & 0x1))
+		{
+			if (_fmi->field_170 == 0xFFFFFFFF)
+			{
+				_fmi->field_170 = chip_array[i];
+				ret = 0;
+			}
+			
+			if (!eraseStatusRet)
+			{
+				bufferPrintf("h2fmi_erase_blocks: second h2fmi_wait_erase_status failed!\r\n");
+				loc_array[chip_array[i]] = 2;
+			}
+			else if (result & 0x1)
+			{
+				bufferPrintf("h2fmi_erase_blocks: second h2fmi_wait_erase_status bad result!\r\n");
+				loc_array[chip_array[i]] = 3;
+				ret = 0;
+			}
+		}
+		else
+			loc_array[chip_array[i]] = 0;		
+	}
+
+	SET_REG(H2FMI_UNKREG1(_fmi), reg_value);
+
+	h2fmi_disable_bus(_fmi);
+
+	if (status != NULL)
+		*status = (ret != 1) ? 1 : (ret - 1);
+
+	return (ret);
+}
+
+static int h2fmi_erase_single_block(uint16_t _ce, uint16_t _block)
+{
+	int ret;
+	uint32_t status = 0;
+
+	uint32_t bus = h2fmi_map[_ce].bus;
+	uint16_t chip = h2fmi_map[_ce].chip;
+
+	h2fmi_struct_t *fmi = h2fmi_busses[bus];
+
+	fmi->field_188 = &fmi->field_184;
+
+	ret = h2fmi_erase_blocks(fmi, 1, &chip, &_block, &status);
+
+	if (ret)
+		return 0;
+
+	if (status)
+	{
+		bufferPrintf("h2fmi_erase_blocks_single failed!!\r\n");
+		return (0x80000015);
+	}
+	else
+		return (0x80000001);
+}
+
 static uint8_t h2fmi_calculate_ecc_bits(h2fmi_struct_t *_fmi)
 {
 	uint32_t val = (_fmi->bytes_per_spare - _fmi->ecc_bytes) / (_fmi->bytes_per_page >> 10);
@@ -2893,6 +3073,26 @@ void cmd_nand_write_bootpage(int argc, char** argv)
 }
 COMMAND("nand_write_bootpage", "H2FMI NAND test", cmd_nand_write_bootpage);
 
+void cmd_nand_erase(int argc, char** argv)
+{
+	bufferPrintf("Disabled for now.\r\n");
+	return;
+	
+	if(argc < 3)
+	{
+		bufferPrintf("Usage: %s [ce] [block]\r\n", argv[0]);
+		return;
+	}
+	
+	uint32_t ce = parseNumber(argv[1]);
+	uint32_t block = parseNumber(argv[2]);
+
+	uint32_t ret = h2fmi_erase_single_block((uint16_t)ce, (uint16_t)block);
+
+	bufferPrintf("fmi: Command completed with result 0x%08x.\r\n", ret);
+}
+COMMAND("nand_erase", "H2FMI NAND test", cmd_nand_erase);
+
 static void cmd_vfl_read(int argc, char** argv)
 {
 	if(argc < 5)
@@ -2912,4 +3112,3 @@ static void cmd_vfl_read(int argc, char** argv)
 	bufferPrintf("vfl: Command completed with result 0x%08x.\r\n", ret);
 }
 COMMAND("vfl_read", "H2FMI NAND test", cmd_vfl_read);
-

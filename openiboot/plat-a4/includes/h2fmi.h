@@ -137,6 +137,9 @@ typedef struct _h2fmi_struct
 	uint32_t field_170;
 	uint32_t field_180;
 	uint8_t field_182;
+	
+	uint32_t field_184; // 184 in iPhone3,1_4.2.1_8C148 iBoot
+	uint32_t *field_188; // 188 in iPhone3,1_4.2.1_8C148 iBoot
 
 	uint32_t fmi_state; // 48
 	uint32_t current_mode; // 7C
