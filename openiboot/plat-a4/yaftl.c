@@ -84,10 +84,11 @@ typedef struct {
 	uint16_t unkn3;
 	uint8_t unkn4;
 	uint8_t unkn5;
-} UNKNBUFFER2STRUCT;
+} UNKNBUFFERSTRUCT;
 
 typedef struct {
 	WMR_zone_t zone;
+	WMR_zone_t segment_info_temp;
 	uint16_t unkFactor_0x1; // 38
 	uint16_t unkn3A_0x800; // 3A
 	uint32_t unknCalculatedValue0; // 3C
@@ -110,8 +111,8 @@ typedef struct {
 	uint32_t unkB8_buffer_0x8;
 	uint8_t unkStruct_ftl[0x20]; // BC
 	uint32_t* indexPageBuf; // EC
-	uint32_t* unknBuffer4_ftl; // F0
-	UNKNBUFFER2STRUCT* unknBuffer2_ftl; // F4
+	UNKNBUFFERSTRUCT* unknBuffer4_ftl; // F0
+	UNKNBUFFERSTRUCT* unknBuffer2_ftl; // F4
 	uint32_t* pageBuffer2;
 	uint32_t* buffer3;
 	uint32_t* buffer4;
@@ -199,7 +200,7 @@ uint32_t BTOC_Init() {
 		yaftl_info.unk84_buffer_0x10[i] = WMR_Buf_Alloc_ForDMA(&yaftl_info.ftl_buffer2, nand_geometry_ftl.bytes_per_page_ftl * unknFactor_0x1);
 	}
 
-	if(!WMR_BufZone_Finished_Allocs(&yaftl_info.ftl_buffer2))
+	if(!WMR_BufZone_FinishedAllocs(&yaftl_info.ftl_buffer2))
 		return -1;
 
 	for(i = 0; i < yaftl_info.unk74_4; i++) {
@@ -288,7 +289,7 @@ void YAFTL_Init() {
 	yaftl_info.buffer18 = WMR_Buf_Alloc_ForDMA(&yaftl_info.zone, 0xC);
 	yaftl_info.buffer19 = WMR_Buf_Alloc_ForDMA(&yaftl_info.zone, nand_geometry_ftl.total_banks_ftl * 0x180);
 	yaftl_info.buffer20 = WMR_Buf_Alloc_ForDMA(&yaftl_info.zone, nand_geometry_ftl.pages_per_block_total_banks * 0xC);
-	WMR_BufZone_Finished_Allocs(&yaftl_info.zone);
+	WMR_BufZone_FinishedAllocs(&yaftl_info.zone);
 
 	WMR_BufZone_Rebase(&yaftl_info.zone, yaftl_info.pageBuffer0);
 	WMR_BufZone_Rebase(&yaftl_info.zone, yaftl_info.pageBuffer1);
@@ -371,7 +372,8 @@ void YAFTL_Init() {
 	return 0;
 }
 
-uint32_t yaFTL_Open(uint32_t* pagesAvailable, uint32_t* bytesPerPage, uint32_t signature_bit) {
+uint32_t YAFTL_Open(uint32_t* pagesAvailable, uint32_t* bytesPerPage, uint32_t signature_bit) {
+	uint16_t vfl_bytes[3];
 	uint32_t unkn1 = 1;
 
 	memset(yaftl_info.indexPageBuf, 0xFF, yaft_info.unknCalculatedValue3<<3);
@@ -387,6 +389,112 @@ uint32_t yaFTL_Open(uint32_t* pagesAvailable, uint32_t* bytesPerPage, uint32_t s
 		yaftl_info.unknBuffer2_ftl[i].unkn5 = 0;
 	}
 
-	// Still figuring shit out.
-	// Now there's something with VFLCxt. It's late. Night.
+	memcpy(vfl_bytes, some_vsvfl_sub_to_get_most_recent_vflcxt_offset_0x69a(), sizeof(vfl_bytes));
+	if (vfl_bytes[0] != 0xFFFF) { // !restoreMount
+		// mark first 3 blocks as dead
+		yaftl_info.unkn_vflcxt69a = vfl_bytes[0];
+		yaftl_info.unkn_vflcxt69c = vfl_bytes[1];
+		yaftl_info.unkn_vflcxt69e = vfl_bytes[2];
+
+		yaftl_info.unknBuffer2_ftl[yaftl_info.unkn_vflcxt69a].unkn4 = 2;
+		yaftl_info.unknBuffer2_ftl[yaftl_info.unkn_vflcxt69c].unkn4 = 2;
+		yaftl_info.unknBuffer2_ftl[yaftl_info.unkn_vflcxt69e].unkn4 = 2;
+
+		if(!yaftl_info.pageBuffer0) {
+			system_panic("This can't happen. This shouldn't happen. Whatever, it's doing something else then.\r\n");
+		else {
+			// wtf has been done before
+			yaftl_info.unknBuffer2_ftl[vfl_bytes[0]].unkn4 = 2;
+			yaftl_info.unknBuffer2_ftl[vfl_bytes[1]].unkn4 = 2;
+			yaftl_info.unknBuffer2_ftl[vfl_bytes[2]].unkn4 = 2;
+
+			// find valid ftlcxt page
+			uint32_t sth1 = 0;
+			uint32_t sth2 = 0;
+			for (i = 0; i < 3; i++) {
+				if(!YAFTL_readPage(vfl_bytes[i] * yaftl_info.pages_per_block_total_banks, yaftl_info.pageBuffer0, buffer6, 0, 1, 0)) {
+					if(yaftl_info.buffer6[1] != 0xFFFFFFFF && yaftl_info.buffer6[1] > sth1) {
+						sth1 = yaftl_info.buffer6[1];
+						sth2 = vfl_bytes[i];
+					}
+				}
+			}
+			uint32_t some_val;
+			if(sth1) {
+				yaftl_info.unknBuffer2_ftl[sth2] = 16;
+				i = 0;
+				while(1) {
+					if(((uint16_t)yaftl_info.unkn_pageOffset)+i < nand_geometry_ftl.pages_per_block_total_banks
+							&& !YAFTL_readPage(yaftl_info.pages_per_block_total_banks * sth2 + i), yaftl_info.pageBuffer0, buffer6, 0, 1, 0) {
+						if(YAFTL_readPage(yaftl_info.pages_per_block_total_banks*sth2+yaftl_info.unkn_pageOffset+i, yaftl_info.pageBuffer0, buffer6, 0, 1, 0) == 1) {
+							yaftl_info.unkn170_n1 = yaftl_info.pages_per_block_total_banks*sth2+i;
+							if(_readCxtInfo(yaftl_info.pages_per_block_total_banks*sth2+i, pageBuffer0, 1, &unkn1))
+								some_val = 5;
+							else
+								some_val = 0;
+							break;
+						}
+					} else {
+						_readCxtInfo(yaftl_info.pages_per_block_total_banks*sth2+(~yaftl_info.unkn_pageOffset)+i, yaftl_info.pageBuffer0, 0, &unkn1);
+						some_val = 5;
+					}
+				}
+			} else {
+				yaftl_info.unknBuffer2_ftl[vfl_bytes[0]] = 16;
+				some_val = 5;
+			}
+
+			if(unkn1 != 1) {
+				bufferPrintf("YAFTL_Open: unsupported low-level format version.\r\n");
+				return -1;
+			}
+
+			if(some_val || signature_bit) {
+				bufferPrintf("Ach, fu, 0x80000001\r\n");
+				yaftl_info.unk184_0xA *= 100;
+			}
+
+			yaftl_info.unknBuffer4_ftl = wmr_malloc(yaftl_info.unk184_0xA*0xC);
+			if(!yaftl_info.unknBuffer4_ftl) {
+				bufferPrintf("Ach, fu, 0x80000001\r\n");
+				return -1;
+			}
+
+			WMR_BufZone_Init(&yaftl_info.segment_info_temp);
+			for(i = 0; i < yaftl_info.unk184_0xA; i++) {
+				yaftl_info.unknBuffer4_ftl.unkn0 = WMR_Buf_Alloc_ForDMA(&yaftl_info.segment_info_temp, nand_geometry_ftl.bytes_per_page_ftl);
+			}
+			if(!WMR_BufZone_FinishedAllocs(&yaftl_info.segment_info_temp))
+				return -1;
+			for(i = 0; i < yaftl_info.unk184_0xA; i++) {
+				WMR_BufZone_Rebase(&yaftl_info.segment_info_temp, yaftl_info.unknBuffer4_ftl[i]);
+				yaftl_info.unknBuffer4_ftl[i].unkn1 = -1;
+				yaftl_info.unknBuffer4_ftl[i].unkn2 = 0;
+				yaftl_info.unknBuffer4_ftl[i].unkn3 = 0;
+				yaftl_info.unknBuffer4_ftl[i].unkn4 = -1;
+				yaftl_info.unknBuffer4_ftl[i].unkn5 = -1;
+				memset(yaftl_info.unknBuffer4_ftl[i].unkn0, 0xFF, nand_geometry_ftl.bytes_per_page_ftl);
+			}
+			WMR_BufZone_FinishedRebases(&yaftl_info.segment_info_temp);
+
+			pagesAvailable = yaftl_info.total_pages_ftl*0.99;
+			bytesPerPage = nand_geometry_ftl.bytes_per_page_ftl;
+			yaftl_info.unkn17C_0x0 = 0;
+			yaftl_info.unkn180_n1 = -1;
+			for (i = 0; i <= nand_geometry_ftl.usable_blocks_per_bank; i++) {
+				if(yaftl_info.unknBuffer2_ftl[i].unkn4 != 16 && yaftl_info.unknBuffer2_ftl[i].unkn4 != 2) {
+					if(yaftl_info.unknBuffer2_ftl[i].unkn0 > yaftl_info.unkn17C_0x0)
+						yaftl_info.unkn17C_0x0 = yaftl_info.unknBuffer2_ftl[i].unkn0;
+					if(yaftl_info.unknBuffer2_ftl[i].unkn0 < yaftl_info.unkn180_n1)
+						yaftl_info.unkn180_n1 = yaftl_info.unknBuffer2_ftl[i].unkn0;
+				}
+			}
+			SetupFreeAndAllocd();
+			yaftl_loop_thingy();
+			return 0;
+		}
+	} else {
+		// do restore
+		// NO! Better not! Not yet...
+	}
 }
