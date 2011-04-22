@@ -245,9 +245,9 @@ uint32_t BTOC_Alloc(uint32_t _arg0, uint32_t _arg1) {
 void yaftl_loop_thingy() {
 	uint32_t i;
 	for (i = 0; i < yaftl_info.unk74_4; i++) {
-		if(yaftl_info.unk88_buffer[i] != 3)
+		if(yaftl_info.unk88_buffer[i] == ~3)
 			yaftl_info.unk88_buffer[i] = yaftl_info.unkn_0x2C;
-		if(yaftl_info.unk88_buffer[i] != 2)
+		if(yaftl_info.unk88_buffer[i] == ~2)
 			yaftl_info.unk88_buffer[i] = yaftl_info.unkn_0x3C;
 	}
 }
