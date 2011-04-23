@@ -89,10 +89,14 @@ typedef struct {
 	uint32_t unknCalculatedValue1; // 40
 	uint32_t total_pages_ftl; // 44
 	uint16_t unknCalculatedValue3; // 48
+	uint16_t unkn_0x2A; // 4A
 	uint32_t unkn_0x2C; // 4C
 	uint32_t* ftl2_buffer_x;
+	uint16_t unkn_0x34; // 54
 	uint32_t unkn_0x3C; // 5C
 	uint32_t* ftl2_buffer_x2000;
+	uint32_t unk64; // 64
+	uint32_t unk6C; // 6C
 	uint32_t unk74_4;
 	uint32_t unk78_counter;
 	uint32_t unk7C_byteMask;
@@ -105,14 +109,14 @@ typedef struct {
 	uint32_t unkB0_1;
 	uint32_t* unkB4_buffer;
 	uint32_t* unkB8_buffer;
-	uint8_t unkStruct_ftl[0x20]; // BC
+	uint32_t unkStruct_ftl[10]; // BC
 	uint32_t* indexPageBuf; // EC
 	UNKNBUFFERSTRUCT* unknBuffer4_ftl; // F0
 	UNKNBUFFERSTRUCT* unknBuffer2_ftl; // F4
 	uint32_t* pageBuffer2;
 	uint32_t* buffer3;
 	uint32_t* buffer4;
-	uint32_t* buffer5;
+	uint8_t* buffer5;
 	uint32_t* buffer6;
 	uint32_t* buffer7;
 	uint32_t* buffer8;
@@ -160,6 +164,30 @@ typedef struct {
 	uint32_t total_usable_pages;
 } NAND_GEOMETRY_FTL;
 NAND_GEOMETRY_FTL nand_geometry_ftl;
+
+typedef struct {
+	char[4] version; // 0
+	uint32_t unknCalculatedValue0; // 4
+	uint32_t total_pages_ftl; // 8
+	uint32_t unkn_0x2C; // C
+	uint32_t cxt_unkn0; // 10 // placeholder
+	uint32_t unkn_0x3C; // 14
+	uint32_t unk6C; // 18
+	uint32_t unkStruct_ftl_1; // 1C
+	uint32_t unkStruct_ftl_4; // 20
+	uint32_t unkStruct_ftl_0; // 24
+	uint32_t unkStruct_ftl_3; // 28
+	uint32_t unk184_0xA; // 2C
+	uint32_t cxt_unkn1[10]; // placeholder
+	uint16_t unknCalculatedValue3; // 5C
+	uint16_t unkFactor_0x1; // 5E
+	uint16_t unkn3A_0x800; // 60
+	uint16_t unkn_0x2A; // 62
+	uint16_t unkn_0x34; // 66
+	uint16_t unk64; // 68
+	uint32_t cxt_unkn2[11]; // placeholder
+	uint8_t unk188_0x63; // 94
+} YAFTL_CXT;
 
 uint32_t BTOC_Init() {
 	yaftl_info.unk74_4 = 4;
@@ -245,11 +273,50 @@ void yaftl_loop_thingy() {
 	}
 }
 
+uint32_t YAFTL_readCxtInfo(uint32_t _page, uint32_t* _ptr, uint32_t _arg2, uint32_t arg3) {
+	if(YAFTL_readPage(_page, _ptr, yaftl_info.buffer5, 0, 1, _arg3))
+		return ERROR_ARG;
+
+	if(!(yaftl_info.buffer5[9] & 0x20))
+		return ERROR_ARG;
+
+	YAFTL_CXT yaftl_cxt = (YAFTL_CXT*)_ptr;
+
+	if(strncmp(yaftl_cxt->version, "CX01", 4)) {
+		bufferPrintf("YAFTL: Wrong version of CXT.\r\n");
+		return ERROR_ARG;
+	}
+
+
+	// More to come.
+
+	if(_arg3) {
+		yaftl_info.unkFactor_0x1 = yaftl_cxt->unkFactor_0x1;
+		yaftl_info.unkn3A_0x800 = yaftl_cxt->unkn3A_0x800;
+		yaftl_info.unknCalculatedValue0 = yaftl_cxt->unknCalculatedvalue0;
+		yaftl_info.unknCalculatedValue3 = yaftl_cxt->unknCalculatedValue3;
+		yaftl_info.total_pages_ftl = yaftl_cxt->total_pages_ftl;
+		yaftl_info.unkn_0x2A = yaftl_cxt->unkn_0x2A;
+		yaftl_info.unkn_0x2C = yaftl_cxt->unkn_0x2C;
+		yaftl_info.unkn_0x34 = yaftl_cxt->unkn_0x34;
+		yaftl_info.unkn_0x3C = yaftl_cxt->unkn_0x3C;
+		yaftl_info.unkStruct_ftl[0] = yaftl_cxt->unkStruct_ftl_0;
+		yaftl_info.unkStruct_ftl[1] = yaftl_cxt->unkStruct_ftl_1;
+		yaftl_info.unkStruct_ftl[3] = yaftl_cxt->unkStruct_ftl_3;
+		yaftl_info.unkStruct_ftl[4] = yaftl_cxt->unkStruct_ftl_4;
+		yaftl_info.unk64 = yaftl_cxt->unk64;
+		yaftl_info.unk6C = yaftl_cxt->unk6C;
+		yaftl_info.unk184_0xA = yaftl_cxt->unk184_0xA;
+		yaftl_info.unk188_0x63 = yaftl_cxt->unk188_0x63;
+	} else {
+	}
+
+}
+
 uint32_t YAFTL_readPage(uint32_t _page, uint32_t* _ptr, uint32_t* _unkn_ptr, uint32_t _arg0, uint32_t _arg1, uint32_t _arg2) {
 	uint32_t unk1 = 0;
 	uint32_t* data_array[2] = { _ptr, (_unkn_ptr ? _unkn_ptr : yaftl_info.buffer18) };
-	if(FAILED(sub_5FF2A938(_page, data_array, _arg1, _arg2, &unk1, 0, _arg0))) {
-		// sub_5FF2A938 == VSVFL_Read?  --Oranav.
+	if(FAILED(vfl_vsvfl_read_single_page(_page, data_array, _arg1, _arg2, &unk1, 0, _arg0))) {
 		bufferPrintf("YAFTL_readPage: We got read failure.\r\n");
 		return ERROR_ARG;
 	}
@@ -446,14 +513,14 @@ uint32_t YAFTL_Open(uint32_t* pagesAvailable, uint32_t* bytesPerPage, uint32_t s
 							&& !YAFTL_readPage(yaftl_info.pages_per_block_total_banks * sth2 + i), yaftl_info.pageBuffer0, yaftl_info.buffer6, 0, 1, 0) {
 						if(YAFTL_readPage(yaftl_info.pages_per_block_total_banks*sth2+yaftl_info.unkn_pageOffset+i, yaftl_info.pageBuffer0, yaftl_info.buffer6, 0, 1, 0) == 1) {
 							yaftl_info.unkn170_n1 = yaftl_info.pages_per_block_total_banks*sth2+i;
-							if(_readCxtInfo(yaftl_info.pages_per_block_total_banks*sth2+i, pageBuffer0, 1, &unkn1))
+							if(YAFTL_readCxtInfo(yaftl_info.pages_per_block_total_banks*sth2+i, pageBuffer0, 1, &unkn1))
 								some_val = 5;
 							else
 								some_val = 0;
 							break;
 						}
 					} else {
-						_readCxtInfo(yaftl_info.pages_per_block_total_banks*sth2+(~yaftl_info.unkn_pageOffset)+i, yaftl_info.pageBuffer0, 0, &unkn1);
+						YAFTL_readCxtInfo(yaftl_info.pages_per_block_total_banks*sth2+(~yaftl_info.unkn_pageOffset)+i, yaftl_info.pageBuffer0, 0, &unkn1);
 						some_val = 5;
 					}
 				}
