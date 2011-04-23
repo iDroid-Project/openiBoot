@@ -252,6 +252,18 @@ void yaftl_loop_thingy() {
 	}
 }
 
+uint32_t YAFTL_readPage(uint32_t _page, uint32_t* _ptr, uint32_t* _unkn_ptr, uint32_t _arg0, uint32_t _arg1, uint32_t _arg2) {
+	uint32_t unk1;
+	uint32_t* data_array[2] = { _ptr, (_unkn_ptr ? _unkn_ptr : yaftl_info.buffer18) };
+	if(FAILED(sub_5FF2A938(_page, data_array, _arg1, _arg2, &unk1, 0, _arg0))) {
+		bufferPrintf("YAFTL_readPage: We got read failure.\r\n");
+		return ERROR_ARG;
+	}
+
+	unknBuffer2_ftl[page / nand_geometry_ftl.pages_per_block_total_banks].unkn3++;
+	return 0;
+}
+
 void YAFTL_Init() {
 	if(yaFTL_inited)
 		system_panic("Oh shit\r\n");
@@ -424,7 +436,7 @@ uint32_t YAFTL_Open(uint32_t* pagesAvailable, uint32_t* bytesPerPage, uint32_t s
 			uint32_t sth1 = 0;
 			uint32_t sth2 = 0;
 			for (i = 0; i < 3; i++) {
-				if(!YAFTL_readPage(vfl_bytes[i] * yaftl_info.pages_per_block_total_banks, yaftl_info.pageBuffer0, buffer6, 0, 1, 0)) {
+				if(!YAFTL_readPage(vfl_bytes[i] * yaftl_info.pages_per_block_total_banks, yaftl_info.pageBuffer0, yaftl_info.buffer6, 0, 1, 0)) {
 					if(yaftl_info.buffer6[1] != 0xFFFFFFFF && yaftl_info.buffer6[1] > sth1) {
 						sth1 = yaftl_info.buffer6[1];
 						sth2 = vfl_bytes[i];
@@ -437,8 +449,8 @@ uint32_t YAFTL_Open(uint32_t* pagesAvailable, uint32_t* bytesPerPage, uint32_t s
 				i = 0;
 				while(1) {
 					if(((uint16_t)yaftl_info.unkn_pageOffset)+i < nand_geometry_ftl.pages_per_block_total_banks
-							&& !YAFTL_readPage(yaftl_info.pages_per_block_total_banks * sth2 + i), yaftl_info.pageBuffer0, buffer6, 0, 1, 0) {
-						if(YAFTL_readPage(yaftl_info.pages_per_block_total_banks*sth2+yaftl_info.unkn_pageOffset+i, yaftl_info.pageBuffer0, buffer6, 0, 1, 0) == 1) {
+							&& !YAFTL_readPage(yaftl_info.pages_per_block_total_banks * sth2 + i), yaftl_info.pageBuffer0, yaftl_info.buffer6, 0, 1, 0) {
+						if(YAFTL_readPage(yaftl_info.pages_per_block_total_banks*sth2+yaftl_info.unkn_pageOffset+i, yaftl_info.pageBuffer0, yaftl_info.buffer6, 0, 1, 0) == 1) {
 							yaftl_info.unkn170_n1 = yaftl_info.pages_per_block_total_banks*sth2+i;
 							if(_readCxtInfo(yaftl_info.pages_per_block_total_banks*sth2+i, pageBuffer0, 1, &unkn1))
 								some_val = 5;
