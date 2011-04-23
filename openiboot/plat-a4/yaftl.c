@@ -11,9 +11,9 @@ typedef struct
   uint32_t numRebases;
   uint32_t paddingsSize;
   uint32_t state;
-} WMR_zone_t;
+} WMR_BufZone_t;
 
-void WMR_BufZone_Init(WMR_zone_t *_zone)
+void WMR_BufZone_Init(WMR_BufZone_t *_zone)
 {
 	_zone->buffer = 0;
 	_zone->endOfBuffer = 0;
@@ -25,37 +25,31 @@ void WMR_BufZone_Init(WMR_zone_t *_zone)
 }
 
 // returns the sub-buffer offset
-uint32_t WMR_Buf_Alloc_ForDMA(WMR_zone_t *_zone, uint32_t size)
+uint32_t WMR_Buf_Alloc_ForDMA(WMR_BufZone_t *_zone, uint32_t size)
 {
-	uint32_t oldSize;
 	uint32_t oldSizeRounded;
-	uint32_t numAllocs;
 
 	if (_zone->state != 1)
 		system_panic("WMR_Buf_Alloc_ForDMA: bad state\r\n");
 
-	oldSize = _zone->size;
-	oldSizeRounded = ROUNDUP(oldSize, 64);
-	_zone->paddingsSize = _zone->paddingsSize - oldSize + oldSizeRounded;
-	numAllocs = _zone->numAllocs;
-	_zone->size = size + oldSizeRounded;
-	_zone->numAllocs = numAllocs + 1;
+	oldSizeRounded = ROUND_UP(_zone->size, 64);
+	_zone->paddingsSize = _zone->paddingsSize + (oldSizeRounded - _zone->size);
+	_zone->size = oldSizeRounded + size;
+	_zone->numAllocs++;
 
 	return oldSizeRounded;
 }
 
-void WMR_BufZone_FinishedAllocs(WMR_zone_t *_zone)
+void WMR_BufZone_FinishedAllocs(WMR_BufZone_t *_zone)
 {
-	uint32_t size_rounded_up;
 	void* buff;
 
 	if (_zone->state != 1)
 		system_panic("WMR_BufZone_FinishedAllocs: bad state\r\n");
 
-	size_rounded_up = (_zone->size + 63) & 0xFFFFFFC0;// Round up to 64
-	_zone->size = size_rounded_up;
+	_zone->size = ROUND_UP(_zone->size, 64);
 
-	buff = wmr_malloc(size_rounded_up);
+	buff = wmr_malloc(_zone->size);
 
 	if(!buff)
 		system_panic("WMR_BufZone_FinishedAllocs: No buffer.\r\n");
@@ -65,13 +59,13 @@ void WMR_BufZone_FinishedAllocs(WMR_zone_t *_zone)
 	_zone->state = 2;
 }
 
-void WMR_BufZone_Rebase(WMR_zone_t *_zone, uint32_t* ppBuffer)
+void WMR_BufZone_Rebase(WMR_BufZone_t *_zone, uint32_t* ppBuffer)
 {
 	*ppBuffer = *ppBuffer + _zone->buffer;
 	_zone->numRebases++;
 }
 
-void WMR_BufZone_FinishedRebases(WMR_zone_t *_zone)
+void WMR_BufZone_FinishedRebases(WMR_BufZone_t *_zone)
 {
 	if (_zone->numAllocs != _zone->numRebases)
 		system_panic("WMR_BufZone_FinishedRebases: _zone->numAllocs != _zone->numRebases\r\n");
@@ -87,8 +81,8 @@ typedef struct {
 } UNKNBUFFERSTRUCT;
 
 typedef struct {
-	WMR_zone_t zone;
-	WMR_zone_t segment_info_temp;
+	WMR_BufZone_t zone;
+	WMR_BufZone_t segment_info_temp;
 	uint16_t unkFactor_0x1; // 38
 	uint16_t unkn3A_0x800; // 3A
 	uint32_t unknCalculatedValue0; // 3C
@@ -106,11 +100,11 @@ typedef struct {
 	uint32_t* unk84_buffer;
 	uint32_t* unk88_buffer;
 	uint32_t* unk8c_buffer;
-	WMR_zone_t ftl_buffer2;
+	WMR_BufZone_t ftl_buffer2;
 	uint32_t unkAC_2;
 	uint32_t unkB0_1;
-	uint32_t unkB4_buffer;
-	uint32_t unkB8_buffer;
+	uint32_t* unkB4_buffer;
+	uint32_t* unkB8_buffer;
 	uint8_t unkStruct_ftl[0x20]; // BC
 	uint32_t* indexPageBuf; // EC
 	UNKNBUFFERSTRUCT* unknBuffer4_ftl; // F0
@@ -214,8 +208,8 @@ uint32_t BTOC_Init() {
 	return 0;
 }
 
-uint32_t BTOC_Alloc(uint32_t _arg0, uint32_t _arg1) {
-	uint32_t inited = 0x7FFFFFFF;
+uint32_t BTOC_Alloc(uint32_t _arg0) {
+	int32_t inited = 0x7FFFFFFF;
 	yaftl_info.unkB0_1 = (yaftl_info.unkB0_1 + 1) % yaftl_info.unkAC_2;
 	yaftl_info.unkB4_buffer[yaftl_info.unkB0_1] = _arg0;
 
@@ -223,23 +217,22 @@ uint32_t BTOC_Alloc(uint32_t _arg0, uint32_t _arg1) {
 
 	yaftl_info.unk78_counter++;
 
-	uint32_t found;
+	uint32_t found = 0;
 	uint32_t i;
 	for(i = 0; i < yaftl_info.unk74_4; i++) {
-		if((yaftl_info.unk80_3 & 1<<i) && (yaftl_info.unk7C_byteMask & 1<<i)) {
-			if(inited > yaftl_info.unk8c_buffer_0x10[i]) {
-				found = i;
-				inited = yaftl_info.unk8c_buffer_0x10[i];
-			}
+		if((yaftl_info.unk80_3 & 1<<i) && (yaftl_info.unk7C_byteMask & 1<<i) && (inited > (int32_t)yaftl_info.unk8c_buffer[i])) {
+			found = i;
+			inited = yaftl_info.unk8c_buffer[i];
+		}
 	}
 
 	if(!found)
 		system_panic("BTOC_Alloc: Couldn't allocate a BTOC.\r\n");
 
-	yaftl_info.unk7C_byteMask &= (~(1<<i));
-	yaftl_info.unk88_buffer_0x10[i] = _arg0;
-	yaftl_info.unk8c_buffer_0x10[i] = yaftl_info.unk78_counter;
-	return yaftl_info.unk84_buffer_0x10[i];
+	yaftl_info.unk7C_byteMask &= (~(1<<found));
+	yaftl_info.unk88_buffer[found] = _arg0;
+	yaftl_info.unk8c_buffer[found] = yaftl_info.unk78_counter;
+	return yaftl_info.unk84_buffer[found];
 }
 
 void yaftl_loop_thingy() {
@@ -253,20 +246,21 @@ void yaftl_loop_thingy() {
 }
 
 uint32_t YAFTL_readPage(uint32_t _page, uint32_t* _ptr, uint32_t* _unkn_ptr, uint32_t _arg0, uint32_t _arg1, uint32_t _arg2) {
-	uint32_t unk1;
+	uint32_t unk1 = 0;
 	uint32_t* data_array[2] = { _ptr, (_unkn_ptr ? _unkn_ptr : yaftl_info.buffer18) };
 	if(FAILED(sub_5FF2A938(_page, data_array, _arg1, _arg2, &unk1, 0, _arg0))) {
+		// sub_5FF2A938 == VSVFL_Read?  --Oranav.
 		bufferPrintf("YAFTL_readPage: We got read failure.\r\n");
 		return ERROR_ARG;
 	}
 
-	unknBuffer2_ftl[page / nand_geometry_ftl.pages_per_block_total_banks].unkn3++;
+	yaftl_info.unknBuffer2_ftl[page / nand_geometry_ftl.pages_per_block_total_banks].unkn3++;
 	return 0;
 }
 
 void YAFTL_Init() {
 	if(yaFTL_inited)
-		system_panic("Oh shit\r\n");
+		system_panic("Oh shit, yaFTL already inited!\r\n");
 
 	memset(yaftl_info, 0, sizeof(yaftl_info)); // 0x358
 
