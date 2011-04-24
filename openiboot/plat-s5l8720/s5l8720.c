@@ -121,7 +121,7 @@ void platform_init()
 
 	LeaveCriticalSection();
 
-	aes_setup();
+//	aes_setup();
 
 	displaypipe_init();
 	framebuffer_setup();
