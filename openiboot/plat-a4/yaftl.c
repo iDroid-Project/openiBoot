@@ -485,7 +485,7 @@ uint32_t YAFTL_Open(uint32_t* pagesAvailable, uint32_t* bytesPerPage, uint32_t s
 		yaftl_info.unknBuffer2_ftl[yaftl_info.unkn_vflcxt69c].unkn4 = 2;
 		yaftl_info.unknBuffer2_ftl[yaftl_info.unkn_vflcxt69e].unkn4 = 2;
 
-		if(!yaftl_info.pageBuffer0) {
+		if(!yaftl_info.pageBuffer0)
 			system_panic("This can't happen. This shouldn't happen. Whatever, it's doing something else then.\r\n");
 		else {
 			// wtf has been done before
