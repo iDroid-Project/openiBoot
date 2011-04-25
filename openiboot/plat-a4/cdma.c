@@ -24,7 +24,7 @@ typedef struct DMAInfo {
 	segmentBuffer* segmentBuffer;
 	uint32_t dmaSegmentNumber;
 	uint32_t unsegmentedSize;
-	uint32_t segmentationSetting;
+	DMASegmentInfo* segmentsInfo;
 	uint32_t segmentOffset;
 	uint32_t previousSegmentOffset;
 	uint32_t previousDmaSegmentNumber;
@@ -94,7 +94,7 @@ int dma_channel_activate(int channel, uint32_t activate) {
 	return status;
 }
 
-signed int dma_init_channel(uint8_t direction, uint32_t channel, int segmentationSetting, uint32_t txrx_register, uint32_t size, uint32_t Setting1Index, uint32_t Setting2Index, void* handler) {
+signed int dma_init_channel(uint8_t direction, uint32_t channel, DMASegmentInfo* segmentsInfo, uint32_t txrx_register, uint32_t size, uint32_t Setting1Index, uint32_t Setting2Index, void* handler) {
 	int i = 0;
 
 	dma_channel_activate(channel, 1);
@@ -135,7 +135,7 @@ signed int dma_init_channel(uint8_t direction, uint32_t channel, int segmentatio
 	}
 
 	dma->dmaSegmentNumber = 0;
-	dma->segmentationSetting = segmentationSetting;
+	dma->segmentsInfo = segmentsInfo;
 	dma->segmentOffset = 0;
 	dma->dataSize = size;
 	dma->unsegmentedSize = size;
@@ -203,7 +203,6 @@ signed int dma_init_channel(uint8_t direction, uint32_t channel, int segmentatio
 }
 
 void dma_continue_async(int channel) {
-	uint32_t endOffset;
 	uint8_t segmentId;
 	uint32_t segmentLength;
 	uint32_t value;
@@ -217,7 +216,6 @@ void dma_continue_async(int channel) {
 	dma->previousSegmentOffset = dma->segmentOffset;
 	if (dma->dmaAESInfo)
 	{
-		endOffset = dma->segmentationSetting + 8 * dma->dmaSegmentNumber;
 		for (segmentId = 0; segmentId < 28;) {
 			if (!dma->unsegmentedSize)
 				break;
@@ -230,11 +228,12 @@ void dma_continue_async(int channel) {
 
 			int encryptedSegmentOffset;
 			int encryptedSegmentOffsetEnd = dma->dmaAESInfo->dataSize;
+			
 			for (encryptedSegmentOffset = 0; encryptedSegmentOffset < encryptedSegmentOffsetEnd; encryptedSegmentOffset += segmentLength) {
 				if (encryptedSegmentOffset >= encryptedSegmentOffsetEnd)
 					break;
 
-				segmentLength = /*GET_REG*/(endOffset + 4) - dma->segmentOffset;
+				segmentLength = dma->segmentsInfo[dma->dmaSegmentNumber].size - dma->segmentOffset;
 				if (encryptedSegmentOffset + segmentLength > encryptedSegmentOffsetEnd)
 					segmentLength = encryptedSegmentOffsetEnd - encryptedSegmentOffset;
 
@@ -243,7 +242,7 @@ void dma_continue_async(int channel) {
 					value = 0x30003;
 
 				dma->segmentBuffer[segmentId].value = value;
-				dma->segmentBuffer[segmentId].offset = dma->segmentOffset + /*GET_REG*/(endOffset);
+				dma->segmentBuffer[segmentId].offset = dma->segmentsInfo[dma->dmaSegmentNumber].ptr + dma->segmentOffset;
 				dma->segmentBuffer[segmentId].length = segmentLength;
 
 				if (!segmentLength)
@@ -251,9 +250,8 @@ void dma_continue_async(int channel) {
 
 				dma->segmentOffset += segmentLength;
 
-				if (dma->segmentOffset >= /*GET_REG*/(endOffset + 4))
+				if (dma->segmentOffset >= dma->segmentsInfo[dma->dmaSegmentNumber].size)
 				{
-					endOffset += 8;
 					++dma->dmaSegmentNumber;
 					dma->segmentOffset = 0;
 				}
@@ -270,10 +268,10 @@ void dma_continue_async(int channel) {
 		dma->segmentBuffer[segmentId].value = 0;
 	} else {
 		for (segmentId = 0; segmentId < 31; segmentId++) {
-			int segmentLength = /*GET_REG*/(dma->segmentationSetting + 8 * dma->dmaSegmentNumber + 4) - dma->segmentOffset;
+			int segmentLength = dma->segmentsInfo[dma->dmaSegmentNumber].size - dma->segmentOffset;
 
 			dma->segmentBuffer[segmentId].value = 3;
-			dma->segmentBuffer[segmentId].offset = /*GET_REG*/(dma->segmentationSetting + 8 * dma->dmaSegmentNumber) + dma->segmentOffset;
+			dma->segmentBuffer[segmentId].offset = dma->segmentsInfo[dma->dmaSegmentNumber].ptr + dma->segmentOffset;
 			dma->segmentBuffer[segmentId].length = segmentLength;
 
 			if (!segmentLength)
@@ -447,7 +445,7 @@ void dmaIRQHandler(uint32_t token) {
 			wholeSegment = dma->previousUnsegmentedSize - dma->unsegmentedSize;
 
 			for (segmentId = 0; segmentId < 32; segmentId++) {
-				currentSegment = GET_REG(8 * (dma->previousDmaSegmentNumber + segmentId) + dma->segmentationSetting + 4) - dma->previousSegmentOffset;
+				currentSegment = dma->segmentsInfo[dma->previousDmaSegmentNumber + segmentId].size - dma->previousSegmentOffset;
 				if (wholeSegment <= currentSegment)
 					break;
 				wholeSegment -= currentSegment;
