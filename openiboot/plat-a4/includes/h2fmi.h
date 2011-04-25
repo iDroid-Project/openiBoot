@@ -119,8 +119,8 @@ typedef struct _h2fmi_struct
 	uint32_t write_setting; // 110
 	uint16_t *chips;
 	uint32_t *pages;
-	uint8_t **data_ptr; // 114
-	uint8_t **meta_ptr; // 118
+	DMASegmentInfo *data_segments; // 114
+	DMASegmentInfo *meta_segments; // 118
 	uint64_t last_action_time; // 124
 	uint64_t time_interval; // 12C
 	uint64_t stage_time_interval; // 134
@@ -137,6 +137,9 @@ typedef struct _h2fmi_struct
 	uint32_t field_170;
 	uint32_t field_180;
 	uint8_t field_182;
+	
+	uint32_t field_184; // 184 in iPhone3,1_4.2.1_8C148 iBoot
+	uint32_t *field_188; // 188 in iPhone3,1_4.2.1_8C148 iBoot
 
 	uint32_t fmi_state; // 48
 	uint32_t current_mode; // 7C
