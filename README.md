@@ -15,7 +15,7 @@ iDroid Project openiBoot
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-1. Compiling
+Compiling
 ---------------------------------------------------
 **Build an ARM toolchain (this only needs to be done once - for subsequent builds this step can be omitted unless there has been a toolchain update):**
 
@@ -64,14 +64,14 @@ Change into the openiboot subfolder
 `scons aTV2G`
 
 **Compile syringe:**
-`cd ../utils/syringe && make && cd ../openiboot`
+`cd ../utils/syringe && make && cd ../../`
 
 *Alternatively a Makefile has been provided in the openiboot subfolder should you prefer to use it this way - this is not covered by this README but is provided for your convenience should you wish to use it*
 
 **Compile oibc:**
-`cd ../utils/oibc && make && cd ../openiboot`
+`cd utils/oibc && make && cd ../../openiboot`
 
-2. Running/Installing
+Running/Installing
 ---------------------------------------------------
 **If you're on linux, you'll need to install the following as /etc/udev/rules.d/51-android.rules:**
 	SUBSYSTEM=="usb" ID_VENDOR_ID=="0bb4", MODE="0666"
@@ -82,8 +82,8 @@ Change into the openiboot subfolder
 
 *NOTE: For the 3GS, iPhone4, iPad and Apple TV 2G, you must put your device into DFU mode instead.*
 
-**For iPhone 2G, iPhone 3G & iPod Touch 1G run:** 
-`../utils/syringe/loadibec openiboot.img3`
+**For iPhone 2G, iPhone 3G & iPod Touch 1G run (substituting *device* and *revision* with the actual device, for example: iphone_3g_openiboot.img3):** 
+`../utils/syringe/loadibec device_revision_openiboot.img3`
 
 **For newer devices run: (substituting *device* and *revision* with the actual device, for example: iphone_4_openiboot.bin):**
 `../utils/syringe/loadibec device_revision_openiboot.bin`
@@ -102,7 +102,7 @@ You should now see the same output on your computer, as is on your phone's scree
 
 OpeniBoot will then be flashed to your device's NOR - This will take a while, your NOR will be backed up during this process, and can be found in the current directory as norbackup.dump.
 
-3. Reporting issues/requesting features
+Reporting issues/requesting features
 --------------------------------------------------
 Please leave bug reports/pull requests in the Github tracker.
 
