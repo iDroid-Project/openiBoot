@@ -74,12 +74,12 @@ int dma_channel_activate(int channel, uint32_t activate) {
 	uint32_t status;
 	uint32_t cmask;
 	int32_t  channel_reg;
-	
+
 	channel_reg = channel;
-	
+
 	if (channel < 0)
 		channel_reg += 31;
-		
+
 	channel_reg = (channel_reg >> 5) << 2;
 
 	cmask = 1 << ((int8_t)channel % 32);
@@ -228,7 +228,7 @@ void dma_continue_async(int channel) {
 
 			int encryptedSegmentOffset;
 			int encryptedSegmentOffsetEnd = dma->dmaAESInfo->dataSize;
-			
+
 			for (encryptedSegmentOffset = 0; encryptedSegmentOffset < encryptedSegmentOffsetEnd; encryptedSegmentOffset += segmentLength) {
 				if (encryptedSegmentOffset >= encryptedSegmentOffsetEnd)
 					break;
@@ -309,7 +309,7 @@ void dma_continue_async(int channel) {
 }
 
 int dma_set_aes(int channel, dmaAES* dmaAESInfo) {
-        DMAInfo* dma = &dmaInfo[channel];
+	DMAInfo* dma = &dmaInfo[channel];
 	uint32_t value;
 	int i;
 
@@ -339,7 +339,7 @@ int dma_set_aes(int channel, dmaAES* dmaAESInfo) {
 	uint32_t dmaAES_channel_reg = dma->dmaAES_channel << 12;
 
 	value = (channel & 0xFF) << 8;
-	
+
 	if (dma->dmaAESInfo->inverse & 0xF)
 		value |= 0x20000;
 	else
@@ -368,13 +368,13 @@ int dma_set_aes(int channel, dmaAES* dmaAESInfo) {
 				SET_REG(DMA + DMA_AES + DMA_AES_KEY_7 + dmaAES_channel_reg, dma->dmaAESInfo->key[7]);
 				SET_REG(DMA + DMA_AES + DMA_AES_KEY_6 + dmaAES_channel_reg, dma->dmaAESInfo->key[6]);
 			case 1:				// AES 192
-	        	SET_REG(DMA + DMA_AES + DMA_AES_KEY_5 + dmaAES_channel_reg, dma->dmaAESInfo->key[5]);
-			    SET_REG(DMA + DMA_AES + DMA_AES_KEY_4 + dmaAES_channel_reg, dma->dmaAESInfo->key[4]);
+				SET_REG(DMA + DMA_AES + DMA_AES_KEY_5 + dmaAES_channel_reg, dma->dmaAESInfo->key[5]);
+				SET_REG(DMA + DMA_AES + DMA_AES_KEY_4 + dmaAES_channel_reg, dma->dmaAESInfo->key[4]);
 			case 0:				// AES 128
-			    SET_REG(DMA + DMA_AES + DMA_AES_KEY_3 + dmaAES_channel_reg, dma->dmaAESInfo->key[3]);
-			    SET_REG(DMA + DMA_AES + DMA_AES_KEY_2 + dmaAES_channel_reg, dma->dmaAESInfo->key[2]);
-			    SET_REG(DMA + DMA_AES + DMA_AES_KEY_1 + dmaAES_channel_reg, dma->dmaAESInfo->key[1]);
-			    SET_REG(DMA + DMA_AES + DMA_AES_KEY_0 + dmaAES_channel_reg, dma->dmaAESInfo->key[0]);
+				SET_REG(DMA + DMA_AES + DMA_AES_KEY_3 + dmaAES_channel_reg, dma->dmaAESInfo->key[3]);
+				SET_REG(DMA + DMA_AES + DMA_AES_KEY_2 + dmaAES_channel_reg, dma->dmaAESInfo->key[2]);
+				SET_REG(DMA + DMA_AES + DMA_AES_KEY_1 + dmaAES_channel_reg, dma->dmaAESInfo->key[1]);
+				SET_REG(DMA + DMA_AES + DMA_AES_KEY_0 + dmaAES_channel_reg, dma->dmaAESInfo->key[0]);
 				value |= 0x100000;
 				break;
 			default:			// Fail
