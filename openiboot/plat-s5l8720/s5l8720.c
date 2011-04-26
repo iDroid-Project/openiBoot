@@ -65,14 +65,16 @@ void iboot_loader_run(void) {
 	// boot iboot when either the up button is pressed or after 10 seconds
 	static Boolean buttonPressed = FALSE;
 	static Boolean messageShown = FALSE;
+	static const int countTime = 10;
+	static int count = 0;
 	while(1) {
-		if (!gpio_pin_state(BUTTONS_VOLUP)
-			|| (has_elapsed(startTime, 10 * 1000 * 1000) && !buttonPressed)) {
+		if (!gpio_pin_state(BUTTONS_VOLUP) || (count == countTime && !buttonPressed)) {
 			load_iboot();
 			task_stop();
 		}
-		if (gpio_pin_state(BUTTONS_HOLD)) {
+		if (gpio_pin_state(BUTTONS_HOLD) && buttonPressed == FALSE) {
 			buttonPressed = TRUE;
+			bufferPrintf("Automatic booting cancelled\r\n");
 		}
 		if (has_elapsed(startTime, 2 * 1000 * 1000) && !messageShown) {
 			// show a welcome message after 2 seconds to skip all of the usb spam
@@ -84,6 +86,12 @@ void iboot_loader_run(void) {
 			bufferPrintf("===================\r\n");
 			bufferPrintf("\r\n\r\n\r\n");
 			messageShown = TRUE;
+		}
+		if (has_elapsed(startTime, count * 1000 * 1000) && !buttonPressed) {
+			count++;
+			if (count >= 2) {
+				bufferPrintf("%d seconds until automatic boot\r\n", countTime - count);
+			}
 		}
 		task_yield();
 	}
@@ -121,7 +129,7 @@ void platform_init()
 
 	LeaveCriticalSection();
 
-	aes_setup();
+//	aes_setup();
 
 	displaypipe_init();
 	framebuffer_setup();
