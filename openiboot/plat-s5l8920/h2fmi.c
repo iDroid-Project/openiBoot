@@ -1200,13 +1200,13 @@ int h2fmi_read_multi(h2fmi_struct_t *_fmi, uint16_t _num_pages, uint16_t *_chips
 
 		if(b != 0)
 		{
-			_fmi->failure_details.overall_status = b > _num_pages? 2 : ENAND_EMPTY;
+			_fmi->failure_details.overall_status = b >= _num_pages? 2 : ENAND_EMPTY;
 		}
 		else
 		{
 			if(a != 0)
 			{
-				_fmi->failure_details.overall_status  = a > _num_pages? 0x80000025: ENAND_ECC;
+				_fmi->failure_details.overall_status  = a >= _num_pages? 0x80000025: ENAND_ECC;
 			}
 			else if(_fmi->field_154 != 0)
 			{

@@ -1294,7 +1294,7 @@ static uint32_t h2fmi_read_state_2_handler(h2fmi_struct_t *_fmi)
 		{
 			SET_REG(H2FMI_UNK4(_fmi), 3);
 			h2fmi_rw_large_page(_fmi);
-			_fmi->banks_per_ce_vfl = timer_get_system_microtime();
+			_fmi->last_action_time = timer_get_system_microtime();
 		}
 		else
 		{
@@ -1561,13 +1561,13 @@ int h2fmi_read_multi(h2fmi_struct_t *_fmi, uint16_t _num_pages, uint16_t *_chips
 
 		if(b != 0)
 		{
-			_fmi->failure_details.overall_status = b > _num_pages? 2 : ENAND_EMPTY;
+			_fmi->failure_details.overall_status = b >= _num_pages? 2 : ENAND_EMPTY;
 		}
 		else
 		{
 			if(a != 0)
 			{
-				_fmi->failure_details.overall_status  = a > _num_pages? 0x80000025: ENAND_ECC;
+				_fmi->failure_details.overall_status  = a >= _num_pages? 0x80000025: ENAND_ECC;
 			}
 			else if(_fmi->num_pages_ecc_failed != 0)
 			{
