@@ -4,8 +4,6 @@
 #include "vfl.h"
 #include "util.h"
 
-uint32_t YAFTL_readPage(uint32_t _page, uint8_t* _data_ptr, uint8_t* _meta_ptr, uint32_t _disable_aes, uint32_t _empty_ok, uint32_t _scrub);
-
 uint32_t yaFTL_inited = 0;
 
 void* wmr_malloc(uint32_t size) {
@@ -99,13 +97,37 @@ int WMR_BufZone_FinishedRebases(WMR_BufZone_t *_zone)
 }
 
 typedef struct {
-	uint8_t* unkn0;
-	uint16_t unkn1;
-	uint16_t unkn2;
+	void* buffer;
+	uint32_t field_4;
+	uint16_t field_8;
+	uint16_t field_A;
+} __attribute__((packed)) UnknownStruct;
+
+// SpareData->type: (bitfield)
+// 0x10: User data (also called lbn: maybe logical block number? block 0 is system and 1 is user?)
+// 0x20: FTL context (unmounted, clean)
+// 0x40: VFL context?
+
+typedef struct {
+	uint32_t lpn;			// Logical page number
+	uint32_t usn;			// Update sequence number
+	uint8_t  field_8;
+	uint8_t  type;			// Page type
+	uint16_t field_A;
+} __attribute__((packed)) SpareData;
+
+uint32_t YAFTL_readPage(uint32_t _page, uint8_t* _data_ptr, SpareData* _spare_ptr, uint32_t _disable_aes, uint32_t _empty_ok, uint32_t _scrub);
+
+#define BLOCK_STATUS_FREE 0xFF
+
+typedef struct {
+	uint32_t unkn0;
+	uint16_t validPagesDNo;
+	uint16_t validPagesINo;
 	uint16_t unkn3;
-	uint8_t block_status;
+	uint8_t status;
 	uint8_t unkn5;
-} UNKNBUFFERSTRUCT;
+} BlockStruct;
 
 typedef struct {
 	WMR_BufZone_t zone;
@@ -118,10 +140,10 @@ typedef struct {
 	uint16_t unknCalculatedValue3; // 48
 	uint16_t unkn_0x2A; // 4A
 	uint32_t unkn_0x2C; // 4C
-	uint32_t* ftl2_buffer_x;
+	uint8_t* ftl2_buffer_x;
 	uint16_t unkn_0x34; // 54
 	uint32_t unkn_0x3C; // 5C
-	uint32_t* ftl2_buffer_x2000;
+	uint8_t* ftl2_buffer_x2000;
 	uint32_t unk64; // 64
 	uint32_t unk6C; // 6C
 	uint32_t unk74_4;
@@ -140,31 +162,31 @@ typedef struct {
 	uint32_t unkC4;
 	uint32_t unkD0;
 	uint32_t* indexPageBuf; // EC
-	UNKNBUFFERSTRUCT* unknBuffer4_ftl; // F0
-	UNKNBUFFERSTRUCT* block_array; // F4
+	UnknownStruct* unknStructArray; // F0
+	BlockStruct* blockArray; // F4
 	uint32_t* pageBuffer2;
-	uint32_t* buffer3;
-	uint32_t* buffer4;
-	uint8_t* buffer5;
-	uint8_t* spareBuffer;
-	uint32_t* buffer7;
-	uint32_t* buffer8;
-	uint32_t* buffer9;
-	uint32_t* buffer10;
-	uint32_t* buffer11;
-	uint32_t* buffer12;
-	uint32_t* buffer13;
-	uint32_t* buffer14;
-	uint32_t* buffer15;
-	uint32_t* buffer16;
-	uint32_t* buffer17;
+	SpareData* spareBuffer3;
+	SpareData* spareBuffer4;
+	SpareData* spareBuffer5;
+	SpareData* spareBuffer6;
+	SpareData* spareBuffer7;
+	SpareData* spareBuffer8;
+	SpareData* spareBuffer9;
+	SpareData* spareBuffer10;
+	SpareData* spareBuffer11;
+	SpareData* spareBuffer12;
+	SpareData* spareBuffer13;
+	SpareData* spareBuffer14;
+	SpareData* spareBuffer15;
+	SpareData* spareBuffer16;
+	SpareData* spareBuffer17;
 	uint8_t* pageBuffer;
 	uint32_t* pageBuffer1;
 	uint32_t unk140_n1;
 	uint32_t* buffer19;
 	uint32_t* unknBuffer3_ftl; // 148
 	uint32_t* buffer20;
-	uint32_t* buffer18;
+	SpareData* spareBuffer18;
 	uint32_t unkn_pageOffset;
 	uint32_t unknCalculatedValue4;
 	uint32_t unknCalculatedValue5;
@@ -175,8 +197,8 @@ typedef struct {
 	uint32_t unk170_n1;
 	uint16_t FTLCtrlBlock[3];
 	uint16_t unkn_1;
-	uint8_t* unk17C_0x0;
-	uint8_t* unk180_n1;
+	uint32_t unk17C_0x0;
+	uint32_t unk180_n1;
 	uint32_t unk184_0xA;
 	uint8_t unk188_0x63;
 } YAFTL_INFO;
@@ -300,14 +322,14 @@ void yaftl_loop_thingy() {
 	}
 }
 
-uint32_t YAFTL_readCxtInfo(uint32_t _page, uint32_t* _ptr, uint8_t _flag, uint32_t *_arg3) {
+uint32_t YAFTL_readCxtInfo(uint32_t _page, uint8_t* _ptr, uint8_t _flag, uint32_t *_arg3) {
 	uint32_t readPage;
 	uint32_t i = 0, j = 0;
 
-	if(YAFTL_readPage(_page, _ptr, (uint32_t*)yaftl_info.buffer5, 0, 1, 0))
+	if(YAFTL_readPage(_page, _ptr, yaftl_info.spareBuffer5, 0, 1, 0))
 		return ERROR_ARG;
 
-	if(!(yaftl_info.buffer5[9] & 0x20))
+	if(!(yaftl_info.spareBuffer5->type & 0x20))
 		return ERROR_ARG;
 
 	YAFTL_CXT *yaftl_cxt = (YAFTL_CXT*)_ptr;
@@ -343,20 +365,20 @@ uint32_t YAFTL_readCxtInfo(uint32_t _page, uint32_t* _ptr, uint8_t _flag, uint32
 
 		readPage = _page;
 		for (i = 0; i < yaftl_info.unkFactor_0x1; i++) {
-			if(FAILED(YAFTL_readPage(++readPage, (uint32_t*)(nand_geometry_ftl.total_banks_ftl * i + yaftl_info.ftl2_buffer_x), (uint32_t*)yaftl_info.buffer5, 0, 1, 0)) ||
-					!(yaftl_info.buffer5[9] & 0x20))
+			if(FAILED(YAFTL_readPage(++readPage, (nand_geometry_ftl.total_banks_ftl * i + yaftl_info.ftl2_buffer_x), yaftl_info.spareBuffer5, 0, 1, 0)) ||
+					!(yaftl_info.spareBuffer5->type & 0x20))
 				return ERROR_ARG;
 		}
 		for (i = 0; i < yaftl_info.unkFactor_0x1; i++) {
-			if(FAILED(YAFTL_readPage(++readPage, (uint32_t*)(nand_geometry_ftl.total_banks_ftl * i + yaftl_info.ftl2_buffer_x2000), (uint32_t*)yaftl_info.buffer5, 0, 1, 0)) ||
-					!(yaftl_info.buffer5[9] & 0x20))
+			if(FAILED(YAFTL_readPage(++readPage, (nand_geometry_ftl.total_banks_ftl * i + yaftl_info.ftl2_buffer_x2000), yaftl_info.spareBuffer5, 0, 1, 0)) ||
+					!(yaftl_info.spareBuffer5->type & 0x20))
 				return ERROR_ARG;
 		}
 		readPage++;
 		uint32_t unkncalcv3 = yaftl_info.unknCalculatedValue3;
 		for (i = 0; i < yaftl_info.unknCalculatedValue4; i++) {
-			if(FAILED(YAFTL_readPage(readPage+i, _ptr, (uint32_t*)yaftl_info.buffer5, 0, 1, 0)) ||
-					!(yaftl_info.buffer5[9] & 0x20))
+			if(FAILED(YAFTL_readPage(readPage+i, _ptr, yaftl_info.spareBuffer5, 0, 1, 0)) ||
+					!(yaftl_info.spareBuffer5->type & 0x20))
 				return ERROR_ARG;
 
 			// This part really needs more investigating. --Oranav
@@ -371,15 +393,15 @@ uint32_t YAFTL_readCxtInfo(uint32_t _page, uint32_t* _ptr, uint8_t _flag, uint32
 		readPage+=yaftl_info.unknCalculatedValue4;
 		uint32_t usablblpb = nand_geometry_ftl.usable_blocks_per_bank;
 		for (i = 0; i < yaftl_info.unknCalculatedValue5; i++) {
-			if(FAILED(YAFTL_readPage(readPage+i, _ptr, (uint32_t*)yaftl_info.buffer5, 0, 1, 0)) ||
-					!(yaftl_info.buffer5[9] & 0x20))
+			if(FAILED(YAFTL_readPage(readPage+i, _ptr, yaftl_info.spareBuffer5, 0, 1, 0)) ||
+					!(yaftl_info.spareBuffer5->type & 0x20))
 				return ERROR_ARG;
 
 			// Same here. --Oranav
 			j = 0;
 			while(j < usablblpb && j < nand_geometry_ftl.bytes_per_page_ftl) {
 				uint8_t val = ((uint8_t*)_ptr)[j++];
-				yaftl_info.block_array[(i*nand_geometry_ftl.bytes_per_page_ftl)/sizeof(UNKNBUFFERSTRUCT)+j].block_status = val;
+				yaftl_info.blockArray[(i*nand_geometry_ftl.bytes_per_page_ftl)/sizeof(BlockStruct)+j].status = val;
 			}
 			usablblpb -= nand_geometry_ftl.bytes_per_page_ftl;
 		}
@@ -388,8 +410,8 @@ uint32_t YAFTL_readCxtInfo(uint32_t _page, uint32_t* _ptr, uint8_t _flag, uint32
 	}
 	readPage+=yaftl_info.unknCalculatedValue5;
 	for (i = 0; i < yaftl_info.unknCalculatedValue6; i++) {
-		if(FAILED(YAFTL_readPage(readPage+i, _ptr, (uint32_t*)yaftl_info.buffer5, 0, 1, 0)) ||
-				!(yaftl_info.buffer5[9] & 0x20))
+		if(FAILED(YAFTL_readPage(readPage+i, _ptr, yaftl_info.spareBuffer5, 0, 1, 0)) ||
+				!(yaftl_info.spareBuffer5->type & 0x20))
 			return ERROR_ARG;
 
 		// Same... --Oranav
@@ -397,15 +419,15 @@ uint32_t YAFTL_readCxtInfo(uint32_t _page, uint32_t* _ptr, uint8_t _flag, uint32
 		uint32_t usablblpb = nand_geometry_ftl.usable_blocks_per_bank;
 		while(j < usablblpb && j < (nand_geometry_ftl.bytes_per_page_ftl>>1)) {
 			uint16_t val = ((uint16_t*)_ptr)[j++];
-			yaftl_info.block_array[(i*(nand_geometry_ftl.bytes_per_page_ftl>>1))/sizeof(UNKNBUFFERSTRUCT)+j].unkn3 = val;
+			yaftl_info.blockArray[(i*(nand_geometry_ftl.bytes_per_page_ftl>>1))/sizeof(BlockStruct)+j].unkn3 = val;
 			usablblpb -= nand_geometry_ftl.bytes_per_page_ftl;
 		}
 		usablblpb -= nand_geometry_ftl.bytes_per_page_ftl>>1;
 	}
 	readPage+=yaftl_info.unknCalculatedValue6;
 	for (i = 0; i < yaftl_info.unknCalculatedValue7; i++) {
-		if(FAILED(YAFTL_readPage(readPage+i, _ptr, (uint32_t*)yaftl_info.buffer5, 0, 1, 0)) ||
-				!(yaftl_info.buffer5[9] & 0x20))
+		if(FAILED(YAFTL_readPage(readPage+i, _ptr, yaftl_info.spareBuffer5, 0, 1, 0)) ||
+				!(yaftl_info.spareBuffer5->type & 0x20))
 			return ERROR_ARG;
 
 		// Same... --Oranav
@@ -413,35 +435,35 @@ uint32_t YAFTL_readCxtInfo(uint32_t _page, uint32_t* _ptr, uint8_t _flag, uint32
 		uint32_t usablblpb = nand_geometry_ftl.usable_blocks_per_bank;
 		while(j < usablblpb && j < (nand_geometry_ftl.bytes_per_page_ftl>>2)) {
 			uint32_t val = _ptr[j++];
-			yaftl_info.block_array[(i*(nand_geometry_ftl.bytes_per_page_ftl>>2))/sizeof(UNKNBUFFERSTRUCT)+j].unkn0 = (uint8_t*)val;
+			yaftl_info.blockArray[(i*(nand_geometry_ftl.bytes_per_page_ftl>>2))/sizeof(BlockStruct)+j].unkn0 = val;
 		}
 		usablblpb -= nand_geometry_ftl.bytes_per_page_ftl>>2;
 	}
 	readPage+=yaftl_info.unknCalculatedValue7;
 	if(_flag) {
 		for (i = 0; i < yaftl_info.unknCalculatedValue9; i++) {
-			if(FAILED(YAFTL_readPage(readPage+i, _ptr, (uint32_t*)yaftl_info.buffer5, 0, 1, 0)) ||
-					!(yaftl_info.buffer5[9] & 0x20))
+			if(FAILED(YAFTL_readPage(readPage+i, _ptr, yaftl_info.spareBuffer5, 0, 1, 0)) ||
+					!(yaftl_info.spareBuffer5->type & 0x20))
 				return ERROR_ARG;
 
 			uint32_t usablblpb = nand_geometry_ftl.usable_blocks_per_bank;
 			while(j < usablblpb && j <= (nand_geometry_ftl.bytes_per_page_ftl>>1)) {
-				yaftl_info.block_array[(i*(nand_geometry_ftl.bytes_per_page_ftl>>1))/sizeof(UNKNBUFFERSTRUCT)+j].unkn2 = ((uint16_t*)_ptr)[j];
-				yaftl_info.unkD0 += yaftl_info.block_array[(i*(nand_geometry_ftl.bytes_per_page_ftl>>1))/sizeof(UNKNBUFFERSTRUCT)+j].unkn2;
+				yaftl_info.blockArray[(i*(nand_geometry_ftl.bytes_per_page_ftl>>1))/sizeof(BlockStruct)+j].validPagesINo = ((uint16_t*)_ptr)[j];
+				yaftl_info.unkD0 += yaftl_info.blockArray[(i*(nand_geometry_ftl.bytes_per_page_ftl>>1))/sizeof(BlockStruct)+j].validPagesINo;
 				j++;
 			}
 			usablblpb -= nand_geometry_ftl.bytes_per_page_ftl>>1;
 		}
 		readPage+=yaftl_info.unknCalculatedValue9;
 		for (i = 0; i < yaftl_info.unknCalculatedValue8; i++) {
-			if(FAILED(YAFTL_readPage(readPage+i, _ptr, (uint32_t*)yaftl_info.buffer5, 0, 1, 0)) ||
-					!(yaftl_info.buffer5[9] & 0x20))
+			if(FAILED(YAFTL_readPage(readPage+i, _ptr, yaftl_info.spareBuffer5, 0, 1, 0)) ||
+					!(yaftl_info.spareBuffer5->type & 0x20))
 				return ERROR_ARG;
 
 			uint32_t usablblpb = nand_geometry_ftl.usable_blocks_per_bank;
 			while(j < usablblpb && j <= (nand_geometry_ftl.bytes_per_page_ftl>>1)) {
-				yaftl_info.block_array[(i*(nand_geometry_ftl.bytes_per_page_ftl>>1))/sizeof(UNKNBUFFERSTRUCT)+j].unkn1 = ((uint16_t*)_ptr)[j];
-				yaftl_info.unkC4 += yaftl_info.block_array[(i*(nand_geometry_ftl.bytes_per_page_ftl>>1))/sizeof(UNKNBUFFERSTRUCT)+j].unkn1;
+				yaftl_info.blockArray[(i*(nand_geometry_ftl.bytes_per_page_ftl>>1))/sizeof(BlockStruct)+j].validPagesDNo = ((uint16_t*)_ptr)[j];
+				yaftl_info.unkC4 += yaftl_info.blockArray[(i*(nand_geometry_ftl.bytes_per_page_ftl>>1))/sizeof(BlockStruct)+j].validPagesDNo;
 				j++;
 			}
 		}
@@ -449,25 +471,23 @@ uint32_t YAFTL_readCxtInfo(uint32_t _page, uint32_t* _ptr, uint8_t _flag, uint32
 	return 0;
 }
 
-uint32_t YAFTL_readPage(uint32_t _page, uint8_t* _data_ptr, uint8_t* _meta_ptr, uint32_t _disable_aes, uint32_t _empty_ok, uint32_t _scrub) {
+uint32_t YAFTL_readPage(uint32_t _page, uint8_t* _data_ptr, SpareData* _spare_ptr, uint32_t _disable_aes, uint32_t _empty_ok, uint32_t _scrub) {
 	int refreshPage = 0;
 	uint32_t block = _page / nand_geometry_ftl.pages_per_block_total_banks;
 
-	if (_meta_ptr == NULL) {
-		_meta_ptr = yaftl_info.buffer18;
-	}
+	uint8_t* meta_ptr = (uint8_t*)(_spare_ptr ? _spare_ptr : yaftl_info.spareBuffer18);
 
-	if(FAILED(vfl_read_single_page(vflDevice, _page, _data_ptr, _meta_ptr, _empty_ok, &refreshPage, _disable_aes))) {
+	if(FAILED(vfl_read_single_page(vflDevice, _page, _data_ptr, meta_ptr, _empty_ok, &refreshPage, _disable_aes))) {
 		bufferPrintf("YAFTL_readPage: We got read failure: page %d, block %d, block status %d, scrub %d.\r\n",
 				_page,
 				block,
-				yaftl_info.block_array[block].block_status,
+				yaftl_info.blockArray[block].status,
 				_scrub);
 
 		return ERROR_ARG;
 	}
 
-	yaftl_info.block_array[block].unkn3++;
+	yaftl_info.blockArray[block].unkn3++;
 	return 0;
 }
 
@@ -502,22 +522,22 @@ uint32_t YAFTL_Init() {
 	yaftl_info.pageBuffer = WMR_Buf_Alloc_ForDMA(&yaftl_info.zone, nand_geometry_ftl.bytes_per_page_ftl);
 	yaftl_info.pageBuffer1 = WMR_Buf_Alloc_ForDMA(&yaftl_info.zone, nand_geometry_ftl.bytes_per_page_ftl);
 	yaftl_info.pageBuffer2 = WMR_Buf_Alloc_ForDMA(&yaftl_info.zone, nand_geometry_ftl.bytes_per_page_ftl * yaftl_info.unkFactor_0x1);
-	yaftl_info.buffer3 = WMR_Buf_Alloc_ForDMA(&yaftl_info.zone, 0xC);
-	yaftl_info.buffer4 = WMR_Buf_Alloc_ForDMA(&yaftl_info.zone, 0xC);
-	yaftl_info.buffer5 = WMR_Buf_Alloc_ForDMA(&yaftl_info.zone, 0xC);
-	yaftl_info.spareBuffer = WMR_Buf_Alloc_ForDMA(&yaftl_info.zone, 0xC);
-	yaftl_info.buffer7 = WMR_Buf_Alloc_ForDMA(&yaftl_info.zone, 0xC);
-	yaftl_info.buffer8 = WMR_Buf_Alloc_ForDMA(&yaftl_info.zone, 0xC);
-	yaftl_info.buffer9 = WMR_Buf_Alloc_ForDMA(&yaftl_info.zone, 0xC);
-	yaftl_info.buffer10 = WMR_Buf_Alloc_ForDMA(&yaftl_info.zone, 0xC);
-	yaftl_info.buffer11 = WMR_Buf_Alloc_ForDMA(&yaftl_info.zone, 0xC);
-	yaftl_info.buffer12 = WMR_Buf_Alloc_ForDMA(&yaftl_info.zone, 0xC);
-	yaftl_info.buffer13 = WMR_Buf_Alloc_ForDMA(&yaftl_info.zone, 0xC);
-	yaftl_info.buffer14 = WMR_Buf_Alloc_ForDMA(&yaftl_info.zone, 0xC);
-	yaftl_info.buffer15 = WMR_Buf_Alloc_ForDMA(&yaftl_info.zone, 0xC);
-	yaftl_info.buffer16 = WMR_Buf_Alloc_ForDMA(&yaftl_info.zone, 0xC);
-	yaftl_info.buffer17 = WMR_Buf_Alloc_ForDMA(&yaftl_info.zone, 0xC);
-	yaftl_info.buffer18 = WMR_Buf_Alloc_ForDMA(&yaftl_info.zone, 0xC);
+	yaftl_info.spareBuffer3 = WMR_Buf_Alloc_ForDMA(&yaftl_info.zone, sizeof(SpareData));
+	yaftl_info.spareBuffer4 = WMR_Buf_Alloc_ForDMA(&yaftl_info.zone, sizeof(SpareData));
+	yaftl_info.spareBuffer5 = WMR_Buf_Alloc_ForDMA(&yaftl_info.zone, sizeof(SpareData));
+	yaftl_info.spareBuffer6 = WMR_Buf_Alloc_ForDMA(&yaftl_info.zone, sizeof(SpareData));
+	yaftl_info.spareBuffer7 = WMR_Buf_Alloc_ForDMA(&yaftl_info.zone, sizeof(SpareData));
+	yaftl_info.spareBuffer8 = WMR_Buf_Alloc_ForDMA(&yaftl_info.zone, sizeof(SpareData));
+	yaftl_info.spareBuffer9 = WMR_Buf_Alloc_ForDMA(&yaftl_info.zone, sizeof(SpareData));
+	yaftl_info.spareBuffer10 = WMR_Buf_Alloc_ForDMA(&yaftl_info.zone, sizeof(SpareData));
+	yaftl_info.spareBuffer11 = WMR_Buf_Alloc_ForDMA(&yaftl_info.zone, sizeof(SpareData));
+	yaftl_info.spareBuffer12 = WMR_Buf_Alloc_ForDMA(&yaftl_info.zone, sizeof(SpareData));
+	yaftl_info.spareBuffer13 = WMR_Buf_Alloc_ForDMA(&yaftl_info.zone, sizeof(SpareData));
+	yaftl_info.spareBuffer14 = WMR_Buf_Alloc_ForDMA(&yaftl_info.zone, sizeof(SpareData));
+	yaftl_info.spareBuffer15 = WMR_Buf_Alloc_ForDMA(&yaftl_info.zone, sizeof(SpareData));
+	yaftl_info.spareBuffer16 = WMR_Buf_Alloc_ForDMA(&yaftl_info.zone, sizeof(SpareData));
+	yaftl_info.spareBuffer17 = WMR_Buf_Alloc_ForDMA(&yaftl_info.zone, sizeof(SpareData));
+	yaftl_info.spareBuffer18 = WMR_Buf_Alloc_ForDMA(&yaftl_info.zone, sizeof(SpareData));
 	yaftl_info.buffer19 = WMR_Buf_Alloc_ForDMA(&yaftl_info.zone, nand_geometry_ftl.total_banks_ftl * 0x180);
 	yaftl_info.buffer20 = WMR_Buf_Alloc_ForDMA(&yaftl_info.zone, nand_geometry_ftl.pages_per_block_total_banks * 0xC);
 
@@ -527,22 +547,22 @@ uint32_t YAFTL_Init() {
 	yaftl_info.pageBuffer = WMR_BufZone_Rebase(&yaftl_info.zone, yaftl_info.pageBuffer);
 	yaftl_info.pageBuffer1 = WMR_BufZone_Rebase(&yaftl_info.zone, yaftl_info.pageBuffer1);
 	yaftl_info.pageBuffer2 = WMR_BufZone_Rebase(&yaftl_info.zone, yaftl_info.pageBuffer2);
-	yaftl_info.buffer3 = WMR_BufZone_Rebase(&yaftl_info.zone, yaftl_info.buffer3);
-	yaftl_info.buffer4 = WMR_BufZone_Rebase(&yaftl_info.zone, yaftl_info.buffer4);
-	yaftl_info.buffer5 = WMR_BufZone_Rebase(&yaftl_info.zone, yaftl_info.buffer5);
-	yaftl_info.spareBuffer = WMR_BufZone_Rebase(&yaftl_info.zone, yaftl_info.spareBuffer);
-	yaftl_info.buffer7 = WMR_BufZone_Rebase(&yaftl_info.zone, yaftl_info.buffer7);
-	yaftl_info.buffer8 = WMR_BufZone_Rebase(&yaftl_info.zone, yaftl_info.buffer8);
-	yaftl_info.buffer9 = WMR_BufZone_Rebase(&yaftl_info.zone, yaftl_info.buffer9);
-	yaftl_info.buffer10 = WMR_BufZone_Rebase(&yaftl_info.zone, yaftl_info.buffer10);
-	yaftl_info.buffer11 = WMR_BufZone_Rebase(&yaftl_info.zone, yaftl_info.buffer11);
-	yaftl_info.buffer12 = WMR_BufZone_Rebase(&yaftl_info.zone, yaftl_info.buffer12);
-	yaftl_info.buffer13 = WMR_BufZone_Rebase(&yaftl_info.zone, yaftl_info.buffer13);
-	yaftl_info.buffer14 = WMR_BufZone_Rebase(&yaftl_info.zone, yaftl_info.buffer14);
-	yaftl_info.buffer15 = WMR_BufZone_Rebase(&yaftl_info.zone, yaftl_info.buffer15);
-	yaftl_info.buffer16 = WMR_BufZone_Rebase(&yaftl_info.zone, yaftl_info.buffer16);
-	yaftl_info.buffer17 = WMR_BufZone_Rebase(&yaftl_info.zone, yaftl_info.buffer17);
-	yaftl_info.buffer18 = WMR_BufZone_Rebase(&yaftl_info.zone, yaftl_info.buffer18);
+	yaftl_info.spareBuffer3 = WMR_BufZone_Rebase(&yaftl_info.zone, yaftl_info.spareBuffer3);
+	yaftl_info.spareBuffer4 = WMR_BufZone_Rebase(&yaftl_info.zone, yaftl_info.spareBuffer4);
+	yaftl_info.spareBuffer5 = WMR_BufZone_Rebase(&yaftl_info.zone, yaftl_info.spareBuffer5);
+	yaftl_info.spareBuffer6 = WMR_BufZone_Rebase(&yaftl_info.zone, yaftl_info.spareBuffer6);
+	yaftl_info.spareBuffer7 = WMR_BufZone_Rebase(&yaftl_info.zone, yaftl_info.spareBuffer7);
+	yaftl_info.spareBuffer8 = WMR_BufZone_Rebase(&yaftl_info.zone, yaftl_info.spareBuffer8);
+	yaftl_info.spareBuffer9 = WMR_BufZone_Rebase(&yaftl_info.zone, yaftl_info.spareBuffer9);
+	yaftl_info.spareBuffer10 = WMR_BufZone_Rebase(&yaftl_info.zone, yaftl_info.spareBuffer10);
+	yaftl_info.spareBuffer11 = WMR_BufZone_Rebase(&yaftl_info.zone, yaftl_info.spareBuffer11);
+	yaftl_info.spareBuffer12 = WMR_BufZone_Rebase(&yaftl_info.zone, yaftl_info.spareBuffer12);
+	yaftl_info.spareBuffer13 = WMR_BufZone_Rebase(&yaftl_info.zone, yaftl_info.spareBuffer13);
+	yaftl_info.spareBuffer14 = WMR_BufZone_Rebase(&yaftl_info.zone, yaftl_info.spareBuffer14);
+	yaftl_info.spareBuffer15 = WMR_BufZone_Rebase(&yaftl_info.zone, yaftl_info.spareBuffer15);
+	yaftl_info.spareBuffer16 = WMR_BufZone_Rebase(&yaftl_info.zone, yaftl_info.spareBuffer16);
+	yaftl_info.spareBuffer17 = WMR_BufZone_Rebase(&yaftl_info.zone, yaftl_info.spareBuffer17);
+	yaftl_info.spareBuffer18 = WMR_BufZone_Rebase(&yaftl_info.zone, yaftl_info.spareBuffer18);
 	yaftl_info.buffer19 = WMR_BufZone_Rebase(&yaftl_info.zone, yaftl_info.buffer19);
 	yaftl_info.buffer20 = WMR_BufZone_Rebase(&yaftl_info.zone, yaftl_info.buffer20);
 	WMR_BufZone_FinishedRebases(&yaftl_info.zone);
@@ -560,8 +580,8 @@ uint32_t YAFTL_Init() {
 	if(!yaftl_info.indexPageBuf)
 		system_panic("No buffer.\r\n");
 
-	yaftl_info.block_array = wmr_malloc(nand_geometry_ftl.usable_blocks_per_bank * 0xC);
-	if(!yaftl_info.block_array)
+	yaftl_info.blockArray = wmr_malloc(nand_geometry_ftl.usable_blocks_per_bank * 0xC);
+	if(!yaftl_info.blockArray)
 		system_panic("No buffer.\r\n");
 
 	yaftl_info.unknBuffer3_ftl = wmr_malloc(nand_geometry_ftl.pages_per_block_total_banks << 2);
@@ -597,8 +617,8 @@ uint32_t YAFTL_Init() {
 	if(BTOC_Init())
 		system_panic("Actually (and before) it should free something, but,.. hey, we don't fuck up, do we?\r\n");
 
-	yaftl_info.ftl2_buffer_x = (uint32_t*)BTOC_Alloc(~2, 1);
-	yaftl_info.ftl2_buffer_x2000 = (uint32_t*)BTOC_Alloc(~1, 0);
+	yaftl_info.ftl2_buffer_x = (uint8_t*)BTOC_Alloc(~2, 1);
+	yaftl_info.ftl2_buffer_x2000 = (uint8_t*)BTOC_Alloc(~1, 0);
 
 	yaFTL_inited = 1;
 
@@ -610,16 +630,16 @@ uint32_t YAFTL_Open(uint32_t* pagesAvailable, uint32_t* bytesPerPage, uint32_t s
 	uint32_t unkn1 = 1;
 
 	memset(yaftl_info.indexPageBuf, 0xFF, yaftl_info.unknCalculatedValue3<<3);
-	memset(yaftl_info.block_array, 0xFF, nand_geometry_ftl.usable_blocks_per_bank * 0xC);
+	memset(yaftl_info.blockArray, 0xFF, nand_geometry_ftl.usable_blocks_per_bank * 0xC);
 
 	uint32_t i;
 	for (i = 0; i <= nand_geometry_ftl.usable_blocks_per_bank; i++) {
-		yaftl_info.block_array[i].unkn0 = 0;
-		yaftl_info.block_array[i].unkn1 = 0;
-		yaftl_info.block_array[i].unkn2 = 0;
-		yaftl_info.block_array[i].unkn3 = 0;
-		yaftl_info.block_array[i].block_status = 0;
-		yaftl_info.block_array[i].unkn5 = 0;
+		yaftl_info.blockArray[i].unkn0 = 0;
+		yaftl_info.blockArray[i].validPagesDNo = 0;
+		yaftl_info.blockArray[i].validPagesINo = 0;
+		yaftl_info.blockArray[i].unkn3 = 0;
+		yaftl_info.blockArray[i].status = 0;
+		yaftl_info.blockArray[i].unkn5 = 0;
 	}
 
 	memcpy(ftlCtrlBlockBuffer, vfl_get_ftl_ctrl_block(), sizeof(ftlCtrlBlockBuffer));
@@ -627,7 +647,7 @@ uint32_t YAFTL_Open(uint32_t* pagesAvailable, uint32_t* bytesPerPage, uint32_t s
 	if (ftlCtrlBlockBuffer[0] != 0xFFFF) { // !restoreMount
 		for (i = 0; i < 3; i++) {
 			yaftl_info.FTLCtrlBlock[i] = ftlCtrlBlockBuffer[i];
-			yaftl_info.block_array[ftlCtrlBlockBuffer[i]].block_status = 2;
+			yaftl_info.blockArray[ftlCtrlBlockBuffer[i]].status = 2;
 		}
 
 		if(!yaftl_info.pageBuffer)
@@ -635,33 +655,33 @@ uint32_t YAFTL_Open(uint32_t* pagesAvailable, uint32_t* bytesPerPage, uint32_t s
 		else {
 			// wtf has been done before
 			/*
-			yaftl_info.block_array[ftlCtrlBlockBuffer[0]].block_status = 2;
-			yaftl_info.block_array[ftlCtrlBlockBuffer[1]].block_status = 2;
-			yaftl_info.block_array[ftlCtrlBlockBuffer[2]].block_status = 2;
+			yaftl_info.blockArray[ftlCtrlBlockBuffer[0]].status = 2;
+			yaftl_info.blockArray[ftlCtrlBlockBuffer[1]].status = 2;
+			yaftl_info.blockArray[ftlCtrlBlockBuffer[2]].status = 2;
 			*/
 
-			// find valid ftlcxt page
-			// Note: I named it "USN" to match the old ftl naming, but it's probably different. --Oranav.
+			// Find the latest (with max USN) FTL context block.
 			uint32_t maxUsn = 0;
 			uint32_t ftlCtrlBlock = 0;
+
 			for (i = 0; i < 3; i++) {
-				if(!YAFTL_readPage(ftlCtrlBlockBuffer[i] * nand_geometry_ftl.pages_per_block_total_banks, yaftl_info.pageBuffer, yaftl_info.spareBuffer, 0, 1, 0)) {
-					if(yaftl_info.spareBuffer[1] != 0xFFFFFFFF && yaftl_info.spareBuffer[1] > maxUsn) {
-						// spareBuffer should get a struct (like SpareData in s5l8900's ftl).
-						// For now, this logic is *wrong* (because we should read the second dword, not the second byte). --Oranav
-						maxUsn = yaftl_info.spareBuffer[1];
+				if(!YAFTL_readPage(ftlCtrlBlockBuffer[i] * nand_geometry_ftl.pages_per_block_total_banks, yaftl_info.pageBuffer, yaftl_info.spareBuffer6, 0, 1, 0)) {
+					if(yaftl_info.spareBuffer6->usn != 0xFFFFFFFF && yaftl_info.spareBuffer6->usn > maxUsn) {
+						maxUsn = yaftl_info.spareBuffer6->usn;
 						ftlCtrlBlock = ftlCtrlBlockBuffer[i];
 					}
 				}
 			}
+
 			uint32_t some_val;
+
 			if(maxUsn) {
-				yaftl_info.block_array[ftlCtrlBlock].block_status = 16;
+				yaftl_info.blockArray[ftlCtrlBlock].status = 16;
 				i = 0;
 				while(1) {
 					if(((uint16_t)yaftl_info.unkn_pageOffset)+i < nand_geometry_ftl.pages_per_block_total_banks
-							&& !YAFTL_readPage(nand_geometry_ftl.pages_per_block_total_banks * ftlCtrlBlock + i, yaftl_info.pageBuffer, yaftl_info.spareBuffer, 0, 1, 0)) {
-						if(YAFTL_readPage(nand_geometry_ftl.pages_per_block_total_banks*ftlCtrlBlock+yaftl_info.unkn_pageOffset+i, yaftl_info.pageBuffer, yaftl_info.spareBuffer, 0, 1, 0) == 1) {
+							&& !YAFTL_readPage(nand_geometry_ftl.pages_per_block_total_banks * ftlCtrlBlock + i, yaftl_info.pageBuffer, yaftl_info.spareBuffer6, 0, 1, 0)) {
+						if(YAFTL_readPage(nand_geometry_ftl.pages_per_block_total_banks*ftlCtrlBlock+yaftl_info.unkn_pageOffset+i, yaftl_info.pageBuffer, yaftl_info.spareBuffer6, 0, 1, 0) == 1) {
 							yaftl_info.unk170_n1 = nand_geometry_ftl.pages_per_block_total_banks*ftlCtrlBlock+i;
 							if(YAFTL_readCxtInfo(nand_geometry_ftl.pages_per_block_total_banks*ftlCtrlBlock+i, yaftl_info.pageBuffer, 1, &unkn1))
 								some_val = 5;
@@ -675,7 +695,7 @@ uint32_t YAFTL_Open(uint32_t* pagesAvailable, uint32_t* bytesPerPage, uint32_t s
 					}
 				}
 			} else {
-				yaftl_info.block_array[ftlCtrlBlockBuffer[0]].block_status = 16;
+				yaftl_info.blockArray[ftlCtrlBlockBuffer[0]].status = 16;
 				some_val = 5;
 			}
 
@@ -689,39 +709,37 @@ uint32_t YAFTL_Open(uint32_t* pagesAvailable, uint32_t* bytesPerPage, uint32_t s
 				yaftl_info.unk184_0xA *= 100;
 			}
 
-			yaftl_info.unknBuffer4_ftl = wmr_malloc(yaftl_info.unk184_0xA*0xC);
-			if(!yaftl_info.unknBuffer4_ftl) {
+			yaftl_info.unknStructArray = wmr_malloc(yaftl_info.unk184_0xA*0xC);
+			if(!yaftl_info.unknStructArray) {
 				bufferPrintf("Ach, fu, 0x80000001\r\n");
 				return -1;
 			}
 
 			WMR_BufZone_Init(&yaftl_info.segment_info_temp);
 			for(i = 0; i < yaftl_info.unk184_0xA; i++) {
-				yaftl_info.unknBuffer4_ftl[i].unkn0 = WMR_Buf_Alloc_ForDMA(&yaftl_info.segment_info_temp, nand_geometry_ftl.bytes_per_page_ftl);
+				yaftl_info.unknStructArray[i].buffer = WMR_Buf_Alloc_ForDMA(&yaftl_info.segment_info_temp, nand_geometry_ftl.bytes_per_page_ftl);
 			}
 			if(WMR_BufZone_FinishedAllocs(&yaftl_info.segment_info_temp) != 0)
 				return -1;
 			for(i = 0; i < yaftl_info.unk184_0xA; i++) {
-				yaftl_info.unknBuffer4_ftl[i].unkn0 = WMR_BufZone_Rebase(&yaftl_info.segment_info_temp, yaftl_info.unknBuffer4_ftl[i].unkn0);
-				yaftl_info.unknBuffer4_ftl[i].unkn1 = -1;
-				yaftl_info.unknBuffer4_ftl[i].unkn2 = 0;
-				yaftl_info.unknBuffer4_ftl[i].unkn3 = 0;
-				yaftl_info.unknBuffer4_ftl[i].block_status = -1;
-				yaftl_info.unknBuffer4_ftl[i].unkn5 = -1;
-				memset(yaftl_info.unknBuffer4_ftl[i].unkn0, 0xFF, nand_geometry_ftl.bytes_per_page_ftl);
+				yaftl_info.unknStructArray[i].buffer = WMR_BufZone_Rebase(&yaftl_info.segment_info_temp, yaftl_info.unknStructArray[i].buffer);
+				yaftl_info.unknStructArray[i].field_A = 0xFFFF;
+				yaftl_info.unknStructArray[i].field_4 = 0xFFFF;
+				yaftl_info.unknStructArray[i].field_8 = 0;
+				memset(yaftl_info.unknStructArray[i].buffer, 0xFF, nand_geometry_ftl.bytes_per_page_ftl);
 			}
 			WMR_BufZone_FinishedRebases(&yaftl_info.segment_info_temp);
 
 			*pagesAvailable = yaftl_info.total_pages_ftl*0.99;
 			*bytesPerPage = nand_geometry_ftl.bytes_per_page_ftl;
 			yaftl_info.unk17C_0x0 = 0;
-			yaftl_info.unk180_n1 = (uint8_t*)-1;
+			yaftl_info.unk180_n1 = -1;
 			for (i = 0; i < nand_geometry_ftl.usable_blocks_per_bank; i++) {
-				if(yaftl_info.block_array[i].block_status != 16 && yaftl_info.block_array[i].block_status != 2) {
-					if(yaftl_info.block_array[i].unkn0 > yaftl_info.unk17C_0x0)
-						yaftl_info.unk17C_0x0 = yaftl_info.block_array[i].unkn0;
-					if(yaftl_info.block_array[i].unkn0 < yaftl_info.unk180_n1)
-						yaftl_info.unk180_n1 = yaftl_info.block_array[i].unkn0;
+				if(yaftl_info.blockArray[i].status != 16 && yaftl_info.blockArray[i].status != 2) {
+					if(yaftl_info.blockArray[i].unkn0 > yaftl_info.unk17C_0x0)
+						yaftl_info.unk17C_0x0 = yaftl_info.blockArray[i].unkn0;
+					if(yaftl_info.blockArray[i].unkn0 < yaftl_info.unk180_n1)
+						yaftl_info.unk180_n1 = yaftl_info.blockArray[i].unkn0;
 				}
 			}
 			SetupFreeAndAllocd();
