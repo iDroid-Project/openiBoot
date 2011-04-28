@@ -50,15 +50,20 @@ typedef struct {
 	uint8_t  type;			// Page type
 	uint16_t field_A;
 } __attribute__((packed)) SpareData;
- 
+
 typedef struct {
 	uint32_t unkn0;
 	uint16_t validPagesDNo;			// Data validity counter
 	uint16_t validPagesINo;			// Index validity counter
-	uint16_t unkn3;
+	uint16_t readCount;				// Number of reads
 	uint8_t status;					// Block status
 	uint8_t unkn5;
 } BlockStruct;
+
+typedef struct {
+	uint32_t indexPage;
+	uint32_t TOCUnkMember;
+} __attribute__((packed)) TOCStruct;
 
 typedef struct {
 	WMR_BufZone_t zone;
@@ -68,7 +73,7 @@ typedef struct {
 	uint32_t unknCalculatedValue0; // 3C
 	uint32_t unknCalculatedValue1; // 40
 	uint32_t total_pages_ftl; // 44
-	uint16_t unknCalculatedValue3; // 48
+	uint16_t tocArrayLength; // 48
 	uint16_t unkn_0x2A; // 4A
 	uint32_t unkn_0x2C; // 4C
 	uint8_t* ftl2_buffer_x;
@@ -90,9 +95,7 @@ typedef struct {
 	uint32_t* unkB4_buffer;
 	uint8_t** unkB8_buffer;
 	uint32_t unkStruct_ftl[10]; // BC
-	uint32_t unkC4;
-	uint32_t unkD0;
-	uint32_t* indexPageBuf; // EC
+	TOCStruct* tocArray; // EC
 	UnknownStruct* unknStructArray; // F0
 	BlockStruct* blockArray; // F4
 	uint32_t* pageBuffer2;
@@ -119,12 +122,12 @@ typedef struct {
 	uint32_t* buffer20;
 	SpareData* spareBuffer18;
 	uint32_t ctrlBlockPageOffset;
-	uint32_t unknCalculatedValue4;
-	uint32_t unknCalculatedValue5;
-	uint32_t unknCalculatedValue6;
-	uint32_t unknCalculatedValue7;
-	uint32_t unknCalculatedValue8;
-	uint32_t unknCalculatedValue9;
+	uint32_t nPagesTocPageIndices;
+	uint32_t nPagesBlockStatuses;
+	uint32_t nPagesBlockReadCounts;
+	uint32_t nPagesBlockUnkn0s;
+	uint32_t nPagesBlockValidPagesDNumbers;
+	uint32_t nPagesBlockValidPagesINumbers;
 	uint32_t ftlCxtPage;
 	uint16_t FTLCtrlBlock[3];
 	uint16_t unkn_1;
@@ -159,7 +162,7 @@ typedef struct {
 	uint32_t unkStruct_ftl_3; // 28
 	uint32_t unk184_0xA; // 2C
 	uint32_t cxt_unkn1[10]; // placeholder
-	uint16_t unknCalculatedValue3; // 5C
+	uint16_t tocArrayLength; // 5C
 	uint16_t nMetaPages; // 5E
 	uint16_t dwordsPerPage; // 60
 	uint16_t unkn_0x2A; // 62
@@ -167,6 +170,6 @@ typedef struct {
 	uint16_t unk64; // 68
 	uint32_t cxt_unkn2[11]; // placeholder
 	uint8_t unk188_0x63; // 94
-} YAFTL_CXT;
+} __attribute__((packed)) YAFTL_CXT;
 
 #endif //YAFTL_H
