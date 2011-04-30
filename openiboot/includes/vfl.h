@@ -16,6 +16,22 @@
  */
 
 /**
+ * The VFL device info enumeration.
+ *
+ * This is used by vfl_get_info to determine
+ * which info to obtain.
+ */
+typedef enum _vfl_info
+{
+	diPagesPerBlockTotalBanks,
+	diSomeThingFromVFLCXT,
+	diBytesPerPageFTL,
+	diMetaBytes0xC,
+	diUnkn20_1,
+	diTotalBanks,
+} vfl_info_t;
+
+/**
  * The VFL signature style enumeration.
  *
  * This is used to determine how the signature will
@@ -41,6 +57,10 @@ typedef error_t (*vfl_read_single_page_t)(struct _vfl_device *, uint32_t _page, 
 typedef error_t (*vfl_write_single_page_t)(struct _vfl_device *, uint32_t _page, uint8_t *_buffer,
 		uint8_t *_sparebuffer);
 
+typedef uint16_t *(*vfl_get_ftl_ctrl_block_t)(struct _vfl_device *);
+
+typedef error_t (*vfl_get_info_t)(struct _vfl_device *, vfl_info_t _item, void * _result, size_t _sz);
+
 
 // VFL Device Struct
 
@@ -64,11 +84,15 @@ typedef struct _vfl_device
 	vfl_read_single_page_t read_single_page; /**< Used by vfl_read_single_page(). */
 	vfl_write_single_page_t write_single_page; /**< Used by vfl_write_single_page(). */
 
+	vfl_get_ftl_ctrl_block_t get_ftl_ctrl_block; /**< Used by vfl_get_ftl_ctrl_block(). */
+
+	vfl_get_info_t get_info; /**< Used by vfl_get_info(). */
+
 } vfl_device_t;
 
 //
 // VFL Device Functions
-// 
+//
 
 /**
  * Initialise a VFL device.
@@ -167,6 +191,31 @@ error_t vfl_read_single_page(vfl_device_t *_vfl, uint32_t _page, uint8_t* _buffe
  * @ingroup VFL
  */
 error_t vfl_write_single_page(vfl_device_t *_vfl, uint32_t _page, uint8_t* _buffer, uint8_t* _spare);
+
+/**
+ * Get the FTL control blocks buffer.
+ *
+ * @return A buffer of three uint16_t block numbers, each is an FTL control block.
+ *
+ * @ingroup VFL
+ */
+uint16_t *vfl_get_ftl_ctrl_block(vfl_device_t *_vfl);
+
+/**
+ * Get a specific info about the VFL device.
+ *
+ * Given a vfl_info_t item descriptor, the VFL device will store the data into the given pointer,
+ * not exceeding the maximum allowed size.
+ *
+ * @param _vfl the VFL device to read from.
+ * @param _item the item to get.
+ * @param _result the buffer in which to save the result.
+ * @param _sz maximum number of bytes to write.
+ * @return Whether an error occurred.
+ *
+ * @ingroup VFL
+ */
+error_t vfl_get_info(vfl_device_t *_vfl, vfl_info_t _item, void *_result, size_t _sz);
 
 /**
  * Attempt to detect and open the VFL on a given NAND device.

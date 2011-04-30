@@ -2622,27 +2622,6 @@ static error_t h2fmi_device_enable_data_whitening(nand_device_t *_dev, int _enab
 	return SUCCESS;
 }
 
-static inline void auto_store(void *_ptr, size_t _sz, uint32_t _val)
-{
-	switch(_sz)
-	{
-	case 0:
-		return;
-
-	case 1:
-		*((uint8_t*)_ptr) = _val;
-		return;
-
-	case 2:
-		*((uint16_t*)_ptr) = _val;
-		return;
-
-	case 4:
-		*((uint32_t*)_ptr) = _val;
-		return;
-	}
-}
-
 static error_t h2fmi_device_get_info(device_t *_dev, device_info_t _info, void *_result, size_t _size)
 {
 	if(_size > 4 || _size == 3)

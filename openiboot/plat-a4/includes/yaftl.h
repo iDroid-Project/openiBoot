@@ -1,7 +1,10 @@
 #ifndef  YAFTL_H
 #define  YAFTL_H
 
+#include "vfl.h"
 #include "openiboot.h"
+
+void YAFTL_Setup();
 
 // YAFTL errors
 #define ERROR_ARG	0x80000001
@@ -12,7 +15,8 @@
 #define PAGETYPE_INDEX		0x4		// Index block indicator
 #define PAGETYPE_LBN		0x10	// User data (also called lbn: maybe logical block number? lBlock 0 is system and lBlock 1 is user?)
 #define PAGETYPE_FTL_CLEAN	0x20	// FTL context (unmounted, clean)
-// 0x40: VFL context?
+// 0x40: ?
+#define PAGETYPE_VFL		0x80	// VFL context
 
 // Block status (as defined in the BlockStruct structure)
 #define BLOCKSTATUS_ALLOCATED		0x1
@@ -62,7 +66,8 @@ typedef struct {
 
 typedef struct {
 	uint32_t indexPage;
-	uint32_t TOCUnkMember;
+	uint16_t TOCUnkMember1;
+	uint16_t TOCUnkMember2;
 } __attribute__((packed)) TOCStruct;
 
 typedef struct {

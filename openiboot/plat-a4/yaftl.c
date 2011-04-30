@@ -5,6 +5,7 @@
 #include "util.h"
 
 static uint32_t yaFTL_inited = 0;
+static vfl_device_t* vfl = 0;
 
 static void* wmr_malloc(uint32_t size) {
 	void* buffer = memalign(0x40, size);
@@ -138,26 +139,26 @@ static uint32_t* BTOC_Alloc(uint32_t _arg0, uint32_t _unused_arg1) {
 	yaftl_info.unkB0_1 = (yaftl_info.unkB0_1 + 1) % yaftl_info.unkAC_2;
 	yaftl_info.unkB4_buffer[yaftl_info.unkB0_1] = _arg0;
 
-	memset(yaftl_info.unkB8_buffer[yaftl_info.unkB0_1], 0xFF, nand_geometry_ftl.pages_per_block_total_banks<<2);
+	memset(yaftl_info.unkB8_buffer[yaftl_info.unkB0_1], 0xFF, nand_geometry_ftl.pages_per_block_total_banks * sizeof(uint32_t));
 
 	yaftl_info.unk78_counter++;
 
-	uint32_t found = 0;
+	uint32_t found = -1;
 	uint32_t i;
-	for(i = 0; i < yaftl_info.unk74_4; i++) {
-		if((yaftl_info.unk80_3 & 1<<i) && (yaftl_info.unk7C_byteMask & 1<<i) && (inited > (int32_t)yaftl_info.unk8c_buffer[i])) {
+	for (i = 0; i < yaftl_info.unk74_4; i++) {
+		if ((yaftl_info.unk80_3 & (1<<i)) && (yaftl_info.unk7C_byteMask & (1<<i)) && (inited > (int32_t)yaftl_info.unk8c_buffer[i])) {
 			found = i;
 			inited = yaftl_info.unk8c_buffer[i];
 		}
 	}
 
-	if(!found)
+	if(found == -1)
 		system_panic("BTOC_Alloc: Couldn't allocate a BTOC.\r\n");
 
-	yaftl_info.unk7C_byteMask &= (~(1<<found));
+	yaftl_info.unk7C_byteMask &= ~(1<<found);
 	yaftl_info.unk88_buffer[found] = _arg0;
 	yaftl_info.unk8c_buffer[found] = yaftl_info.unk78_counter;
-	return (uint32_t*)yaftl_info.unk84_buffer[found];
+	return yaftl_info.unk84_buffer[found];
 }
 
 static void YAFTL_LoopThingy() {
@@ -177,8 +178,9 @@ static uint32_t YAFTL_readPage(uint32_t _page, uint8_t* _data_ptr, SpareData* _s
 	uint8_t* meta_ptr = (uint8_t*)(_spare_ptr ? _spare_ptr : yaftl_info.spareBuffer18);
 
 	// TODO: correctly return 1 when empty.
+	// TODO: add disable_aes flag support to vfl.
 
-	if (FAILED(vfl_read_single_page(vflDevice, _page, _data_ptr, meta_ptr, _empty_ok, &refreshPage, _disable_aes))) {
+	if (FAILED(vfl_read_single_page(vfl, _page, _data_ptr, meta_ptr, _empty_ok, &refreshPage/*, _disable_aes*/))) {
 		bufferPrintf("YAFTL_readPage: We got read failure: page %d, block %d, block status %d, scrub %d.\r\n",
 			_page,
 			block,
@@ -371,18 +373,34 @@ static uint32_t YAFTL_Init() {
 	yaftl_info.unk184_0xA = 0xA;
 	yaftl_info.unk188_0x63 = 0x63;
 
-	// No need, we have a better code structure :)
-	// memcpy(pVSVFL_fn_table, VSVFL_fn_table, 0x2C);
+	uint16_t metaBytes, unkn20_1;
+	error_t error = 0;
 
-	nand_geometry_ftl.pages_per_block_total_banks = vfl_device_get_info(_dev, diPagesPerBlockTotalBanks);
-	nand_geometry_ftl.usable_blocks_per_bank = vfl_device_get_info(_dev, diSomeThingFromVFLCXT);
-	nand_geometry_ftl.bytes_per_page_ftl = vfl_device_get_info(_dev, diUnkn140x2000);
-	nand_geometry_ftl.meta_struct_size_0xC = vfl_device_get_info(_dev, diMetaBytes0xC) * vfl_device_get_info(_dev, diUnkn20_1);
-	nand_geometry_ftl.total_banks_ftl = vfl_device_get_info(_dev, diTotalBanks);
+	error |= vfl_get_info(vfl, diPagesPerBlockTotalBanks, &nand_geometry_ftl.pages_per_block_total_banks, sizeof(nand_geometry_ftl.pages_per_block_total_banks));
+	error |= vfl_get_info(vfl, diSomeThingFromVFLCXT, &nand_geometry_ftl.usable_blocks_per_bank, sizeof(nand_geometry_ftl.usable_blocks_per_bank));
+	error |= vfl_get_info(vfl, diBytesPerPageFTL, &nand_geometry_ftl.bytes_per_page_ftl, sizeof(nand_geometry_ftl.bytes_per_page_ftl));
+	error |= vfl_get_info(vfl, diTotalBanks, &nand_geometry_ftl.total_banks_ftl, sizeof(nand_geometry_ftl.total_banks_ftl));
+
+	error |= vfl_get_info(vfl, diMetaBytes0xC, &metaBytes, sizeof(metaBytes));
+	error |= vfl_get_info(vfl, diUnkn20_1, &unkn20_1, sizeof(unkn20_1));
+	nand_geometry_ftl.meta_struct_size_0xC = metaBytes * unkn20_1;
+
 	nand_geometry_ftl.total_usable_pages = nand_geometry_ftl.pages_per_block_total_banks * nand_geometry_ftl.usable_blocks_per_bank;
 
-	if(nand_geometry_ftl.meta_struct_size_0xC != 0xC)
+	if (FAILED(error))
+		system_panic("VFL get info failed!\r\n");
+
+	if (nand_geometry_ftl.meta_struct_size_0xC != 0xC)
 		system_panic("MetaStructSize not equal 0xC!\r\n");
+
+	bufferPrintf("yaftl: got information from VFL.\r\n");
+	bufferPrintf("pages_per_block_total_banks: %d\r\n", nand_geometry_ftl.pages_per_block_total_banks);
+	bufferPrintf("usable_blocks_per_bank: %d\r\n", nand_geometry_ftl.usable_blocks_per_bank);
+	bufferPrintf("bytes_per_page_ftl: %d\r\n", nand_geometry_ftl.bytes_per_page_ftl);
+	bufferPrintf("total_banks_ftl: %d\r\n", nand_geometry_ftl.total_banks_ftl);
+	bufferPrintf("metaBytes: %d\r\n", metaBytes);
+	bufferPrintf("unkn20_1: %d\r\n", unkn20_1);
+	bufferPrintf("total_usable_pages: %d\r\n", nand_geometry_ftl.total_usable_pages);
 
 	// nMetaPages is the minimum number of pages required to store (number of pages per superblock) dwords.
 	yaftl_info.nMetaPages = (nand_geometry_ftl.pages_per_block_total_banks * sizeof(uint32_t)) / nand_geometry_ftl.bytes_per_page_ftl;
@@ -533,7 +551,7 @@ static uint32_t YAFTL_Open(uint32_t* pagesAvailable, uint32_t* bytesPerPage, uin
 		yaftl_info.blockArray[i].unkn5 = 0;
 	}
 
-	memcpy(ftlCtrlBlockBuffer, vfl_get_ftl_ctrl_block(), sizeof(ftlCtrlBlockBuffer));
+	memcpy(ftlCtrlBlockBuffer, vfl_get_ftl_ctrl_block(vfl), sizeof(ftlCtrlBlockBuffer));
 
 	if (ftlCtrlBlockBuffer[0] == 0xFFFF) {
 		// No FTL ctrl block was found.
@@ -569,6 +587,8 @@ static uint32_t YAFTL_Open(uint32_t* pagesAvailable, uint32_t* bytesPerPage, uin
 			}
 		}
 	}
+
+	DebugPrintf("yaftl: FTL control block is %d.\r\n", ftlCtrlBlock);
 
 	uint32_t some_val;
 
@@ -667,4 +687,12 @@ static uint32_t YAFTL_Open(uint32_t* pagesAvailable, uint32_t* bytesPerPage, uin
 	YAFTL_SetupFreeAndAllocd();
 	YAFTL_LoopThingy();
 	return 0;
+}
+
+void YAFTL_Setup(vfl_device_t* _vfl) {
+	uint32_t pagesAvailable, bytesPerPage;
+	vfl = _vfl;
+
+	YAFTL_Init();
+	YAFTL_Open(&pagesAvailable, &bytesPerPage, 0);
 }

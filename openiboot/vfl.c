@@ -52,6 +52,24 @@ error_t vfl_read_single_page(vfl_device_t *_vfl, uint32_t _page, uint8_t* buffer
 	return _vfl->read_single_page(_vfl, _page, buffer, spare, empty_ok, refresh_page);
 }
 
+uint16_t *vfl_get_ftl_ctrl_block(vfl_device_t *_vfl)
+{
+	if(!_vfl->get_ftl_ctrl_block) {
+		return 0;
+	}
+
+	return _vfl->get_ftl_ctrl_block(_vfl);
+}
+
+error_t vfl_get_info(vfl_device_t *_vfl, vfl_info_t _item, void *_result, size_t _sz)
+{
+	if(!_vfl->get_info) {
+		return ENOENT;
+	}
+
+	return _vfl->get_info(_vfl, _item, _result, _sz);
+}
+
 error_t vfl_detect(vfl_device_t **_vfl, nand_device_t *_nand, vfl_signature_style_t _sign)
 {
 	uint8_t sigbuf[264];

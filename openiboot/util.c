@@ -771,9 +771,30 @@ const char *strerr(error_t _err)
 
 uint32_t next_power_of_two(uint32_t n) {
 	uint32_t val = 1 << (31 - __builtin_clz(n));
-	
+
 	if (n % val)
 		val *= 2;
-		
+
 	return val;
+}
+
+inline void auto_store(void *_ptr, size_t _sz, uint32_t _val)
+{
+	switch(_sz)
+	{
+	case 0:
+		return;
+
+	case 1:
+		*((uint8_t*)_ptr) = _val;
+		return;
+
+	case 2:
+		*((uint16_t*)_ptr) = _val;
+		return;
+
+	case 4:
+		*((uint32_t*)_ptr) = _val;
+		return;
+	}
 }

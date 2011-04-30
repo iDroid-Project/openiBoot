@@ -1,4 +1,5 @@
 #include "vfl/vsvfl.h"
+#include "yaftl.h"
 #include "util.h"
 #include "commands.h"
 
@@ -170,18 +171,21 @@ static error_t vfl_vsvfl_read_single_page(vfl_device_t *_vfl, uint32_t dwVpn, ui
 	return ret;
 }
 
-static uint16_t* VFL_get_FTLCtrlBlock(vfl_vsvfl_device_t *_vfl)
+static uint16_t* VFL_get_FTLCtrlBlock(vfl_device_t *_vfl)
 {
+	vfl_vsvfl_device_t *vfl = CONTAINER_OF(vfl_vsvfl_device_t, vfl, _vfl);
+
 	int bank = 0;
 	int max = 0;
 	uint16_t* FTLCtrlBlock = NULL;
-	for(bank = 0; bank < _vfl->geometry.num_ce; bank++)
+
+	for(bank = 0; bank < vfl->geometry.num_ce; bank++)
 	{
-		int cur = _vfl->contexts[bank].usn_inc;
+		int cur = vfl->contexts[bank].usn_inc;
 		if(max <= cur)
 		{
 			max = cur;
-			FTLCtrlBlock = _vfl->contexts[bank].control_block;
+			FTLCtrlBlock = (uint16_t*)(&(vfl->contexts[bank])) + 0x34D; // FIXME
 		}
 	}
 
@@ -396,7 +400,7 @@ static error_t vfl_vsvfl_open(vfl_device_t *_vfl, nand_device_t *_nand)
 			if(nand_device_read_single_page(vfl->device, bank, curVFLCxt->vfl_context_block[VFLCxtIdx] + vfl->geometry.reserved_blocks, page, pageBuffer, spareBuffer) != 0) {
 				break;
 			}
-			
+
 			last = page;
 		}
 
@@ -424,10 +428,10 @@ static error_t vfl_vsvfl_open(vfl_device_t *_vfl, nand_device_t *_nand)
 			bufferPrintf("vfl: VFLCxt has bad checksum.\r\n");
 			return EIO;
 		}
-	} 
+	}
 
 	// retrieve the FTL control blocks from the latest VFL across all banks.
-	void* FTLCtrlBlock = VFL_get_FTLCtrlBlock(vfl);
+	void* FTLCtrlBlock = VFL_get_FTLCtrlBlock(_vfl);
 	uint16_t buffer[3];
 
 	// Need a buffer because eventually we'll copy over the source
@@ -441,7 +445,48 @@ static error_t vfl_vsvfl_open(vfl_device_t *_vfl, nand_device_t *_nand)
 
 	bufferPrintf("vfl: VFL successfully opened!\r\n");
 
+	YAFTL_Setup(_vfl);
+
 	return SUCCESS;
+}
+
+static error_t vfl_vsvfl_get_info(vfl_device_t *_vfl, vfl_info_t _item, void *_result, size_t _sz)
+{
+	vfl_vsvfl_device_t *vfl = CONTAINER_OF(vfl_vsvfl_device_t, vfl, _vfl);
+	nand_device_t *nand = vfl->device;
+
+	if(_sz > 4 || _sz == 3) {
+		return EINVAL;
+	}
+
+	switch(_item) {
+	case diPagesPerBlockTotalBanks:
+		auto_store(_result, _sz, vfl->geometry.pages_per_sublk);
+		return SUCCESS;
+
+	case diSomeThingFromVFLCXT:
+		auto_store(_result, _sz, ((uint16_t*)(&vfl->contexts[0]))[0x34B]); // FIXME
+		return SUCCESS;
+
+	case diBytesPerPageFTL:
+		nand_device_get_info(nand, diBytesPerPage, _result, _sz);
+		return SUCCESS;
+
+	case diMetaBytes0xC:
+		auto_store(_result, _sz, 0xC);
+		return SUCCESS;
+
+	case diUnkn20_1:
+		auto_store(_result, _sz, 1);
+		return SUCCESS;
+
+	case diTotalBanks:
+		nand_device_get_info(nand, diTotalBanks_VFL, _result, _sz);
+		return SUCCESS;
+
+	default:
+		return ENOENT;
+	}
 }
 
 static nand_device_t *vfl_vsvfl_get_device(vfl_device_t *_vfl)
@@ -462,6 +507,10 @@ error_t vfl_vsvfl_device_init(vfl_vsvfl_device_t *_vfl)
 	_vfl->vfl.get_device = vfl_vsvfl_get_device;
 
 	_vfl->vfl.read_single_page = vfl_vsvfl_read_single_page;
+
+	_vfl->vfl.get_ftl_ctrl_block = VFL_get_FTLCtrlBlock;
+
+	_vfl->vfl.get_info = vfl_vsvfl_get_info;
 
 	memset(&_vfl->geometry, 0, sizeof(_vfl->geometry));
 
