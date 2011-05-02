@@ -34,11 +34,21 @@ typedef struct _vfl_vsvfl_geometry
 	uint16_t some_crazy_val;
 	uint16_t fs_start_block;
 	uint32_t unk;
+	uint32_t banks_per_ce;
+	uint16_t banks_total;
+	uint16_t bank_address_space;
+	uint32_t blocks_per_bank;
 } vfl_vsvfl_geometry_t;
 
 struct _vfl_vsvfl_context;
+struct _vfl_vsvfl_device;
 
-// VFL-VFL Device Struct
+// VSVFL conversion functions prototypes
+typedef void (*vsvfl_virtual_to_physical_t)(struct _vfl_vsvfl_device *_vfl, uint32_t _vBank, uint32_t _vPage, uint32_t *_pCE, uint32_t *_pPage);
+
+typedef void (*vsvfl_physical_to_virtual_t)(struct _vfl_vsvfl_device *_vfl, uint32_t, uint32_t, uint32_t *, uint32_t *);
+
+// VFL-VSVFL Device Struct
 /**
  * This is the structure for the VSVFL device.
  *
@@ -53,10 +63,13 @@ typedef struct _vfl_vsvfl_device
 	struct _vfl_vsvfl_context *contexts;
 	nand_device_t *device;
 	vfl_vsvfl_geometry_t geometry;
-	uint8_t *bbt;
+	uint8_t *bbt[16];
 
 	uint32_t *pageBuffer;
 	uint16_t *chipBuffer;
+
+	vsvfl_virtual_to_physical_t virtual_to_physical;
+	vsvfl_physical_to_virtual_t physical_to_virtual;
 } vfl_vsvfl_device_t;
 
 // VFL-VFL Functions

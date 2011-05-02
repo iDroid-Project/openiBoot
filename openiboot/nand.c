@@ -50,7 +50,8 @@ error_t nand_device_write_single_page(nand_device_t *_dev, uint32_t _chip, uint3
 
 error_t nand_device_read_special_page(nand_device_t *_dev, uint32_t _ce, char _page[16], uint8_t *_buffer, size_t _amt)
 {
-	uint32_t bytesPerPage, blocksPerCE, pagesPerBlock;
+	uint16_t bankAddressSpace;
+	uint32_t bytesPerPage, blocksPerCE, pagesPerBlock, blocksPerBank;
 
 	error_t ret = nand_device_get_info(_dev, diBytesPerPage, &bytesPerPage, sizeof(bytesPerPage));
 	if(FAILED(ret))
@@ -63,6 +64,14 @@ error_t nand_device_read_special_page(nand_device_t *_dev, uint32_t _ce, char _p
 	ret = nand_device_get_info(_dev, diPagesPerBlock, &pagesPerBlock, sizeof(pagesPerBlock));
 	if(FAILED(ret))
 		return EINVAL;
+		
+	ret = nand_device_get_info(_dev, diBlocksPerBank_dw, &blocksPerBank, sizeof(blocksPerBank));
+	if(FAILED(ret))
+		return EINVAL;
+		
+	ret = nand_device_get_info(_dev, diBankAddressSpace, &bankAddressSpace, sizeof(bankAddressSpace));
+	if(FAILED(ret))
+		return EINVAL;
 
 	uint8_t* buffer = memalign(DMA_ALIGN, bytesPerPage);
 	int lowestBlock = blocksPerCE - (blocksPerCE / 10);
@@ -73,13 +82,15 @@ error_t nand_device_read_special_page(nand_device_t *_dev, uint32_t _ce, char _p
 		int badBlockCount = 0;
 		for(page = 0; page < pagesPerBlock; page++)
 		{
+			uint32_t physicalBlock = (block / blocksPerBank) * bankAddressSpace + (block % blocksPerBank);
+
 			if(badBlockCount > 2)
 			{
 				DebugPrintf("vfl: read_special_page - too many bad pages, skipping block %d\r\n", block);
 				break;
 			}
 
-			int ret = nand_device_read_single_page(_dev, _ce, block, page, buffer, NULL);
+			int ret = nand_device_read_single_page(_dev, _ce, physicalBlock, page, buffer, NULL);
 			if(ret != 0)
 			{
 				if(ret == 1)

@@ -79,7 +79,7 @@ typedef enum OnOff {
 #define CONTAINER_OF(type, member, ptr) ((type*)(((char*)(ptr)) - ((char*)(&((type*)NULL)->member))))
 #define ARRAY_SIZE(arr) (sizeof(arr)/sizeof((arr)[0]))
 #define ROUND_UP(val, amt) (((val + amt - 1) / amt) * amt)
-#define CEIL_DIVIDE(val, amt) ((val + amt - 1) / amt)
+#define CEIL_DIVIDE(val, amt) (((val) + (amt) - 1) / (amt))
 
 typedef struct Event Event;
 

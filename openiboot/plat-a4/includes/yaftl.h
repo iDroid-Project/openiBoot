@@ -71,6 +71,17 @@ typedef struct {
 } __attribute__((packed)) TOCStruct;
 
 typedef struct {
+	uint32_t numAllocated; // 00
+	uint32_t field_4; // 04
+	uint32_t numValidDPages; // 08
+	uint32_t numIAllocated; // 0C
+	uint32_t field_10; // 10
+	uint32_t numValidIPages; // 14
+	uint32_t numFree; // 18
+	uint32_t field_1C; // 1C
+} __attribute__((packed)) BlockStats;
+
+typedef struct {
 	WMR_BufZone_t zone;
 	WMR_BufZone_t segment_info_temp;
 	uint16_t nMetaPages; // (0x38) Number of meta pages. Similar to pagesToRead in the old FTL.
@@ -99,7 +110,8 @@ typedef struct {
 	uint32_t unkB0_1;
 	uint32_t* unkB4_buffer;
 	uint8_t** unkB8_buffer;
-	uint32_t unkStruct_ftl[10]; // BC
+	BlockStats blockStats; // BC
+	uint32_t field_DC[4]; // DC
 	TOCStruct* tocArray; // EC
 	UnknownStruct* unknStructArray; // F0
 	BlockStruct* blockArray; // F4
@@ -161,12 +173,13 @@ typedef struct {
 	uint32_t cxt_unkn0; // 10 // placeholder
 	uint32_t unkn_0x3C; // 14
 	uint32_t unk6C; // 18
-	uint32_t unkStruct_ftl_1; // 1C
-	uint32_t unkStruct_ftl_4; // 20
-	uint32_t unkStruct_ftl_0; // 24
-	uint32_t unkStruct_ftl_3; // 28
+	uint32_t blockStatsField4; // 1C
+	uint32_t blockStatsField10; // 20
+	uint32_t numAllocatedBlocks; // 24
+	uint32_t numIAllocatedBlocks; // 28
 	uint32_t unk184_0xA; // 2C
 	uint32_t cxt_unkn1[10]; // placeholder
+	uint32_t field_58; // 58
 	uint16_t tocArrayLength; // 5C
 	uint16_t nMetaPages; // 5E
 	uint16_t dwordsPerPage; // 60

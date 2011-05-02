@@ -55,6 +55,7 @@ typedef enum _device_info
 	diNumECCBytes,
 	diMetaPerLogicalPage,
 	diPagesPerCE,
+	diBankAddressSpace,
 
 } device_info_t;
 

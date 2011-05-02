@@ -1405,7 +1405,7 @@ uint32_t h2fmi_read_single_page(uint32_t _ce, uint32_t _page, uint8_t *_ptr, uin
 		ret = 0;
 	}
 	else if(read_ret == 2)
-		ret = 1;
+		ret = ENOENT;
 	else
 	{
 		bufferPrintf("fmi: read_single_page hardware error 0x%08x.\r\n", read_ret);
