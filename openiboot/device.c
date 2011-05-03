@@ -113,6 +113,17 @@ error_t device_set_info(device_t *_dev, device_info_t _item, void *_val, size_t 
 	return ENOENT;
 }
 
+error_t device_set_ftl_region(device_t *_dev, uint32_t _lpn, uint32_t _a2, uint32_t _count, void *_buf)
+{
+	if(_dev->set_ftl_region)
+	{
+		_dev->set_ftl_region(_lpn, _a2, _count, _buf);
+		return SUCCESS;
+	}
+
+	return ENOENT;
+}
+
 static void cmd_device_list(int _argc, char **_argv)
 {
 	LinkedList *ptr = device_list.next;

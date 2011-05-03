@@ -7,7 +7,7 @@ typedef struct _vfl_vsvfl_context
 {
 	uint32_t usn_inc; // 0x000
 	uint32_t field_4; // 0x004
-	uint32_t field_8; // 0x008
+	uint32_t ftl_type; // 0x008
 	uint32_t usn_dec; // 0x00C
 	uint16_t active_context_block; // 0x010
 	uint16_t next_context_page; // 0x012
@@ -195,7 +195,7 @@ static int vfl_check_checksum(vfl_vsvfl_device_t *_vfl, int ce)
 	return FALSE;
 }
 
-static error_t vfl_vsvfl_read_single_page(vfl_device_t *_vfl, uint32_t dwVpn, uint8_t* buffer, uint8_t* spare, int empty_ok, int* refresh_page)
+static error_t vfl_vsvfl_read_single_page(vfl_device_t *_vfl, uint32_t dwVpn, uint8_t* buffer, uint8_t* spare, int empty_ok, int* refresh_page, uint32_t disable_aes)
 {
 	vfl_vsvfl_device_t *vfl = CONTAINER_OF(vfl_vsvfl_device_t, vfl, _vfl);
 
@@ -216,7 +216,7 @@ static error_t vfl_vsvfl_read_single_page(vfl_device_t *_vfl, uint32_t dwVpn, ui
 	}
 
 	// Hack to get reading by absolute page number.
-	ret = nand_device_read_single_page(vfl->device, pCE, 0, pPage, buffer, spare);
+	ret = nand_device_read_single_page(vfl->device, pCE, 0, pPage, buffer, spare, disable_aes);
 
 	if(!empty_ok && ret == ENOENT)
 		ret = EIO;
@@ -225,7 +225,7 @@ static error_t vfl_vsvfl_read_single_page(vfl_device_t *_vfl, uint32_t dwVpn, ui
 
 	if(ret == EINVAL || ret == EIO)
 	{
-		ret = nand_device_read_single_page(vfl->device, pCE, 0, pPage, buffer, spare);
+		ret = nand_device_read_single_page(vfl->device, pCE, 0, pPage, buffer, spare, disable_aes);
 		if(!empty_ok && ret == ENOENT)
 			return EIO;
 
@@ -445,7 +445,7 @@ static error_t vfl_vsvfl_open(vfl_device_t *_vfl, nand_device_t *_nand)
 			if(!(vfl->bbt[ce][i / 8] & (1 << (i  & 0x7))))
 				continue;
 
-			if(SUCCEEDED(nand_device_read_single_page(vfl->device, ce, i, 0, pageBuffer, spareBuffer)))
+			if(SUCCEEDED(nand_device_read_single_page(vfl->device, ce, i, 0, pageBuffer, spareBuffer, 0)))
 			{
 				memcpy(curVFLCxt->vfl_context_block, ((vfl_vsvfl_context_t*)pageBuffer)->vfl_context_block,
 						sizeof(curVFLCxt->vfl_context_block));
@@ -470,7 +470,7 @@ static error_t vfl_vsvfl_open(vfl_device_t *_vfl, nand_device_t *_nand)
 			if(block == 0xFFFF)
 				continue;
 
-			if(FAILED(nand_device_read_single_page(vfl->device, ce, block, 0, pageBuffer, spareBuffer)))
+			if(FAILED(nand_device_read_single_page(vfl->device, ce, block, 0, pageBuffer, spareBuffer, 0)))
 				continue;
 
 			vfl_vsvfl_spare_data_t *spareData = (vfl_vsvfl_spare_data_t*)spareBuffer;
@@ -495,14 +495,14 @@ static error_t vfl_vsvfl_open(vfl_device_t *_vfl, nand_device_t *_nand)
 		int page = 8;
 		int last = 0;
 		for(page = 8; page < vfl->geometry.pages_per_block; page += 8) {
-			if(nand_device_read_single_page(vfl->device, ce, curVFLCxt->vfl_context_block[VFLCxtIdx], page, pageBuffer, spareBuffer) != 0) {
+			if(nand_device_read_single_page(vfl->device, ce, curVFLCxt->vfl_context_block[VFLCxtIdx], page, pageBuffer, spareBuffer, 0) != 0) {
 				break;
 			}
 
 			last = page;
 		}
 
-		if(nand_device_read_single_page(vfl->device, ce, curVFLCxt->vfl_context_block[VFLCxtIdx], last, pageBuffer, spareBuffer) != 0) {
+		if(nand_device_read_single_page(vfl->device, ce, curVFLCxt->vfl_context_block[VFLCxtIdx], last, pageBuffer, spareBuffer, 0) != 0) {
 			bufferPrintf("vsvfl: cannot find readable VFLCxt\n");
 			free(pageBuffer);
 			free(spareBuffer);
@@ -539,7 +539,7 @@ static error_t vfl_vsvfl_open(vfl_device_t *_vfl, nand_device_t *_nand)
 			memcpy(vfl->contexts[ce].control_block, latestCxt->control_block, sizeof(latestCxt->control_block));
 			vfl->contexts[ce].usable_blocks_per_bank = latestCxt->usable_blocks_per_bank;
 			vfl->contexts[ce].reserved_block_pool_start = latestCxt->reserved_block_pool_start;
-			vfl->contexts[ce].field_8 = latestCxt->field_8;
+			vfl->contexts[ce].ftl_type = latestCxt->ftl_type;
 			memcpy(vfl->contexts[ce].field_6CA, latestCxt->field_6CA, sizeof(latestCxt->field_6CA));
 
 			vfl_gen_checksum(vfl, ce);
@@ -603,6 +603,10 @@ static error_t vfl_vsvfl_get_info(vfl_device_t *_vfl, vfl_info_t _item, void *_r
 
 	case diSomeThingFromVFLCXT:
 		auto_store(_result, _sz, vfl->contexts[0].usable_blocks_per_bank);
+		return SUCCESS;
+
+	case diFTLType:
+		auto_store(_result, _sz, vfl->contexts[0].ftl_type);
 		return SUCCESS;
 
 	case diBytesPerPageFTL:

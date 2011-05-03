@@ -14,7 +14,7 @@ enum
 struct _nand_device;
 
 typedef error_t (*nand_device_read_single_page_t)(struct _nand_device *, uint32_t _chip,
-		uint32_t _block, uint32_t _page, uint8_t *_buffer, uint8_t *_spareBuffer);
+		uint32_t _block, uint32_t _page, uint8_t *_buffer, uint8_t *_spareBuffer, uint32_t _disable_aes);
 
 typedef error_t (*nand_device_write_single_page_t)(struct _nand_device *, uint32_t _chip,
 		uint32_t _block, uint32_t _page, uint8_t *_buffer, uint8_t *_spareBuffer);
@@ -44,7 +44,7 @@ error_t nand_device_register(nand_device_t *_nand);
 void nand_device_unregister(nand_device_t *_nand);
 
 error_t nand_device_read_single_page(nand_device_t *_dev, uint32_t _chip, uint32_t _block,
-		uint32_t _page, uint8_t *_buffer, uint8_t *_spareBuffer);
+		uint32_t _page, uint8_t *_buffer, uint8_t *_spareBuffer, uint32_t _disable_aes);
 
 error_t nand_device_write_single_page(nand_device_t *_dev, uint32_t _chip, uint32_t _block,
 		uint32_t _page, uint8_t *_buffer, uint8_t *_spareBuffer);

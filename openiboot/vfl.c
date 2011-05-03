@@ -44,12 +44,12 @@ void vfl_close(vfl_device_t *_vfl)
 }
 
 error_t vfl_read_single_page(vfl_device_t *_vfl, uint32_t _page, uint8_t* buffer, uint8_t* spare,
-		int empty_ok, int* refresh_page)
+		int empty_ok, int* refresh_page, uint32_t disable_aes)
 {
 	if(!_vfl->read_single_page)
 		return ENOENT;
 
-	return _vfl->read_single_page(_vfl, _page, buffer, spare, empty_ok, refresh_page);
+	return _vfl->read_single_page(_vfl, _page, buffer, spare, empty_ok, refresh_page, disable_aes);
 }
 
 uint16_t *vfl_get_ftl_ctrl_block(vfl_device_t *_vfl)

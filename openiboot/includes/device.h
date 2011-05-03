@@ -66,6 +66,8 @@ typedef error_t (*device_ioctl_t)(struct _device *, uint32_t _id, void *_in, siz
 typedef error_t (*device_get_info_t)(struct _device *, device_info_t _item, void *_result, size_t _sz);
 typedef error_t (*device_set_info_t)(struct _device *, device_info_t _item, void *_val, size_t _sz);
 
+typedef void (*device_set_ftl_region_t)(uint32_t _lpn, uint32_t _a2, uint32_t _count, void* _buf);
+
 /**
  * This is the device structure.
  *
@@ -83,6 +85,8 @@ typedef struct _device
 
 	device_get_info_t get_info;
 	device_set_info_t set_info;
+	
+	device_set_ftl_region_t set_ftl_region;
 
 	LinkedList list_ptr;
 	LinkedList children;
@@ -103,5 +107,7 @@ error_t device_ioctl(device_t *_dev, uint32_t _id, void *_in, size_t _in_amt, vo
 
 error_t device_get_info(device_t *_dev, device_info_t _item, void *_result, size_t _sz);
 error_t device_set_info(device_t *_dev, device_info_t _item, void *_val, size_t _sz);
+
+error_t device_set_ftl_region(device_t *_dev, uint32_t _lpn, uint32_t _a2, uint32_t _count, void *_buf);
 
 #endif //DEVICE_H

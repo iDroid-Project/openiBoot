@@ -41,13 +41,6 @@ typedef struct
 } WMR_BufZone_t;
 
 typedef struct {
-	void* buffer;
-	uint32_t field_4;
-	uint16_t field_8;
-	uint16_t field_A;
-} __attribute__((packed)) UnknownStruct;
-
-typedef struct {
 	uint32_t lpn;			// Logical page number
 	uint32_t usn;			// Update sequence number
 	uint8_t  field_8;
@@ -66,9 +59,16 @@ typedef struct {
 
 typedef struct {
 	uint32_t indexPage;
-	uint16_t TOCUnkMember1;
+	uint16_t cacheNum;
 	uint16_t TOCUnkMember2;
 } __attribute__((packed)) TOCStruct;
+
+typedef struct {
+	uint32_t* buffer;
+	uint32_t page;
+	uint16_t useCount;
+	uint16_t state;
+} __attribute__((packed)) TOCCache;
 
 typedef struct {
 	uint32_t numAllocated; // 00
@@ -113,7 +113,7 @@ typedef struct {
 	BlockStats blockStats; // BC
 	uint32_t field_DC[4]; // DC
 	TOCStruct* tocArray; // EC
-	UnknownStruct* unknStructArray; // F0
+	TOCCache* tocCaches; // F0
 	BlockStruct* blockArray; // F4
 	uint32_t* pageBuffer2;
 	SpareData* spareBuffer3;
@@ -132,11 +132,11 @@ typedef struct {
 	SpareData* spareBuffer16;
 	SpareData* spareBuffer17;
 	uint8_t* pageBuffer;
-	uint32_t* pageBuffer1;
-	uint32_t unk140_n1;
+	uint32_t* tocPageBuffer;
+	uint32_t lastTOCPageRead;
 	uint32_t* buffer19;
 	uint32_t* unknBuffer3_ftl; // 148
-	uint32_t* buffer20;
+	SpareData* buffer20;
 	SpareData* spareBuffer18;
 	uint32_t ctrlBlockPageOffset;
 	uint32_t nPagesTocPageIndices;

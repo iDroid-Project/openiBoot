@@ -2590,10 +2590,10 @@ static void h2fmi_init_virtual_physical_map()
 
 // NAND Device Functions
 static error_t h2fmi_device_read_single_page(nand_device_t *_dev, uint32_t _chip, uint32_t _block,
-		uint32_t _page, uint8_t *_buffer, uint8_t *_spareBuffer)
+		uint32_t _page, uint8_t *_buffer, uint8_t *_spareBuffer, uint32_t disable_aes)
 {
 	return h2fmi_read_single_page(_chip, _block*h2fmi_geometry.pages_per_block + _page,
-			_buffer, _spareBuffer, NULL, NULL, 0);
+			_buffer, _spareBuffer, NULL, NULL, disable_aes);
 }
 
 static error_t h2fmi_device_write_single_page(nand_device_t *_dev, uint32_t _chip, uint32_t _block,
@@ -2752,6 +2752,14 @@ static error_t h2fmi_device_set_info(device_t *_dev, device_info_t _info, void *
 	}
 }
 
+static void h2fmi_device_set_ftl_region(uint32_t _lpn, uint32_t _a2, uint32_t _count, void* _buf)
+{
+	h2fmi_ftl_count = _count;
+	h2fmi_ftl_databuf = (uint32_t)_buf;
+	h2fmi_ftl_smth[0] = _lpn;
+	h2fmi_ftl_smth[1] = _a2;
+}
+
 static void h2fmi_init_device()
 {
 	nand_device_init(&h2fmi_device);
@@ -2761,6 +2769,7 @@ static void h2fmi_init_device()
 	h2fmi_device.enable_data_whitening = h2fmi_device_enable_data_whitening;
 	h2fmi_device.device.get_info = h2fmi_device_get_info;
 	h2fmi_device.device.set_info = h2fmi_device_set_info;
+	h2fmi_device.device.set_ftl_region = h2fmi_device_set_ftl_region;
 	nand_device_register(&h2fmi_device);
 
 	if(FAILED(vfl_detect(&h2fmi_vfl_device, &h2fmi_device, vfl_new_signature)))
@@ -3088,9 +3097,9 @@ COMMAND("nand_erase", "H2FMI NAND erase single block", cmd_nand_erase);
 
 static void cmd_vfl_read(int argc, char** argv)
 {
-	if(argc < 5)
+	if(argc < 6)
 	{
-		bufferPrintf("Usage: %s [page] [data] [metadata] [empty_ok]\r\n", argv[0]);
+		bufferPrintf("Usage: %s [page] [data] [metadata] [empty_ok] [disable_aes]\r\n", argv[0]);
 		return;
 	}
 	
@@ -3098,9 +3107,10 @@ static void cmd_vfl_read(int argc, char** argv)
 	uint32_t data = parseNumber(argv[2]);
 	uint32_t meta = parseNumber(argv[3]);
 	uint32_t empty_ok = parseNumber(argv[4]);
+	uint32_t disable_aes = parseNumber(argv[5]);
 
 	uint32_t ret = vfl_read_single_page(h2fmi_vfl_device, page,
-			(uint8_t*)data, (uint8_t*)meta, empty_ok, NULL);
+			(uint8_t*)data, (uint8_t*)meta, empty_ok, NULL, disable_aes);
 
 	bufferPrintf("vfl: Command completed with result 0x%08x.\r\n", ret);
 }

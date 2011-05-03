@@ -25,6 +25,7 @@ typedef enum _vfl_info
 {
 	diPagesPerBlockTotalBanks,
 	diSomeThingFromVFLCXT,
+	diFTLType,
 	diBytesPerPageFTL,
 	diMetaBytes0xC,
 	diUnkn20_1,
@@ -52,7 +53,7 @@ typedef void (*vfl_close_t)(struct _vfl_device *);
 typedef nand_device_t *(*vfl_get_device_t)(struct _vfl_device *);
 
 typedef error_t (*vfl_read_single_page_t)(struct _vfl_device *, uint32_t _page, uint8_t *_buffer,
-		uint8_t *_sparebuffer, int _empty_ok, int *_refresh);
+		uint8_t *_sparebuffer, int _empty_ok, int *_refresh, uint32_t _disable_aes);
 
 typedef error_t (*vfl_write_single_page_t)(struct _vfl_device *, uint32_t _page, uint8_t *_buffer,
 		uint8_t *_sparebuffer);
@@ -168,12 +169,13 @@ nand_device_t *vfl_get_device(vfl_device_t *_vfl);
  * @param _spare the buffer to store the spare data, this can be NULL.
  * @param _empty_ok if this is non-zero, an empty page will not return an error.
  * @param _refresh_page if the pointed integer is non-zero the read will be attempted twice.
+ * @param _disable_aes if this flag is true, AES decryption won't be done by the hardware.
  * @return Whether an error occurred.
  *
  * @ingroup VFL
  */
 error_t vfl_read_single_page(vfl_device_t *_vfl, uint32_t _page, uint8_t* _buffer, uint8_t* _spare,
-		int _empty_ok, int* _refresh_page);
+		int _empty_ok, int* _refresh_page, uint32_t _disable_aes);
 
 /**
  * Write a single page to the VFL.

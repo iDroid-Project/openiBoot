@@ -1,10 +1,13 @@
 #include "yaftl.h"
 #include "openiboot.h"
+#include "commands.h"
 #include "vfl.h"
+#include "device.h"
 #include "util.h"
 
 static uint32_t yaftl_inited = 0;
 static vfl_device_t* vfl = 0;
+static device_t* device = 0;
 
 static void* wmr_malloc(uint32_t size) {
 	void* buffer = memalign(0x40, size);
@@ -176,8 +179,7 @@ static uint32_t YAFTL_readPage(uint32_t _page, uint8_t* _data_ptr, SpareData* _s
 
 	uint8_t* meta_ptr = (uint8_t*)(_spare_ptr ? _spare_ptr : yaftl_info.spareBuffer18);
 
-	// TODO: add disable_aes flag support to vfl.
-	result = vfl_read_single_page(vfl, _page, _data_ptr, meta_ptr, _empty_ok, &refreshPage/*, _disable_aes*/);
+	result = vfl_read_single_page(vfl, _page, _data_ptr, meta_ptr, _empty_ok, &refreshPage, _disable_aes);
 
 	if (FAILED(result)) {
 		bufferPrintf("YAFTL_readPage: We got read failure: page %d, block %d, block status %d, scrub %d.\r\n",
@@ -384,7 +386,7 @@ static uint32_t YAFTL_Init() {
 
 	memset(&yaftl_info, 0, sizeof(yaftl_info)); // 0x358
 
-	yaftl_info.unk140_n1 = -1;
+	yaftl_info.lastTOCPageRead = 0xFFFFFFFF;
 	yaftl_info.ftlCxtPage = 0xFFFFFFFF;
 	yaftl_info.unk184_0xA = 0xA;
 	yaftl_info.unk188_0x63 = 0x63;
@@ -426,7 +428,7 @@ static uint32_t YAFTL_Init() {
 	yaftl_info.dwordsPerPage = nand_geometry_ftl.bytes_per_page_ftl >> 2;
 	WMR_BufZone_Init(&yaftl_info.zone);
 	yaftl_info.pageBuffer = WMR_Buf_Alloc_ForDMA(&yaftl_info.zone, nand_geometry_ftl.bytes_per_page_ftl);
-	yaftl_info.pageBuffer1 = WMR_Buf_Alloc_ForDMA(&yaftl_info.zone, nand_geometry_ftl.bytes_per_page_ftl);
+	yaftl_info.tocPageBuffer = WMR_Buf_Alloc_ForDMA(&yaftl_info.zone, nand_geometry_ftl.bytes_per_page_ftl);
 	yaftl_info.pageBuffer2 = WMR_Buf_Alloc_ForDMA(&yaftl_info.zone, nand_geometry_ftl.bytes_per_page_ftl * yaftl_info.nMetaPages);
 	yaftl_info.spareBuffer3 = WMR_Buf_Alloc_ForDMA(&yaftl_info.zone, sizeof(SpareData));
 	yaftl_info.spareBuffer4 = WMR_Buf_Alloc_ForDMA(&yaftl_info.zone, sizeof(SpareData));
@@ -445,13 +447,13 @@ static uint32_t YAFTL_Init() {
 	yaftl_info.spareBuffer17 = WMR_Buf_Alloc_ForDMA(&yaftl_info.zone, sizeof(SpareData));
 	yaftl_info.spareBuffer18 = WMR_Buf_Alloc_ForDMA(&yaftl_info.zone, sizeof(SpareData));
 	yaftl_info.buffer19 = WMR_Buf_Alloc_ForDMA(&yaftl_info.zone, nand_geometry_ftl.total_banks_ftl * 0x180);
-	yaftl_info.buffer20 = WMR_Buf_Alloc_ForDMA(&yaftl_info.zone, nand_geometry_ftl.pages_per_block_total_banks * 0xC);
+	yaftl_info.buffer20 = WMR_Buf_Alloc_ForDMA(&yaftl_info.zone, nand_geometry_ftl.pages_per_block_total_banks * sizeof(SpareData));
 
 	if (WMR_BufZone_FinishedAllocs(&yaftl_info.zone) != 0)
 		system_panic("YAFTL_Init: WMR_BufZone_FinishedAllocs failed!");
 
 	yaftl_info.pageBuffer = WMR_BufZone_Rebase(&yaftl_info.zone, yaftl_info.pageBuffer);
-	yaftl_info.pageBuffer1 = WMR_BufZone_Rebase(&yaftl_info.zone, yaftl_info.pageBuffer1);
+	yaftl_info.tocPageBuffer = WMR_BufZone_Rebase(&yaftl_info.zone, yaftl_info.tocPageBuffer);
 	yaftl_info.pageBuffer2 = WMR_BufZone_Rebase(&yaftl_info.zone, yaftl_info.pageBuffer2);
 	yaftl_info.spareBuffer3 = WMR_BufZone_Rebase(&yaftl_info.zone, yaftl_info.spareBuffer3);
 	yaftl_info.spareBuffer4 = WMR_BufZone_Rebase(&yaftl_info.zone, yaftl_info.spareBuffer4);
@@ -659,8 +661,8 @@ static uint32_t YAFTL_Open(uint32_t* pagesAvailable, uint32_t* bytesPerPage, uin
 		yaftl_info.unk184_0xA *= 100;
 	}
 
-	yaftl_info.unknStructArray = wmr_malloc(yaftl_info.unk184_0xA * 0xC);
-	if (!yaftl_info.unknStructArray) {
+	yaftl_info.tocCaches = wmr_malloc(yaftl_info.unk184_0xA * sizeof(TOCCache));
+	if (!yaftl_info.tocCaches) {
 		bufferPrintf("yaftl: error allocating memory\r\n");
 		return -1;
 	}
@@ -668,17 +670,17 @@ static uint32_t YAFTL_Open(uint32_t* pagesAvailable, uint32_t* bytesPerPage, uin
 	WMR_BufZone_Init(&yaftl_info.segment_info_temp);
 
 	for (i = 0; i < yaftl_info.unk184_0xA; i++)
-		yaftl_info.unknStructArray[i].buffer = WMR_Buf_Alloc_ForDMA(&yaftl_info.segment_info_temp, nand_geometry_ftl.bytes_per_page_ftl);
+		yaftl_info.tocCaches[i].buffer = WMR_Buf_Alloc_ForDMA(&yaftl_info.segment_info_temp, nand_geometry_ftl.bytes_per_page_ftl);
 
 	if (WMR_BufZone_FinishedAllocs(&yaftl_info.segment_info_temp) != 0)
 		return -1;
 
 	for (i = 0; i < yaftl_info.unk184_0xA; i++) {
-		yaftl_info.unknStructArray[i].buffer = WMR_BufZone_Rebase(&yaftl_info.segment_info_temp, yaftl_info.unknStructArray[i].buffer);
-		yaftl_info.unknStructArray[i].field_A = 0xFFFF;
-		yaftl_info.unknStructArray[i].field_4 = 0xFFFF;
-		yaftl_info.unknStructArray[i].field_8 = 0;
-		memset(yaftl_info.unknStructArray[i].buffer, 0xFF, nand_geometry_ftl.bytes_per_page_ftl);
+		yaftl_info.tocCaches[i].buffer = WMR_BufZone_Rebase(&yaftl_info.segment_info_temp, yaftl_info.tocCaches[i].buffer);
+		yaftl_info.tocCaches[i].state = 0xFFFF;
+		yaftl_info.tocCaches[i].page = 0xFFFF;
+		yaftl_info.tocCaches[i].useCount = 0;
+		memset(yaftl_info.tocCaches[i].buffer, 0xFF, nand_geometry_ftl.bytes_per_page_ftl);
 	}
 
 	if (WMR_BufZone_FinishedRebases(&yaftl_info.segment_info_temp) != 0)
@@ -713,9 +715,293 @@ static uint32_t YAFTL_Open(uint32_t* pagesAvailable, uint32_t* bytesPerPage, uin
 	return 0;
 }
 
-void YAFTL_Setup(vfl_device_t* _vfl) {
+static int YAFTL_readMultiPages(uint32_t* pagesArray, uint32_t nPages, uint8_t* dataBuffer, SpareData* metaBuffers, uint32_t disableAES, uint32_t scrub) {
+	uint32_t block, page, i, j;
+	int ret, succeeded, status = 0, unkn = 0;
+	int pagesToRead = nPages;
+
+	if (metaBuffers == NULL)
+		metaBuffers = yaftl_info.buffer20;
+
+	for (i = 0; pagesToRead > nand_geometry_ftl.pages_per_block_total_banks; i++) {
+		//ret = VFL_ReadScatteredPagesInVb(&buf[i * nand_geometry_ftl.pages_per_block_total_banks],nand_geometry_ftl.pages_per_block_total_banks, databuffer + i * nand_geometry_ftl.pages_per_block_total_banks * nand_geometry_ftl.bytes_per_page_ftl, metabuf_array, &unkn, 0, a4, &status);
+		ret = 0; // For now. --Oranav
+
+		if (ret) {
+			if (status)
+				return 0;
+		} else {
+			bufferPrintf("yaftl: _readMultiPages: We got read failure!!\r\n");
+			succeeded = 1;
+
+			for (j = 0; j < nand_geometry_ftl.pages_per_block_total_banks; j++) {
+				page = i * nand_geometry_ftl.pages_per_block_total_banks + j;
+				ret = YAFTL_readPage(
+						pagesArray[page],
+						&dataBuffer[page * nand_geometry_ftl.bytes_per_page_ftl],
+						&metaBuffers[page],
+						disableAES,
+						1,
+						scrub);
+
+				if (ret)
+					 succeeded = 0;
+
+				status = ret;
+			}
+
+			if (!succeeded)
+				return 0;
+
+			bufferPrintf("yaftl:_readMultiPages: We were able to overcome read failure!!\r\n");
+		}
+
+		block = pagesArray[(i + 1) * nand_geometry_ftl.pages_per_block_total_banks] / nand_geometry_ftl.pages_per_block_total_banks;
+		yaftl_info.blockArray[block].readCount++;
+
+		pagesToRead -= nand_geometry_ftl.pages_per_block_total_banks;
+	}
+
+	if (pagesToRead == 0)
+		return 1;
+
+	block = pagesArray[i * nand_geometry_ftl.pages_per_block_total_banks] / nand_geometry_ftl.pages_per_block_total_banks;
+	yaftl_info.blockArray[block].readCount++;
+
+	unkn = 0;
+	// ret = VFL_ReadScatteredPagesInVb(&buf[i * nand_geometry_ftl.pages_per_block_total_banks], pagesToRead % nand_geometry_ftl.pages_per_block_total_banks, databuffer + i * nand_geometry_ftl.pages_per_block_total_banks * nand_geometry_ftl.bytes_per_page_ftl, metabuf_array, &unkn, 0, a4, &status);
+	ret = 0; // For now. --Oranav
+
+	if (ret)
+		return !status;
+	else {
+		bufferPrintf("yaftl:_readMultiPages: We got read failure!!\r\n");
+		succeeded = 1;
+
+		for (j = 0; j != pagesToRead; j++) {
+			page = i * nand_geometry_ftl.pages_per_block_total_banks + j;
+			ret = YAFTL_readPage(
+					pagesArray[page],
+					&dataBuffer[page * nand_geometry_ftl.bytes_per_page_ftl],
+					&metaBuffers[page],
+					disableAES,
+					1,
+					scrub);
+
+			if (ret)
+				succeeded = 0;
+
+			status = ret;
+		}
+
+		if (!succeeded)
+			return 0;
+
+		bufferPrintf("yaftl:_readMultiPages: We were able to overcome read failure!!\r\n");
+	}
+
+	return 1;
+}
+
+static int YAFTL_verifyMetaData(uint32_t lpnStart, SpareData* metaDatas, uint32_t nPages)
+{
+	uint32_t i;
+	for (i = 0; i < nPages; i++) {
+		if (metaDatas[i].lpn != (lpnStart + i))
+		{
+			bufferPrintf("YAFTL_Read: mismatch between lpn and metadata!\r\n");
+			return 0;
+		}
+
+		if (metaDatas[i].type & 0x40)
+			return 0;
+	}
+
+	return 1;
+}
+
+static uint32_t findFreeTOCCache() {
+	uint32_t i;
+	for (i = 0; i < yaftl_info.unk184_0xA; i++) {
+		if (yaftl_info.tocCaches[i].state == 0xFFFF)
+			return i;
+	}
+
+	return 0xFFFF;
+}
+
+static int YAFTL_Read(uint32_t lpn, uint32_t nPages, uint8_t* pBuf)
+{
+	int ret = 0;
+	uint32_t tocPageNum, tocEntry, tocCacheNum, freeTOCCacheNum;
+	uint32_t onePageNoBuffer, pagesRead = 0, numPages = 0;
+	uint8_t* data = NULL;
+	uint8_t* readBuf = pBuf;
+
+	if (!pBuf && nPages != 1)
+		return EINVAL;
+
+	if ((lpn + nPages) >= yaftl_info.total_pages_ftl)
+		return EINVAL;
+
+	device_set_ftl_region(device, lpn, 0, nPages, pBuf);
+
+	yaftl_info.lastTOCPageRead = 0xFFFFFFFF;
+
+	// Omitted for now. --Oranav
+	// yaftl_info.unk33C = 0;
+
+	onePageNoBuffer = (!pBuf && nPages == 1);
+
+	if (onePageNoBuffer)
+		*yaftl_info.unknBuffer3_ftl = 0xFFFFFFFF;
+
+	while (pagesRead != nPages) {
+		tocPageNum = (lpn + pagesRead) / yaftl_info.dwordsPerPage;
+		if ((yaftl_info.tocArray[tocPageNum].cacheNum == 0xFFFF) && (yaftl_info.tocArray[tocPageNum].indexPage == 0xFFFFFFFF)) {
+			if (onePageNoBuffer)
+				return 0;
+
+			if (!YAFTL_readMultiPages(yaftl_info.unknBuffer3_ftl, numPages, data, 0, 0, 1)
+				|| !YAFTL_verifyMetaData(lpn + (data - pBuf) / nand_geometry_ftl.bytes_per_page_ftl, yaftl_info.buffer20, numPages))
+				ret = EIO;
+
+			numPages = 0;
+			pagesRead ++;
+			readBuf += nand_geometry_ftl.bytes_per_page_ftl;
+		} else {
+			// Should lookup TOC.
+			tocCacheNum = yaftl_info.tocArray[tocPageNum].cacheNum;
+
+			if (tocCacheNum != 0xFFFF) {
+				// There's a cache for it!
+				yaftl_info.tocCaches[tocCacheNum].useCount++;
+				tocEntry = yaftl_info.tocCaches[tocCacheNum].buffer[(lpn + pagesRead) % yaftl_info.dwordsPerPage];
+			} else {
+				// TOC cache isn't valid, find whether we can cache the data.
+				if ((freeTOCCacheNum = findFreeTOCCache()) != 0xFFFF)
+				{
+					// There's a free cache.
+					ret = YAFTL_readPage(
+							yaftl_info.tocArray[tocPageNum].indexPage,
+							(uint8_t*)yaftl_info.tocCaches[freeTOCCacheNum].buffer,
+							0,
+							0,
+							1,
+							1);
+
+					if (ret != 0)
+						goto YAFTL_READ_RETURN;
+
+					yaftl_info.unkn_0x2A--;
+					yaftl_info.tocCaches[freeTOCCacheNum].state = 2;
+					yaftl_info.tocCaches[freeTOCCacheNum].useCount = 1;
+					yaftl_info.tocCaches[freeTOCCacheNum].page = tocPageNum;
+					yaftl_info.tocArray[tocPageNum].cacheNum = freeTOCCacheNum;
+
+					tocEntry = yaftl_info.tocCaches[freeTOCCacheNum].buffer[(lpn + pagesRead) % yaftl_info.dwordsPerPage];
+				} else {
+					// No free cache. Is this the last TOC page we read?
+					if (yaftl_info.lastTOCPageRead != tocPageNum) {
+						// No, it isn't. Read it.
+						if (YAFTL_readPage(
+								yaftl_info.tocArray[tocPageNum].indexPage,
+								(uint8_t*)yaftl_info.tocPageBuffer,
+								0, 0, 1, 1) != 0)
+							goto YAFTL_READ_RETURN;
+
+						yaftl_info.lastTOCPageRead = tocPageNum;
+					}
+
+					tocEntry = yaftl_info.tocPageBuffer[(lpn + pagesRead) % yaftl_info.dwordsPerPage];
+				}
+			}
+
+			// Okay, obtained the TOC entry.
+			if (tocEntry == 0xFFFFFFFF) {
+				if (onePageNoBuffer)
+					return 0;
+
+				if (!YAFTL_readMultiPages(yaftl_info.unknBuffer3_ftl, numPages, data, 0, 0, 1)
+					|| !YAFTL_verifyMetaData(lpn + (data - pBuf) / nand_geometry_ftl.bytes_per_page_ftl,
+									yaftl_info.buffer20,
+									numPages))
+					ret = EIO;
+
+				numPages = 0;
+				data = NULL;
+			} else {
+				yaftl_info.unknBuffer3_ftl[numPages] = tocEntry;
+				numPages++;
+
+				if (data == NULL)
+					data = readBuf;
+
+				if (numPages == nand_geometry_ftl.pages_per_block_total_banks) {
+					if (onePageNoBuffer)
+						return 0;
+
+					if (!YAFTL_readMultiPages(yaftl_info.unknBuffer3_ftl, numPages, data, 0, 0, 1)
+						|| !YAFTL_verifyMetaData(lpn + (data - pBuf) / nand_geometry_ftl.bytes_per_page_ftl,
+										yaftl_info.buffer20,
+										numPages))
+						ret = EIO;
+
+					numPages = 0;
+					data = NULL;
+				}
+			}
+
+			pagesRead ++;
+			readBuf += nand_geometry_ftl.bytes_per_page_ftl;
+		}
+	}
+
+	if (numPages == 0)
+	{
+		if (onePageNoBuffer)
+			ret = EIO;
+
+		goto YAFTL_READ_RETURN;
+	}
+
+	if (onePageNoBuffer)
+		return 0;
+
+	if (!YAFTL_readMultiPages(yaftl_info.unknBuffer3_ftl, numPages, data, 0, 0, 1)
+		|| !YAFTL_verifyMetaData(lpn + (data - pBuf) / nand_geometry_ftl.bytes_per_page_ftl,
+						yaftl_info.buffer20,
+						numPages))
+		ret = EIO;
+
+YAFTL_READ_RETURN:
+	device_set_ftl_region(device, 0, 0, 0, 0);
+	return ret;
+}
+
+static void cmd_ftl_read(int argc, char** argv)
+{
+	if(argc < 4)
+	{
+		bufferPrintf("Usage: %s [page] [count] [data]\r\n", argv[0]);
+		return;
+	}
+
+	uint32_t page = parseNumber(argv[1]);
+	uint32_t count = parseNumber(argv[2]);
+	uint32_t data = parseNumber(argv[3]);
+
+	uint32_t ret = YAFTL_Read(page, count, (uint8_t*)data);
+
+	bufferPrintf("ftl: Command completed with result 0x%08x.\r\n", ret);
+}
+COMMAND("ftl_read", "FTL read", cmd_ftl_read);
+
+
+void YAFTL_Setup(vfl_device_t* _vfl, device_t* _device) {
 	uint32_t pagesAvailable, bytesPerPage;
 	vfl = _vfl;
+	device = _device;
 
 	YAFTL_Init();
 	YAFTL_Open(&pagesAvailable, &bytesPerPage, 0);

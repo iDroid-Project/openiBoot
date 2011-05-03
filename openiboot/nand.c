@@ -31,12 +31,12 @@ void nand_device_unregister(nand_device_t *_nand)
 }
 
 error_t nand_device_read_single_page(nand_device_t *_dev, uint32_t _chip, uint32_t _block,
-		uint32_t _page, uint8_t *_buffer, uint8_t *_spareBuffer)
+		uint32_t _page, uint8_t *_buffer, uint8_t *_spareBuffer, uint32_t _disable_aes)
 {
 	if(!_dev->read_single_page)
 		return ENOENT;
 
-	return _dev->read_single_page(_dev, _chip, _block, _page, _buffer, _spareBuffer);
+	return _dev->read_single_page(_dev, _chip, _block, _page, _buffer, _spareBuffer, _disable_aes);
 }
 
 error_t nand_device_write_single_page(nand_device_t *_dev, uint32_t _chip, uint32_t _block,
@@ -90,7 +90,7 @@ error_t nand_device_read_special_page(nand_device_t *_dev, uint32_t _ce, char _p
 				break;
 			}
 
-			int ret = nand_device_read_single_page(_dev, _ce, physicalBlock, page, buffer, NULL);
+			int ret = nand_device_read_single_page(_dev, _ce, physicalBlock, page, buffer, NULL, 0);
 			if(ret != 0)
 			{
 				if(ret == 1)
