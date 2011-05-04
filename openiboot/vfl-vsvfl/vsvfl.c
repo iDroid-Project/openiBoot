@@ -1,5 +1,4 @@
 #include "vfl/vsvfl.h"
-#include "yaftl.h"
 #include "util.h"
 #include "commands.h"
 
@@ -92,12 +91,16 @@ static error_t virtual_block_to_physical_block(vfl_vsvfl_device_t *_vfl, uint32_
 }
 
 static int vfl_is_good_block(uint8_t* badBlockTable, uint16_t block) {
-	return (badBlockTable[block / 8] & (1 << (block % 8))) == 1;
+	return (badBlockTable[block / 8] & (1 << (block % 8))) != 0;
 }
 
 static uint32_t remap_block(vfl_vsvfl_device_t *_vfl, uint32_t _ce, uint16_t _block, uint32_t *_isGood) {
+	DebugPrintf("vsvfl: remap_block: CE %d, block %d\r\n", _ce, _block);
+
 	if(vfl_is_good_block(_vfl->bbt[_ce], _block))
 		return _block;
+
+	DebugPrintf("vsvfl: remapping block...\r\n");
 
 	if(_isGood)
 		_isGood = 0;
@@ -124,10 +127,8 @@ static uint32_t remap_block(vfl_vsvfl_device_t *_vfl, uint32_t _ce, uint16_t _bl
 		}
 	}
 
-	//return virtualBlock;
-
-	system_panic("vfl: failed to remap CE %d block 0x%04x\r\n", _ce, _block);
-	return -1;
+	bufferPrintf("vfl: failed to remap CE %d block 0x%04x\r\n", _ce, _block);
+	return _block;
 }
 
 static error_t virtual_page_number_to_physical(vfl_vsvfl_device_t *_vfl, uint32_t _vpNum, uint32_t* _ce, uint32_t* _page) {
@@ -580,9 +581,38 @@ static error_t vfl_vsvfl_open(vfl_device_t *_vfl, nand_device_t *_nand)
 		return EIO;
 
 	bufferPrintf("vfl detected chip vendor 0x%06x\r\n", vendorType);
-	bufferPrintf("vsvfl: VFL successfully opened!\r\n");
 
-	YAFTL_Setup(_vfl);
+	// Now, discard the old scfg bad-block table, and set it using the VFL context's reserved block pool map.
+	uint32_t bank, i;
+	uint32_t num_reserved = vfl->contexts[0].reserved_block_pool_start;
+	uint32_t num_non_reserved = vfl->geometry.blocks_per_bank - num_reserved;
+
+	for(ce = 0; ce < vfl->geometry.num_ce; ce++) {
+		memset(vfl->bbt[ce], 0xFF, CEIL_DIVIDE(vfl->geometry.blocks_per_ce, 8));
+
+		for(bank = 0; bank < banksPerCE; bank++) {
+			for(i = 0; i < num_non_reserved; i++) {
+				uint16_t mapEntry = vfl->contexts[ce].reserved_block_pool_map[bank * num_non_reserved + i];
+				uint32_t pBlock;
+
+				if(mapEntry == 0xFFF0)
+					continue;
+
+				if(mapEntry < vfl->geometry.blocks_per_ce) {
+					pBlock = mapEntry;
+				} else if(mapEntry > 0xFFF0) {
+					virtual_block_to_physical_block(vfl, ce + bank * vfl->geometry.num_ce, num_reserved + i, &pBlock);
+				} else {
+					system_panic("vsvfl: bad map table: CE %d, entry %d, value 0x%08x\r\n",
+						ce, bank * num_non_reserved + i, mapEntry);
+				}
+
+				vfl->bbt[ce][pBlock / 8] &= ~(1 << (pBlock % 8));
+			}
+		}
+	}
+
+	bufferPrintf("vsvfl: VFL successfully opened!\r\n");
 
 	return SUCCESS;
 }

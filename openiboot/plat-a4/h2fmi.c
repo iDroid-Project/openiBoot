@@ -2767,9 +2767,9 @@ static void h2fmi_init_device()
 	h2fmi_device.write_single_page = h2fmi_device_write_single_page;
 	h2fmi_device.enable_encryption = h2fmi_device_enable_encryption;
 	h2fmi_device.enable_data_whitening = h2fmi_device_enable_data_whitening;
+	h2fmi_device.set_ftl_region = h2fmi_device_set_ftl_region;
 	h2fmi_device.device.get_info = h2fmi_device_get_info;
 	h2fmi_device.device.set_info = h2fmi_device_set_info;
-	h2fmi_device.device.set_ftl_region = h2fmi_device_set_ftl_region;
 	nand_device_register(&h2fmi_device);
 
 	if(FAILED(vfl_detect(&h2fmi_vfl_device, &h2fmi_device, vfl_new_signature)))
@@ -3102,7 +3102,7 @@ static void cmd_vfl_read(int argc, char** argv)
 		bufferPrintf("Usage: %s [page] [data] [metadata] [empty_ok] [disable_aes]\r\n", argv[0]);
 		return;
 	}
-	
+
 	uint32_t page = parseNumber(argv[1]);
 	uint32_t data = parseNumber(argv[2]);
 	uint32_t meta = parseNumber(argv[3]);
@@ -3115,3 +3115,20 @@ static void cmd_vfl_read(int argc, char** argv)
 	bufferPrintf("vfl: Command completed with result 0x%08x.\r\n", ret);
 }
 COMMAND("vfl_read", "VFL read single page", cmd_vfl_read);
+
+static void cmd_ftl_read(int argc, char** argv)
+{
+	if(argc < 3)
+	{
+		bufferPrintf("Usage: %s [page] [data]\r\n", argv[0]);
+		return;
+	}
+
+	uint32_t page = parseNumber(argv[1]);
+	uint32_t data = parseNumber(argv[2]);
+
+	uint32_t ret = ftl_read_single_page(h2fmi_ftl_device, page, (uint8_t*)data);
+
+	bufferPrintf("ftl: Command completed with result 0x%08x.\r\n", ret);
+}
+COMMAND("ftl_read", "FTL read single page", cmd_ftl_read);

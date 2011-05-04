@@ -1,0 +1,9 @@
+Import('*')
+
+ftl_yaftl_src = env.Localize([
+	'yaftl.c',
+	])
+
+ftl_yaftl = env.CreateModule('ftl-yaftl', ftl_yaftl_src)
+ftl_yaftl.Append(CPPPATH = [Dir('includes')])
+ftl_yaftl.Append(CPPDEFINES = ['CONFIG_FTL_YAFTL'])

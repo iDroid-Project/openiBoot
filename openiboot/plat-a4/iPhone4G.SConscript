@@ -8,7 +8,6 @@ iphone_4_src = [plat_a4_src,
 				env.Localize([
 				'#audiohw-null.c',
 				'h2fmi.c',
-				'yaftl.c',
 #				'ftl.c',
 #				'vfl.c',
 				])]

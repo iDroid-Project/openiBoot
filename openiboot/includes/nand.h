@@ -22,6 +22,8 @@ typedef error_t (*nand_device_write_single_page_t)(struct _nand_device *, uint32
 typedef error_t (*nand_device_enable_encryption_t)(struct _nand_device *, int _enabled);
 typedef error_t (*nand_device_enable_data_whitening_t)(struct _nand_device *, int _enabled);
 
+typedef void (*nand_device_set_ftl_region_t)(uint32_t _lpn, uint32_t _a2, uint32_t _count, void* _buf);
+
 
 // NAND Device Struct
 typedef struct _nand_device
@@ -33,6 +35,8 @@ typedef struct _nand_device
 
 	nand_device_enable_encryption_t enable_encryption;
 	nand_device_enable_data_whitening_t enable_data_whitening;
+	
+	nand_device_set_ftl_region_t set_ftl_region;
 
 } nand_device_t;
 
@@ -55,6 +59,8 @@ error_t nand_device_read_special_page(nand_device_t *_dev, uint32_t _ce, char _p
 error_t nand_device_enable_encryption(nand_device_t *_dev, int _enabled);
 
 error_t nand_device_enable_data_whitening(nand_device_t *_dev, int _enabled);
+
+error_t nand_device_set_ftl_region(nand_device_t *_dev, uint32_t _lpn, uint32_t _a2, uint32_t _count, void *_buf);
 
 #define nand_device_get_info(dev, item, val, sz) (device_get_info(&(dev)->device, (item), (val), (sz)))
 #define nand_device_set_info(dev, item, val, sz) (device_set_info(&(dev)->device, (item), (val), (sz)))

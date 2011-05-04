@@ -55,7 +55,7 @@ error_t vfl_read_single_page(vfl_device_t *_vfl, uint32_t _page, uint8_t* buffer
 uint16_t *vfl_get_ftl_ctrl_block(vfl_device_t *_vfl)
 {
 	if(!_vfl->get_ftl_ctrl_block) {
-		return 0;
+		return NULL;
 	}
 
 	return _vfl->get_ftl_ctrl_block(_vfl);

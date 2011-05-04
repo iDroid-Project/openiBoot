@@ -1,13 +1,14 @@
-#include "yaftl.h"
+#include "ftl/yaftl.h"
 #include "openiboot.h"
 #include "commands.h"
+#include "nand.h"
 #include "vfl.h"
-#include "device.h"
+#include "ftl.h"
+#include "mtd.h"
 #include "util.h"
 
 static uint32_t yaftl_inited = 0;
 static vfl_device_t* vfl = 0;
-static device_t* device = 0;
 
 static void* wmr_malloc(uint32_t size) {
 	void* buffer = memalign(0x40, size);
@@ -564,7 +565,7 @@ static void YAFTL_SetupFreeAndAllocd() {
 	yaftl_info.blockStats.field_4 = yaftl_info.blockStats.numFree - yaftl_info.blockStats.field_10;
 }
 
-static uint32_t YAFTL_Open(uint32_t* pagesAvailable, uint32_t* bytesPerPage, uint32_t signature_bit) {
+static uint32_t YAFTL_Open(uint32_t signature_bit) {
 	uint16_t ftlCtrlBlockBuffer[3];
 	uint32_t versionSupported = 1;
 
@@ -689,8 +690,8 @@ static uint32_t YAFTL_Open(uint32_t* pagesAvailable, uint32_t* bytesPerPage, uin
 	if (restoreNeeded)
 		return YAFTL_Restore();
 
-	*pagesAvailable = yaftl_info.unk188_0x63 * (yaftl_info.total_pages_ftl - 1) / 100;
-	*bytesPerPage = nand_geometry_ftl.bytes_per_page_ftl;
+	yaftl_info.pagesAvailable = yaftl_info.unk188_0x63 * (yaftl_info.total_pages_ftl - 1) / 100;
+	yaftl_info.bytesPerPage = nand_geometry_ftl.bytes_per_page_ftl;
 
 	yaftl_info.maxBlockUnkn0 = 0;
 	yaftl_info.minBlockUnkn0 = 0xFFFFFFFF;
@@ -750,8 +751,10 @@ static int YAFTL_readMultiPages(uint32_t* pagesArray, uint32_t nPages, uint8_t* 
 				status = ret;
 			}
 
-			if (!succeeded)
+			if (!succeeded) {
+				bufferPrintf("yaftl: _readMultiPages: We weren't able to overcome read failure.\r\n");
 				return 0;
+			}
 
 			bufferPrintf("yaftl:_readMultiPages: We were able to overcome read failure!!\r\n");
 		}
@@ -844,7 +847,7 @@ static int YAFTL_Read(uint32_t lpn, uint32_t nPages, uint8_t* pBuf)
 	if ((lpn + nPages) >= yaftl_info.total_pages_ftl)
 		return EINVAL;
 
-	device_set_ftl_region(device, lpn, 0, nPages, pBuf);
+	nand_device_set_ftl_region(vfl->get_device(vfl), lpn, 0, nPages, pBuf);
 
 	yaftl_info.lastTOCPageRead = 0xFFFFFFFF;
 
@@ -867,7 +870,6 @@ static int YAFTL_Read(uint32_t lpn, uint32_t nPages, uint8_t* pBuf)
 				ret = EIO;
 
 			numPages = 0;
-			pagesRead ++;
 			readBuf += nand_geometry_ftl.bytes_per_page_ftl;
 		} else {
 			// Should lookup TOC.
@@ -952,9 +954,10 @@ static int YAFTL_Read(uint32_t lpn, uint32_t nPages, uint8_t* pBuf)
 				}
 			}
 
-			pagesRead ++;
 			readBuf += nand_geometry_ftl.bytes_per_page_ftl;
 		}
+
+		pagesRead++;
 	}
 
 	if (numPages == 0)
@@ -975,34 +978,91 @@ static int YAFTL_Read(uint32_t lpn, uint32_t nPages, uint8_t* pBuf)
 		ret = EIO;
 
 YAFTL_READ_RETURN:
-	device_set_ftl_region(device, 0, 0, 0, 0);
+	nand_device_set_ftl_region(vfl->get_device(vfl), 0, 0, 0, 0);
 	return ret;
 }
 
-static void cmd_ftl_read(int argc, char** argv)
+static error_t yaftl_read_mtd(mtd_t *_dev, void *_dest, uint32_t _off, int _amt)
 {
-	if(argc < 4)
-	{
-		bufferPrintf("Usage: %s [page] [count] [data]\r\n", argv[0]);
-		return;
-	}
+	int ret = YAFTL_Read(_off, _amt, _dest);
+	if(FAILED(ret))
+		return ret;
 
-	uint32_t page = parseNumber(argv[1]);
-	uint32_t count = parseNumber(argv[2]);
-	uint32_t data = parseNumber(argv[3]);
-
-	uint32_t ret = YAFTL_Read(page, count, (uint8_t*)data);
-
-	bufferPrintf("ftl: Command completed with result 0x%08x.\r\n", ret);
+	return SUCCESS;
 }
-COMMAND("ftl_read", "FTL read", cmd_ftl_read);
 
+/*
+static error_t ftl_write_mtd(mtd_t *_dev, void *_src, uint32_t _off, int _amt)
+{
+	int ret = ftl_write(_src, _off, _amt);
+	if(FAILED(ret))
+		return ret;
 
-void YAFTL_Setup(vfl_device_t* _vfl, device_t* _device) {
-	uint32_t pagesAvailable, bytesPerPage;
+	return SUCCESS;
+}
+*/
+
+static int yaftl_block_size(mtd_t *_dev)
+{
+	return yaftl_info.bytesPerPage;
+}
+
+static mtd_t yaftl_mtd = {
+	.device = {
+		.fourcc = FOURCC('Y', 'F', 'T', 'L'),
+		.name = "Apple YAFTL Layer",
+	},
+
+	.read = yaftl_read_mtd,
+	.write = NULL,
+
+	.block_size = yaftl_block_size,
+
+	.usage = mtd_filesystem,
+};
+
+error_t ftl_yaftl_open(ftl_device_t *_ftl, vfl_device_t *_vfl)
+{
 	vfl = _vfl;
-	device = _device;
 
 	YAFTL_Init();
-	YAFTL_Open(&pagesAvailable, &bytesPerPage, 0);
+	YAFTL_Open(0);
+
+	// FIXME: This is only to avoid warnings.
+	yaftl_mtd.write = 0;
+
+	/*
+	if(!mtd_init(&yaftl_mtd))
+		mtd_register(&yaftl_mtd);
+	*/
+
+	return SUCCESS;
+}
+
+error_t ftl_yaftl_read_single_page(ftl_device_t *_ftl, uint32_t _page, uint8_t *_buffer)
+{
+	error_t ret = YAFTL_Read(_page, 1, _buffer);
+
+	if(FAILED(ret))
+		return ret;
+	else
+		return SUCCESS;
+}
+
+error_t ftl_yaftl_device_init(ftl_yaftl_device_t *_ftl)
+{
+	memset(_ftl, 0, sizeof(*_ftl));
+
+	_ftl->ftl.read_single_page = ftl_yaftl_read_single_page;
+
+	_ftl->ftl.open = ftl_yaftl_open;
+
+	return SUCCESS;
+}
+
+ftl_yaftl_device_t *ftl_yaftl_device_allocate()
+{
+	ftl_yaftl_device_t *ret = malloc(sizeof(ftl_yaftl_device_t));
+	ftl_yaftl_device_init(ret);
+	return ret;
 }

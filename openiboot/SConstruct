@@ -79,6 +79,7 @@ env.SConscript([
 	'nor-spi/SConscript',
 	'vfl-vfl/SConscript',
 	'vfl-vsvfl/SConscript',
+	'ftl-yaftl/SConscript',
 	'acm/SConscript',
 	'menu/SConscript',
 	'installer/SConscript',

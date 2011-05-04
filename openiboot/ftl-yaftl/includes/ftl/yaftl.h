@@ -1,10 +1,16 @@
-#ifndef  YAFTL_H
-#define  YAFTL_H
+#ifndef  FTL_YAFTL_H
+#define  FTL_YAFTL_H
 
+#include "ftl.h"
 #include "vfl.h"
+#include "nand.h"
 #include "openiboot.h"
 
-void YAFTL_Setup();
+typedef struct _ftl_yaftl_device {
+	ftl_device_t ftl;
+} ftl_yaftl_device_t;
+
+ftl_yaftl_device_t *ftl_yaftl_device_allocate();
 
 // YAFTL errors
 #define ERROR_ARG	0x80000001
@@ -152,6 +158,8 @@ typedef struct {
 	uint32_t minBlockUnkn0;
 	uint32_t unk184_0xA;
 	uint8_t unk188_0x63;
+	uint32_t pagesAvailable;
+	uint32_t bytesPerPage;
 } YAFTL_INFO;
 YAFTL_INFO yaftl_info;
 
@@ -190,4 +198,4 @@ typedef struct {
 	uint8_t unk188_0x63; // 94
 } __attribute__((packed)) YAFTL_CXT;
 
-#endif //YAFTL_H
+#endif //FTL_YAFTL_H

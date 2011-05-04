@@ -64,11 +64,11 @@ error_t nand_device_read_special_page(nand_device_t *_dev, uint32_t _ce, char _p
 	ret = nand_device_get_info(_dev, diPagesPerBlock, &pagesPerBlock, sizeof(pagesPerBlock));
 	if(FAILED(ret))
 		return EINVAL;
-		
+
 	ret = nand_device_get_info(_dev, diBlocksPerBank_dw, &blocksPerBank, sizeof(blocksPerBank));
 	if(FAILED(ret))
 		return EINVAL;
-		
+
 	ret = nand_device_get_info(_dev, diBankAddressSpace, &bankAddressSpace, sizeof(bankAddressSpace));
 	if(FAILED(ret))
 		return EINVAL;
@@ -107,7 +107,7 @@ error_t nand_device_read_special_page(nand_device_t *_dev, uint32_t _ce, char _p
 			{
 				if(_buffer)
 				{
-					size_t amt = ((size_t*)buffer)[13]; 
+					size_t amt = ((size_t*)buffer)[13];
 					if(amt > _amt)
 						amt = _amt;
 
@@ -138,6 +138,17 @@ error_t nand_device_enable_data_whitening(nand_device_t *_dev, int _enabled)
 {
 	if(_dev->enable_data_whitening)
 		return _dev->enable_data_whitening(_dev, _enabled);
+
+	return ENOENT;
+}
+
+error_t nand_device_set_ftl_region(nand_device_t *_dev, uint32_t _lpn, uint32_t _a2, uint32_t _count, void *_buf)
+{
+	if(_dev->set_ftl_region)
+	{
+		_dev->set_ftl_region(_lpn, _a2, _count, _buf);
+		return SUCCESS;
+	}
 
 	return ENOENT;
 }
