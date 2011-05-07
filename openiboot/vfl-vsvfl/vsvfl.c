@@ -693,7 +693,7 @@ error_t vfl_vsvfl_device_init(vfl_vsvfl_device_t *_vfl)
 
 	memset(&_vfl->geometry, 0, sizeof(_vfl->geometry));
 
-#ifdef CONFIG_A4
+#if defined(CONFIG_A4) && !defined(CONFIG_IPAD_1G)
 	_vfl->geometry.reserved_blocks = 16;
 #else
 	_vfl->geometry.reserved_blocks = 1;
