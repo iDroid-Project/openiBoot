@@ -58,6 +58,19 @@ typedef struct _vfl_vsvfl_spare_data
 	uint8_t field_B;
 } __attribute__ ((packed)) vfl_vsvfl_spare_data_t;
 
+static void virtual_to_physical_100014(vfl_vsvfl_device_t *_vfl, uint32_t _vBank, uint32_t _vPage, uint32_t *_pCE, uint32_t *_pPage)
+{
+	uint32_t pBank, pPage;
+
+	pBank = _vBank / _vfl->geometry.num_ce;
+	pPage = ((_vfl->geometry.pages_per_block - 1) & _vPage) | (2 * (~(_vfl->geometry.pages_per_block - 1) & _vPage));
+	if (pBank & 1)
+		pPage |= _vfl->geometry.pages_per_block;
+
+	*_pCE = _vBank % _vfl->geometry.num_ce;
+	*_pPage = pPage;
+}
+
 static void virtual_to_physical_150011(vfl_vsvfl_device_t *_vfl, uint32_t _vBank, uint32_t _vPage, uint32_t *_pCE, uint32_t *_pPage)
 {
 	uint32_t pBlock;
@@ -68,11 +81,6 @@ static void virtual_to_physical_150011(vfl_vsvfl_device_t *_vfl, uint32_t _vBank
 
 	*_pCE = _vBank % _vfl->geometry.num_ce;
 	*_pPage = (_vfl->geometry.pages_per_block * pBlock) | (_vPage % 128);
-}
-
-static void physical_to_virtual_150011(vfl_vsvfl_device_t *_vfl, uint32_t a, uint32_t b, uint32_t *c, uint32_t *d)
-{
-	// placeholder
 }
 
 static error_t virtual_block_to_physical_block(vfl_vsvfl_device_t *_vfl, uint32_t _vBank, uint32_t _vBlock, uint32_t *_pBlock)
@@ -210,6 +218,13 @@ static error_t vfl_vsvfl_read_single_page(vfl_device_t *_vfl, uint32_t dwVpn, ui
 	int ret;
 
 	ret = virtual_page_number_to_physical(vfl, dwVpn, &pCE, &pPage);
+
+	// FIXME: Hack to get the h2fmi driver to read from the correct CE.
+	if (pCE == 1) {
+		pCE = 2;
+	} else if (pCE == 2) {
+		pCE = 1;
+	}
 
 	//bufferPrintf("vpn %d CE %d page %d\r\n", dwVpn, pCE, pPage);
 
@@ -567,12 +582,10 @@ static error_t vfl_vsvfl_open(vfl_device_t *_vfl, nand_device_t *_nand)
 	switch(vendorType) {
 	case 0x100014:
 	case 0x120014:
-		// Placeholder for now.
-		bufferPrintf("vsvfl: unsupported vendor.\r\n");
+		vfl->virtual_to_physical = virtual_to_physical_100014;
 		break;
 
 	case 0x150011:
-		vfl->physical_to_virtual = physical_to_virtual_150011;
 		vfl->virtual_to_physical = virtual_to_physical_150011;
 		break;
 
