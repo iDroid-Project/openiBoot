@@ -18,6 +18,7 @@
 typedef struct _vfl_vsvfl_geometry
 {
 	uint16_t pages_per_block;
+	uint16_t pages_per_block_2;
 	uint16_t pages_per_sublk;
 	uint32_t pages_total;
 	uint32_t some_page_mask;

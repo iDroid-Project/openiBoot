@@ -456,22 +456,21 @@ static void h2fmi_device_reset(h2fmi_struct_t *_fmi)
 
 static void h2fmi_enable_chip(h2fmi_struct_t *_fmi, uint8_t _chip)
 {
-	h2fmi_struct_t *chipFMI = (_chip & 0x8) ? &fmi1: &fmi0;
-	if(_fmi->bus_num == 0 && (_fmi->bitmap & 0xFF00))
+	h2fmi_struct_t *chipFMI = (_chip >> 3) ? &fmi1 : &fmi0;
+	if(_fmi->bus_num == 0 && ((uint16_t)_fmi->bitmap & 0xFF00))
 	{
-		h2fmi_struct_t *fmi = (_fmi == chipFMI) ? &fmi1: _fmi;
+		h2fmi_struct_t *fmi = (chipFMI->bus_num == 0) ? &fmi1 : &fmi0;
 		SET_REG(H2FMI_CHIP_MASK(fmi), 0);
 	}
 
-	uint32_t reg = H2FMI_CHIP_MASK(chipFMI);
-	SET_REG(reg, GET_REG(reg) | (1 << (_chip & 0x7)));
+	SET_REG(H2FMI_CHIP_MASK(chipFMI), (1 << (_chip % 8)));
 }
 
 static void h2fmi_disable_chip(uint8_t _chip)
 {
-	h2fmi_struct_t *fmi = (_chip & 0x8) ? &fmi1: &fmi0;
+	h2fmi_struct_t *fmi = (_chip >> 3) ? &fmi1 : &fmi0;
 	SET_REG(H2FMI_CHIP_MASK(fmi),
-			GET_REG(H2FMI_CHIP_MASK(fmi)) &~ (1 << (_chip & 0x7)));
+			GET_REG(H2FMI_CHIP_MASK(fmi)) & ~(1 << (_chip % 8)));
 }
 
 static void h2fmi_set_address_inner(h2fmi_struct_t *_fmi, uint32_t _addr)
@@ -1585,7 +1584,7 @@ int h2fmi_read_multi(h2fmi_struct_t *_fmi, uint16_t _num_pages, uint16_t *_chips
 uint32_t h2fmi_read_single(h2fmi_struct_t *_fmi, uint16_t _chip, uint32_t _page, uint8_t *_data, uint8_t *_wmr, uint8_t *_6, uint8_t *_7)
 {
 	//bufferPrintf("fmi: read_single.\r\n");
-	
+
 	DMASegmentInfo dataSegmentInfo = {
 		.ptr  = (uint32_t)_data,
 		.size = _fmi->bytes_per_page

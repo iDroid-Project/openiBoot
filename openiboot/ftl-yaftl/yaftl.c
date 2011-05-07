@@ -732,7 +732,7 @@ static int YAFTL_readMultiPages(uint32_t* pagesArray, uint32_t nPages, uint8_t* 
 			if (status)
 				return 0;
 		} else {
-			bufferPrintf("yaftl: _readMultiPages: We got read failure!!\r\n");
+			//bufferPrintf("yaftl: _readMultiPages: We got read failure!!\r\n");
 			succeeded = 1;
 
 			for (j = 0; j < nand_geometry_ftl.pages_per_block_total_banks; j++) {
@@ -756,7 +756,7 @@ static int YAFTL_readMultiPages(uint32_t* pagesArray, uint32_t nPages, uint8_t* 
 				return 0;
 			}
 
-			bufferPrintf("yaftl:_readMultiPages: We were able to overcome read failure!!\r\n");
+			//bufferPrintf("yaftl:_readMultiPages: We were able to overcome read failure!!\r\n");
 		}
 
 		block = pagesArray[(i + 1) * nand_geometry_ftl.pages_per_block_total_banks] / nand_geometry_ftl.pages_per_block_total_banks;
@@ -778,7 +778,7 @@ static int YAFTL_readMultiPages(uint32_t* pagesArray, uint32_t nPages, uint8_t* 
 	if (ret)
 		return !status;
 	else {
-		bufferPrintf("yaftl:_readMultiPages: We got read failure!!\r\n");
+		//bufferPrintf("yaftl:_readMultiPages: We got read failure!!\r\n");
 		succeeded = 1;
 
 		for (j = 0; j != pagesToRead; j++) {
@@ -800,7 +800,7 @@ static int YAFTL_readMultiPages(uint32_t* pagesArray, uint32_t nPages, uint8_t* 
 		if (!succeeded)
 			return 0;
 
-		bufferPrintf("yaftl:_readMultiPages: We were able to overcome read failure!!\r\n");
+		//bufferPrintf("yaftl:_readMultiPages: We were able to overcome read failure!!\r\n");
 	}
 
 	return 1;
@@ -837,7 +837,7 @@ static int YAFTL_Read(uint32_t lpn, uint32_t nPages, uint8_t* pBuf)
 {
 	int ret = 0;
 	uint32_t tocPageNum, tocEntry, tocCacheNum, freeTOCCacheNum;
-	uint32_t onePageNoBuffer, pagesRead = 0, numPages = 0;
+	uint32_t testMode, pagesRead = 0, numPages = 0;
 	uint8_t* data = NULL;
 	uint8_t* readBuf = pBuf;
 
@@ -854,15 +854,15 @@ static int YAFTL_Read(uint32_t lpn, uint32_t nPages, uint8_t* pBuf)
 	// Omitted for now. --Oranav
 	// yaftl_info.unk33C = 0;
 
-	onePageNoBuffer = (!pBuf && nPages == 1);
+	testMode = (!pBuf && nPages == 1);
 
-	if (onePageNoBuffer)
+	if (testMode)
 		*yaftl_info.unknBuffer3_ftl = 0xFFFFFFFF;
 
 	while (pagesRead != nPages) {
 		tocPageNum = (lpn + pagesRead) / yaftl_info.dwordsPerPage;
 		if ((yaftl_info.tocArray[tocPageNum].cacheNum == 0xFFFF) && (yaftl_info.tocArray[tocPageNum].indexPage == 0xFFFFFFFF)) {
-			if (onePageNoBuffer)
+			if (testMode)
 				return 0;
 
 			if (!YAFTL_readMultiPages(yaftl_info.unknBuffer3_ftl, numPages, data, 0, 0, 1)
@@ -887,10 +887,7 @@ static int YAFTL_Read(uint32_t lpn, uint32_t nPages, uint8_t* pBuf)
 					ret = YAFTL_readPage(
 							yaftl_info.tocArray[tocPageNum].indexPage,
 							(uint8_t*)yaftl_info.tocCaches[freeTOCCacheNum].buffer,
-							0,
-							0,
-							1,
-							1);
+							0, 0, 1, 1);
 
 					if (ret != 0)
 						goto YAFTL_READ_RETURN;
@@ -921,7 +918,7 @@ static int YAFTL_Read(uint32_t lpn, uint32_t nPages, uint8_t* pBuf)
 
 			// Okay, obtained the TOC entry.
 			if (tocEntry == 0xFFFFFFFF) {
-				if (onePageNoBuffer)
+				if (testMode)
 					return 0;
 
 				if (!YAFTL_readMultiPages(yaftl_info.unknBuffer3_ftl, numPages, data, 0, 0, 1)
@@ -940,7 +937,7 @@ static int YAFTL_Read(uint32_t lpn, uint32_t nPages, uint8_t* pBuf)
 					data = readBuf;
 
 				if (numPages == nand_geometry_ftl.pages_per_block_total_banks) {
-					if (onePageNoBuffer)
+					if (testMode)
 						return 0;
 
 					if (!YAFTL_readMultiPages(yaftl_info.unknBuffer3_ftl, numPages, data, 0, 0, 1)
@@ -962,13 +959,13 @@ static int YAFTL_Read(uint32_t lpn, uint32_t nPages, uint8_t* pBuf)
 
 	if (numPages == 0)
 	{
-		if (onePageNoBuffer)
+		if (testMode)
 			ret = EIO;
 
 		goto YAFTL_READ_RETURN;
 	}
 
-	if (onePageNoBuffer)
+	if (testMode)
 		return 0;
 
 	if (!YAFTL_readMultiPages(yaftl_info.unknBuffer3_ftl, numPages, data, 0, 0, 1)
@@ -1031,10 +1028,8 @@ error_t ftl_yaftl_open(ftl_device_t *_ftl, vfl_device_t *_vfl)
 	// FIXME: This is only to avoid warnings.
 	yaftl_mtd.write = 0;
 
-	/*
-	if(!mtd_init(&yaftl_mtd))
-		mtd_register(&yaftl_mtd);
-	*/
+	/*if(!mtd_init(&yaftl_mtd))
+		mtd_register(&yaftl_mtd);*/
 
 	return SUCCESS;
 }

@@ -67,7 +67,7 @@ static void virtual_to_physical_150011(vfl_vsvfl_device_t *_vfl, uint32_t _vBank
 		pBlock++;
 
 	*_pCE = _vBank % _vfl->geometry.num_ce;
-	*_pPage = (_vfl->geometry.pages_per_block * pBlock) | (_vPage & 0x7F);
+	*_pPage = (_vfl->geometry.pages_per_block * pBlock) | (_vPage % 128);
 }
 
 static void physical_to_virtual_150011(vfl_vsvfl_device_t *_vfl, uint32_t a, uint32_t b, uint32_t *c, uint32_t *d)
@@ -75,7 +75,7 @@ static void physical_to_virtual_150011(vfl_vsvfl_device_t *_vfl, uint32_t a, uin
 	// placeholder
 }
 
-static error_t virtual_block_to_physical_block(vfl_vsvfl_device_t *_vfl, uint32_t _vBank, uint16_t _vBlock, uint32_t *_pBlock)
+static error_t virtual_block_to_physical_block(vfl_vsvfl_device_t *_vfl, uint32_t _vBank, uint32_t _vBlock, uint32_t *_pBlock)
 {
 	uint32_t pCE, pPage;
 
@@ -90,11 +90,11 @@ static error_t virtual_block_to_physical_block(vfl_vsvfl_device_t *_vfl, uint32_
 	return SUCCESS;
 }
 
-static int vfl_is_good_block(uint8_t* badBlockTable, uint16_t block) {
+static int vfl_is_good_block(uint8_t* badBlockTable, uint32_t block) {
 	return (badBlockTable[block / 8] & (1 << (block % 8))) != 0;
 }
 
-static uint32_t remap_block(vfl_vsvfl_device_t *_vfl, uint32_t _ce, uint16_t _block, uint32_t *_isGood) {
+static uint32_t remap_block(vfl_vsvfl_device_t *_vfl, uint32_t _ce, uint32_t _block, uint32_t *_isGood) {
 	DebugPrintf("vsvfl: remap_block: CE %d, block %d\r\n", _ce, _block);
 
 	if(vfl_is_good_block(_vfl->bbt[_ce], _block))
@@ -106,7 +106,7 @@ static uint32_t remap_block(vfl_vsvfl_device_t *_vfl, uint32_t _ce, uint16_t _bl
 		_isGood = 0;
 
 	int pwDesPbn;
-	for(pwDesPbn = 0; pwDesPbn < _vfl->geometry.blocks_per_ce - _vfl->contexts[_ce].reserved_block_pool_start; pwDesPbn++)
+	for(pwDesPbn = 0; pwDesPbn < _vfl->geometry.blocks_per_ce - _vfl->contexts[_ce].reserved_block_pool_start * _vfl->geometry.banks_per_ce; pwDesPbn++)
 	{
 		if(_vfl->contexts[_ce].reserved_block_pool_map[pwDesPbn] == _block)
 		{
@@ -147,7 +147,7 @@ static error_t virtual_page_number_to_physical(vfl_vsvfl_device_t *_vfl, uint32_
 	bank_offset = _vfl->geometry.bank_address_space * (pBlock / _vfl->geometry.blocks_per_bank);
 
 	*_ce = ce;
-	*_page = _vfl->geometry.pages_per_block * (bank_offset + (pBlock % _vfl->geometry.blocks_per_bank))
+	*_page = _vfl->geometry.pages_per_block_2 * (bank_offset + (pBlock % _vfl->geometry.blocks_per_bank))
 			+ ((_vpNum % _vfl->geometry.pages_per_sublk) / _vfl->geometry.banks_total);
 
 	return SUCCESS;
@@ -210,6 +210,8 @@ static error_t vfl_vsvfl_read_single_page(vfl_device_t *_vfl, uint32_t dwVpn, ui
 	int ret;
 
 	ret = virtual_page_number_to_physical(vfl, dwVpn, &pCE, &pPage);
+
+	//bufferPrintf("vpn %d CE %d page %d\r\n", dwVpn, pCE, pPage);
 
 	if(FAILED(ret)) {
 		bufferPrintf("vfl_vsvfl_read_single_page: virtual_page_number_to_physical returned an error (dwVpn %d)!\r\n", dwVpn);
@@ -316,6 +318,12 @@ static inline error_t vfl_vsvfl_setup_geometry(vfl_vsvfl_device_t *_vfl)
 		return EINVAL;
 
 	bufferPrintf("pages per block: 0x%08x\r\n", _vfl->geometry.pages_per_block);
+
+	ret = nand_load(diPagesPerBlock2, pages_per_block_2);
+	if(FAILED(ret))
+		return EINVAL;
+
+	bufferPrintf("pages per block2: 0x%08x\r\n", _vfl->geometry.pages_per_block_2);
 
 	ret = nand_load(diECCBits, ecc_bits);
 	if(FAILED(ret))
