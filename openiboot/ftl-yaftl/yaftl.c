@@ -981,10 +981,28 @@ YAFTL_READ_RETURN:
 
 static error_t yaftl_read_mtd(mtd_t *_dev, void *_dest, uint32_t _off, int _amt)
 {
-	int ret = YAFTL_Read(_off, _amt, _dest);
-	if(FAILED(ret))
-		return ret;
+	uint8_t* curLoc = (uint8_t*) _dest;
+	uint32_t block_size = yaftl_info.bytesPerPage;
+	int curPage = _off / block_size;
+	int toRead = _amt;
+	int pageOffset = _off - (curPage * block_size);
+	uint8_t* tBuffer = (uint8_t*) malloc(block_size);
+	while(toRead > 0) {
+		uint32_t ret = YAFTL_Read(curPage, 1, tBuffer);
+		if(FAILED(ret)) {
+			free(tBuffer);
+			return ret;
+		}
 
+		int read = (((block_size-pageOffset) > toRead) ? toRead : block_size-pageOffset);
+		memcpy(curLoc, tBuffer + pageOffset, read);
+		curLoc += read;
+		toRead -= read;
+		pageOffset = 0;
+		curPage++;
+	}
+
+	free(tBuffer);
 	return SUCCESS;
 }
 
@@ -1028,8 +1046,8 @@ error_t ftl_yaftl_open(ftl_device_t *_ftl, vfl_device_t *_vfl)
 	// FIXME: This is only to avoid warnings.
 	yaftl_mtd.write = 0;
 
-	/*if(!mtd_init(&yaftl_mtd))
-		mtd_register(&yaftl_mtd);*/
+	if(!mtd_init(&yaftl_mtd))
+		mtd_register(&yaftl_mtd);
 
 	return SUCCESS;
 }
