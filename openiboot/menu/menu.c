@@ -19,9 +19,18 @@
 #include "nvram.h"
 #include "tasks.h"
 
-int globalFtlHasBeenRestored; /* global variable to tell wether a ftl_restore has been done*/
+/** \var int globalFtlHasBeenRestored
+      \brief global variable to tell wether a ftl_restore has been done
+  */
+int globalFtlHasBeenRestored;
+/** \var TaskDescriptor menu_task
+      \brief Menu task
+  */
 static TaskDescriptor menu_task;
 
+/** \fn void menu_draw()
+      \brief Draws the openiboot menu to the framebuffer
+  */
 void menu_draw()
 {
 	framebuffer_clear();
@@ -53,6 +62,11 @@ void menu_draw()
 	framebuffer_print_force(OPENIBOOT_VERSION_STR);
 }
 
+/** \fn void menu_run(uint32_t _V)
+      \brief Checks for button presses and executes the appropriate task
+      \param _V nickp666 does not yet know why this is here
+      \warning nickp666 wrote this documentation!
+  */
 static void menu_run(uint32_t _V)
 {
 	while(TRUE)
@@ -101,6 +115,9 @@ static void menu_run(uint32_t _V)
 	}
 }
 
+/** \fn void menu_main()
+      \brief Main openiboot menu initialisation routine, reads /boot/menu.lst if it exists
+  */
 void menu_main()
 {
 	task_init(&menu_task, "menu", TASK_DEFAULT_STACK_SIZE);
@@ -135,6 +152,9 @@ void menu_main()
 	task_start(&menu_task, &menu_run, NULL);
 }
 
+/** \fn void menu_init_boot()
+      \brief Clears the framebuffer and loads the openiboot main menu
+  */
 static void menu_init_boot()
 {
 	framebuffer_clear();
