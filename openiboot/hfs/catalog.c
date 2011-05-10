@@ -471,6 +471,10 @@ HFSPlusCatalogRecord* getRecordFromPath3(const char* path, Volume* volume, char 
 		key.nodeName.length = 0;
 
 		record = (HFSPlusCatalogRecord*) search(volume->catalogTree, (BTKey*)(&key), &exact, NULL, NULL);
+
+		if(record == NULL)
+			return NULL;
+
 		key.parentID = ((HFSPlusCatalogThread*)record)->parentID;
 		key.nodeName = ((HFSPlusCatalogThread*)record)->nodeName;
 
