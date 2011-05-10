@@ -220,10 +220,11 @@ static error_t vfl_vsvfl_read_single_page(vfl_device_t *_vfl, uint32_t dwVpn, ui
 	ret = virtual_page_number_to_physical(vfl, dwVpn, &pCE, &pPage);
 
 	// FIXME: Hack to get the h2fmi driver to read from the correct CE.
-	if (pCE == 1) {
-		pCE = 2;
-	} else if (pCE == 2) {
-		pCE = 1;
+	if(vfl->geometry.num_ce > 2) {
+		if (pCE == 1)
+			pCE = 2;
+		else if (pCE == 2)
+			pCE = 1;
 	}
 
 	//bufferPrintf("vpn %d CE %d page %d\r\n", dwVpn, pCE, pPage);
@@ -596,6 +597,15 @@ static error_t vfl_vsvfl_open(vfl_device_t *_vfl, nand_device_t *_nand)
 
 	if(FAILED(nand_device_set_info(nand, diVendorType, &vendorType, sizeof(vendorType))))
 		return EIO;
+
+	if(vendorType == 0x100014) {
+		vfl->geometry.banks_per_ce = 2;
+		vfl->geometry.blocks_per_bank = vfl->geometry.blocks_per_ce / vfl->geometry.banks_per_ce;
+		vfl->geometry.bank_address_space = vfl->geometry.blocks_per_bank;
+		vfl->geometry.pages_per_sublk = vfl->geometry.pages_per_block * vfl->geometry.banks_per_ce * vfl->geometry.num_ce;
+		vfl->geometry.some_sublk_mask = vfl->geometry.some_page_mask * vfl->geometry.pages_per_sublk;
+		vfl->geometry.banks_total = vfl->geometry.num_ce * vfl->geometry.banks_per_ce;
+	}
 
 	uint32_t banksPerCE = vfl->geometry.banks_per_ce;
 	if(FAILED(nand_device_set_info(nand, diBanksPerCE_VFL, &banksPerCE, sizeof(banksPerCE))))
