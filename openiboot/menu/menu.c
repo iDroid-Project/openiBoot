@@ -1,3 +1,26 @@
+/*
+ * menu.c - OpeniBoot Menu
+ *
+ * Copyright 2010 iDroid Project
+ *
+ * This file is part of iDroid. An android distribution for Apple products.
+ * For more information, please visit http://www.idroidproject.org/.
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; either version 3
+ * of the License, or (at your option) any later version.
+ * 
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ */
+
 #include "openiboot.h"
 #include "util.h"
 #include "framebuffer.h"
@@ -19,9 +42,18 @@
 #include "nvram.h"
 #include "tasks.h"
 
-int globalFtlHasBeenRestored; /* global variable to tell wether a ftl_restore has been done*/
+/** \var int globalFtlHasBeenRestored
+      \brief global variable to tell wether a ftl_restore has been done
+  */
+int globalFtlHasBeenRestored;
+/** \var TaskDescriptor menu_task
+      \brief Menu task
+  */
 static TaskDescriptor menu_task;
 
+/** \fn void menu_draw()
+      \brief Draws the openiboot menu to the framebuffer
+  */
 void menu_draw()
 {
 	framebuffer_clear();
@@ -53,6 +85,11 @@ void menu_draw()
 	framebuffer_print_force(OPENIBOOT_VERSION_STR);
 }
 
+/** \fn void menu_run(uint32_t _V)
+      \brief Checks for button presses and executes the appropriate task
+      \param _V nickp666 does not yet know why this is here
+      \warning nickp666 wrote this documentation!
+  */
 static void menu_run(uint32_t _V)
 {
 	while(TRUE)
@@ -101,6 +138,9 @@ static void menu_run(uint32_t _V)
 	}
 }
 
+/** \fn void menu_main()
+      \brief Main openiboot menu initialisation routine, reads /boot/menu.lst if it exists
+  */
 void menu_main()
 {
 	task_init(&menu_task, "menu", TASK_DEFAULT_STACK_SIZE);
@@ -135,6 +175,9 @@ void menu_main()
 	task_start(&menu_task, &menu_run, NULL);
 }
 
+/** \fn void menu_init_boot()
+      \brief Clears the framebuffer and loads the openiboot main menu
+  */
 static void menu_init_boot()
 {
 	framebuffer_clear();
