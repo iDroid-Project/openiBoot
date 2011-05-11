@@ -147,8 +147,8 @@ void hfs_ls(Volume* volume, const char* path) {
 }
 
 void fs_cmd_ls(int argc, char** argv) {
-	if(argc < 2) {
-		bufferPrintf("usage: %s <device> <partition> <directory>\r\n", argv[0]);
+	if(argc < 3) {
+		bufferPrintf("usage: %s <device> <partition> [<directory>]\r\n", argv[0]);
 		return;
 	}
 
@@ -159,7 +159,7 @@ void fs_cmd_ls(int argc, char** argv) {
 		return;
 	}
 
-	if(argc > 2)
+	if(argc > 3)
 		hfs_ls(dev->volume, argv[3]);
 	else
 		hfs_ls(dev->volume, "/");
@@ -169,7 +169,7 @@ void fs_cmd_ls(int argc, char** argv) {
 COMMAND("fs_ls", "list files and folders", fs_cmd_ls);
 
 void fs_cmd_cat(int argc, char** argv) {
-	if(argc < 3) {
+	if(argc < 4) {
 		bufferPrintf("usage: %s <device> <partition> <file>\r\n", argv[0]);
 		return;
 	}
@@ -181,7 +181,7 @@ void fs_cmd_cat(int argc, char** argv) {
 		return;
 	}
 
-	HFSPlusCatalogRecord *record = getRecordFromPath(argv[2], dev->volume, NULL, NULL);
+	HFSPlusCatalogRecord *record = getRecordFromPath(argv[3], dev->volume, NULL, NULL);
 
 	if(record != NULL)
 	{
