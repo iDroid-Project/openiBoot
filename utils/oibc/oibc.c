@@ -253,7 +253,7 @@ void* doInput(void* threadid) {
             if (getFile(commandBuffer+1))
                 continue;
         }
-		else if (strcmp(commandBuffer,"install") == 0)
+		/*else if (strcmp(commandBuffer,"install") == 0)
 		{
             oibc_log("Backing up your NOR to current directory as norbackup.dump\n");
 
@@ -267,7 +267,7 @@ void* doInput(void* threadid) {
 			oibc_log("NOR backed up, starting installation\n");
 			sprintf(toSendBuffer,"install\n");
 			sendBuffer(toSendBuffer, strlen(toSendBuffer));
-		}
+		}*/ // nickp666: This is fucked up, nor_read is deliberately not registered as a command at the moment, and until I speak to ricky, I dont know why.
 		else
 		{
 			commandBuffer[len] = '\n';
