@@ -39,6 +39,7 @@ typedef struct _vfl_vsvfl_geometry
 	uint16_t banks_total;
 	uint16_t bank_address_space;
 	uint32_t blocks_per_bank;
+	uint32_t blocks_per_bank_vfl;
 } vfl_vsvfl_geometry_t;
 
 struct _vfl_vsvfl_context;

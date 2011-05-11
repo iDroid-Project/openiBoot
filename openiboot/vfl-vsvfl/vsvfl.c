@@ -571,7 +571,7 @@ static error_t vfl_vsvfl_open(vfl_device_t *_vfl, nand_device_t *_nand)
 	}
 
 	// Vendor-specific virtual-from/to-physical functions.
-	// Note: currently only supports the vendors which are in A4's h2fmi.c.
+	// Note: support for some vendors is still missing.
 	nand_device_t *nand = vfl->device;
 	uint32_t vendorType = vfl->contexts[0].vendor_type;
 
@@ -582,40 +582,37 @@ static error_t vfl_vsvfl_open(vfl_device_t *_vfl, nand_device_t *_nand)
 	switch(vendorType) {
 	case 0x100014:
 	case 0x120014:
+		vfl->geometry.banks_per_ce = 2;
 		vfl->virtual_to_physical = virtual_to_physical_100014;
 		break;
 
 	case 0x150011:
+		vfl->geometry.banks_per_ce = 2;
 		vfl->virtual_to_physical = virtual_to_physical_150011;
 		break;
 
 	default:
-		bufferPrintf("vsvfl: unsupported vendor.\r\n");
+		bufferPrintf("vsvfl: unsupported vendor 0x%06x\r\n", vendorType);
 		return EIO;
 	}
 
 	if(FAILED(nand_device_set_info(nand, diVendorType, &vendorType, sizeof(vendorType))))
 		return EIO;
 
-	if(vendorType == 0x100014 || (vendorType = 0x150011 && vfl->geometry.banks_per_ce == 1)) {
-		vfl->geometry.banks_per_ce = 2;
-		vfl->geometry.blocks_per_bank = vfl->geometry.blocks_per_ce / vfl->geometry.banks_per_ce;
-		vfl->geometry.bank_address_space = vfl->geometry.blocks_per_bank;
-		vfl->geometry.pages_per_sublk = vfl->geometry.pages_per_block * vfl->geometry.banks_per_ce * vfl->geometry.num_ce;
-		vfl->geometry.some_sublk_mask = vfl->geometry.some_page_mask * vfl->geometry.pages_per_sublk;
-		vfl->geometry.banks_total = vfl->geometry.num_ce * vfl->geometry.banks_per_ce;
-	}
+	vfl->geometry.pages_per_sublk = vfl->geometry.pages_per_block * vfl->geometry.banks_per_ce * vfl->geometry.num_ce;
+	vfl->geometry.banks_total = vfl->geometry.num_ce * vfl->geometry.banks_per_ce;
+	vfl->geometry.blocks_per_bank_vfl = vfl->geometry.blocks_per_ce / vfl->geometry.banks_per_ce;
 
 	uint32_t banksPerCE = vfl->geometry.banks_per_ce;
 	if(FAILED(nand_device_set_info(nand, diBanksPerCE_VFL, &banksPerCE, sizeof(banksPerCE))))
 		return EIO;
 
-	bufferPrintf("vfl detected chip vendor 0x%06x\r\n", vendorType);
+	bufferPrintf("vsvfl: detected chip vendor 0x%06x\r\n", vendorType);
 
 	// Now, discard the old scfg bad-block table, and set it using the VFL context's reserved block pool map.
 	uint32_t bank, i;
 	uint32_t num_reserved = vfl->contexts[0].reserved_block_pool_start;
-	uint32_t num_non_reserved = vfl->geometry.blocks_per_bank - num_reserved;
+	uint32_t num_non_reserved = vfl->geometry.blocks_per_bank_vfl - num_reserved;
 
 	for(ce = 0; ce < vfl->geometry.num_ce; ce++) {
 		memset(vfl->bbt[ce], 0xFF, CEIL_DIVIDE(vfl->geometry.blocks_per_ce, 8));
