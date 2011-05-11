@@ -1,3 +1,26 @@
+/*
+ * menu.c - OpeniBoot Menu
+ *
+ * Copyright 2010 iDroid Project
+ *
+ * This file is part of iDroid. An android distribution for Apple products.
+ * For more information, please visit http://www.idroidproject.org/.
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; either version 3
+ * of the License, or (at your option) any later version.
+ * 
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ */
+
 #include "openiboot.h"
 #include "hardware/platform.h"
 #include "uart.h"
@@ -12,11 +35,23 @@ void __assert(const char* file, int line, const char* m) {
 	panic();
 }
 
+/**
+ * abort
+ *
+ * OpeniBoot doesnt like you, and has aborted whatever it was doing
+ *
+ */
 void abort() {
 	bufferPrintf("openiboot ABORT!!\r\n");
 	while(TRUE);
 }
 
+/**
+ * panic
+ *
+ * OpeniBoot has just shit a brick, and now you are fucked - time for a reboot
+ *
+ */
 void panic() {
 	bufferPrintf("openiboot PANIC!!\r\n");
 	while(TRUE);
@@ -51,7 +86,12 @@ void* memcpy(void* dest, const void* src, uint32_t size) {
 	}
 	return dest;
 }
-
+/**
+ * strcmp
+ *
+ * Compares strings an' shit yo'
+ *
+ */
 int strcmp(const char* s1, const char* s2) {
 	while(*s1 == *(s2++)) {
 		if(*(s1++) == '\0')
