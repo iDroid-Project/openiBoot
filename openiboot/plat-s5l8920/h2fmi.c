@@ -7,6 +7,7 @@
 #include "cdma.h"
 #include "commands.h"
 #include "vfl.h"
+#include "ftl.h"
 #include "arm/arm.h"
 
 typedef struct _nand_chipid
@@ -232,8 +233,13 @@ static h2fmi_struct_t *h2fmi_busses[] = {
 #define H2FMI_BUS_COUNT (ARRAY_SIZE(h2fmi_busses))
 
 static h2fmi_geometry_t h2fmi_geometry;
-static nand_device_t h2fmi_device;
+static nand_device_t h2fmi_device = {
+	.device = {
+		.name = "H2FMI",
+	},
+};
 static vfl_device_t *h2fmi_vfl_device;
+static ftl_device_t *h2fmi_ftl_device;
 
 typedef struct _h2fmi_map_entry
 {
@@ -1547,10 +1553,10 @@ static void h2fmi_init_virtual_physical_map()
 
 // NAND Device Functions
 static error_t h2fmi_device_read_single_page(nand_device_t *_dev, uint32_t _chip, uint32_t _block,
-		uint32_t _page, uint8_t *_buffer, uint8_t *_spareBuffer)
+		uint32_t _page, uint8_t *_buffer, uint8_t *_spareBuffer, uint32_t disable_aes)
 {
 	return h2fmi_read_single_page(_chip, _block*h2fmi_geometry.pages_per_block + _page,
-			_buffer, _spareBuffer, NULL, NULL, 0);
+			_buffer, _spareBuffer, NULL, NULL, disable_aes);
 }
 
 static inline void auto_store(void *_ptr, size_t _sz, uint32_t _val)
@@ -1727,11 +1733,17 @@ static void h2fmi_init_device()
 	h2fmi_device.enable_data_whitening = h2fmi_device_enable_data_whitening;
 	h2fmi_device.device.get_info = h2fmi_device_get_info;
 	h2fmi_device.device.set_info = h2fmi_device_set_info;
+	nand_device_register(&h2fmi_device);
 
-	error_t ret = vfl_detect(&h2fmi_vfl_device, &h2fmi_device, vfl_new_signature);
-	if(FAILED(ret))
+	if(FAILED(vfl_detect(&h2fmi_vfl_device, &h2fmi_device, vfl_new_signature)))
 	{
-		bufferPrintf("fmi: Failed to open VFL (%s)!\r\n", strerr(ret));
+		bufferPrintf("fmi: Failed to open VFL!\r\n");
+		return;
+	}
+
+	if(FAILED(ftl_detect(&h2fmi_ftl_device, h2fmi_vfl_device)))
+	{
+		bufferPrintf("fmi: Failed to open FTL!\r\n");
 		return;
 	}
 }
@@ -1739,7 +1751,7 @@ static void h2fmi_init_device()
 void h2fmi_init()
 {
 	h2fmi_aes_enabled = 1;
-	h2fmi_enable_data_whitening = 0;
+	h2fmi_data_whitening_enabled = 0;
 
 	memset(h2fmi_dma_state, 0, sizeof(h2fmi_dma_state));
 	h2fmi_init_bus(&fmi0);
@@ -1982,20 +1994,36 @@ static void cmd_vfl_read(int argc, char** argv)
 {
 	if(argc < 6)
 	{
-		bufferPrintf("Usage: %s [page] [data] [metadata] [buf1] [buf2] [flag]\r\n", argv[0]);
+		bufferPrintf("Usage: %s [page] [data] [metadata] [empty_ok] [disable_aes]\r\n", argv[0]);
 		return;
 	}
-	
+
 	uint32_t page = parseNumber(argv[1]);
 	uint32_t data = parseNumber(argv[2]);
 	uint32_t meta = parseNumber(argv[3]);
 	uint32_t empty_ok = parseNumber(argv[4]);
-	uint32_t refresh = parseNumber(argv[5]);
+	uint32_t disable_aes = parseNumber(argv[5]);
 
 	uint32_t ret = vfl_read_single_page(h2fmi_vfl_device, page,
-			(uint8_t*)data, (uint8_t*)meta, empty_ok, (int32_t*)refresh);
+			(uint8_t*)data, (uint8_t*)meta, empty_ok, NULL, disable_aes);
 
 	bufferPrintf("vfl: Command completed with result 0x%08x.\r\n", ret);
 }
-COMMAND("vfl_read", "H2FMI NAND test", cmd_vfl_read);
+COMMAND("vfl_read", "VFL read single page", cmd_vfl_read);
 
+static void cmd_ftl_read(int argc, char** argv)
+{
+	if(argc < 3)
+	{
+		bufferPrintf("Usage: %s [page] [data]\r\n", argv[0]);
+		return;
+	}
+
+	uint32_t page = parseNumber(argv[1]);
+	uint32_t data = parseNumber(argv[2]);
+
+	uint32_t ret = ftl_read_single_page(h2fmi_ftl_device, page, (uint8_t*)data);
+
+	bufferPrintf("ftl: Command completed with result 0x%08x.\r\n", ret);
+}
+COMMAND("ftl_read", "FTL read single page", cmd_ftl_read);
