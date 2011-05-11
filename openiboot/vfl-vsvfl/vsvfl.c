@@ -598,7 +598,7 @@ static error_t vfl_vsvfl_open(vfl_device_t *_vfl, nand_device_t *_nand)
 	if(FAILED(nand_device_set_info(nand, diVendorType, &vendorType, sizeof(vendorType))))
 		return EIO;
 
-	if(vendorType == 0x100014 || (vendorType = 0x150011 && vfl->geometry.banks_per_ce == 1)) {
+	if(vfl->geometry.banks_per_ce == 1) {
 		vfl->geometry.banks_per_ce = 2;
 		vfl->geometry.blocks_per_bank = vfl->geometry.blocks_per_ce / vfl->geometry.banks_per_ce;
 		vfl->geometry.bank_address_space = vfl->geometry.blocks_per_bank;
