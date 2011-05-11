@@ -160,7 +160,7 @@ void framebuffer_print_force(const char* str) {
 }
 
 static void scrollup888() {
-	/*register volatile uint32_t* newFirstLine = PixelFromCoords(0, fontHeight);
+	register volatile uint32_t* newFirstLine = PixelFromCoords(0, fontHeight);
 	register volatile uint32_t* oldFirstLine = PixelFromCoords(0, 0);
 	register volatile uint32_t* end = oldFirstLine + (FBWidth * FBHeight);
 	while(newFirstLine < end) {
@@ -169,12 +169,12 @@ static void scrollup888() {
 	while(oldFirstLine < end) {
 		*(oldFirstLine++) = BackgroundColor;
 	}
-	Y--;*/
-	Y = 0;
+	Y--;
+	//Y = 0;
 }
 
 static void scrollup565() {
-	/*register volatile uint16_t* newFirstLine = PixelFromCoords565(0, fontHeight);
+	register volatile uint16_t* newFirstLine = PixelFromCoords565(0, fontHeight);
 	register volatile uint16_t* oldFirstLine = PixelFromCoords565(0, 0);
 	register volatile uint16_t* end = oldFirstLine + (FBWidth * FBHeight);
 	uint16_t bgcolor = BGR16(BackgroundColor);
@@ -184,8 +184,8 @@ static void scrollup565() {
 	while(oldFirstLine < end) {
 		*(oldFirstLine++) = bgcolor;
 	}
-	Y--;*/
-	Y = 0;
+	Y--;
+	//Y = 0;
 }
 
 void framebuffer_putc888(int c) {
