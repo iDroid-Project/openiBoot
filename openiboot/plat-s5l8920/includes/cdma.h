@@ -10,8 +10,13 @@ typedef struct dmaAES {
 	uint32_t ivParameter;
 } dmaAES;
 
+typedef struct DMASegmentInfo {
+	uint32_t ptr;
+	uint32_t size;
+} DMASegmentInfo;
+
 int dma_setup();
-signed int dma_init_channel(uint8_t direction, uint32_t channel, int segmentationSetting,
+signed int dma_init_channel(uint8_t direction, uint32_t channel, DMASegmentInfo* segmentsInfo,
 		uint32_t txrx_register, uint32_t size, uint32_t Setting1Index, uint32_t Setting2Index, void* handler);
 void dma_continue_async(int channel);
 int dma_set_aes(int channel, dmaAES* dmaAESInfo);

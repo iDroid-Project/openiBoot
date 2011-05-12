@@ -11,6 +11,7 @@ env.AddModules([
 	"vfl-vfl",
 	"vfl-vsvfl",
 	"images",
+	"ftl-yaftl",
 	])
 
 plat_s5l8920_src = arch_arm_src + env.Localize([

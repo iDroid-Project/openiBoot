@@ -333,7 +333,7 @@ int dma_set_aes(int channel, dmaAES* dmaAESInfo) {
 		LeaveCriticalSection();
 
 		if (!dma->dmaAES_channel)
-			system_panic("CDMA: no AES filter contexts: 0x%08x", dmaAES_channel_used);
+			system_panic("CDMA: no AES filter contexts: 0x%08x\r\n", dmaAES_channel_used);
 	}
 
 	uint32_t dmaAES_channel_reg = dma->dmaAES_channel << 12;

@@ -75,9 +75,7 @@ typedef struct _h2fmi_struct
 
 	uint32_t dma0;
 	uint32_t dma1;
-	
-	uint32_t field_8;
-	uint32_t field_C;
+
 	uint32_t is_ppn; // 10
 	uint32_t pages_per_block; // 14
 	uint32_t bbt_format; // 18
@@ -98,25 +96,25 @@ typedef struct _h2fmi_struct
 	uint8_t *aes_iv_pointer; // 68
 	h2fmi_state_t state; // 6C
 	uint32_t current_page_index; // 78
-	uint32_t num_pages_to_read;
+	uint32_t num_pages;
 	uint32_t field_80;
 	uint32_t field_100;
 	uint16_t *chips;
 	uint32_t *pages;
-	uint8_t **data_ptr; // 114
-	uint8_t **wmr_ptr; // 118
-	uint64_t field_124;
-	uint64_t field_12C;
-	uint64_t field_134;
-	uint32_t field_13C;
-	uint32_t field_140;
+	DMASegmentInfo *data_segments; // 114
+	DMASegmentInfo *meta_segments; // 118
+	uint64_t last_action_time;
+	uint64_t time_interval;
+	uint64_t stage_time_interval;
+	uint32_t current_status;
+	uint32_t needs_address_set;
 	uint16_t current_chip; // 144
-	uint8_t *field_148;
-	uint32_t field_14C;
-	uint32_t field_150;
-	uint32_t field_154;
-	uint8_t *field_158;
-	uint32_t field_15C;
+	uint8_t *page_ecc_output;
+	uint32_t num_pages_empty;
+	uint32_t num_pages_failed;
+	uint32_t num_pages_ecc_failed;
+	uint8_t *ecc_ptr;
+	uint32_t pages_done;
 	h2fmi_failure_details_t failure_details; // 160
 	uint32_t field_170;
 	uint32_t field_180;
