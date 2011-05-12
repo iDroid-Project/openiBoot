@@ -125,8 +125,8 @@ static uint32_t remap_block(vfl_vsvfl_device_t *_vfl, uint32_t _ce, uint32_t _bl
 				bufferPrintf("ftl: Destination physical block for remapping is greater than number of blocks per CE!");
 			*/
 
-			vBank = _ce + _vfl->geometry.num_ce * (pwDesPbn / (_vfl->geometry.blocks_per_bank - _vfl->contexts[_ce].reserved_block_pool_start));
-			vBlock = _vfl->contexts[_ce].reserved_block_pool_start + (pwDesPbn % (_vfl->geometry.blocks_per_bank - _vfl->contexts[_ce].reserved_block_pool_start));
+			vBank = _ce + _vfl->geometry.num_ce * (pwDesPbn / (_vfl->geometry.blocks_per_bank_vfl - _vfl->contexts[_ce].reserved_block_pool_start));
+			vBlock = _vfl->contexts[_ce].reserved_block_pool_start + (pwDesPbn % (_vfl->geometry.blocks_per_bank_vfl - _vfl->contexts[_ce].reserved_block_pool_start));
 
 			if(FAILED(virtual_block_to_physical_block(_vfl, vBank, vBlock, &pBlock)))
 				system_panic("vfl: failed to convert virtual reserved block to physical\r\n");
