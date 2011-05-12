@@ -1237,12 +1237,6 @@ uint32_t h2fmi_read_single(h2fmi_struct_t *_fmi, uint16_t _chip, uint32_t _page,
 		.size = _fmi->ecc_bytes
 		};
 
-/*	// Calculate physical page number (according to banks layout).
-	uint32_t block = _page / h2fmi_geometry.pages_per_block;
-	block = (block % h2fmi_geometry.blocks_per_bank) + ((block / h2fmi_geometry.blocks_per_bank) * h2fmi_geometry.bank_address_space);
-	
-	uint32_t physPage = (block * h2fmi_geometry.pages_per_block) + (_page % h2fmi_geometry.pages_per_block);*/
-	
 	return h2fmi_read_multi(_fmi, 1, &_chip, &_page, &dataSegmentInfo, &metaSegmentInfo, _6, _7);
 }
 
