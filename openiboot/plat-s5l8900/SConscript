@@ -7,7 +7,6 @@ env.Append(CPPDEFINES = ['ARM11', 'CONFIG_S5L8900'])
 env.AddModules([
 	"acm",
 	"usb-synopsys",
-	"images",
 	])
 
 plat_s5l8900_src = arch_arm_src + base_src + env.Localize([

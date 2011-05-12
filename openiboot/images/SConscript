@@ -1,8 +1,24 @@
 Import('*')
 
-images_src = env.Localize([
-	'images.c',
-	])
+#
+# Build file for bin2c, and image headers.
+#
 
-images = env.CreateModule('images', images_src)
-images.Append(CPPPATH = [Dir('includes'), Dir('.')])
+bin2c = henv.Program('bin2c', ['bin2c.c'])
+
+def generate_actions(source, target, env, for_signature=False):
+	Depends(target, bin2c)
+	return "%s %s < %s > %s" % (str(bin2c[0]), env['BASE'], source[0], target[0])
+
+env.Append(BUILDERS = {'Bin2C': Builder(generator=generate_actions)})
+
+def Bin2CList(env, sources, src_pattern, dest_pattern, data_pattern):
+	ret = []
+	for s in sources:
+		src = src_pattern % s
+		dest = dest_pattern % s
+		data = data_pattern % s
+		target = env.Bin2C(dest, src, BASE=data)
+		ret.append(target)
+	return ret
+env.AddMethod(Bin2CList, "Bin2CList")

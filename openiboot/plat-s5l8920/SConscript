@@ -10,7 +10,6 @@ env.AddModules([
 	"usb-synopsys",
 	"vfl-vfl",
 	"vfl-vsvfl",
-	"images",
 	"ftl-yaftl",
 	])
 
