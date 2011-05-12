@@ -580,6 +580,11 @@ static error_t vfl_vsvfl_open(vfl_device_t *_vfl, nand_device_t *_nand)
 			return EIO;
 
 	switch(vendorType) {
+	case 0x10001:
+		vfl->geometry.banks_per_ce = 1;
+		vfl->virtual_to_physical = virtual_to_physical_100014;
+		break;
+	
 	case 0x100014:
 	case 0x120014:
 		vfl->geometry.banks_per_ce = 2;

@@ -531,7 +531,7 @@ static uint32_t YAFTL_Init() {
 
 static uint32_t YAFTL_Restore() {
 	bufferPrintf("YAFTL_Restore: Sorry... not yet!\r\n");
-	return 0;
+	return EIO;
 }
 
 static void YAFTL_SetupFreeAndAllocd() {
