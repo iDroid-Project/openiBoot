@@ -10,6 +10,7 @@ env.AddModules([
 	"usb-synopsys",
 	"vfl-vfl",
 	"vfl-vsvfl",
+	"images",
 	])
 
 plat_s5l8920_src = arch_arm_src + env.Localize([

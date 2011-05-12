@@ -8,6 +8,7 @@ env.AddModules([
 	"acm",
 	"nor-spi",
 	"usb-synopsys",
+	"images",
 	])
 
 plat_s5l8720_src = arch_arm_src + env.Localize([

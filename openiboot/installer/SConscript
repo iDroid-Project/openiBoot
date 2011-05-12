@@ -7,12 +7,12 @@ installer_src = env.Localize([
 installer = env.CreateModule('installer', installer_src)
 installer.Append(CPPPATH = [Dir('includes'), Dir('.')])
 
-images = env.Bin2CList([
+graphics = env.Bin2CList([
 	'installerLogo',
 	'installerBarEmpty',
 	'installerBarFull',
 	], "images/%s.png", "images/%sPNG.h", "data%sPNG")
-installer.Depends(images)
+installer.Depends(graphics)
 
 def InstallerEnv(env):
 	e2 = env.Clone()
