@@ -5,9 +5,9 @@
 #include "clock.h"
 #include "util.h"
 #include "cdma.h"
-#include "commands.h"
 #include "vfl.h"
 #include "ftl.h"
+#include "commands.h"
 #include "arm/arm.h"
 
 typedef struct _nand_chipid
@@ -25,21 +25,21 @@ typedef struct _nand_smth_struct
 typedef struct _nand_chip_info
 {
 	nand_chipid_t chipID;
-	uint16_t unk1;
-	uint16_t unk2;
-	uint16_t unk3;
-	uint16_t unk4;
+	uint16_t blocks_per_ce;
+	uint16_t pages_per_block;
+	uint16_t bytes_per_page;
+	uint16_t bytes_per_spare;
 	uint16_t unk5;
 	uint16_t unk6;
 	uint32_t unk7;
-	uint16_t unk8;
+	uint16_t banks_per_ce;
 	uint16_t unk9;
 } __attribute__((__packed__)) nand_chip_info_t;
 
 typedef struct _nand_board_id
 {
-	uint32_t num_busses;
-	uint32_t num_symmetric;
+	uint8_t num_busses;
+	uint8_t num_symmetric;
 	nand_chipid_t chipID;
 	uint8_t unk3;
 	nand_chipid_t chipID2;
@@ -1788,15 +1788,15 @@ void h2fmi_init()
 		if(fmi)
 		{
 			fmi->is_ppn = 0;
-			fmi->blocks_per_ce = info->chip_info->unk1;
+			fmi->blocks_per_ce = info->chip_info->blocks_per_ce;
 			fmi->banks_per_ce_vfl = 1;
-			fmi->bbt_format = info->chip_info->unk3 >> 9;
-			fmi->pages_per_block = info->chip_info->unk2;
-			fmi->bytes_per_spare = info->chip_info->unk4;
+			fmi->bbt_format = info->chip_info->bytes_per_page >> 9;
+			fmi->pages_per_block = info->chip_info->pages_per_block;
+			fmi->bytes_per_spare = info->chip_info->bytes_per_spare;
 			fmi->ecc_bytes = info->some_array[1];
 			fmi->meta_per_logical_page = info->some_array[0];
-			fmi->bytes_per_page = info->chip_info->unk3;
-			fmi->banks_per_ce = info->chip_info->unk9;
+			fmi->bytes_per_page = info->chip_info->bytes_per_page;
+			fmi->banks_per_ce = info->chip_info->banks_per_ce;
 
 			uint8_t ecc_bits = h2fmi_calculate_ecc_bits(fmi);
 			fmi->ecc_bits = ecc_bits;
