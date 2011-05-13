@@ -110,7 +110,7 @@ error_t block_device_setup(block_device_t *_bdev)
 		ret = block_device_read_raw(_bdev, &_bdev->mbr, sizeof(MBR));
 		if(SUCCEEDED(ret))
 		{
-			if(!memcmp("\x6a\x90\x88\xcf\x8a\xfd\x63\x0a\xe3\x51\xe2\x48\x87\xe0\xb9\x8b", &_bdev->mbr, 4*sizeof(uint32_t))) {
+			if(!memcmp(LwVMType, ((LwVM*)&_bdev->mbr)->type, sizeof(LwVMType))) {
 				if(FAILED(block_device_seek_raw(_bdev, seek_begin, 0)) || FAILED(block_device_read_raw(_bdev, &_bdev->lwvm, sizeof(_bdev->lwvm)))) {
 					bufferPrintf("bdev: detected LwVM partition table but failed to read it.\r\n");
 					return EIO;
