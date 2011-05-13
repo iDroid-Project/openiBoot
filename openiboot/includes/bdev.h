@@ -53,15 +53,19 @@ typedef struct _GPT {
 typedef struct _LwVMPartitionRecord {
 	uint64_t uuid[2];
 	uint64_t checksum[2];
-	uint64_t beginLBA;
-	uint64_t endLBA;
-	uint8_t	unkn[8];
+	uint64_t begin;
+	uint64_t end;
+	uint8_t	freeSpace[8];
 	char	name[72];
 } __attribute__ ((packed)) LwVMPartitionRecord;
 
 typedef struct _LwVM {
-	uint8_t unkn[512];
-	LwVMPartitionRecord partitions[3];
+	uint64_t uuid[4];
+	uint64_t mediaSize;
+	uint32_t numPartitions;
+	uint8_t unkn[468];
+	LwVMPartitionRecord partitions[12];
+	uint16_t chunks[1024]; // chunks[0] should be 0xF000
 } __attribute__ ((packed)) LwVM;
 
 typedef enum _partitioning_mode

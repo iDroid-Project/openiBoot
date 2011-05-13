@@ -116,7 +116,7 @@ error_t block_device_setup(block_device_t *_bdev)
 					return EIO;
 				}
 				int i;
-				for(i = 0; i < ARRAY_SIZE(_bdev->lwvm.partitions); i++)
+				for(i = 0; i < _bdev->lwvm.numPartitions; i++)
 				{
 					LwVMPartitionRecord *record = &_bdev->lwvm.partitions[i];
 					bufferPrintf("record: 0x%08x\r\n", record);
@@ -126,8 +126,10 @@ error_t block_device_setup(block_device_t *_bdev)
 					for (j = 0; record->name[j*2] != 0; j++) {
 						string[j] = record->name[j*2];
 					}
-					bufferPrintf("bdev: partition id: %d, name: %s, range: %u - %u\r\n", i, string, (uint32_t)record->beginLBA, (uint32_t)record->endLBA);
+					bufferPrintf("bdev: partition id: %d, name: %s, range: %u - %u\r\n", i, string, (uint32_t)record->begin, (uint32_t)record->end);
 					free(string);
+					if(i == 8)
+						break;
 				}
 				_bdev->part_mode = partitioning_lwvm;
 				block_device_finish(_bdev);
@@ -313,7 +315,7 @@ int block_device_partition_count(block_device_t *_bdev)
 		return _bdev->gpt.numPartitions;
 
 	case partitioning_lwvm:
-		return 3;
+		return _bdev->lwvm.numPartitions;
 
 	default:
 		return 0;
@@ -379,7 +381,7 @@ int block_device_get_start(block_device_handle_t _handle)
 		break;
 
 	case partitioning_lwvm:
-		return _handle->lwvm_record->beginLBA + 1020 * block_size;
+		return _handle->lwvm_record->begin + 1020 * block_size;
 		break;
 
 	default:
@@ -421,7 +423,7 @@ error_t block_device_seek(block_device_handle_t _handle, seek_mode_t _mode, int6
 				break;
 
 			case partitioning_lwvm:
-				_amt += _handle->lwvm_record->beginLBA + 1020 * block_size;
+				_amt += _handle->lwvm_record->begin + 1020 * block_size;
 				break;
 
 			default:
@@ -444,7 +446,7 @@ error_t block_device_seek(block_device_handle_t _handle, seek_mode_t _mode, int6
 				break;
 
 			case partitioning_lwvm:
-				_amt += _handle->lwvm_record->endLBA * + 1020 * block_size;
+				_amt += _handle->lwvm_record->end * + 1020 * block_size;
 
 			default:
 				break;
