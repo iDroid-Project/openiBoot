@@ -119,7 +119,6 @@ error_t block_device_setup(block_device_t *_bdev)
 				for(i = 0; i < _bdev->lwvm.numPartitions; i++)
 				{
 					LwVMPartitionRecord *record = &_bdev->lwvm.partitions[i];
-					bufferPrintf("record: 0x%08x\r\n", record);
 					char *string = malloc(sizeof(record->name)/2);
 					memset(string, 0, sizeof(string));
 					int j;
