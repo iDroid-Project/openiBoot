@@ -58,10 +58,11 @@ void platform_init()
 
 	LeaveCriticalSection();
 
-	displaypipe_init();
-	framebuffer_setup();
-	framebuffer_setdisplaytext(TRUE);
-	lcd_set_backlight_level(1500);
+	if(!displaypipe_init()) {
+		framebuffer_setup();
+		framebuffer_setdisplaytext(TRUE);
+		lcd_set_backlight_level(1500);
+	}
 }
 
 void platform_shutdown()
