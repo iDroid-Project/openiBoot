@@ -56,6 +56,8 @@ void platform_init()
 
 	dma_setup();
 
+	spi_setup();
+
 	LeaveCriticalSection();
 
 	if(!displaypipe_init()) {
