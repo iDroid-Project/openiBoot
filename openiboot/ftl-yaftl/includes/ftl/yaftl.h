@@ -18,22 +18,22 @@ ftl_yaftl_device_t *ftl_yaftl_device_allocate();
 #define ERROR_EMPTY	0x80000003
 
 // Page types (as defined in the spare data "type" bitfield)
-#define PAGETYPE_INDEX		0x4		// Index block indicator
-#define PAGETYPE_LBN		0x10	// User data (also called lbn: maybe logical block number? lBlock 0 is system and lBlock 1 is user?)
-#define PAGETYPE_FTL_CLEAN	0x20	// FTL context (unmounted, clean)
+#define PAGETYPE_INDEX		(0x4)	// Index block indicator
+#define PAGETYPE_LBN		(0x10)	// User data (also called lbn: maybe logical block number? lBlock 0 is system and lBlock 1 is user?)
+#define PAGETYPE_FTL_CLEAN	(0x20)	// FTL context (unmounted, clean)
 // 0x40: ?
-#define PAGETYPE_VFL		0x80	// VFL context
+#define PAGETYPE_VFL		(0x80)	// VFL context
 
 // Block status (as defined in the BlockStruct structure)
-#define BLOCKSTATUS_ALLOCATED		0x1
-#define BLOCKSTATUS_FTLCTRL			0x2
-#define BLOCKSTATUS_GC				0x4
-#define BLOCKSTATUS_CURRENT			0x8
-#define BLOCKSTATUS_FTLCTRL_SEL		0x10
-#define BLOCKSTATUS_I_GC			0x20
-#define BLOCKSTATUS_I_ALLOCATED		0x40
-#define BLOCKSTATUS_I_CURRENT		0x80
-#define BLOCKSTATUS_FREE			0xFF
+#define BLOCKSTATUS_ALLOCATED		(0x1)
+#define BLOCKSTATUS_FTLCTRL			(0x2)
+#define BLOCKSTATUS_GC				(0x4)
+#define BLOCKSTATUS_CURRENT			(0x8)
+#define BLOCKSTATUS_FTLCTRL_SEL		(0x10)
+#define BLOCKSTATUS_I_GC			(0x20)
+#define BLOCKSTATUS_I_ALLOCATED		(0x40)
+#define BLOCKSTATUS_I_CURRENT		(0x80)
+#define BLOCKSTATUS_FREE			(0xFF)
 
 typedef struct
 {
@@ -90,20 +90,20 @@ typedef struct {
 typedef struct {
 	WMR_BufZone_t zone;
 	WMR_BufZone_t segment_info_temp;
-	uint16_t nMetaPages; // (0x38) Number of meta pages. Similar to pagesToRead in the old FTL.
-	uint16_t dwordsPerPage; // 3A
+	uint16_t tocPagesPerBlock; // 38
+	uint16_t tocEntriesPerPage; // 3A
 	uint32_t unknCalculatedValue0; // 3C
 	uint32_t unknCalculatedValue1; // 40
-	uint32_t total_pages_ftl; // 44
+	uint32_t totalPages; // 44
 	uint16_t tocArrayLength; // 48
 	uint16_t unkn_0x2A; // 4A
-	uint32_t unkn_0x2C; // 4C
-	uint8_t* ftl2_buffer_x;
-	uint16_t unkn_0x34; // 54
-	uint32_t unkn_0x3C; // 5C
-	uint8_t* ftl2_buffer_x2000;
+	uint32_t latestUserBlock; // 4C
+	uint32_t* userTOCBuffer;
+	uint16_t userPagesPerBlock; // 54
+	uint32_t latestIndexBlock; // 5C
+	uint32_t* indexTOCBuffer;
 	uint32_t unk64; // 64
-	uint32_t unk6C; // 6C
+	uint32_t maxIndexUsn; // 6C
 	uint32_t unk74_4;
 	uint32_t unk78_counter;
 	uint32_t unk7C_byteMask;
@@ -160,27 +160,27 @@ typedef struct {
 	uint8_t unk188_0x63;
 	uint32_t pagesAvailable;
 	uint32_t bytesPerPage;
-} YAFTL_INFO;
-YAFTL_INFO yaftl_info;
+} YAFTLInfo;
+YAFTLInfo yaftl_info;
 
 typedef struct {
-	uint16_t pages_per_block_total_banks;
-	uint16_t usable_blocks_per_bank;
-	uint16_t bytes_per_page_ftl;
-	uint16_t meta_struct_size_0xC;
+	uint16_t pagesPerSublk;
+	uint16_t numBlocks;
+	uint16_t bytesPerPage;
+	uint16_t spareDataSize;
 	uint16_t total_banks_ftl;
 	uint32_t total_usable_pages;
 } NAND_GEOMETRY_FTL;
-NAND_GEOMETRY_FTL nand_geometry_ftl;
+NAND_GEOMETRY_FTL ftlGeometry;
 
 typedef struct {
 	char version[4]; // 0
 	uint32_t unknCalculatedValue0; // 4
-	uint32_t total_pages_ftl; // 8
-	uint32_t unkn_0x2C; // C
+	uint32_t totalPages; // 8
+	uint32_t latestUserBlock; // C
 	uint32_t cxt_unkn0; // 10 // placeholder
-	uint32_t unkn_0x3C; // 14
-	uint32_t unk6C; // 18
+	uint32_t latestIndexBlock; // 14
+	uint32_t maxIndexUsn; // 18
 	uint32_t blockStatsField4; // 1C
 	uint32_t blockStatsField10; // 20
 	uint32_t numAllocatedBlocks; // 24
@@ -189,13 +189,26 @@ typedef struct {
 	uint32_t cxt_unkn1[10]; // placeholder
 	uint32_t field_58; // 58
 	uint16_t tocArrayLength; // 5C
-	uint16_t nMetaPages; // 5E
-	uint16_t dwordsPerPage; // 60
+	uint16_t tocPagesPerBlock; // 5E
+	uint16_t tocEntriesPerPage; // 60
 	uint16_t unkn_0x2A; // 62
-	uint16_t unkn_0x34; // 66
+	uint16_t userPagesPerBlock; // 66
 	uint16_t unk64; // 68
 	uint32_t cxt_unkn2[11]; // placeholder
 	uint8_t unk188_0x63; // 94
 } __attribute__((packed)) YAFTL_CXT;
+
+typedef struct _BlockListNode {
+	uint32_t usn;
+	uint16_t blockNumber;
+	uint16_t field_6;
+	struct _BlockListNode *next;
+	struct _BlockListNode *prev;
+} __attribute__((packed)) BlockListNode;
+
+typedef struct {
+	uint32_t lpnMin;
+	uint32_t lpnMax;
+} __attribute__((packed)) BlockLpn;
 
 #endif //FTL_YAFTL_H
