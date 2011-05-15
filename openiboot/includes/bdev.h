@@ -55,7 +55,7 @@ typedef struct _LwVMPartitionRecord {
 	uint64_t guid[2];
 	uint64_t begin;
 	uint64_t end;
-	uint8_t	freeSpace[8];
+	uint64_t encrypted; // 0 == unencrypted; 0x1000000000000 == encrypted
 	char	name[72];
 } __attribute__ ((packed)) LwVMPartitionRecord;
 
