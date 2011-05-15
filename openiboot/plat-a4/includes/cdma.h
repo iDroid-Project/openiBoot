@@ -16,7 +16,7 @@ typedef struct DMASegmentInfo {
 } DMASegmentInfo;
 
 typedef struct dmaAES_CRYPTO {
-	uint32_t unkn0;
+	uint32_t *unkn0;
 	uint32_t unkn1;
 	uint32_t *buffer;
 	uint32_t size;
@@ -32,7 +32,7 @@ typedef struct dmaAES_CRYPTO {
 	uint32_t unkn13;
 	uint32_t unkn14;
 	uint32_t unkn15;
-} dmaAES_CRYPTO;
+} __attribute__((packed)) dmaAES_CRYPTO;
 
 int dma_setup();
 signed int dma_init_channel(uint8_t direction, uint32_t channel, DMASegmentInfo* segmentsInfo,

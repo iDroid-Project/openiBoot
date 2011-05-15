@@ -46,6 +46,7 @@ static void cmd_aes(int argc, char** argv)
 	uint8_t* key = NULL;
 	uint8_t* iv = NULL;
 	uint8_t* data = NULL;
+	uint8_t* buff = NULL;
 
 	uint32_t keyType;
 	uint32_t keyLength;
@@ -59,16 +60,16 @@ static void cmd_aes(int argc, char** argv)
 
 	if(strcmp(argv[2], "gid") == 0)
 	{
-		keyType = 512;
+		keyType = 512 | (2 << 28);
 	}
 	else if(strcmp(argv[2], "uid") == 0)
 	{
-		keyType = 513;
+		keyType = 513 | (2 << 28);
 	}
 	else
 	{
-		hexToBytes(argv[6], &key, (int*)&keyLength);
-		switch(keyLength*(sizeof(uint32_t)))
+		hexToBytes(argv[2], &key, (int*)&keyLength);
+		switch(keyLength*8)
 		{
 			case 128:
 				keyType = 0 << 28;
@@ -81,37 +82,51 @@ static void cmd_aes(int argc, char** argv)
 				break;
 			default:
 				bufferPrintf("Usage: %s <enc/dec> <gid/uid/key> [data] [iv]\r\n", argv[0]);
-				return;
+				goto return_free;
 		}
 	}
 
 	hexToBytes(argv[3], &data, (int*)&dataLength);
-	uint8_t* outBuf = malloc(dataLength);
-	memset(outBuf, 0, dataLength);
+	buff = memalign(DMA_ALIGN, dataLength);
 
-	if(argc > 6)
+	if (!buff) {
+		bufferPrintf("out of memory.\r\n");
+		goto return_free;
+	}
+
+	memcpy(buff, data, dataLength);
+	free(data);
+	data = NULL;
+
+	if(argc > 4)
 	{
 		hexToBytes(argv[4], &iv, (int*)&ivLength);
 	}
 
 	if(strcmp(argv[1], "enc") == 0)
-	{
-		aes_crypto_cmd(1, data, outBuf, dataLength, keyType, key, iv);
-		bytesToHex(outBuf, dataLength);
-		bufferPrintf("\r\n");
-	}
+		aes_crypto_cmd(0x10, buff, buff, dataLength, keyType, key, iv);
 	else if(strcmp(argv[1], "dec") == 0)
-	{
-		aes_crypto_cmd(0, data, outBuf, dataLength, keyType, key, iv);
-		bytesToHex(outBuf, dataLength);
-		bufferPrintf("\r\n");
-	}
+		aes_crypto_cmd(0x11, buff, buff, dataLength, keyType, key, iv);
 	else
 	{
 		bufferPrintf("Usage: %s <enc/dec> <gid/uid/key> [data] [iv]\r\n", argv[0]);
+		goto return_free;
 	}
 
-	if(outBuf)
-		free(outBuf);
+	bytesToHex(buff, dataLength);
+	bufferPrintf("\r\n");
+
+return_free:
+	if (data)
+		free(data);
+
+	if (iv)
+		free(iv);
+
+	if (key)
+		free(key);
+
+	if (buff)
+		free(buff);
 }
 COMMAND("aes", "use the hardware crypto engine", cmd_aes);

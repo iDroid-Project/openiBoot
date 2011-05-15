@@ -472,16 +472,18 @@ void dmaIRQHandler(uint32_t token) {
 	}
 }
 
-dmaAES_CRYPTO aes_crypto[3]; // first one is not used. lol.
+static dmaAES_CRYPTO *aes_crypto = NULL; // first one is not used. lol.
 
 uint32_t aes_hw_crypto_operation(uint32_t _arg0, uint32_t _channel, uint32_t *_buffer, uint32_t _arg3, uint32_t _size, uint32_t _arg5, uint32_t _arg6, uint32_t _arg7) {
 	uint32_t unkn0;
 	uint32_t value = 0;
 	uint32_t channel_reg = _channel << 12;
+
 	SET_REG(DMA + channel_reg, 2);
 
-	aes_crypto[_channel].unkn1 = (_arg7 ? 0x30103 : 0x103);
 	aes_crypto[_channel].buffer = _buffer;
+	aes_crypto[_channel].unkn0 = &aes_crypto[_channel].unkn8;
+	aes_crypto[_channel].unkn1 = (_arg7 ? 0x30103 : 0x103);
 	aes_crypto[_channel].size = _size;
 	aes_crypto[_channel].unkn9 = 0;
 
@@ -500,26 +502,25 @@ uint32_t aes_hw_crypto_operation(uint32_t _arg0, uint32_t _channel, uint32_t *_b
 			default:
 				return -1;
 		}
-		if((_arg6 - 1) > 31)
-			return -1;
+
 		switch(_arg6)
 		{
-			case 2:
+			case 1:
 				value |= (0 << 4);
 				break;
-			case 3:
+			case 2:
 				value |= (1 << 4);
 				break;
-			case 5:
+			case 4:
 				value |= (2 << 4);
 				break;
-			case 9:
+			case 8:
 				value |= (3 << 4);
 				break;
-			case 17:
+			case 16:
 				value |= (4 << 4);
 				break;
-			case 33:
+			case 32:
 				value |= (5 << 4);
 				break;
 			default:
@@ -536,7 +537,7 @@ uint32_t aes_hw_crypto_operation(uint32_t _arg0, uint32_t _channel, uint32_t *_b
 	DataCacheOperation(1, (uint32_t)&aes_crypto[_channel], 0x20);
 	SET_REG(DMA + channel_reg + DMA_SIZE, _size);
 	SET_REG(DMA + channel_reg + 0x14, (uint32_t)&aes_crypto[_channel]);
-	SET_REG(DMA + channel_reg, unkn0 | (_arg7 << 8) | 0x1C0000);
+	SET_REG(DMA + channel_reg, (unkn0 | (_arg7 << 8) | 0x1C0000));
 	return 0;
 }
 
@@ -563,13 +564,14 @@ uint32_t aes_hw_crypto_cmd(uint32_t _encrypt, uint32_t *_inBuf, uint32_t *_outBu
 	if(_encrypt & 0xF0) {
 		if((_encrypt & 0xF0) != 0x10)
 			system_panic("aes_hw_crypto_cmd: bad arguments\r\n");
-		value |= 0x20000;
+		value |= (1 << 17);
 	}
 
 	if(_encrypt & 0xF) {
 		if((_encrypt & 0xF) != 1)
 			system_panic("aes_hw_crypto_cmd: bad arguments\r\n");
-		value |= 0x10000;
+	} else {
+		value |= (1 << 16);
 	}
 
 	if(_iv) {
@@ -587,14 +589,15 @@ uint32_t aes_hw_crypto_cmd(uint32_t _encrypt, uint32_t *_inBuf, uint32_t *_outBu
 	switch(GET_BITS(_type, 28, 4))
 	{
 		case 2:	// AES 256
-			value |= 0x80000;
+			value |= (2 << 18);
 			break;
 
 		case 1:	// AES 192
-			value |= 0x40000;
+			value |= (1 << 18);
 			break;
 
 		case 0:	// AES 128
+			value |= (0 << 18);
 			break;
 
 		default:// Fail
@@ -616,7 +619,6 @@ uint32_t aes_hw_crypto_cmd(uint32_t _encrypt, uint32_t *_inBuf, uint32_t *_outBu
 				SET_REG(DMA + DMA_AES + DMA_AES_KEY_2 + channel_reg, _key[2]);
 				SET_REG(DMA + DMA_AES + DMA_AES_KEY_1 + channel_reg, _key[1]);
 				SET_REG(DMA + DMA_AES + DMA_AES_KEY_0 + channel_reg, _key[0]);
-				value |= 0x100000;
 				break;
 			default:			// Fail
 				system_panic("aes_hw_crypto_cmd: bad arguments\r\n");
@@ -625,10 +627,8 @@ uint32_t aes_hw_crypto_cmd(uint32_t _encrypt, uint32_t *_inBuf, uint32_t *_outBu
 	} else {
 		if ((_type & 0xFFF) == 512) {
 			key_shift = 1;
-			value |= 0x200000;
 		} else if ((_type & 0xFFF) == 513) {
 			key_shift = 2;
-			value |= 0x400000;
 		} else {
 			key_shift = 0;
 		}
@@ -637,6 +637,7 @@ uint32_t aes_hw_crypto_cmd(uint32_t _encrypt, uint32_t *_inBuf, uint32_t *_outBu
 			return -1;
 	}
 
+	value |= (key_set << 20) | (key_shift << 21);
 	SET_REG(DMA + DMA_AES + channel_reg, value);
 
 	if(aes_hw_crypto_operation(0, 1, _inBuf, 0, _size, 0, 0, 1) || aes_hw_crypto_operation(0, 2, _outBuf, 0, _size, 0, 0, 0))
@@ -669,12 +670,23 @@ uint32_t aes_hw_crypto_cmd(uint32_t _encrypt, uint32_t *_inBuf, uint32_t *_outBu
 }
 
 uint32_t aes_crypto_cmd(uint32_t _encrypt, void *_inBuf, void *_outBuf, uint32_t _size, uint32_t _type, void *_key, void *_iv) {
-	if(_size & 0xF || (!(_type & 0xFFF) && (_key == NULL)) || (_encrypt & 0xF) > 1)
-		system_panic("aes_crypto_cmd: bad arguments\r\n");
-
-	if(aes_hw_crypto_cmd(_encrypt, (uint32_t*)_inBuf, (uint32_t*)_outBuf, _size, _type, (uint32_t*)_key, (uint32_t*)_iv))
+	if(_size & 0xF || (!(_type & 0xFFF) && (_key == NULL)) || (_encrypt & 0xF) > 1) {
+		bufferPrintf("aes_crypto_cmd: bad arguments\r\n");
 		return -1;
+	}
 
+	aes_crypto = memalign(DMA_ALIGN, sizeof(dmaAES_CRYPTO) * 3);
+	if (!aes_crypto) {
+		bufferPrintf("aes_crypto_cmd: out of memory\r\n");
+		return -1;
+	}
+
+	if(aes_hw_crypto_cmd(_encrypt, (uint32_t*)_inBuf, (uint32_t*)_outBuf, _size, _type, (uint32_t*)_key, (uint32_t*)_iv)) {
+		free(aes_crypto);
+		return -1;
+	}
+
+	free(aes_crypto);
 	return 0;
 }
 
@@ -697,11 +709,11 @@ static void cmd_cdma_aes(int argc, char** argv)
 
 	if(strcmp(argv[5], "gid") == 0)
 	{
-		keyType = 512;
+		keyType = 512 | (2 << 28);
 	}
 	else if(strcmp(argv[5], "uid") == 0)
 	{
-		keyType = 513;
+		keyType = 513 | (2 << 28);
 	}
 	else
 	{
@@ -719,26 +731,33 @@ static void cmd_cdma_aes(int argc, char** argv)
 				break;
 			default:
 				bufferPrintf("Usage: %s [enc/dec] [inBuf] [outBuf] [size] [gid/uid/key] [iv]\r\n", argv[0]);
-				return;
+				goto return_free;
 		}
 	}
 
-	if(argc > 5)
+	if(argc > 6)
 	{
 		hexToBytes(argv[6], &iv, (int*)&ivLength);
 	}
 
 	if(strcmp(argv[1], "enc") == 0)
 	{
-		aes_crypto_cmd(1, inBuf, outBuf, size, keyType, key, iv);
+		aes_crypto_cmd(0x10, inBuf, outBuf, size, keyType, key, iv);
 	}
 	else if(strcmp(argv[1], "dec") == 0)
 	{
-		aes_crypto_cmd(0, inBuf, outBuf, size, keyType, key, iv);
+		aes_crypto_cmd(0x11, inBuf, outBuf, size, keyType, key, iv);
 	}
 	else
 	{
 		bufferPrintf("Usage: %s [enc/dec] [inBuf] [outBuf] [size] [gid/uid/key] [iv]\r\n", argv[0]);
 	}
+
+return_free:
+	if (key)
+		free(key);
+
+	if (iv)
+		free(iv);
 }
 COMMAND("cdma_aes", "use hw crypto on a buffer", cmd_cdma_aes);
