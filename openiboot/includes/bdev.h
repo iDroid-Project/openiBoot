@@ -50,11 +50,34 @@ typedef struct _GPT {
 	uint32_t partitionArrayChecksum;
 } __attribute__ ((packed)) GPT;
 
+typedef struct _LwVMPartitionRecord {
+	uint64_t type[2];
+	uint64_t guid[2];
+	uint64_t begin;
+	uint64_t end;
+	uint8_t	freeSpace[8];
+	char	name[72];
+} __attribute__ ((packed)) LwVMPartitionRecord;
+
+typedef struct _LwVM {
+	uint64_t type[2];
+	uint64_t guid[2];
+	uint64_t mediaSize;
+	uint32_t numPartitions;
+	uint32_t crc32;
+	uint8_t unkn[464];
+	LwVMPartitionRecord partitions[12];
+	uint16_t chunks[1024]; // chunks[0] should be 0xF000
+} __attribute__ ((packed)) LwVM;
+
+static const char LwVMType[] = { 0x6a, 0x90, 0x88, 0xcf, 0x8a, 0xfd, 0x63, 0x0a, 0xe3, 0x51, 0xe2, 0x48, 0x87, 0xe0, 0xb9, 0x8b };
+
 typedef enum _partitioning_mode
 {
 	partitioning_unknown,
 	partitioning_mbr,
 	partitioning_gpt,
+	partitioning_lwvm,
 	partitioning_none,
 } partitioning_mode_t;
 
@@ -95,9 +118,11 @@ typedef struct _block_device
 	partitioning_mode_t part_mode;
 	MBR mbr;
 	GPT gpt;
+	LwVM lwvm;
 
 	MBRPartitionRecord *mbr_records;
 	GPTPartitionRecord *gpt_records;
+	LwVMPartitionRecord *lwvm_records;
 } block_device_t;
 
 typedef struct _block_device_handle_struct
@@ -108,6 +133,7 @@ typedef struct _block_device_handle_struct
 	{
 		MBRPartitionRecord *mbr_record;
 		GPTPartitionRecord *gpt_record;
+		LwVMPartitionRecord *lwvm_record;
 	};
 	
 } block_device_handle_struct_t, *block_device_handle_t;

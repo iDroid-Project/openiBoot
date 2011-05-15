@@ -4,9 +4,19 @@ Import('*')
 # iPad 1G
 #
 
+env.AddModules([
+#	"nor-spi",
+	])
+
 ipad_1g_src = [plat_a4_src,
 			env.Localize([
 			'#audiohw-null.c',
+#			'#sha1.c',
+#			'#images.c',
+#			'#syscfg.c',
+#			'#nvram.c',
+
+			'aes.c',
 			'h2fmi.c',
 			])]
 Export('ipad_1g_src')

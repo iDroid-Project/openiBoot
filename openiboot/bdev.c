@@ -83,6 +83,7 @@ error_t block_device_init(block_device_t *_bdev)
 {
 	memset(&_bdev->mbr, 0, sizeof(MBR));
 	memset(&_bdev->gpt, 0, sizeof(GPT));
+	memset(&_bdev->lwvm, 0, sizeof(LwVM));
 	
 	_bdev->list_ptr.next = NULL;
 	_bdev->list_ptr.prev = NULL;
@@ -90,6 +91,7 @@ error_t block_device_init(block_device_t *_bdev)
 	_bdev->part_mode = partitioning_unknown;
 	_bdev->mbr_records = _bdev->mbr.partitions;
 	_bdev->gpt_records = malloc(sizeof(GPTPartitionRecord)*128);
+	_bdev->lwvm_records = _bdev->lwvm.partitions;
 
 	return SUCCESS;
 }
@@ -108,6 +110,32 @@ error_t block_device_setup(block_device_t *_bdev)
 		ret = block_device_read_raw(_bdev, &_bdev->mbr, sizeof(MBR));
 		if(SUCCEEDED(ret))
 		{
+			if(!memcmp(LwVMType, ((LwVM*)&_bdev->mbr)->type, sizeof(LwVMType))) {
+				if(FAILED(block_device_seek_raw(_bdev, seek_begin, 0)) || FAILED(block_device_read_raw(_bdev, &_bdev->lwvm, sizeof(_bdev->lwvm)))) {
+					bufferPrintf("bdev: detected LwVM partition table but failed to read it.\r\n");
+					return EIO;
+				}
+				int i;
+				for(i = 0; i < _bdev->lwvm.numPartitions; i++)
+				{
+					LwVMPartitionRecord *record = &_bdev->lwvm.partitions[i];
+					char *string = malloc(sizeof(record->name)/2);
+					memset(string, 0, sizeof(string));
+					int j;
+					for (j = 0; record->name[j*2] != 0; j++) {
+						string[j] = record->name[j*2];
+					}
+					bufferPrintf("bdev: partition id: %d, name: %s, range: %u - %u\r\n", i, string, (uint32_t)record->begin, (uint32_t)record->end);
+					free(string);
+					if(i == 8)
+						break;
+				}
+				_bdev->part_mode = partitioning_lwvm;
+				block_device_finish(_bdev);
+				_bdev->setup_done = 1;
+				return SUCCESS;
+			}
+
 			int i;
 			for(i = 0; i < ARRAY_SIZE(_bdev->mbr.partitions); i++)
 			{
@@ -285,6 +313,9 @@ int block_device_partition_count(block_device_t *_bdev)
 	case partitioning_gpt:
 		return _bdev->gpt.numPartitions;
 
+	case partitioning_lwvm:
+		return _bdev->lwvm.numPartitions;
+
 	default:
 		return 0;
 	}
@@ -316,6 +347,10 @@ block_device_handle_t block_device_open(block_device_t *_bdev, int _idx)
 		ret->gpt_record = &_bdev->gpt_records[_idx];
 		return ret;
 
+	case partitioning_lwvm:
+		ret->lwvm_record = &_bdev->lwvm_records[_idx];
+		return ret;
+
 	default:
 		break;
 	}
@@ -338,9 +373,14 @@ int block_device_get_start(block_device_handle_t _handle)
 	{
 	case partitioning_mbr:
 		return _handle->mbr_record->beginLBA * block_size;
+		break;
 
 	case partitioning_gpt:
 		return _handle->gpt_record->beginLBA * block_size;
+		break;
+
+	case partitioning_lwvm:
+		return _handle->lwvm_record->begin + 1020 * block_size;
 		break;
 
 	default:
@@ -381,6 +421,10 @@ error_t block_device_seek(block_device_handle_t _handle, seek_mode_t _mode, int6
 				_amt += _handle->gpt_record->beginLBA * block_size;
 				break;
 
+			case partitioning_lwvm:
+				_amt += _handle->lwvm_record->begin + 1020 * block_size;
+				break;
+
 			default:
 				break;
 			}
@@ -399,6 +443,9 @@ error_t block_device_seek(block_device_handle_t _handle, seek_mode_t _mode, int6
 			case partitioning_gpt:
 				_amt += _handle->gpt_record->endLBA * block_size;
 				break;
+
+			case partitioning_lwvm:
+				_amt += _handle->lwvm_record->end * + 1020 * block_size;
 
 			default:
 				break;
