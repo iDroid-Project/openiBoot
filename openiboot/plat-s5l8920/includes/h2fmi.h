@@ -118,7 +118,7 @@ typedef struct _h2fmi_struct
 	h2fmi_failure_details_t failure_details; // 160
 	uint32_t field_170;
 	uint32_t field_180;
-	uint8_t field_182;
+	uint8_t field_182[32];
 	
 } h2fmi_struct_t;
 

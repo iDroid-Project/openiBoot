@@ -230,6 +230,7 @@ static h2fmi_struct_t *h2fmi_busses[] = {
 };
 
 #define H2FMI_BUS_COUNT (ARRAY_SIZE(h2fmi_busses))
+#define H2FMI_CE_PER_BUS (8)
 
 static h2fmi_geometry_t h2fmi_geometry;
 static nand_device_t h2fmi_device = {
@@ -1505,7 +1506,11 @@ static void h2fmi_init_virtual_physical_map()
 	memset(h2fmi_map, 0xFF, sizeof(h2fmi_map));
 
 	uint32_t count[H2FMI_BUS_COUNT];
-	memset(count, 0, sizeof(count));
+
+	uint32_t i;
+	for (i = 0; i < H2FMI_BUS_COUNT; i++) {
+		count[i] = H2FMI_CE_PER_BUS * i;
+	}
 
 	uint16_t total = 0;
 	uint32_t bus;
@@ -1524,7 +1529,7 @@ static void h2fmi_init_virtual_physical_map()
 				e->bus = bus;
 				e->chip = count[bus];
 
-				fmi->field_182 = bus;
+				fmi->field_182[chip] = (uint8_t)count[bus];
 				
 				chip++;
 			}
