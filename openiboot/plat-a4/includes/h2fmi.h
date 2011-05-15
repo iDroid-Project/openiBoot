@@ -144,7 +144,7 @@ typedef struct _h2fmi_struct
 	uint32_t fmi_state; // 48
 	uint32_t current_mode; // 7C
 	uint8_t field_1A0;
-	uint8_t field_1A2;
+	uint8_t field_1A2[32];
 
 	uint32_t interrupt;
 } h2fmi_struct_t;

@@ -219,15 +219,6 @@ static error_t vfl_vsvfl_read_single_page(vfl_device_t *_vfl, uint32_t dwVpn, ui
 
 	ret = virtual_page_number_to_physical(vfl, dwVpn, &pCE, &pPage);
 
-	// FIXME: Hack to get the h2fmi driver to read from the correct CE.
-	uint32_t oldCE = pCE;
-
-	pCE = (oldCE % (vfl->geometry.num_ce / 2)) * 2;
-	if (oldCE >= vfl->geometry.num_ce / 2)
-		pCE++;
-
-	//bufferPrintf("vpn %d CE %d page %d\r\n", dwVpn, pCE, pPage);
-
 	if(FAILED(ret)) {
 		bufferPrintf("vfl_vsvfl_read_single_page: virtual_page_number_to_physical returned an error (dwVpn %d)!\r\n", dwVpn);
 		return ret;
