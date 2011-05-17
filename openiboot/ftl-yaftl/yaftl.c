@@ -1622,7 +1622,7 @@ YAFTL_READ_RETURN:
 	return ret;
 }
 
-static error_t yaftl_read_mtd(mtd_t *_dev, void *_dest, uint32_t _off, int _amt)
+static error_t yaftl_read_mtd(mtd_t *_dev, void *_dest, uint64_t _off, int _amt)
 {
 	uint8_t* curLoc = (uint8_t*) _dest;
 	uint32_t block_size = yaftl_info.bytesPerPage;
@@ -1660,7 +1660,7 @@ static error_t ftl_write_mtd(mtd_t *_dev, void *_src, uint32_t _off, int _amt)
 }
 */
 
-static int yaftl_block_size(mtd_t *_dev)
+static int64_t yaftl_block_size(mtd_t *_dev)
 {
 	return yaftl_info.bytesPerPage;
 }

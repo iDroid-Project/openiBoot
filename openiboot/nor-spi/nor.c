@@ -254,7 +254,7 @@ static error_t nor_erase_sector(nor_device_t *_dev, uint32_t _offset)
 	return SUCCESS;
 }
 
-static error_t nor_read(mtd_t *_dev, void *_dest, uint32_t _off, int _amt)
+static error_t nor_read(mtd_t *_dev, void *_dest, uint64_t _off, int _amt)
 {
 	uint8_t command[4];
 	uint8_t* data = _dest;
@@ -285,7 +285,7 @@ static error_t nor_read(mtd_t *_dev, void *_dest, uint32_t _off, int _amt)
 	return SUCCESS_VALUE(_amt);
 }
 
-static error_t nor_write(mtd_t *_dev, void *_src, uint32_t _off, int _amt)
+static error_t nor_write(mtd_t *_dev, void *_src, uint64_t _off, int _amt)
 {
 	nor_device_t *dev = nor_device_get(_dev);
 	int startSector = _off / dev->block_size;
@@ -320,12 +320,12 @@ static error_t nor_write(mtd_t *_dev, void *_src, uint32_t _off, int _amt)
 	return ret;
 }
 
-static int nor_size(mtd_t *_dev)
+static int64_t nor_size(mtd_t *_dev)
 {
 	return 16 * 1024 * 1024;
 } 
 
-static int nor_block_size(mtd_t *_dev)
+static int64_t nor_block_size(mtd_t *_dev)
 {
 	nor_device_t *dev = nor_device_get(_dev);
 	return dev->block_size;

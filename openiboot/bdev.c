@@ -115,13 +115,26 @@ error_t block_device_setup(block_device_t *_bdev)
 					bufferPrintf("bdev: detected LwVM partition table but failed to read it.\r\n");
 					return EIO;
 				}
+				LwVM_rangeShiftValue = 32 - __builtin_clz((_bdev->lwvm.mediaSize-1) >> 10);
+				LwVM_rangeByteCount = 1 << LwVM_rangeShiftValue;
+				LwVM_numValidChunks = _bdev->lwvm.mediaSize >> LwVM_rangeShiftValue;
+				LwVM_chunks = malloc(_bdev->lwvm.numPartitions*sizeof(uint32_t));
+				memset(LwVM_chunks, 0, _bdev->lwvm.numPartitions*sizeof(uint32_t));
 				int i;
 				for(i = 0; i < _bdev->lwvm.numPartitions; i++)
 				{
+					LwVM_chunks[i] = malloc(0x800);
+					memset(LwVM_chunks[i], 0xFF, 0x800);
+					int j;
+					for (j = 1; j < 0x400; j++) {
+						uint16_t chunk_unk = _bdev->lwvm.chunks[j];
+						if(chunk_unk >> 12 == i) {
+							LwVM_chunks[i][chunk_unk & 0x3ff] = j;
+						}
+					}
 					LwVMPartitionRecord *record = &_bdev->lwvm.partitions[i];
 					char *string = malloc(sizeof(record->name)/2);
 					memset(string, 0, sizeof(string));
-					int j;
 					for (j = 0; record->name[j*2] != 0; j++) {
 						string[j] = record->name[j*2];
 					}
@@ -332,6 +345,7 @@ block_device_handle_t block_device_open(block_device_t *_bdev, int _idx)
 	block_device_handle_t ret = malloc(sizeof(block_device_handle_struct_t));
 	memset(ret, 0, sizeof(block_device_handle_struct_t));
 
+	ret->pIdx = _idx;
 	ret->device = _bdev;
 
 	switch(_bdev->part_mode)
@@ -422,7 +436,7 @@ error_t block_device_seek(block_device_handle_t _handle, seek_mode_t _mode, int6
 				break;
 
 			case partitioning_lwvm:
-				_amt += _handle->lwvm_record->begin + 1020 * block_size;
+				_amt = ((uint64_t)LwVM_chunks[_handle->pIdx][_amt >> LwVM_rangeShiftValue] << LwVM_rangeShiftValue) + (_amt & (LwVM_rangeByteCount - 1));
 				break;
 
 			default:
@@ -445,7 +459,9 @@ error_t block_device_seek(block_device_handle_t _handle, seek_mode_t _mode, int6
 				break;
 
 			case partitioning_lwvm:
-				_amt += _handle->lwvm_record->end * + 1020 * block_size;
+				_amt += _handle->lwvm_record->end;
+				_amt = ((uint64_t)LwVM_chunks[_handle->pIdx][_amt >> LwVM_rangeShiftValue] << LwVM_rangeShiftValue) + (_amt & (LwVM_rangeByteCount - 1));
+				break;
 
 			default:
 				break;
