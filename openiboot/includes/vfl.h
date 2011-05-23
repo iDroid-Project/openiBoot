@@ -58,6 +58,8 @@ typedef error_t (*vfl_read_single_page_t)(struct _vfl_device *, uint32_t _page, 
 typedef error_t (*vfl_write_single_page_t)(struct _vfl_device *, uint32_t _page, uint8_t *_buffer,
 		uint8_t *_sparebuffer);
 
+typedef error_t (*vfl_erase_single_block_t)(struct _vfl_device *, uint32_t _block, int _replace_bad_block);
+
 typedef uint16_t *(*vfl_get_ftl_ctrl_block_t)(struct _vfl_device *);
 
 typedef error_t (*vfl_get_info_t)(struct _vfl_device *, vfl_info_t _item, void * _result, size_t _sz);
@@ -84,6 +86,7 @@ typedef struct _vfl_device
 
 	vfl_read_single_page_t read_single_page; /**< Used by vfl_read_single_page(). */
 	vfl_write_single_page_t write_single_page; /**< Used by vfl_write_single_page(). */
+	vfl_erase_single_block_t erase_single_block; /**< Used by vfl_erase_single_block(). */
 
 	vfl_get_ftl_ctrl_block_t get_ftl_ctrl_block; /**< Used by vfl_get_ftl_ctrl_block(). */
 
@@ -193,6 +196,21 @@ error_t vfl_read_single_page(vfl_device_t *_vfl, uint32_t _page, uint8_t* _buffe
  * @ingroup VFL
  */
 error_t vfl_write_single_page(vfl_device_t *_vfl, uint32_t _page, uint8_t* _buffer, uint8_t* _spare);
+
+/**
+ * Erase a single block in the VFL.
+ *
+ * Given a virtual block number, the VFL device erases the content of this block.
+ * Erases must be done in a block-level; a single page erase is not possible.
+ *
+ * @param _vfl the VFL device to erase from.
+ * @param _block the block number to erase.
+ * @param _replace_bad_block if true, the VFL device will replace a bad block if it detects one.
+ * @return Whether an error occurred.
+ *
+ * @ingroup VFL
+ */
+error_t vfl_erase_single_block(vfl_device_t *_vfl, uint32_t _block, int _replace_bad_block);
 
 /**
  * Get the FTL control blocks buffer.

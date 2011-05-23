@@ -69,6 +69,7 @@ typedef struct _vfl_vsvfl_device
 
 	uint32_t *pageBuffer;
 	uint16_t *chipBuffer;
+	uint16_t *blockBuffer;
 
 	vsvfl_virtual_to_physical_t virtual_to_physical;
 	vsvfl_physical_to_virtual_t physical_to_virtual;
