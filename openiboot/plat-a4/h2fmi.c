@@ -2607,6 +2607,11 @@ static error_t h2fmi_device_write_single_page(nand_device_t *_dev, uint32_t _chi
 			_buffer, _spareBuffer, 0);
 }
 
+static error_t h2fmi_device_erase_single_block(nand_device_t *_dev, uint32_t _chip, uint32_t _block)
+{
+	return h2fmi_erase_single_block(_chip, _block);
+}
+
 static error_t h2fmi_device_enable_encryption(nand_device_t *_dev, int _enabled)
 {
 	h2fmi_aes_enabled = _enabled;
@@ -2769,6 +2774,7 @@ static void h2fmi_init_device()
 	nand_device_init(&h2fmi_device);
 	h2fmi_device.read_single_page = h2fmi_device_read_single_page;
 	h2fmi_device.write_single_page = h2fmi_device_write_single_page;
+	h2fmi_device.erase_single_block = h2fmi_device_erase_single_block;
 	h2fmi_device.enable_encryption = h2fmi_device_enable_encryption;
 	h2fmi_device.enable_data_whitening = h2fmi_device_enable_data_whitening;
 	h2fmi_device.set_ftl_region = h2fmi_device_set_ftl_region;
@@ -3119,6 +3125,24 @@ static void cmd_vfl_read(int argc, char** argv)
 	bufferPrintf("vfl: Command completed with result 0x%08x.\r\n", ret);
 }
 COMMAND("vfl_read", "VFL read single page", cmd_vfl_read);
+
+void cmd_vfl_erase(int argc, char** argv)
+{
+	bufferPrintf("Disabled for now.\r\n");
+	return;
+
+	if (argc < 3) {
+		bufferPrintf("Usage: %s [block] [replace if bad]\r\n", argv[0]);
+		return;
+	}
+
+	uint32_t block = parseNumber(argv[1]);
+	uint32_t replace = parseNumber(argv[2]);
+
+	uint32_t ret = vfl_erase_single_block(h2fmi_vfl_device, block, replace);
+
+	bufferPrintf("vfl: Command completed with result 0x%08x.\r\n", ret);
+}
 
 static void cmd_ftl_read(int argc, char** argv)
 {

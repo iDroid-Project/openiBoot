@@ -48,6 +48,14 @@ error_t nand_device_write_single_page(nand_device_t *_dev, uint32_t _chip, uint3
 	return _dev->write_single_page(_dev, _chip, _block, _page, _buffer, _spareBuffer);
 }
 
+error_t nand_device_erase_single_block(nand_device_t *_dev, uint32_t _chip, uint32_t _block)
+{
+	if(!_dev->erase_single_block)
+		return ENOENT;
+
+	return _dev->erase_single_block(_dev, _chip, _block);
+}
+
 error_t nand_device_read_special_page(nand_device_t *_dev, uint32_t _ce, char _page[16], uint8_t *_buffer, size_t _amt)
 {
 	uint16_t bankAddressSpace;

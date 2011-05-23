@@ -52,6 +52,14 @@ error_t vfl_read_single_page(vfl_device_t *_vfl, uint32_t _page, uint8_t* buffer
 	return _vfl->read_single_page(_vfl, _page, buffer, spare, empty_ok, refresh_page, disable_aes);
 }
 
+error_t vfl_erase_single_block(vfl_device_t *_vfl, uint32_t _block, int _replace_bad_block)
+{
+	if(!_vfl->erase_single_block)
+		return ENOENT;
+
+	return _vfl->erase_single_block(_vfl, _block, _replace_bad_block);
+}
+
 uint16_t *vfl_get_ftl_ctrl_block(vfl_device_t *_vfl)
 {
 	if(!_vfl->get_ftl_ctrl_block) {

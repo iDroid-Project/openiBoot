@@ -10,7 +10,7 @@ typedef struct _vfl_vsvfl_context
 	uint32_t usn_dec; // 0x00C
 	uint16_t active_context_block; // 0x010
 	uint16_t next_context_page; // 0x012
-	uint8_t unk2[2]; // 0x014
+	uint16_t bad_block_count; // 0x014
 	uint16_t field_16; // 0x016
 	uint16_t field_18; // 0x018
 	uint16_t num_reserved_blocks; // 0x01A
@@ -22,7 +22,8 @@ typedef struct _vfl_vsvfl_context
 	uint16_t usable_blocks_per_bank; // 0x696
 	uint16_t reserved_block_pool_start; // 0x698
 	uint16_t control_block[3]; // 0x69A
-	uint8_t field_6A0[42]; // 0x6A0
+	uint16_t scrub_list_length; // 0x6A0
+	uint16_t scrub_list[20]; // 0x6A2
 	uint32_t field_6CA[4]; // 0x6CA
 	uint32_t vendor_type; // 0x6DA
 	uint8_t field_6DE[204]; // 0x6DE
@@ -248,6 +249,83 @@ static error_t vfl_vsvfl_read_single_page(vfl_device_t *_vfl, uint32_t dwVpn, ui
 	return ret;
 }
 
+static int is_block_in_scrub_list(vfl_vsvfl_device_t *_vfl, uint32_t _ce, uint32_t _block) {
+	uint32_t i;
+
+	for (i = 0; i < _vfl->contexts[_ce].scrub_list_length; i++) {
+		if (_vfl->contexts[_ce].scrub_list[i] == _block)
+			return 1;
+	}
+
+	return 0;
+}
+
+static error_t vfl_vsvfl_erase_single_block(vfl_device_t *_vfl, uint32_t _vbn, int _replaceBadBlock) {
+	vfl_vsvfl_device_t *vfl = CONTAINER_OF(vfl_vsvfl_device_t, vfl, _vfl);
+	uint32_t bank;
+
+	// In order to erase a single virtual block, we have to erase the matching
+	// blocks across all banks.
+	for (bank = 0; bank < vfl->geometry.banks_total; bank++) {
+		uint32_t pBlock, pCE, blockRemapped;
+
+		// Find the physical block before bad-block remapping.
+		virtual_block_to_physical_block(vfl, bank, _vbn, &pBlock);
+		pCE = bank % vfl->geometry.num_ce;
+		vfl->blockBuffer[bank] = pBlock;
+
+		if (is_block_in_scrub_list(vfl, pCE, pBlock)) {
+			// TODO: this.
+			system_panic("vsvfl: scrub list support not yet!\r\n");
+		}
+
+		// Remap the block and calculate its physical number (considering bank address space).
+		blockRemapped = remap_block(vfl, pCE, pBlock, 0);
+		vfl->blockBuffer[bank] = blockRemapped % vfl->geometry.blocks_per_bank
+			+ (blockRemapped / vfl->geometry.blocks_per_bank) * vfl->geometry.bank_address_space;
+	}
+
+	// TODO: H2FMI erase multiple blocks. Currently we erase the blocks one by one.
+	// Actually, the block buffer is used for erase multiple blocks, so we won't use it here.
+	uint32_t status = EINVAL;
+
+	for (bank = 0; bank < vfl->geometry.banks_total; bank++) {
+		uint32_t pBlock, pCE, tries;
+
+		virtual_block_to_physical_block(vfl, bank, _vbn, &pBlock);
+		pCE = bank % vfl->geometry.num_ce;
+
+		// Try to erase each block at most 3 times.
+		for (tries = 0; tries < 3; tries++) {
+			uint32_t blockRemapped, bankStart, blockOffset;
+
+			blockRemapped = remap_block(vfl, pCE, pBlock, 0);
+			bankStart = (blockRemapped / vfl->geometry.blocks_per_bank) * vfl->geometry.bank_address_space;
+			blockOffset = blockRemapped % vfl->geometry.blocks_per_bank;
+
+			status = nand_device_erase_single_block(vfl->device, pCE, bankStart + blockOffset);
+			if (status == 0)
+				break;
+
+			// TODO: add block map support.
+			//mark_bad_block(vfl, pCE, pBlock, status);
+			bufferPrintf("vfl: failed erasing physical block %d on bank %d. status: 0x%08x\r\n",
+				blockRemapped, bank, status);
+
+			if (!_replaceBadBlock)
+				return EINVAL;
+
+			// TODO: complete bad block replacement.
+			system_panic("vfl: found a bad block. we don't treat those for now. sorry!\r\n");
+		}
+	}
+
+	if (status)
+		system_panic("vfl: failed to erase virtual block %d!\r\n", _vbn);
+
+	return 0;
+}
+
 static vfl_vsvfl_context_t* get_most_updated_context(vfl_vsvfl_device_t *vfl) {
 	int ce = 0;
 	int max = 0;
@@ -426,6 +504,7 @@ static error_t vfl_vsvfl_open(vfl_device_t *_vfl, nand_device_t *_nand)
 
 	vfl->pageBuffer = (uint32_t*) malloc(vfl->geometry.pages_per_block * sizeof(uint32_t));
 	vfl->chipBuffer = (uint16_t*) malloc(vfl->geometry.pages_per_block * sizeof(uint16_t));
+	vfl->blockBuffer = (uint16_t*) malloc(vfl->geometry.banks_total * sizeof(uint16_t));
 
 	uint32_t ce = 0;
 	for(ce = 0; ce < vfl->geometry.num_ce; ce++) {
@@ -702,6 +781,8 @@ error_t vfl_vsvfl_device_init(vfl_vsvfl_device_t *_vfl)
 
 	_vfl->vfl.read_single_page = vfl_vsvfl_read_single_page;
 
+	_vfl->vfl.erase_single_block = vfl_vsvfl_erase_single_block;
+
 	_vfl->vfl.get_ftl_ctrl_block = VFL_get_FTLCtrlBlock;
 
 	_vfl->vfl.get_info = vfl_vsvfl_get_info;
@@ -734,6 +815,9 @@ void vfl_vsvfl_device_cleanup(vfl_vsvfl_device_t *_vfl)
 
 	if(_vfl->chipBuffer)
 		free(_vfl->chipBuffer);
+
+	if(_vfl->blockBuffer)
+		free(_vfl->blockBuffer);
 
 	memset(_vfl, 0, sizeof(*_vfl));
 }
