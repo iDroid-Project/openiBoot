@@ -25,3 +25,5 @@ clean:
 	-rm oibc
 	-rm loadibec
 
+install:
+	install -m +x oibc /usr/bin/
