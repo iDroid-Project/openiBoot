@@ -133,10 +133,10 @@ error_t block_device_setup(block_device_t *_bdev)
 						}
 					}
 					LwVMPartitionRecord *record = &_bdev->lwvm.partitions[i];
-					char *string = malloc(sizeof(record->name)/2);
+					char *string = malloc(sizeof(record->partitionName)/2);
 					memset(string, 0, sizeof(string));
-					for (j = 0; record->name[j*2] != 0; j++) {
-						string[j] = record->name[j*2];
+					for (j = 0; record->partitionName[j*2] != 0; j++) {
+						string[j] = record->partitionName[j*2];
 					}
 					bufferPrintf("bdev: partition id: %d, name: %s, range: %u - %u\r\n", i, string, (uint32_t)record->begin, (uint32_t)record->end);
 					free(string);
