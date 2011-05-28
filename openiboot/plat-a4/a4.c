@@ -19,6 +19,7 @@
 #include "images.h"
 #include "syscfg.h"
 #include "nvram.h"
+#include "aes.h"
 #include "accel.h"
 #include "util.h"
 #include "commands.h"
@@ -59,6 +60,8 @@ void platform_init()
 	spi_setup();
 
 	LeaveCriticalSection();
+
+	aes_setup();
 
 	if(!displaypipe_init()) {
 		framebuffer_setup();
