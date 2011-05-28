@@ -172,6 +172,9 @@ static int rawFileRead(io_func* io,off_t location, size_t size, void *buffer) {
 	volume = rawFile->volume;
 	blockSize = volume->volumeHeader->blockSize;
 
+	if(!rawFile->extents)
+		return FALSE;
+
 	extent = rawFile->extents;
 	fileLoc = 0;
 
@@ -369,6 +372,7 @@ int writeExtents(RawFile* rawFile) {
 	if(extent != NULL) {
 		extentKey.keyLength = sizeof(HFSPlusExtentKey) - sizeof(extentKey.keyLength);
 		extentKey.forkType = 0;
+		extentKey.pad = 0;
 		extentKey.fileID = rawFile->id;
 
 		currentExtent = 0;
