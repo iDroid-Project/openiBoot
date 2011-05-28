@@ -5,7 +5,9 @@
 #include "vfl.h"
 #include "ftl.h"
 #include "mtd.h"
+#include "bdev.h"
 #include "util.h"
+#include "h2fmi.h"
 
 static uint32_t yaftl_inited = 0;
 static vfl_device_t* vfl = 0;
@@ -1478,6 +1480,8 @@ static int YAFTL_verifyMetaData(uint32_t lpnStart, SpareData* metaDatas, uint32_
 
 static int YAFTL_Read(uint32_t lpn, uint32_t nPages, uint8_t* pBuf)
 {
+	uint32_t emf = h2fmi_get_emf();
+	h2fmi_set_emf(0, 0);
 	int ret = 0;
 	uint32_t tocPageNum, tocEntry, tocCacheNum, freeTOCCacheNum;
 	uint32_t testMode, pagesRead = 0, numPages = 0;
@@ -1508,9 +1512,11 @@ static int YAFTL_Read(uint32_t lpn, uint32_t nPages, uint8_t* pBuf)
 			if (testMode)
 				return 0;
 
+			h2fmi_set_emf(emf, 0);
 			if (!YAFTL_readMultiPages(yaftl_info.unknBuffer3_ftl, numPages, data, 0, 0, 1)
 				|| !YAFTL_verifyMetaData(lpn + (data - pBuf) / ftlGeometry.bytesPerPage, yaftl_info.buffer20, numPages))
 				ret = EIO;
+			h2fmi_set_emf(0, 0);
 
 			numPages = 0;
 			readBuf += ftlGeometry.bytesPerPage;
@@ -1564,11 +1570,13 @@ static int YAFTL_Read(uint32_t lpn, uint32_t nPages, uint8_t* pBuf)
 				if (testMode)
 					return 0;
 
+				h2fmi_set_emf(emf, 0);
 				if (!YAFTL_readMultiPages(yaftl_info.unknBuffer3_ftl, numPages, data, 0, 0, 1)
 					|| !YAFTL_verifyMetaData(lpn + (data - pBuf) / ftlGeometry.bytesPerPage,
 									yaftl_info.buffer20,
 									numPages))
 					ret = EIO;
+				h2fmi_set_emf(0, 0);
 
 				numPages = 0;
 				data = NULL;
@@ -1583,11 +1591,13 @@ static int YAFTL_Read(uint32_t lpn, uint32_t nPages, uint8_t* pBuf)
 					if (testMode)
 						return 0;
 
+					h2fmi_set_emf(emf, 0);
 					if (!YAFTL_readMultiPages(yaftl_info.unknBuffer3_ftl, numPages, data, 0, 0, 1)
 						|| !YAFTL_verifyMetaData(lpn + (data - pBuf) / ftlGeometry.bytesPerPage,
 										yaftl_info.buffer20,
 										numPages))
 						ret = EIO;
+					h2fmi_set_emf(0, 0);
 
 					numPages = 0;
 					data = NULL;
@@ -1611,11 +1621,13 @@ static int YAFTL_Read(uint32_t lpn, uint32_t nPages, uint8_t* pBuf)
 	if (testMode)
 		return 0;
 
+	h2fmi_set_emf(emf, 0);
 	if (!YAFTL_readMultiPages(yaftl_info.unknBuffer3_ftl, numPages, data, 0, 0, 1)
 		|| !YAFTL_verifyMetaData(lpn + (data - pBuf) / ftlGeometry.bytesPerPage,
 						yaftl_info.buffer20,
 						numPages))
 		ret = EIO;
+	h2fmi_set_emf(0, 0);
 
 YAFTL_READ_RETURN:
 	nand_device_set_ftl_region(vfl->get_device(vfl), 0, 0, 0, 0);
@@ -1624,6 +1636,7 @@ YAFTL_READ_RETURN:
 
 static error_t yaftl_read_mtd(mtd_t *_dev, void *_dest, uint64_t _off, int _amt)
 {
+	uint32_t emf = h2fmi_get_emf();
 	uint8_t* curLoc = (uint8_t*) _dest;
 	uint32_t block_size = yaftl_info.bytesPerPage;
 	int curPage = _off / block_size;
@@ -1631,8 +1644,17 @@ static error_t yaftl_read_mtd(mtd_t *_dev, void *_dest, uint64_t _off, int _amt)
 	int pageOffset = _off - (curPage * block_size);
 	uint8_t* tBuffer = (uint8_t*) malloc(block_size);
 	while(toRead > 0) {
+		if((&_dev->bdev
+				&& (_dev->bdev.part_mode == partitioning_gpt || _dev->bdev.part_mode == partitioning_lwvm)
+					&& _dev->bdev.handle->pIdx == 1)
+				|| emf) {
+			h2fmi_set_emf(1, curPage);
+		}
+		else
+			h2fmi_set_emf(0, 0);
 		uint32_t ret = YAFTL_Read(curPage, 1, tBuffer);
 		if(FAILED(ret)) {
+			h2fmi_set_emf(0, 0);
 			free(tBuffer);
 			return FALSE;
 		}
@@ -1645,6 +1667,7 @@ static error_t yaftl_read_mtd(mtd_t *_dev, void *_dest, uint64_t _off, int _amt)
 		curPage++;
 	}
 
+	h2fmi_set_emf(0, 0);
 	free(tBuffer);
 	return TRUE;
 }

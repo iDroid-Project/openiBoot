@@ -2045,6 +2045,44 @@ static uint32_t h2fmi_aes_key_2[] = {
 	0xA579CCD3,
 };
 
+uint32_t h2fmi_emf = 0;
+uint32_t h2fmi_emf_iv_input = 0;
+void h2fmi_set_emf(uint32_t enable, uint32_t iv_input) {
+	h2fmi_emf = enable;
+	if(iv_input)
+		h2fmi_emf_iv_input = iv_input;
+}
+uint32_t h2fmi_get_emf() {
+	return h2fmi_emf;
+}
+
+static void h2fmi_aes_handler_emf(uint32_t _param, uint32_t _segment, uint32_t* _iv)
+{
+	uint32_t val = h2fmi_emf_iv_input;
+	uint32_t i;
+	for(i = 0; i < 4; i++)
+	{
+		if(val & 1)
+			val = (val >> 1) ^ 0x80000061;
+		else
+			val = (val >> 1);
+
+		_iv[i] = val;
+	}
+}
+
+// Please insert key here. :]
+static uint32_t h2fmi_emf_key[] = {
+	0x00000000,
+	0x00000000,
+	0x00000000,
+	0x00000000,
+	0x00000000,
+	0x00000000,
+	0x00000000,
+	0x00000000,
+};
+
 uint32_t h2fmi_aes_enabled = 1;
 
 void h2fmi_set_encryption(uint32_t _arg) {
@@ -2065,6 +2103,12 @@ static void h2fmi_setup_aes(h2fmi_struct_t *_fmi, uint32_t _enabled, uint32_t _e
 			_fmi->aes_struct.key = h2fmi_aes_key_1;
 			_fmi->aes_struct.inverse = !_encrypt;
 			_fmi->aes_struct.type = 0; // AES-128
+			if(h2fmi_emf) {
+				_fmi->aes_struct.key = h2fmi_emf_key;
+				_fmi->aes_struct.ivGenerator = h2fmi_aes_handler_emf;
+				_fmi->aes_struct.type = 2 << 28; // AES-256
+//				bufferPrintf("Using EMF\r\n");
+			}
 		}
 		else
 		{
@@ -3181,3 +3225,16 @@ static void cmd_ftl_read(int argc, char** argv)
 	bufferPrintf("ftl: Command completed with result 0x%08x.\r\n", ret);
 }
 COMMAND("ftl_read", "FTL read single page", cmd_ftl_read);
+
+static void cmd_emf_enable(int argc, char** argv)
+{
+	if(argc < 2)
+	{
+		bufferPrintf("Usage: %s [enable]", argv[0]);
+		return;
+	}
+
+	h2fmi_set_emf(parseNumber(argv[1]), 0);
+	bufferPrintf("h2fmi: set emf setting\r\n");
+}
+COMMAND("emf_enable", "EMF enable", cmd_emf_enable);

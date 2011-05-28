@@ -121,6 +121,8 @@ typedef struct _block_device
 	int setup_done;
 	LinkedList list_ptr;
 
+	struct _block_device_handle_struct *handle;
+
 	partitioning_mode_t part_mode;
 	MBR mbr;
 	GPT gpt;

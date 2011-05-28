@@ -347,6 +347,7 @@ block_device_handle_t block_device_open(block_device_t *_bdev, int _idx)
 
 	ret->pIdx = _idx;
 	ret->device = _bdev;
+	_bdev->handle = ret;
 
 	switch(_bdev->part_mode)
 	{
@@ -376,6 +377,7 @@ block_device_handle_t block_device_open(block_device_t *_bdev, int _idx)
 
 void block_device_close(block_device_handle_t _handle)
 {
+	_handle->device->handle = NULL;
 	block_device_finish(_handle->device);
 	free(_handle);
 }
