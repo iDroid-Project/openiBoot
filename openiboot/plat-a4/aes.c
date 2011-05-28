@@ -9,8 +9,13 @@
 
 static const uint8_t Gen835[] = {0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01};
 static const uint8_t Gen89B[] = {0x18, 0x3E, 0x99, 0x67, 0x6B, 0xB0, 0x3C, 0x54, 0x6F, 0xA4, 0x68, 0xF5, 0x1C, 0x0C, 0xBD, 0x49};
+static const uint8_t Gen836[] = {0x00, 0xE5, 0xA0, 0xE6, 0x52, 0x6F, 0xAE, 0x66, 0xC5, 0xC1, 0xC6, 0xD4, 0xF1, 0x6D, 0x61, 0x80};
+static const uint8_t Gen838[] = {0x8C, 0x83, 0x18, 0xA2, 0x7D, 0x7F, 0x03, 0x07, 0x17, 0xD2, 0xB8, 0xFC, 0x55, 0x14, 0xF8, 0xE1};
+
 static uint8_t Key835[16];
 static uint8_t Key89B[16];
+static uint8_t Key836[16];
+static uint8_t Key838[16];
 
 void doAES(int enc, void* data, int size, AESKeyType keyType, const void* key, const void* iv);
 
@@ -26,6 +31,12 @@ int aes_setup() {
 /*	bufferPrintf("key89B: ");
 	bytesToHex(Key89B, sizeof(Key89B));
 	bufferPrintf("\r\n");*/
+
+	memcpy(Key836, Gen836, 16);
+	aes_encrypt(Key836, 16, AESUID, NULL, NULL);
+
+	memcpy(Key838, Gen838, 16);
+	aes_encrypt(Key838, 16, AESUID, NULL, NULL);
 
 	return 0;
 }
@@ -56,6 +67,22 @@ void aes_89B_encrypt(void* data, int size, const void* iv)
 void aes_89B_decrypt(void* data, int size, const void* iv)
 {
 	aes_decrypt(data, size, AESCustom, Key89B, iv);
+}
+
+void aes_836_encrypt(void* data, int size, const void* iv) {
+	aes_encrypt(data, size, AESCustom, Key836, iv);
+}
+
+void aes_836_decrypt(void* data, int size, const void* iv) {
+	aes_decrypt(data, size, AESCustom, Key836, iv);
+}
+
+void aes_838_encrypt(void* data, int size, const void* iv) {
+	aes_encrypt(data, size, AESCustom, Key838, iv);
+}
+
+void aes_838_decrypt(void* data, int size, const void* iv) {
+	aes_decrypt(data, size, AESCustom, Key838, iv);
 }
 
 void aes_encrypt(void* data, int size, AESKeyType keyType, const void* key, const void* iv)
