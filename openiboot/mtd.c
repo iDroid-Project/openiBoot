@@ -255,7 +255,7 @@ void cmd_mtd_read(int argc, char **argv)
 {
 	if(argc != 5)
 	{
-		bufferPrintf("Usage: %s [device] [destination] [offset] [size].\n");
+		bufferPrintf("Usage: %s [device] [destination] [offset] [size].\n", argv[0]);
 		return;
 	}
 	
@@ -284,7 +284,7 @@ void cmd_mtd_write(int argc, char **argv)
 {
 	if(argc != 5)
 	{
-		bufferPrintf("Usage: %s [device] [source] [offset] [size].\n");
+		bufferPrintf("Usage: %s [device] [source] [offset] [size].\n", argv[0]);
 		return;
 	}
 	
