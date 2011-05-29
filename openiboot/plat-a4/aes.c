@@ -17,26 +17,20 @@ static uint8_t Key89B[16];
 static uint8_t Key836[16];
 static uint8_t Key838[16];
 
-void doAES(int enc, void* data, int size, AESKeyType keyType, const void* key, const void* iv);
+void doAES(int enc, void* data, int size, AESKeyType keyType, const void* key, AESKeyLen keyLen, const void* iv);
 
 int aes_setup() {
 	memcpy(Key835, Gen835, 16);
 	aes_encrypt(Key835, 16, AESUID, NULL, NULL);
-/*	bufferPrintf("key835: ");
-	bytesToHex(Key835, sizeof(Key89B));
-	bufferPrintf("\r\n");*/
 
 	memcpy(Key89B, Gen89B, 16);
 	aes_encrypt(Key89B, 16, AESUID, NULL, NULL);
-/*	bufferPrintf("key89B: ");
-	bytesToHex(Key89B, sizeof(Key89B));
-	bufferPrintf("\r\n");*/
 
 	memcpy(Key836, Gen836, 16);
-	aes_encrypt(Key836, 16, AESUID, NULL, NULL);
+	aes_encrypt(Key836, 16, AESUID, NULL, 0, NULL);
 
 	memcpy(Key838, Gen838, 16);
-	aes_encrypt(Key838, 16, AESUID, NULL, NULL);
+	aes_encrypt(Key838, 16, AESUID, NULL, 0, NULL);
 
 	return 0;
 }
@@ -51,66 +45,75 @@ void aes_img2verify_decrypt(void* data, int size, const void* iv)
 
 void aes_835_encrypt(void* data, int size, const void* iv)
 {
-	aes_encrypt(data, size, AESCustom, Key835, iv);
+	aes_encrypt(data, size, AESCustom, Key835, AES128, iv);
 }
 
 void aes_835_decrypt(void* data, int size, const void* iv)
 {
-	aes_encrypt(data, size, AESCustom, Key835, iv);
+	aes_encrypt(data, size, AESCustom, Key835, AES128, iv);
+}
+
+void aes_835_unwrap_key(void* outBuf, void* inBuf, int size, const void* iv) {
+	aes_unwrap_key(Key835, AES128, iv, outBuf, inBuf, size);
 }
 
 void aes_89B_encrypt(void* data, int size, const void* iv)
 {
-	aes_encrypt(data, size, AESCustom, Key89B, iv);
+	aes_encrypt(data, size, AESCustom, Key89B, AES128, iv);
 }
 
 void aes_89B_decrypt(void* data, int size, const void* iv)
 {
-	aes_decrypt(data, size, AESCustom, Key89B, iv);
+	aes_decrypt(data, size, AESCustom, Key89B, AES128, iv);
 }
 
-void aes_836_encrypt(void* data, int size, const void* iv) {
-	aes_encrypt(data, size, AESCustom, Key836, iv);
-}
-
-void aes_836_decrypt(void* data, int size, const void* iv) {
-	aes_decrypt(data, size, AESCustom, Key836, iv);
-}
-
-void aes_838_encrypt(void* data, int size, const void* iv) {
-	aes_encrypt(data, size, AESCustom, Key838, iv);
-}
-
-void aes_838_decrypt(void* data, int size, const void* iv) {
-	aes_decrypt(data, size, AESCustom, Key838, iv);
-}
-
-void aes_encrypt(void* data, int size, AESKeyType keyType, const void* key, const void* iv)
+void aes_836_encrypt(void* data, int size, const void* iv)
 {
-	doAES(0x10, data, size, keyType, key, iv);
+	aes_encrypt(data, size, AESCustom, Key836, AES128, iv);
 }
 
-void aes_decrypt(void* data, int size, AESKeyType keyType, const void* key, const void* iv)
+void aes_836_decrypt(void* data, int size, const void* iv)
 {
-	doAES(0x11, data, size, keyType, key, iv);
+	aes_decrypt(data, size, AESCustom, Key836, AES128, iv);
 }
 
-void doAES(int enc, void* data, int size, AESKeyType keyType, const void* key, const void* iv)
+void aes_838_encrypt(void* data, int size, const void* iv)
 {
+	aes_encrypt(data, size, AESCustom, Key838, AES128, iv);
+}
+
+void aes_838_decrypt(void* data, int size, const void* iv)
+{
+	aes_decrypt(data, size, AESCustom, Key838, AES128, iv);
+}
+
+void aes_encrypt(void* data, int size, AESKeyType keyType, const void* key, AESKeyLen keyLen, const void* iv)
+{
+	doAES(0x10, data, size, keyType, key, keyLen, iv);
+}
+
+void aes_decrypt(void* data, int size, AESKeyType keyType, const void* key, AESKeyLen keyLen, const void* iv)
+{
+	doAES(0x11, data, size, keyType, key, keyLen, iv);
+}
+
+void doAES(int enc, void* data, int size, AESKeyType _keyType, const void* key, AESKeyLen keyLen, const void* iv)
+{
+	uint32_t keyType = 0;
 	uint8_t* buff = NULL;
 
-	switch(keyType)
+	switch(_keyType)
 	{
 		case AESCustom:
-			switch(sizeof(key)*8)
+			switch(keyLen)
 			{
-				case 128:
+				case AES128:
 					keyType = 0 << 28;
 					break;
-				case 192:
+				case AES192:
 					keyType = 1 << 28;
 					break;
-				case 256:
+				case AES256:
 					keyType = 2 << 28;
 					break;
 				default:

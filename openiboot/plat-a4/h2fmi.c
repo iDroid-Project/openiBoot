@@ -11,6 +11,11 @@
 #include "commands.h"
 #include "arm/arm.h"
 #include "interrupt.h"
+#include "aes.h"
+
+uint8_t GenDKey[40];
+uint8_t DKey[32];
+uint8_t EMF[32];
 
 typedef struct _nand_chipid
 {
@@ -2071,17 +2076,17 @@ static void h2fmi_aes_handler_emf(uint32_t _param, uint32_t _segment, uint32_t* 
 	}
 }
 
-// Please insert key here. :]
-static uint32_t h2fmi_emf_key[] = {
-	0x00000000,
-	0x00000000,
-	0x00000000,
-	0x00000000,
-	0x00000000,
-	0x00000000,
-	0x00000000,
-	0x00000000,
-};
+static uint32_t* h2fmi_key = (uint32_t*) EMF;
+static AESKeyLen h2fmi_keylength = AES256;
+void h2fmi_set_key(uint32_t enable, void* key, AESKeyLen keyLen) {
+	if(enable) {
+		h2fmi_key = (uint32_t*) key;
+		h2fmi_keylength = keyLen;
+	} else {
+		h2fmi_key = (uint32_t*) EMF;
+		h2fmi_keylength = AES256;
+	}
+}
 
 uint32_t h2fmi_aes_enabled = 1;
 
@@ -2104,10 +2109,20 @@ static void h2fmi_setup_aes(h2fmi_struct_t *_fmi, uint32_t _enabled, uint32_t _e
 			_fmi->aes_struct.inverse = !_encrypt;
 			_fmi->aes_struct.type = 0; // AES-128
 			if(h2fmi_emf) {
-				_fmi->aes_struct.key = h2fmi_emf_key;
+				_fmi->aes_struct.key = h2fmi_key;
 				_fmi->aes_struct.ivGenerator = h2fmi_aes_handler_emf;
-				_fmi->aes_struct.type = 2 << 28; // AES-256
-//				bufferPrintf("Using EMF\r\n");
+				switch(h2fmi_keylength) {
+					case AES128:
+						_fmi->aes_struct.type = 0 << 28;
+						break;
+					case AES192:
+						_fmi->aes_struct.type = 1 << 28;
+						break;
+					case AES256:
+						_fmi->aes_struct.type = 2 << 28;
+					default:
+						break;
+				}
 			}
 		}
 		else
@@ -2833,6 +2848,52 @@ static void h2fmi_device_set_ftl_region(uint32_t _lpn, uint32_t _a2, uint32_t _c
 	h2fmi_ftl_smth[1] = _a2;
 }
 
+static void h2fmi_get_encryption_keys() {
+#if !defined(CONFIG_IPAD_1G)
+	uint8_t* buffer = memalign(DMA_ALIGN, h2fmi_geometry.bytes_per_page);
+	PLog* plog = (PLog*)buffer;
+	uint32_t ce;
+	uint32_t page = h2fmi_geometry.pages_per_block + 16;
+	for (ce = 0; ce < h2fmi_geometry.num_ce; ce++) {
+		h2fmi_read_single_page(ce, page, buffer, NULL, NULL, NULL, 1);
+		if(plog->locker.locker_magic == 0x4c6b) // 'kL'
+			break;
+		if(ce == h2fmi_geometry.num_ce - 1)
+			return;
+	}
+
+	bufferPrintf("h2fmi: Found Plog\r\n");
+
+	uint8_t dkey_found = 0;
+	uint8_t emf_found = 0;
+	LockerEntry* locker = &plog->locker;
+	while(TRUE) {
+		if(locker->length == 0 || (dkey_found && emf_found))
+			break;
+
+		if(!memcmp(locker->identifier, "yek", 3)) {
+			dkey_found = 1;
+			bufferPrintf("h2fmi: Found Dkey\r\n");
+			memcpy((uint8_t*)GenDKey, locker->key, locker->length);
+		}
+
+		if(!memcmp(locker->identifier, "!FM", 3)) {
+			emf_found = 1;
+			bufferPrintf("h2fmi: Found EMF\r\n");
+			EMFKey* emf = (EMFKey*)(locker->key);
+			memcpy((uint8_t*)EMF, emf->key, emf->length);
+		}
+
+		locker = (LockerEntry*)(((uint8_t*)locker->key)+(locker->length));
+	}
+
+	if(emf_found)
+		aes_89B_decrypt(EMF, sizeof(EMF), NULL);
+	if(dkey_found)
+		aes_835_unwrap_key(DKey, GenDKey, sizeof(GenDKey), NULL);
+#endif
+}
+
 static void h2fmi_init_device()
 {
 	nand_device_init(&h2fmi_device);
@@ -2857,6 +2918,8 @@ static void h2fmi_init_device()
 		bufferPrintf("fmi: Failed to open FTL!\r\n");
 		return;
 	}
+
+	h2fmi_get_encryption_keys();
 }
 
 int isPPN = 0;

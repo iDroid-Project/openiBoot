@@ -29,6 +29,7 @@ plat_a4_src = arch_arm_src + env.Localize([
 	'#framebuffer.c',
 	'#commands.c',
 	'#stb_image.c',
+	'#aes_wrap.c',
 
 	'a4.c',
 	'aes.c',
