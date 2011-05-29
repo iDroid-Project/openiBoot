@@ -21,10 +21,10 @@ void doAES(int enc, void* data, int size, AESKeyType keyType, const void* key, A
 
 int aes_setup() {
 	memcpy(Key835, Gen835, 16);
-	aes_encrypt(Key835, 16, AESUID, NULL, NULL);
+	aes_encrypt(Key835, 16, AESUID, NULL, 0, NULL);
 
 	memcpy(Key89B, Gen89B, 16);
-	aes_encrypt(Key89B, 16, AESUID, NULL, NULL);
+	aes_encrypt(Key89B, 16, AESUID, NULL, 0, NULL);
 
 	memcpy(Key836, Gen836, 16);
 	aes_encrypt(Key836, 16, AESUID, NULL, 0, NULL);
