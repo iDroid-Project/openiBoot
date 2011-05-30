@@ -167,6 +167,12 @@ typedef struct _emf_key {
 	uint8_t key[1];
 } EMFKey;
 
+typedef struct _lwvm_key {
+	uint8_t unkn[32];
+	uint64_t partition_uuid[2];
+	uint8_t key[32];
+} LwVMKey;
+
 typedef struct _locker_entry {
 	uint16_t locker_magic; // 'kL'
 	uint16_t length;

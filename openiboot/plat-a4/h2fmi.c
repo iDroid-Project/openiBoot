@@ -13,7 +13,6 @@
 #include "interrupt.h"
 #include "aes.h"
 
-uint8_t GenDKey[40];
 uint8_t DKey[32];
 uint8_t EMF[32];
 
@@ -2864,8 +2863,11 @@ static void h2fmi_get_encryption_keys() {
 
 	bufferPrintf("h2fmi: Found Plog\r\n");
 
-	uint8_t dkey_found = 0;
+	memset(EMF, 0, sizeof(EMF));
+	memset(DKey, 0, sizeof(DKey));
+
 	uint8_t emf_found = 0;
+	uint8_t dkey_found = 0;
 	LockerEntry* locker = &plog->locker;
 	while(TRUE) {
 		if(locker->length == 0 || (dkey_found && emf_found))
@@ -2874,7 +2876,7 @@ static void h2fmi_get_encryption_keys() {
 		if(!memcmp(locker->identifier, "yek", 3)) {
 			dkey_found = 1;
 			bufferPrintf("h2fmi: Found Dkey\r\n");
-			memcpy((uint8_t*)GenDKey, locker->key, locker->length);
+			aes_835_unwrap_key(DKey, locker->key, locker->length, NULL);
 		}
 
 		if(!memcmp(locker->identifier, "!FM", 3)) {
@@ -2882,15 +2884,21 @@ static void h2fmi_get_encryption_keys() {
 			bufferPrintf("h2fmi: Found EMF\r\n");
 			EMFKey* emf = (EMFKey*)(locker->key);
 			memcpy((uint8_t*)EMF, emf->key, emf->length);
+			aes_89B_decrypt(EMF, sizeof(EMF), NULL);
+		}
+
+		// Does only work when there's only one encrypted partition.
+		if(!memcmp(locker->identifier, "MVwL", 4)) {
+			emf_found = 1;
+			bufferPrintf("h2fmi: Found LwVM\r\n");
+			aes_89B_decrypt(locker->key, locker->length, NULL);
+			LwVMKey* lwvmkey = (LwVMKey*)locker->key;
+			memcpy(EMF, lwvmkey->key, sizeof(EMF));
 		}
 
 		locker = (LockerEntry*)(((uint8_t*)locker->key)+(locker->length));
 	}
-
-	if(emf_found)
-		aes_89B_decrypt(EMF, sizeof(EMF), NULL);
-	if(dkey_found)
-		aes_835_unwrap_key(DKey, GenDKey, sizeof(GenDKey), NULL);
+	free(buffer);
 #endif
 }
 
