@@ -165,11 +165,11 @@ static void cmd_aes(int argc, char** argv)
 
 	if(strcmp(argv[2], "gid") == 0)
 	{
-		keyType = 512 | (2 << 28);
+		keyType = 512;
 	}
 	else if(strcmp(argv[2], "uid") == 0)
 	{
-		keyType = 513 | (2 << 28);
+		keyType = 513;
 	}
 	else
 	{

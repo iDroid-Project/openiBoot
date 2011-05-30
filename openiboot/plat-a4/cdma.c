@@ -586,27 +586,26 @@ uint32_t aes_hw_crypto_cmd(uint32_t _encrypt, uint32_t *_inBuf, uint32_t *_outBu
 		SET_REG(0x8780101C, 0);
 	}
 
-	switch(GET_BITS(_type, 28, 4))
-	{
-		case 2:	// AES 256
-			value |= (2 << 18);
-			break;
-
-		case 1:	// AES 192
-			value |= (1 << 18);
-			break;
-
-		case 0:	// AES 128
-			value |= (0 << 18);
-			break;
-
-		default:// Fail
-			system_panic("aes_hw_crypto_cmd: bad arguments\r\n");
-	}
-
 	uint32_t key_shift = 0;
 	uint32_t key_set = 0;
 	if ((_type & 0xFFF) == 0) {
+		switch(GET_BITS(_type, 28, 4))
+		{
+			case 2:	// AES 256
+				value |= (2 << 18);
+				break;
+
+			case 1:	// AES 192
+				value |= (1 << 18);
+				break;
+
+			case 0:	// AES 128
+				value |= (0 << 18);
+				break;
+
+			default:// Fail
+				system_panic("aes_hw_crypto_cmd: bad arguments\r\n");
+		}
 		switch(GET_BITS(_type, 28, 4)) {
 			case 2:				// AES 256
 				SET_REG(DMA + DMA_AES + DMA_AES_KEY_7 + channel_reg, _key[7]);
@@ -626,16 +625,19 @@ uint32_t aes_hw_crypto_cmd(uint32_t _encrypt, uint32_t *_inBuf, uint32_t *_outBu
 		key_set = 1;
 	} else {
 		if ((_type & 0xFFF) == 512) {
-			key_shift = 1;
+			key_shift = 1; // still broken
 		} else if ((_type & 0xFFF) == 513) {
-			key_shift = 2;
-		} else {
 			key_shift = 0;
+		} else {
+			key_shift = 2; // wrong I guess but never used
 		}
 		// Key deactivated?
 		if(GET_REG(DMA + DMA_AES) & (1 << key_shift))
 			return -1;
 	}
+
+	if(key_shift)
+		value |= 1 << 19;
 
 	value |= (key_set << 20) | (key_shift << 21);
 	SET_REG(DMA + DMA_AES + channel_reg, value);
