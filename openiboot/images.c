@@ -520,11 +520,28 @@ unsigned int images_read(Image* image, void** data) {
 		AppleImg3KBAGHeader* kbag = (AppleImg3KBAGHeader*) kbagOffset;
 
 		if(kbag != 0) {
-		  if(kbag->key_modifier == 1) {
-			aes_decrypt((void*)(kbagOffset + sizeof(AppleImg3KBAGHeader)), 16 + (kbag->key_bits / 8), AESGID, NULL, NULL);
-		  }
+			if(kbag->key_modifier == 1) {
+				aes_decrypt((void*)(kbagOffset + sizeof(AppleImg3KBAGHeader)), 16 + (kbag->key_bits / 8), AESGID, NULL, 0, NULL);
+			}
 
-		  aes_decrypt((void*)dataOffset, (dataLength / 16) * 16, AESCustom, (uint8_t*)(kbagOffset + sizeof(AppleImg3KBAGHeader) + 16), (uint8_t*)(kbagOffset + sizeof(AppleImg3KBAGHeader)));
+			AESKeyLen keyLen;
+			switch(kbag->key_bits)
+			{
+				case 128:
+					keyLen = AES128;
+					break;
+				case 192:
+					keyLen = AES192;
+					break;
+				case 256:
+					keyLen = AES256;
+					break;
+				default:
+					keyLen = AES128;
+					break;
+			}
+
+			aes_decrypt((void*)dataOffset, (dataLength / 16) * 16, AESCustom, (uint8_t*)(kbagOffset + sizeof(AppleImg3KBAGHeader) + 16), keyLen, (uint8_t*)(kbagOffset + sizeof(AppleImg3KBAGHeader)));
 		}
 
 		uint8_t* newBuf = malloc(dataLength);
@@ -800,7 +817,7 @@ void* images_inject_img3(const void* img3Data, const void* newData, size_t newDa
 
 	if(kbag != 0 && kbag->key_modifier == 1) {
 		memcpy(IVKey, (void*)(kbagOffset + sizeof(AppleImg3KBAGHeader)), 16 + (kbag->key_bits / 8));
-		aes_decrypt(IVKey, 16 + (kbag->key_bits / 8), AESGID, NULL, NULL);
+		aes_decrypt(IVKey, 16 + (kbag->key_bits / 8), AESGID, NULL, 0, NULL);
 	}
 
 	void* newImg3 = malloc(sizeof(AppleImg3RootHeader));
@@ -826,7 +843,7 @@ void* images_inject_img3(const void* img3Data, const void* newData, size_t newDa
 
 			memcpy(cursor + sizeof(AppleImg3Header), newData, newDataLen);
       if(kbag != 0) {
-  			aes_encrypt(cursor + sizeof(AppleImg3Header), (newDataLen / 16) * 16, AESCustom, Key, IV);
+  			aes_encrypt(cursor + sizeof(AppleImg3Header), (newDataLen / 16) * 16, AESCustom, Key, AES256, IV);
       }
 			cursor += newHeader->size;
 		} else {

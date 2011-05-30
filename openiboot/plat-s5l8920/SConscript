@@ -36,6 +36,7 @@ plat_s5l8920_src = arch_arm_src + env.Localize([
 	'#images.c',
 	'#syscfg.c',
 	'#nvram.c',
+	'#aes_wrap.c',
 
 	's5l8920.c',
 	'usbphy.c',

@@ -9,6 +9,10 @@
 #include "ftl.h"
 #include "commands.h"
 #include "arm/arm.h"
+#include "aes.h"
+
+uint8_t DKey[32];
+uint8_t EMF[32];
 
 typedef struct _nand_chipid
 {
@@ -1299,6 +1303,44 @@ static uint32_t h2fmi_aes_key_2[] = {
 	0xA579CCD3,
 };
 
+uint32_t h2fmi_emf = 0;
+uint32_t h2fmi_emf_iv_input = 0;
+void h2fmi_set_emf(uint32_t enable, uint32_t iv_input) {
+	h2fmi_emf = enable;
+	if(iv_input)
+		h2fmi_emf_iv_input = iv_input;
+}
+uint32_t h2fmi_get_emf() {
+	return h2fmi_emf;
+}
+
+static void h2fmi_aes_handler_emf(uint32_t _param, uint32_t _segment, uint32_t* _iv)
+{
+	uint32_t val = h2fmi_emf_iv_input;
+	uint32_t i;
+	for(i = 0; i < 4; i++)
+	{
+		if(val & 1)
+			val = (val >> 1) ^ 0x80000061;
+		else
+			val = (val >> 1);
+
+		_iv[i] = val;
+	}
+}
+
+static uint32_t* h2fmi_key = (uint32_t*) EMF;
+static AESKeyLen h2fmi_keylength = AES256;
+void h2fmi_set_key(uint32_t enable, void* key, AESKeyLen keyLen) {
+	if(enable) {
+		h2fmi_key = (uint32_t*) key;
+		h2fmi_keylength = keyLen;
+	} else {
+		h2fmi_key = (uint32_t*) EMF;
+		h2fmi_keylength = AES256;
+	}
+}
+
 static uint32_t h2fmi_aes_enabled = 0;
 
 static void h2fmi_setup_aes(h2fmi_struct_t *_fmi, uint32_t _enabled, uint32_t _encrypt, uint32_t _offset)
@@ -1315,6 +1357,22 @@ static void h2fmi_setup_aes(h2fmi_struct_t *_fmi, uint32_t _enabled, uint32_t _e
 			_fmi->aes_struct.key = h2fmi_aes_key_1;
 			_fmi->aes_struct.inverse = !_encrypt;
 			_fmi->aes_struct.type = 0; // AES-128
+			if(h2fmi_emf) {
+				_fmi->aes_struct.key = h2fmi_key;
+				_fmi->aes_struct.ivGenerator = h2fmi_aes_handler_emf;
+				switch(h2fmi_keylength) {
+					case AES128:
+						_fmi->aes_struct.type = 0 << 28;
+						break;
+					case AES192:
+						_fmi->aes_struct.type = 1 << 28;
+						break;
+					case AES256:
+						_fmi->aes_struct.type = 2 << 28;
+					default:
+						break;
+				}
+			}
 		}
 		else
 		{

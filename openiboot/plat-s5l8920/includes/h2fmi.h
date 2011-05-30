@@ -127,4 +127,11 @@ void h2fmi_clear_ftl();
 
 uint32_t h2fmi_read_single_page(uint32_t _ce, uint32_t _page, uint8_t *_ptr, uint8_t *_meta_ptr, uint8_t *_6, uint8_t *_7, uint32_t _8);
 
+void h2fmi_set_emf(uint32_t enable, uint32_t iv_input);
+uint32_t h2fmi_get_emf();
+void h2fmi_set_key(uint32_t enable, void* key, uint32_t length);
+
+uint8_t DKey[32];
+uint8_t EMF[32];
+
 #endif //H2FMI_H

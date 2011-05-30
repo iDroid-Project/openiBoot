@@ -7,7 +7,7 @@
 #include "hfs/hfscompress.h"
 #include "hfs/hfscprotect.h"
 #include "util.h"
-#if defined(CONFIG_A4)
+#if defined(CONFIG_A4) || defined(CONFIG_S5L8920)
 #include "h2fmi.h"
 #include "aes.h"
 #endif
@@ -317,7 +317,7 @@ uint32_t readHFSFile(HFSPlusCatalogFile* file, uint8_t** buffer, Volume* volume)
 		return 0;
 	}
 	
-#if defined(CONFIG_A4)
+#if defined(CONFIG_A4) || defined(CONFIG_S5L8920)
 	HFSPlusCprotect* cprotect = cprotect_get(file, volume);
 	if(cprotect) {
 		uint8_t cprotect_key[32];
@@ -328,7 +328,7 @@ uint32_t readHFSFile(HFSPlusCatalogFile* file, uint8_t** buffer, Volume* volume)
 	if(!READ(io, 0, bytesLeft, *buffer)) {
 		hfs_panic("error reading");
 	}
-#if defined(CONFIG_A4)
+#if defined(CONFIG_A4) || defined(CONFIG_S5L8920)
 	if(cprotect) {
 		h2fmi_set_key(0, NULL, 0);
 		free(cprotect);
