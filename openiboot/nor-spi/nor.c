@@ -261,6 +261,10 @@ static error_t nor_read(mtd_t *_dev, void *_dest, uint64_t _off, int _amt)
 	nor_device_t *dev = nor_device_get(_dev);
 	int len = _amt;
 
+#if defined(CONFIG_IPAD_1G)
+	nor_prepare(_dev);
+#endif
+
 	error_t ret = nor_wait_for_ready(dev, 100);
 	if(FAILED(ret))
 		return ret;
@@ -340,7 +344,7 @@ static error_t nor_setup_chip_info(nor_device_t *_dev)
 	nor_spi_txrx(_dev, command, sizeof(command), deviceID, sizeof(deviceID));
 
 	_dev->vendor = deviceID[0];
-	_dev->device = deviceID[2];
+	_dev->device = (deviceID[1] << 8) | deviceID[2];
 
 	if(deviceID[0] == 0)
 	{
@@ -355,7 +359,7 @@ static error_t nor_setup_chip_info(nor_device_t *_dev)
 		// massive list of ids: http://flashrom.org/trac/flashrom/browser/trunk/flashchips.h
 		case 0xBF:
 			// vendor: SST, device: 0x41 or 0x8e
-			if (_dev->device != 0x41 && _dev->device != 0x8e) {
+			if (_dev->device != 0x41 && _dev->device != 0x8e && _dev->device != 0x2505) {
 				break;
 			}
 			chipRecognized = TRUE;

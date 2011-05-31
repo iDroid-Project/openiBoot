@@ -910,6 +910,12 @@ int images_verify(Image* image) {
 }
 
 void cmd_install(int argc, char** argv) {
+
+#if defined(CONFIG_A4)
+	bufferPrint("Not supported on newer generations.\r\n");
+	return;
+#endif
+
 	if((argc > 2 && argc < 4) || argc > 4)
 	{
 		bufferPrintf("Usage: %s <address> <len>\n", argv[0]);
@@ -932,7 +938,13 @@ void cmd_install(int argc, char** argv) {
 COMMAND("install", "install openiboot onto the device", cmd_install);
 
 void cmd_uninstall(int argc, char** argv) {
-    images_uninstall(fourcc("ibot"), fourcc("ibox"));
+
+#if defined(CONFIG_A4)
+	bufferPrint("Not supported on newer generations.\r\n");
+	return;
+#endif
+
+	images_uninstall(fourcc("ibot"), fourcc("ibox"));
 }
 COMMAND("uninstall", "uninstall openiboot from the device", cmd_uninstall);
 
