@@ -2887,7 +2887,7 @@ static void h2fmi_get_encryption_keys() {
 	uint32_t generation = 0;
 	uint32_t i;
 	for(i = 0; i < 0x2000; i += 0x400) {
-		PLog* plog = (PLog*)buffer;
+		PLog* plog = (PLog*)(buffer+i);
 		if(plog->locker.locker_magic == 0xffff)
 			continue;
 		if(plog->locker.locker_magic != 0x4c6b) // 'kL'

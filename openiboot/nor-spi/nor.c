@@ -372,7 +372,7 @@ static error_t nor_setup_chip_info(nor_device_t *_dev)
 		case 0x1F:
 			// vendor: atmel, device: 0x02 -> AT25DF081A
 			// datasheet: http://www.atmel.com/dyn/resources/prod_documents/doc8715.pdf
-			if (_dev->device != 0x02) {
+			if (_dev->device != 0x4502) {
 				break;
 			}
 			chipRecognized = TRUE;
