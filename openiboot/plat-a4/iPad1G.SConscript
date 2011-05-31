@@ -12,7 +12,7 @@ ipad_1g_src = [plat_a4_src,
 			'#images.c',
 			'#sha1.c',
 
-			'h2fmi.c',
+			'accel.c',
 			])]
 Export('ipad_1g_src')
 

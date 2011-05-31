@@ -51,6 +51,7 @@ plat_a4_src = arch_arm_src + env.Localize([
 	'uart.c',
 	'cdma.c',
 	'usbphy.c',
+	'h2fmi.c',
 	]) + hfs_src
 Export('plat_a4_src')
 
