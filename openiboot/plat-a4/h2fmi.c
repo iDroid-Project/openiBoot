@@ -2857,10 +2857,51 @@ static void h2fmi_get_encryption_keys() {
 		h2fmi_read_single_page(ce, page, buffer, NULL, NULL, NULL, 1);
 		if(plog->locker.locker_magic == 0x4c6b) // 'kL'
 			break;
-		if(ce == h2fmi_geometry.num_ce - 1)
+		if(ce == h2fmi_geometry.num_ce - 1) {
+			free(buffer);
 			return;
+		}
 	}
+	LockerEntry* locker = &plog->locker;
+#else
+	mtd_t *imagesDevice = NULL;
+	mtd_t *dev = NULL;
+	while((dev = mtd_find(dev)))
+	{
+		if(dev->usage == mtd_boot_images)
+		{
+			imagesDevice = dev;
+			break;
+		}
+	}
+	if(!imagesDevice)
+		return;
+	dev = imagesDevice;
 
+	LockerEntry* locker = NULL;
+
+	mtd_prepare(dev);
+	uint8_t* buffer = malloc(0x2000);
+	mtd_read(dev, buffer, 0xFA000, 0x2000);
+	mtd_finish(dev);
+	uint32_t generation = 0;
+	uint32_t i;
+	for(i = 0; i < 0x2000; i += 0x400) {
+		PLog* plog = (PLog*)buffer;
+		if(plog->locker.locker_magic == 0xffff)
+			continue;
+		if(plog->locker.locker_magic != 0x4c6b) // 'kL'
+			continue;
+		if(generation < plog->generation) {
+			generation = plog->generation;
+			locker = &plog->locker;
+		}
+	}
+	if(!locker) {
+		free(buffer);
+		return;
+	}
+#endif
 	bufferPrintf("h2fmi: Found Plog\r\n");
 
 	memset(EMF, 0, sizeof(EMF));
@@ -2868,7 +2909,6 @@ static void h2fmi_get_encryption_keys() {
 
 	uint8_t emf_found = 0;
 	uint8_t dkey_found = 0;
-	LockerEntry* locker = &plog->locker;
 	while(TRUE) {
 		if(locker->length == 0 || (dkey_found && emf_found))
 			break;
@@ -2899,7 +2939,6 @@ static void h2fmi_get_encryption_keys() {
 		locker = (LockerEntry*)(((uint8_t*)locker->key)+(locker->length));
 	}
 	free(buffer);
-#endif
 }
 
 static void h2fmi_init_device()
