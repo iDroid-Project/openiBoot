@@ -7,7 +7,7 @@ Import('*')
 ipt_4g_src = [plat_a4_src,
 				env.Localize([
 				'#audiohw-null.c',
-				'h2fmi.c',
+				'accel.c',
 				])]
 Export('ipt_4g_src')
 
