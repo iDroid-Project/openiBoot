@@ -51,5 +51,6 @@ void clock_gate_reset(uint32_t gate);
 uint32_t clock_get_frequency(FrequencyBase freqBase);
 void clock_set_sdiv(int sdiv);
 unsigned int clock_get_base_frequency();
+void set_CPU_clockconfig(uint32_t _mode);
 
 #endif

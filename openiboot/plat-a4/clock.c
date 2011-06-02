@@ -213,15 +213,19 @@ XXX:	It actually never gets there.
 XXX:	Base Frequencies as they are set by LLB
 
 	derived_frequency_table_setup();
-	clock_freq_multiplier = GET_BITS(GET_REG(0xBF100040), 0, 5);
-	if (clock_freq_multiplier == 2) {
-		CPU_clock_setting = 1;
-	} else if (clock_freq_multiplier == 4) {
-		CPU_clock_setting = 2;
-	} else {
-		CPU_clock_setting = 0;
-	}
 */
+	clock_freq_multiplier = GET_BITS(GET_REG(CLOCK_CPUFREQ), 0, 5);
+	switch(clock_freq_multiplier) {
+		case 2:
+			CPU_clock_setting = 1;
+			break;
+		case 4:
+			CPU_clock_setting = 2;
+			break;
+		default:
+			CPU_clock_setting = 0;
+			break;
+	}
 
 	ClockFrequency = CalculatedFrequencyTable[5];
 	MemoryFrequency = CalculatedFrequencyTable[6];
@@ -236,6 +240,36 @@ XXX:	Base Frequencies as they are set by LLB
 
 	return 0;
 }
+
+void set_CPU_clockconfig(uint32_t _mode)
+{
+	uint32_t setting;
+
+	switch(_mode) {
+		case 1: // 1/2
+			setting = 4;
+			clock_freq_multiplier = 2;
+			break;
+		case 2: // 1/4
+			setting = 4;
+			clock_freq_multiplier = 4;
+			break;
+		case 3: // 6/10
+			if (!CPU_clock_setting)
+				return;
+			setting = 1;
+			clock_freq_multiplier = 4;
+			break;
+		default: // 1
+			setting = 4;
+			clock_freq_multiplier = 1;
+			_mode = 0;
+			break;
+	}
+	CPU_clock_setting = _mode;
+	SET_REG(CLOCK_CPUFREQ, (GET_REG(CLOCK_CPUFREQ) & 0xFFFFE0E0) | clock_freq_multiplier | (setting << 8));
+}
+
 /*
 	CLOCK_FREQUENCY = get_frequency(0);
 	MEMORY_FREQUENCY = get_frequency(2);
