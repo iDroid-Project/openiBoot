@@ -27,6 +27,7 @@ typedef struct {
 #define CLOCK_ACTIVE(x) GET_BITS(GET_REG(x), 31, 1)
 */
 
+#define CLOCK_CPUFREQ 0xBF100040
 #define CLOCK_GATE_BASE 0xBF101010
 #define CLOCK_GATE_MAX 0x3F
 
