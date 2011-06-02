@@ -206,6 +206,7 @@ void displayFolder(HFSCatalogNodeID folderID, Volume* volume) {
 			bufferPrintf("%3d ", file->permissions.ownerID);
 			bufferPrintf("%3d ", file->permissions.groupID);
 			if(file->permissions.ownerFlags & UF_COMPRESSED) {
+				// strict-alignment / __atribute__((__packed__)) would fuck us here. Dirty workaround.
 				uint8_t* compressFu = NULL;
 				attrSize = getAttribute(volume, file->fileID, "com.apple.decmpfs", (uint8_t**)(&compressFu));
 				compressData = (HFSPlusDecmpfs*)compressFu;
