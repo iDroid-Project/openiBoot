@@ -33,7 +33,11 @@
 #if defined(CONFIG_S5L8720)
 	#define NOR_CS 0x406
 	#define NOR_SPI 1
-	#define NOR_MAX_READ 4			//TODO: can this be bumped up to 16? look into this. --kleemajo
+	#define NOR_MAX_READ 16		// The datasheet for the 8720 chip at least doesn't mention anything
+								// about a max number of bytes per read, although these values are in
+								// iBoot. Removing the max would probably give a speed increase and
+								// shouldn't have any bad effects... try this once nor is fixed again
+								// ~kleemajo
 #elif defined(CONFIG_S5L8920)
 	#define NOR_CS 0x1204
 	#define NOR_SPI 0
