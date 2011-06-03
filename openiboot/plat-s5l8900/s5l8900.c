@@ -1,44 +1,23 @@
-#include "openiboot.h"
-#include "arm/arm.h"
-#include "hardware/s5l8900.h"
-#include "uart.h"
-#include "usb.h"
-#include "mmu.h"
-#include "clock.h"
-#include "timer.h"
-#include "event.h"
-#include "miu.h"
-#include "power.h"
-#include "interrupt.h"
-#include "gpio.h"
-#include "dma.h"
-#include "spi.h"
-#include "i2c.h"
 #include "aes.h"
-#include "lcd.h"
-#include "tasks.h"
-#include "images.h"
-#include "syscfg.h"
-#include "nvram.h"
-#include "accel.h"
-#include "sdio.h"
-#include "wlan.h"
-#include "camera.h"
-#include "util.h"
-#include "commands.h"
+#include "arm/arm.h"
+#include "clock.h"
+#include "dma.h"
+#include "event.h"
 #include "framebuffer.h"
-#include "menu.h"
-#include "pmu.h"
-#include "hfs/bdev.h"
-#include "hfs/fs.h"
-#include "scripting.h"
-#include "actions.h"
-
-#include "radio.h"
-#include "wmcodec.h"
+#include "gpio.h"
+#include "i2c.h"
+#include "lcd.h"
+#include "miu.h"
+#include "mmu.h"
+#include "openiboot.h"
+#include "power.h"
+#include "spi.h"
+#include "tasks.h"
+#include "timer.h"
+#include "timer.h"
+#include "uart.h"
 #include "wdt.h"
-#include "als.h"
-#include "multitouch.h"
+#include "wmcodec.h"
 
 void platform_init()
 {
@@ -46,23 +25,23 @@ void platform_init()
 	mmu_setup();
 	tasks_setup();
 
-	// Basic prerequisites for everything else
+		//Basic prerequisites for everything else
 	miu_setup();
 	power_setup();
 
 	clock_setup();
 
-	// Need interrupts for everything afterwards
+		//Need interrupts for everything afterwards
 	interrupt_setup();
 
 	gpio_setup();
 
-	// For scheduling/sleeping niceties
+		//For scheduling/sleeping niceties
 	timer_setup();
 	event_setup();
 	wdt_setup();
 
-	// Other devices
+		//Other devices
 	uart_setup();
 	i2c_setup();
 

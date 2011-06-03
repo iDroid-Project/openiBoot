@@ -1,5 +1,7 @@
+#include "aes.h"
 #include "arm/arm.h"
 #include "clock.h"
+#include "dma.h"
 #include "event.h"
 #include "framebuffer.h"
 #include "gpio.h"
@@ -15,6 +17,7 @@
 #include "timer.h"
 #include "uart.h"
 #include "wdt.h"
+#include "wmcodec.h"
 
 		//TODO: Remove
 
