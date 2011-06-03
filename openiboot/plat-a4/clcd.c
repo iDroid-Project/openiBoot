@@ -489,7 +489,7 @@ int pinot_init(LCDInfo* LCDTable, ColorSpace colorspace, uint32_t* panelID, Wind
 		mipi_dsim_on_off(ON);
 
 #if defined(CONFIG_IPHONE_4)
-	gpio_switch(0x207, OFF);
+	gpio_pulldown_configure(0x207, GPIOPDDisabled);
 #endif
 
 	*panelID = pinot_panel_id;

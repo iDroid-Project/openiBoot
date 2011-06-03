@@ -10,20 +10,6 @@
 #include "chipid.h"
 #include "hardware/power.h"
 
-static GPIORegisters* GPIORegs;
-
-#define GPIO_INTTYPE_MASK 0x1
-#define GPIO_INTTYPE_EDGE 0x0
-#define GPIO_INTTYPE_LEVEL GPIO_INTTYPE_MASK
-
-#define GPIO_INTLEVEL_MASK 0x2
-#define GPIO_INTLEVEL_LOW 0x0
-#define GPIO_INTLEVEL_HIGH GPIO_INTLEVEL_MASK
-
-#define GPIO_AUTOFLIP_MASK 0x4
-#define GPIO_AUTOFLIP_NO 0x0
-#define GPIO_AUTOFLIP_YES GPIO_AUTOFLIP_MASK
-
 typedef struct {
 	uint32_t flags[32];
 	uint32_t token[32];
@@ -32,7 +18,7 @@ typedef struct {
 
 GPIOInterruptGroup InterruptGroups[GPIO_NUMINTGROUPS];
 
-void gpio_switch(int pinport, OnOff on_off);
+static void gpio_handle_interrupt(uint32_t token);
 void gpio_custom_io(int pinport, int mode);
 
 #if !defined(CONFIG_IPAD_1G)
@@ -95,17 +81,17 @@ int gpio_setup() {
 		gpio_custom_io(0x502, 0);
 		gpio_custom_io(0x503, 0);
 		gpio_custom_io(0x504, 0);
-		gpio_switch(0x502, ON);
-		gpio_switch(0x503, ON);
-		gpio_switch(0x504, ON);
+		gpio_pulldown_configure(0x502, GPIOPDDown);
+		gpio_pulldown_configure(0x503, GPIOPDDown);
+		gpio_pulldown_configure(0x504, GPIOPDDown);
 		gpio_custom_io(0x202, 0);
 		gpio_custom_io(0x301, 0);
 		gpio_custom_io(0x304, 0);
 		gpio_custom_io(0x305, 0);
-		gpio_switch(0x202, ON);
-		gpio_switch(0x301, ON);
-		gpio_switch(0x304, ON);
-		gpio_switch(0x305, ON);
+		gpio_pulldown_configure(0x202, GPIOPDDown);
+		gpio_pulldown_configure(0x301, GPIOPDDown);
+		gpio_pulldown_configure(0x304, GPIOPDDown);
+		gpio_pulldown_configure(0x305, GPIOPDDown);
 		udelay(100);
 		v[0] = chipid_get_gpio_epoch();
 		v[1] = gpio_pin_state(0x504);
@@ -126,53 +112,26 @@ int gpio_setup() {
 		SET_REG(POWER + POWER_ID, (GET_REG(POWER + POWER_ID) & 0xFF000000) | (new_status & 0xFFFFFF));
 	}
 
+	interrupt_install(GPIO_INTERRUPT, gpio_handle_interrupt, 0);
+	interrupt_enable(GPIO_INTERRUPT);
+
 	return 0;
 }
 
-void gpio_register_interrupt(uint32_t interrupt, int type, int level, int autoflip, InterruptServiceRoutine handler, uint32_t token)
-{
-	int group = interrupt >> 5;
-	int index = interrupt & 0x1f;
-	int mask = ~(1 << index);
-
-	EnterCriticalSection();
-
-	InterruptGroups[group].flags[index] = (type ? GPIO_INTTYPE_LEVEL : 0) | (level ? GPIO_INTLEVEL_HIGH : 0) | (level ? GPIO_AUTOFLIP_YES : 0);
-	InterruptGroups[group].handler[index] = handler;
-	InterruptGroups[group].token[index] = token;
-
-	// set whether or not the interrupt is level or edge
-	SET_REG(GPIOIC + GPIO_INTTYPE + (0x4 * group),
-			(GET_REG(GPIOIC + GPIO_INTTYPE + (0x4 * group)) & mask) | ((type ? 1 : 0) << index));
-
-	// set whether to trigger the interrupt high or low
-	SET_REG(GPIOIC + GPIO_INTLEVEL + (0x4 * group),
-			(GET_REG(GPIOIC + GPIO_INTLEVEL + (0x4 * group)) & mask) | ((level ? 1 : 0) << index));
-
-
-	LeaveCriticalSection();
+static void gpio_handle_interrupt(uint32_t token) {
+	bufferPrintf("gpio: Interrupt!\r\n");
 }
 
-void gpio_interrupt_enable(uint32_t interrupt)
-{
-	int group = interrupt >> 5;
-	int index = interrupt & 0x1f;
-
-	EnterCriticalSection();
-	SET_REG(GPIOIC + GPIO_INTSTAT + (0x4 * group), 1 << index);
-	SET_REG(GPIOIC + GPIO_INTEN + (0x4 * group), GET_REG(GPIOIC + GPIO_INTEN + (0x4 * group)) | (1 << index));
-	LeaveCriticalSection();
+void gpio_register_interrupt(uint32_t interrupt, int type, int level, int autoflip, InterruptServiceRoutine handler, uint32_t token) {
+	return;
 }
 
-void gpio_interrupt_disable(uint32_t interrupt)
-{
-	int group = interrupt >> 5;
-	int index = interrupt & 0x1f;
-	int mask = ~(1 << index);
+void gpio_interrupt_enable(uint32_t interrupt) {
+	return;
+}
 
-	EnterCriticalSection();
-	SET_REG(GPIOIC + GPIO_INTEN + (0x4 * group), GET_REG(GPIOIC + GPIO_INTEN + (0x4 * group)) & mask);
-	LeaveCriticalSection();
+void gpio_interrupt_disable(uint32_t interrupt) {
+	return;
 }
 
 int gpio_pin_state(int port) {
@@ -203,39 +162,21 @@ void gpio_pin_output(int pinport, int bit) {
 
 void gpio_pulldown_configure(int port, GPIOPDSetting setting)
 {
-	uint32_t bit = 1 << GET_BITS(port, 0, 3);
+	uint32_t pin_register = GPIO + (((port >> 5) & 0x7F8) + ((port & 0x7)<<2));
 
-	switch(setting)
-	{
+	switch(setting) {
 		case GPIOPDDisabled:
-			GPIORegs[GET_BITS(port, 8, 5)].PUD1 &= ~bit;
-			GPIORegs[GET_BITS(port, 8, 5)].PUD2 &= ~bit;
+			SET_REG(pin_register, (GET_REG(pin_register) & (~(0x3<<7))));
 			break;
 
 		case GPIOPDUp:
-			GPIORegs[GET_BITS(port, 8, 5)].PUD1 |= bit;
-			GPIORegs[GET_BITS(port, 8, 5)].PUD2 &= ~bit;
+			SET_REG(pin_register, ((GET_REG(pin_register) & (~(0x3<<7))) | (0x3<<7)));
 			break;
 
 		case GPIOPDDown:
-			GPIORegs[GET_BITS(port, 8, 5)].PUD1 &= ~bit;
-			GPIORegs[GET_BITS(port, 8, 5)].PUD2 |= bit;
+			SET_REG(pin_register, ((GET_REG(pin_register) & (~(0x3<<7))) | (0x1<<7)));
 			break;
 	}
-}
-
-void gpio_switch(int pinport, OnOff on_off) {
-	// This function actually configures the pull up/pull down resistors for a pin/port
-	// 2nd param: code, -1 = pull down, 0 = none, 1 = pull up
-	// -- kleemajo
-	uint32_t pin_register = GPIO + (((pinport >> 5) & 0x7F8) + ((pinport & 0x7)<<2));
-
-	if (on_off == ON) {
-		SET_REG(pin_register, ((GET_REG(pin_register) & (~(0x3<<7))) | (0x1<<7)));
-	} else {
-		SET_REG(pin_register, (GET_REG(pin_register) & (~(0x3<<7))));
-	}
-	// There would be a third state when (state > 0), setting 0x3, but iBoot didn't ever do that.
 }
 
 void gpio_custom_io(int pinport, int mode) {
@@ -278,16 +219,19 @@ void gpio_custom_io(int pinport, int mode) {
 		case 5:
 			value = 0x230;
 			bitmask = 0x27E;
+			value &= ~0x10;
 			break;
 
 		case 6:
 			value = 0x250;
 			bitmask = 0x27E;
+			value &= ~0x10;
 			break;
 
 		case 7:
 			value = 0x270;
 			bitmask = 0x27E;
+			value &= ~0x10;
 			break;
 
 		default:
