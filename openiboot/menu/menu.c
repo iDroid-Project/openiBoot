@@ -103,7 +103,7 @@ static void menu_run(uint32_t _V)
 
 void menu_main()
 {
-	task_init(&menu_task, "menu");
+	task_init(&menu_task, "menu", TASK_DEFAULT_STACK_SIZE);
 
 	init_modules();
 

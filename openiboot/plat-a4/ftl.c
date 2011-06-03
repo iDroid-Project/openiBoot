@@ -404,7 +404,7 @@ uint8_t nand_get_epoch() {
 	return (uint8_t)result;
 }
 
-uint32_t FTL_Setup(uint32_t _arg0, uint32_t _arg1, uint32_t signature_style, uint32_t fsys_start_block) {
+uint32_t FTL_Setup(uint32_t* pagesAvailable, uint32_t* bytesPerPage, uint32_t signature_style, uint32_t fsys_start_block) {
 	uint32_t* nand_driver_signature = malloc(0x108);
 	if(!nand_driver_signature)
 		return -1;
@@ -482,11 +482,15 @@ uint32_t FTL_Setup(uint32_t _arg0, uint32_t _arg1, uint32_t signature_style, uin
 
 // Not yet finished
 
+	// Depending on that it's yaFTL
+	YAFTL_Init();
+	YAFTL_Open(pagesAvailable, bytesPerPage, GET_BITS(signature_style, 7, 1));
+
 	return 0;
 }
 
 void ftl_init() {
-	uint32_t pointer1 = 0;
-	uint32_t pointer2 = 0;
-	FTL_Setup(pointer1, pointer2, 0, 1);
+	uint32_t pagesAvailable;
+	uint32_t bytesPerPage;
+	FTL_Setup(&pagesAvailable, &bytesPerPage, 0, 1);
 }

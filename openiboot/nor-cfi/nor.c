@@ -40,6 +40,12 @@ static void nor_finish(mtd_t *_dev)
 
 static error_t nor_device_init(nor_device_t *_dev)
 {
+	error_t ret = mtd_init(&_dev->mtd);
+	if(FAILED(ret))
+		return ret;
+
+	_dev->write_enabled = 0;
+
 	SET_REG16(NOR + NOR_COMMAND, COMMAND_UNLOCK);
 	SET_REG16(NOR + LOCK, LOCK_UNLOCK);
 
@@ -62,7 +68,7 @@ static error_t nor_device_init(nor_device_t *_dev)
 	}
 
 	bufferPrintf("NOR vendor=%x, device=%x\r\n", _dev->vendor, _dev->device);
-	return mtd_init(&_dev->mtd);
+	return SUCCESS;
 }
 
 static error_t nor_erase_sector(nor_device_t *_dev, uint32_t _offset)
@@ -192,8 +198,6 @@ static nor_device_t nor_device = {
 
 		.usage = mtd_boot_images,
 	},
-
-	.write_enabled = 0,
 };
 
 static void nor_init()

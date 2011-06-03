@@ -246,7 +246,7 @@ static void acm_started()
 
 void acm_start()
 {
-	task_init(&acm_parse_task, "ACM");
+	task_init(&acm_parse_task, "ACM", TASK_DEFAULT_STACK_SIZE);
 
 	usb_setup(acm_enumerate, acm_started);
 	usb_install_ep_handler(ACM_EP_SEND, USBIn, acm_sent, 0);
