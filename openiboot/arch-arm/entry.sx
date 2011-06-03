@@ -500,12 +500,41 @@ panic:
 
 .data
 
+#ifdef CONFIG_S5L8900
 InterruptHandlerTable:
 	.rept	0x40
 	.word	0x0	// address
 	.word	0x0	// token
 	.word	0x0	// useEdgeIC
 	.endr
+#endif
+
+#ifdef CONFIG_S5L8720
+InterruptHandlerTable:
+	.rept	0x40
+	.word	0x0	// address
+	.word	0x0	// token
+	.word	0x0	// useEdgeIC
+	.endr
+#endif
+
+#ifdef CONFIG_S5L8920
+InterruptHandlerTable:
+	.rept	0x60
+	.word	0x0	// address
+	.word	0x0	// token
+	.word	0x0	// useEdgeIC
+	.endr
+#endif
+
+#ifdef CONFIG_A4
+InterruptHandlerTable:
+	.rept	0x80
+	.word	0x0	// address
+	.word	0x0	// token
+	.word	0x0	// useEdgeIC
+	.endr
+#endif
 
 ExceptionStackEnd:
 	.rept	0x800
