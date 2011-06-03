@@ -13,7 +13,7 @@
 #define NOR_SPI_RDSR 0x05           // read status register
 #define NOR_SPI_WRSR 0x01           // write status register
 #define NOR_SPI_EWSR 0x50           // enable write status register
-#define NOR_SPI_AIPG 0xAD           // write using AAI (auto address incrementing)
+#define NOR_SPI_AIPG 0xAD           // write using AAI word-program (auto address incrementing)
 #define NOR_SPI_ERSE_4KB 0x20       // erase 4KB
 #define NOR_SPI_JEDECID 0x9F        // get JEDEC device info
 
