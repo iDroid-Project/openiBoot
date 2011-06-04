@@ -256,14 +256,12 @@ static error_t nor_erase_sector(nor_device_t *_dev, uint32_t _offset)
 
 static error_t nor_read(mtd_t *_dev, void *_dest, uint64_t _off, int _amt)
 {
+	nor_prepare(_dev);
+
 	uint8_t command[4];
 	uint8_t* data = _dest;
 	nor_device_t *dev = nor_device_get(_dev);
 	int len = _amt;
-
-#if defined(CONFIG_IPAD_1G)
-	nor_prepare(_dev);
-#endif
 
 	error_t ret = nor_wait_for_ready(dev, 100);
 	if(FAILED(ret))
@@ -291,7 +289,14 @@ static error_t nor_read(mtd_t *_dev, void *_dest, uint64_t _off, int _amt)
 
 static error_t nor_write(mtd_t *_dev, void *_src, uint64_t _off, int _amt)
 {
+	nor_prepare(_dev);
+
 	nor_device_t *dev = nor_device_get(_dev);
+
+	error_t ret = nor_wait_for_ready(dev, 100);
+	if(FAILED(ret))
+		return ret;
+
 	int startSector = _off / dev->block_size;
 	int endSector = (_off + _amt) / dev->block_size;
 
@@ -306,7 +311,6 @@ static error_t nor_write(mtd_t *_dev, void *_src, uint64_t _off, int _amt)
 	nor_disable_block_protect(dev);
 
 	int i;
-	error_t ret = SUCCESS;
 	for(i = 0; i < numSectors; i++)
 	{
 		ret = nor_erase_sector(dev, (i + startSector) * dev->block_size);
