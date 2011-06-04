@@ -13,31 +13,7 @@ env.AddModules([
 	"ftl-yaftl",
 	])
 
-plat_s5l8920_src = arch_arm_src + env.Localize([
-	# Include the bits of base_src we use
-	# until we implement it all
-	'#device.c',
-	'#mtd.c',
-	'#bdev.c',
-	'#nand.c',
-	'#vfl.c',
-	'#ftl.c',
-	'#openiboot.c',
-	'#util.c',
-	'#malloc.c',
-	'#sha1.c',
-	'#tasks.c',
-	'#printf.c',
-	'#framebuffer.c',
-	'#commands.c',
-	'#actions.c',
-	'#scripting.c',
-	'#stb_image.c',
-	'#images.c',
-	'#syscfg.c',
-	'#nvram.c',
-	'#aes_wrap.c',
-
+plat_s5l8920_src = arch_arm_src + base_src + env.Localize([
 	's5l8920.c',
 	'usbphy.c',
 	'aes.c',

@@ -263,19 +263,16 @@ static void setup_cmdline_tag(const char * line)
 
 static void setup_wifi_tags()
 {
+#if defined(CONFIG_IPHONE_2G) || defined(CONFIG_IPHONE_3G)
 	uint8_t* mac;
 	uint32_t calSize;
 	uint8_t* cal;
 
-#if defined(CONFIG_IPOD_TOUCH_1G) || defined(CONFIG_IPOD_TOUCH_2G) 
-	return;
-#else
 	if(radio_nvram_get(2, &mac) < 0)
 		return;
 
 	if((calSize = radio_nvram_get(1, &cal)) < 0)
 		return;
-#endif
 
 	memcpy(&params->u.wifi.mac, mac, 6);
 	params->u.wifi.calSize = calSize;
@@ -284,6 +281,7 @@ static void setup_wifi_tags()
 	params->hdr.tag = ATAG_IPHONE_WIFI;         /* iPhone NAND tag */
 	params->hdr.size = (sizeof(struct atag_header) + sizeof(struct atag_iphone_wifi) + calSize + 4) >> 2;
 	params = tag_next(params);              /* move pointer to next tag */
+#endif
 }
 
 static void setup_prox_tag()

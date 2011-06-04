@@ -43,6 +43,7 @@ base_src = env.Localize([
 	'bdev.c',
 	'nand.c',
 	'vfl.c',
+	'ftl.c',
 	'audiohw.c',
 	'actions.c',
 	'commands.c',
@@ -58,6 +59,7 @@ base_src = env.Localize([
 	'syscfg.c',
 	'tasks.c',
 	'util.c',
+	'aes_wrap.c',
 	])
 Export('base_src')
 
