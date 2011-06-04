@@ -7,11 +7,6 @@ Import('*')
 ipad_1g_src = [plat_a4_src,
 			env.Localize([
 			'#audiohw-null.c',
-			'#syscfg.c',
-			'#nvram.c',
-			'#images.c',
-			'#sha1.c',
-
 			'accel.c',
 			])]
 Export('ipad_1g_src')
