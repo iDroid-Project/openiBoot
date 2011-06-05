@@ -432,7 +432,7 @@ int uart_write(int ureg, const char *buffer, uint32_t length) {
 			while((GET_REG(uart->UMSTAT) & UART_UMSTAT_CTS) == 0);
 		}
 
-		SET_REG(uart->UTXH, *buffer); 
+		SET_REG(uart->UTXH, *buffer);
 
 		buffer++;
 		written++;
