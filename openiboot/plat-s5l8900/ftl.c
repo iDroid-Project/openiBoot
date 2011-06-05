@@ -3298,7 +3298,7 @@ static mtd_t ftl_mtd = {
 	.usage = mtd_filesystem,
 };
 
-void ftl_init()
+static void ftl_init()
 {
 	if(!ftl_setup())
 	{
