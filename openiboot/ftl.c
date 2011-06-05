@@ -90,6 +90,8 @@ error_t ftl_write_single_page(ftl_device_t *_dev, uint32_t _page, uint8_t *_buff
 error_t ftl_detect(ftl_device_t **_dev, vfl_device_t *_vfl)
 {
 	// TODO: Implement FTL detection! -- Ricky26
+	
+#ifdef CONFIG_FTL_YAFTL
 	ftl_yaftl_device_t *yaftl = ftl_yaftl_device_allocate();
 	ftl_init(&yaftl->ftl);
 
@@ -97,5 +99,8 @@ error_t ftl_detect(ftl_device_t **_dev, vfl_device_t *_vfl)
 
 	ftl_open(*_dev, _vfl);
 	return SUCCESS;
+#endif
+
+	return ENOENT;
 }
 
