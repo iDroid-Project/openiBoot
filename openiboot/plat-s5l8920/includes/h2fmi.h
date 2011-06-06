@@ -131,7 +131,33 @@ void h2fmi_set_emf(uint32_t enable, uint32_t iv_input);
 uint32_t h2fmi_get_emf();
 void h2fmi_set_key(uint32_t enable, void* key, uint32_t length);
 
+typedef struct _emf_key {
+	uint32_t length;
+	uint8_t key[1];
+} EMFKey;
+
+typedef struct _lwvm_key {
+	uint8_t unkn[32];
+	uint64_t partition_uuid[2];
+	uint8_t key[32];
+} LwVMKey;
+
+typedef struct _locker_entry {
+	uint16_t locker_magic; // 'kL'
+	uint16_t length;
+	uint8_t identifier[4];
+	uint8_t key[1];
+} LockerEntry;
+
+typedef struct _plog_struct {
+	uint8_t header[0x38]; // header[0:16] XOR header[16:32] = ’ecaF’ + dw(0x1) + dw(0x1) + dw(0x0)
+	uint32_t generation;
+	uint32_t crc32; // headers + data
+
+	LockerEntry locker;
+} PLog;
 uint8_t DKey[32];
 uint8_t EMF[32];
+
 
 #endif //H2FMI_H

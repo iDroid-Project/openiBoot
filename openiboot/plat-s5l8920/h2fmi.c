@@ -1783,6 +1783,84 @@ static void h2fmi_device_set_ftl_region(uint32_t _lpn, uint32_t _a2, uint32_t _c
 	h2fmi_ftl_smth[1] = _a2;
 }
 
+static void h2fmi_get_encryption_keys() {
+	mtd_t *imagesDevice = NULL;
+	mtd_t *dev = NULL;
+	while((dev = mtd_find(dev)))
+	{
+		if(dev->usage == mtd_boot_images)
+		{
+			imagesDevice = dev;
+			break;
+		}
+	}
+	if(!imagesDevice)
+		return;
+	dev = imagesDevice;
+
+	LockerEntry* locker = NULL;
+
+	mtd_prepare(dev);
+	uint8_t* buffer = malloc(0x2000);
+	mtd_read(dev, buffer, 0xFA000, 0x2000);
+	mtd_finish(dev);
+	uint32_t generation = 0;
+	uint32_t i;
+	for(i = 0; i < 0x2000; i += 0x400) {
+		PLog* plog = (PLog*)(buffer+i);
+		if(plog->locker.locker_magic == 0xffff)
+			continue;
+		if(plog->locker.locker_magic != 0x4c6b) // 'kL'
+			continue;
+		if(generation < plog->generation) {
+			generation = plog->generation;
+			locker = &plog->locker;
+		}
+	}
+	if(!locker) {
+		free(buffer);
+		return;
+	}
+
+	bufferPrintf("h2fmi: Found Plog\r\n");
+
+	memset(EMF, 0, sizeof(EMF));
+	memset(DKey, 0, sizeof(DKey));
+
+	uint8_t emf_found = 0;
+	uint8_t dkey_found = 0;
+	while(TRUE) {
+		if(locker->length == 0 || (dkey_found && emf_found))
+			break;
+
+		if(!memcmp(locker->identifier, "yek", 3)) {
+			dkey_found = 1;
+			bufferPrintf("h2fmi: Found Dkey\r\n");
+			aes_835_unwrap_key(DKey, locker->key, locker->length, NULL);
+		}
+
+		if(!memcmp(locker->identifier, "!FM", 3)) {
+			emf_found = 1;
+			bufferPrintf("h2fmi: Found EMF\r\n");
+			EMFKey* emf = (EMFKey*)(locker->key);
+			memcpy((uint8_t*)EMF, emf->key, emf->length);
+			aes_89B_decrypt(EMF, sizeof(EMF), NULL);
+		}
+
+		// Does only work when there's only one encrypted partition.
+		if(!memcmp(locker->identifier, "MVwL", 4)) {
+			emf_found = 1;
+			bufferPrintf("h2fmi: Found LwVM\r\n");
+			aes_89B_decrypt(locker->key, locker->length, NULL);
+			LwVMKey* lwvmkey = (LwVMKey*)locker->key;
+			memcpy(EMF, lwvmkey->key, sizeof(EMF));
+		}
+
+		locker = (LockerEntry*)(((uint8_t*)locker->key)+(locker->length));
+	}
+	free(buffer);
+}
+
 static void h2fmi_init_device()
 {
 	nand_device_init(&h2fmi_device);
@@ -1805,6 +1883,8 @@ static void h2fmi_init_device()
 		bufferPrintf("fmi: Failed to open FTL!\r\n");
 		return;
 	}
+
+	h2fmi_get_encryption_keys();
 }
 
 void h2fmi_init()

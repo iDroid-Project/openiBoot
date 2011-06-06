@@ -1,6 +1,8 @@
 #ifndef HW_DMA_H
 #define HW_DMA_H
 
+#include "hardware/s5l8920.h"
+
 // Device
 #define DMA 0x87000000
 
