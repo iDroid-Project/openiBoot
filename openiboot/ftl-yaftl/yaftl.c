@@ -1259,7 +1259,7 @@ static uint32_t YAFTL_Open(uint32_t signature_bit) {
 	uint32_t ftlCtrlBlock = 0;
 
 	for (i = 0; i < 3; i++) {
-		if (YAFTL_readPage(ftlCtrlBlockBuffer[i] * ftlGeometry.pagesPerSublk, yaftl_info.pageBuffer, yaftl_info.spareBuffer6, 0, 1, 0) == 0) {
+		if (YAFTL_readPage(ftlCtrlBlockBuffer[i] * ftlGeometry.pagesPerSublk, yaftl_info.pageBuffer, yaftl_info.spareBuffer6, 0, 0, 0) == 0) {
 			if (yaftl_info.spareBuffer6->usn != 0xFFFFFFFF && yaftl_info.spareBuffer6->usn > maxUsn) {
 				maxUsn = yaftl_info.spareBuffer6->usn;
 				ftlCtrlBlock = ftlCtrlBlockBuffer[i];

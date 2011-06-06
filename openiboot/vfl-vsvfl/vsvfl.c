@@ -59,6 +59,12 @@ typedef struct _vfl_vsvfl_spare_data
 	uint8_t field_B;
 } __attribute__ ((packed)) vfl_vsvfl_spare_data_t;
 
+static void virtual_to_physical_10001(vfl_vsvfl_device_t *_vfl, uint32_t _vBank, uint32_t _vPage, uint32_t *_pCE, uint32_t *_pPage)
+{
+	*_pCE = _vBank;
+	*_pPage = _vPage;
+}
+
 static void virtual_to_physical_100014(vfl_vsvfl_device_t *_vfl, uint32_t _vBank, uint32_t _vPage, uint32_t *_pCE, uint32_t *_pPage)
 {
 	uint32_t pBank, pPage;
@@ -652,9 +658,10 @@ static error_t vfl_vsvfl_open(vfl_device_t *_vfl, nand_device_t *_nand)
 	switch(vendorType) {
 	case 0x10001:
 		vfl->geometry.banks_per_ce = 1;
-		vfl->virtual_to_physical = virtual_to_physical_100014;
+		vfl->virtual_to_physical = virtual_to_physical_10001;
 		break;
 	
+	case 0x100010:
 	case 0x100014:
 	case 0x120014:
 		vfl->geometry.banks_per_ce = 2;
