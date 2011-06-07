@@ -358,7 +358,6 @@ static error_t nor_setup_chip_info(nor_device_t *_dev)
 
 	bufferPrintf("NOR vendor=%x, device=%x\r\n", _dev->vendor, _dev->device);
 
-	Boolean chipRecognized = FALSE;
 	switch(_dev->vendor) {
 		// massive list of ids: http://flashrom.org/trac/flashrom/browser/trunk/flashchips.h
 		case 0xBF:
@@ -366,56 +365,60 @@ static error_t nor_setup_chip_info(nor_device_t *_dev)
 			if (_dev->device != 0x41 && _dev->device != 0x8e && _dev->device != 0x2505) {
 				break;
 			}
-			chipRecognized = TRUE;
+
 			//TODO: this chip supports AAI, and will be much faster when implemented --kleemajo
 			_dev->block_write_function = &nor_write_block_by_byte;
 			_dev->block_size = 0x1000;
 			_dev->block_protect_bits = 0x3C;
 			_dev->page_size = 0x1;
 			break;
+
 		case 0x1F:
 			// vendor: atmel, device: 0x02 -> AT25DF081A
 			// datasheet: http://www.atmel.com/dyn/resources/prod_documents/doc8715.pdf
 			if (_dev->device != 0x4502) {
 				break;
 			}
-			chipRecognized = TRUE;
+			
 			_dev->block_write_function = &nor_write_block_by_page;
 			_dev->block_size = 0x1000;
 			_dev->block_protect_bits = 0xC;
 			_dev->page_size = 0x100;
 			break;
+
 		case 0x20:
 			// vendor: SGS/Thomson, device: 0x18, 0x16 or 0x14
 			if (_dev->device != 0x18 && _dev->device != 0x16 && _dev->device != 0x14) {
 				break;
 			}
-			chipRecognized = TRUE;
+		
 			_dev->block_write_function = &nor_write_block_by_page;
 			_dev->block_size = 0x1000;
 			_dev->block_protect_bits = 0x1C;
 			_dev->page_size = 0x100;
 			break;
+
 		case 0x01:
 			// vendor: AMD, device: 0x18
 			if (_dev->device != 0x18) {
 				break;
 			}
-			chipRecognized = TRUE;
+			
 			_dev->block_write_function = &nor_write_block_by_page;
 			_dev->block_size = 0x1000;
 			_dev->block_protect_bits = 0x1C;
 			_dev->page_size = 0x100;
 			break;
+
 		default:
+			bufferPrintf("nor: Unrecognized Chip Vendor!\r\n");
+			_dev->block_write_function = &nor_write_block_by_byte;
+			_dev->block_size = 0x1000;
+			_dev->block_protect_bits = 0x3C;
+			_dev->page_size = 0x1;
 			break;
 	}
 
-	if (!chipRecognized) {
-		bufferPrintf("Unknown NOR chip!\r\n");
-		return EINVAL;
-	}
-	
 	return SUCCESS;
 }
 
