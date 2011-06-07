@@ -17,7 +17,7 @@ env = env.Clone()
 env.Append(CPPDEFINES=['OPENIBOOT_VERSION_CONFIG=\\" for iPod Touch 1G\\"'])
 
 env.AddModules([
-	"nor-cfi",
+	"nor-spi",
 	])
 
 elf, bin, img3 = env.MenuEnv().OpenIBootTarget('iPodTouch1G', 'ipt_1g_openiboot', 'CONFIG_IPOD_TOUCH_1G', ipt_1g_src, 'template-ipt1g')
