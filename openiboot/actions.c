@@ -40,7 +40,10 @@
 #include "platform.h"
 #include "timer.h"
 
-#define MACH_APPLE_IPHONE 1506
+#define MACH_APPLE_IPHONE	1506
+#ifndef MACH_ID
+#define MACH_ID MACH_APPLE_IPHONE
+#endif
 
 /* this code is adapted from http://www.simtec.co.uk/products/SWLINUX/files/booting_article.html, which is distributed under the BSD license */
 
@@ -417,15 +420,13 @@ static int load_multitouch_images()
     return 1;
 }
 
-void boot_linux(const char* args) {
+void boot_linux(const char* args, uint32_t mach_type) {
 	uint32_t exec_at = (uint32_t) kernel;
 	uint32_t param_at = exec_at - 0x2000;
 
 	load_multitouch_images();
 
 	setup_tags((struct atag*) param_at, args);
-
-	uint32_t mach_type = MACH_APPLE_IPHONE;
 
 	EnterCriticalSection();
 	platform_shutdown();
@@ -462,6 +463,7 @@ static void setup_init()
 	memset(&rootEntry, 0, sizeof(rootEntry));
 	rootEntry.type = kBootAuto;
 	rootEntry.title = "";
+	rootEntry.machine = MACH_ID;
 	rootEntry.list_ptr.next = &rootEntry;
 	rootEntry.list_ptr.prev = &rootEntry;
 	currentEntry = &rootEntry;
@@ -505,7 +507,10 @@ void setup_title(const char *title)
 
 	entry = malloc(sizeof(BootEntry));
 	memset(entry, 0, sizeof(BootEntry));
+
 	entry->title = strdup(title);
+	entry->machine = MACH_ID;
+
 	entry->list_ptr.prev = prev;
 	entry->list_ptr.next = &rootEntry;
 	rootEntry.list_ptr.prev = entry;
@@ -617,9 +622,9 @@ int setup_boot()
 			}
 
 			if(currentEntry->path == NULL)
-				boot_linux("console=tty root=/dev/ram0 init=/init rw");
+				boot_linux("console=tty root=/dev/ram0 init=/init rw", currentEntry->machine);
 			else
-				boot_linux(currentEntry->path);
+				boot_linux(currentEntry->path, currentEntry->machine);
 
 			return 0;
 		}
@@ -713,6 +718,26 @@ static void cmd_setup_image(int argc, char **argv)
 		setup_image(argv[1]);
 }
 COMMAND("image", "Set the image to chainload for the current boot entry.", cmd_setup_image);
+
+static void cmd_setup_machine(int argc, char **argv)
+{
+	if(argc != 2)
+	{
+		bufferPrintf("Usage: %s machine_id\n", argv[0]);
+		return;
+	}
+
+	uint32_t num;
+	if(strcmp(argv[1], "default") == 0)
+		num = MACH_ID;
+	else if(strcmp(argv[1], "compat") == 0)
+		num = MACH_APPLE_IPHONE;
+	else
+		num = parseNumber(argv[1]);
+
+	currentEntry->machine = num;
+}
+COMMAND("machine_id", "Select a machine ID for booting the linux kernel.", cmd_setup_machine);
 
 static void cmd_setup_boot(int argc, char **argv)
 {

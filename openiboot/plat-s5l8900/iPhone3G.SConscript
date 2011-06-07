@@ -16,7 +16,7 @@ iphone_3g_src = [
 Export('iphone_3g_src')
 
 env = env.Clone()
-env.Append(CPPDEFINES=['OPENIBOOT_VERSION_CONFIG=\\" for iPhone 3G\\"'])
+env.Append(CPPDEFINES=['OPENIBOOT_VERSION_CONFIG=\\" for iPhone 3G\\"', 'MACH_ID=3557'])
 
 env.AddModules([
 	"radio-pmb8878",
