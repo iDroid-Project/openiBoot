@@ -358,6 +358,7 @@ static error_t nor_setup_chip_info(nor_device_t *_dev)
 
 	bufferPrintf("NOR vendor=%x, device=%x\r\n", _dev->vendor, _dev->device);
 
+	int foundDevice = FALSE;
 	switch(_dev->vendor) {
 		// massive list of ids: http://flashrom.org/trac/flashrom/browser/trunk/flashchips.h
 		case 0xBF:
@@ -371,6 +372,7 @@ static error_t nor_setup_chip_info(nor_device_t *_dev)
 			_dev->block_size = 0x1000;
 			_dev->block_protect_bits = 0x3C;
 			_dev->page_size = 0x1;
+			foundDevice = TRUE;
 			break;
 
 		case 0x1F:
@@ -384,6 +386,7 @@ static error_t nor_setup_chip_info(nor_device_t *_dev)
 			_dev->block_size = 0x1000;
 			_dev->block_protect_bits = 0xC;
 			_dev->page_size = 0x100;
+			foundDevice = TRUE;
 			break;
 
 		case 0x20:
@@ -396,6 +399,7 @@ static error_t nor_setup_chip_info(nor_device_t *_dev)
 			_dev->block_size = 0x1000;
 			_dev->block_protect_bits = 0x1C;
 			_dev->page_size = 0x100;
+			foundDevice = TRUE;
 			break;
 
 		case 0x01:
@@ -408,15 +412,20 @@ static error_t nor_setup_chip_info(nor_device_t *_dev)
 			_dev->block_size = 0x1000;
 			_dev->block_protect_bits = 0x1C;
 			_dev->page_size = 0x100;
+			foundDevice = TRUE;
 			break;
 
 		default:
-			bufferPrintf("nor: Unrecognized Chip Vendor!\r\n");
-			_dev->block_write_function = &nor_write_block_by_byte;
-			_dev->block_size = 0x1000;
-			_dev->block_protect_bits = 0x3C;
-			_dev->page_size = 0x1;
 			break;
+	}
+
+	if(foundDevice != TRUE)
+	{
+		bufferPrintf("nor: Unrecognized Chip Vendor!\r\n");
+		_dev->block_write_function = &nor_write_block_by_byte;
+		_dev->block_size = 0x1000;
+		_dev->block_protect_bits = 0x3C;
+		_dev->page_size = 0x1;
 	}
 
 	return SUCCESS;
