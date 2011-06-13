@@ -46,7 +46,7 @@
 #endif
 
 #ifndef INITRD_LOAD
-#define INITRD_LOAD (RAMStart + (16*1024*1024)) // 16MB in.
+#define INITRD_LOAD (RAMStart + 0x08000000)
 #endif
 
 /* this code is adapted from http://www.simtec.co.uk/products/SWLINUX/files/booting_article.html, which is distributed under the BSD license */
