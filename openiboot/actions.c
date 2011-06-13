@@ -45,6 +45,10 @@
 #define MACH_ID MACH_APPLE_IPHONE
 #endif
 
+#ifndef INITRD_LOAD
+#define INITRD_LOAD (RAMStart + (16*1024*1024)) // 16MB in.
+#endif
+
 /* this code is adapted from http://www.simtec.co.uk/products/SWLINUX/files/booting_article.html, which is distributed under the BSD license */
 
 /* list of possible tags */
@@ -366,12 +370,11 @@ void set_kernel(void* location, int size) {
 	memcpy(kernel, location, size);
 }
 
-#define INITRD_LOAD 0x06000000
 
 static void setup_tags(struct atag* parameters, const char* commandLine)
 {
 	setup_core_tag(parameters, 4096);       /* standard core tag 4k pagesize */
-	setup_mem_tag(MemoryStart, 0x08000000);    /* 128Mb at 0x00000000 */
+	setup_mem_tag(MemoryStart, RAMEnd-RAMStart);    /* 128Mb at 0x00000000 */
 	if(ramdisk != NULL && ramdiskSize > 0) {
 		setup_ramdisk_tag(ramdiskRealSize);
 		setup_initrd2_tag(INITRD_LOAD, ramdiskSize);
@@ -423,21 +426,31 @@ static int load_multitouch_images()
 void boot_linux(const char* args, uint32_t mach_type) {
 	uint32_t exec_at = (uint32_t) kernel;
 	uint32_t param_at = exec_at - 0x2000;
+	int i;
+
+#if RAMStart != MemoryStart
+	if(exec_at > RAMStart)
+		exec_at = (exec_at - RAMStart) + MemoryStart;
+#endif
 
 	load_multitouch_images();
 
 	setup_tags((struct atag*) param_at, args);
 
 	EnterCriticalSection();
+	exit_modules();
 	platform_shutdown();
+
+	bufferPrintf("Booting Linux...\r\n");
 
 	/* FIXME: This overwrites openiboot! We make the semi-reasonable assumption
 	 * that this function's own code doesn't reside in 0x0100-0x1100 */
 
-	int i;
-
-	for(i = 0; i < ((ramdiskSize + sizeof(uint32_t) - 1)/sizeof(uint32_t)); i++) {
-		((uint32_t*)INITRD_LOAD)[i] = ((uint32_t*)ramdisk)[i];
+	if(ramdiskSize > 0 && ramdisk != (void*)INITRD_LOAD)
+	{
+		for(i = 0; i < ((ramdiskSize + sizeof(uint32_t) - 1)/sizeof(uint32_t)); i++) {
+			((uint32_t*)INITRD_LOAD)[i] = ((uint32_t*)ramdisk)[i];
+		}
 	}
 
 	for(i = 0; i < (0x1000/sizeof(uint32_t)); i++) {
@@ -724,6 +737,7 @@ static void cmd_setup_machine(int argc, char **argv)
 	if(argc != 2)
 	{
 		bufferPrintf("Usage: %s machine_id\n", argv[0]);
+		bufferPrintf("Current machine ID: %d.\r\n", currentEntry->machine);
 		return;
 	}
 
