@@ -7,7 +7,7 @@ Import('*')
 atv_2g_src = [plat_a4_src,
 				env.Localize([
 				'#audiohw-null.c',
-				'h2fmi.c',
+				'mcu.c',
 				])]
 Export('atv_2g_src')
 

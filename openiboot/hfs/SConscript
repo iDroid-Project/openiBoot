@@ -10,5 +10,7 @@ hfs_src = env.Localize([
 	'rawfile.c',
 	'utility.c',
 	'volume.c',
+	'xattr.c',
+	'hfscompress.c',
 	])
 Export('hfs_src')

@@ -125,7 +125,7 @@ static int vfl_check_checksum(vfl_vfl_device_t *_vfl, int bank)
 	return FALSE;
 }
 
-static error_t vfl_vfl_read_single_page(vfl_device_t *_vfl, uint32_t dwVpn, uint8_t* buffer, uint8_t* spare, int empty_ok, int* refresh_page)
+static error_t vfl_vfl_read_single_page(vfl_device_t *_vfl, uint32_t dwVpn, uint8_t* buffer, uint8_t* spare, int empty_ok, int* refresh_page, uint32_t reserved)
 {
 	vfl_vfl_device_t *vfl = CONTAINER_OF(vfl_vfl_device_t, vfl, _vfl);
 
@@ -134,7 +134,7 @@ static error_t vfl_vfl_read_single_page(vfl_device_t *_vfl, uint32_t dwVpn, uint
 
 	//VFLData1.field_8++;
 	//VFLData1.field_20++;
-	
+
 	dwVpn += vfl->geometry.pages_per_sublk * vfl->geometry.fs_start_block;
 	if(dwVpn >= vfl->geometry.pages_total*vfl->geometry.pages_per_sublk)
 	{
@@ -150,14 +150,14 @@ static error_t vfl_vfl_read_single_page(vfl_device_t *_vfl, uint32_t dwVpn, uint
 	virtual_page_number_to_virtual_address(vfl, dwVpn, &virtualBank, &virtualBlock, &virtualPage);
 	physicalBlock = virtual_block_to_physical_block(vfl, virtualBank, virtualBlock);
 
-	int ret = nand_device_read_single_page(vfl->device, virtualBank, physicalBlock + vfl->geometry.reserved_blocks, virtualPage, buffer, spare);
+	int ret = nand_device_read_single_page(vfl->device, virtualBank, physicalBlock + vfl->geometry.reserved_blocks, virtualPage, buffer, spare, 0);
 
 	if(!empty_ok && ret == ENOENT)
 		ret = EIO;
 
 	if(ret == EINVAL || ret == EIO)
 	{
-		ret = nand_device_read_single_page(vfl->device, virtualBank, physicalBlock + vfl->geometry.reserved_blocks, virtualPage, buffer, spare);
+		ret = nand_device_read_single_page(vfl->device, virtualBank, physicalBlock + vfl->geometry.reserved_blocks, virtualPage, buffer, spare, 0);
 		if(!empty_ok && ret == ENOENT)
 			return EIO;
 
@@ -344,7 +344,7 @@ static error_t vfl_vfl_open(vfl_device_t *_vfl, nand_device_t *_nand)
 			if(!(vfl->bbt[i / 8] & (1 << (i  & 0x7))))
 				continue;
 
-			if(nand_device_read_single_page(vfl->device, bank, i, 0, pageBuffer, spareBuffer) == 0)
+			if(nand_device_read_single_page(vfl->device, bank, i, 0, pageBuffer, spareBuffer, 0) == 0)
 			{
 				memcpy(curVFLCxt->vfl_context_block, ((vfl_vfl_context_t*)pageBuffer)->vfl_context_block, sizeof(curVFLCxt->vfl_context_block));
 				break;
@@ -368,7 +368,7 @@ static error_t vfl_vfl_open(vfl_device_t *_vfl, nand_device_t *_nand)
 			if(block == 0xFFFF)
 				continue;
 
-			if(nand_device_read_single_page(vfl->device, bank, block + vfl->geometry.reserved_blocks, 0, pageBuffer, spareBuffer) != 0)
+			if(nand_device_read_single_page(vfl->device, bank, block + vfl->geometry.reserved_blocks, 0, pageBuffer, spareBuffer, 0) != 0)
 				continue;
 
 			vfl_vfl_spare_data_t *spareData = (vfl_vfl_spare_data_t*)spareBuffer;
@@ -393,14 +393,14 @@ static error_t vfl_vfl_open(vfl_device_t *_vfl, nand_device_t *_nand)
 		int last = 0;
 		for(page = 8; page < vfl->geometry.pages_per_block; page += 8) {
 			if(nand_device_read_single_page(vfl->device, bank, curVFLCxt->vfl_context_block[VFLCxtIdx] + vfl->geometry.reserved_blocks,
-						page, pageBuffer, spareBuffer) != 0)
+						page, pageBuffer, spareBuffer, 0) != 0)
 				break;
 			
 			last = page;
 		}
 
 		if(nand_device_read_single_page(vfl->device, bank, curVFLCxt->vfl_context_block[VFLCxtIdx] + vfl->geometry.reserved_blocks,
-					last, pageBuffer, spareBuffer) != 0)
+					last, pageBuffer, spareBuffer, 0) != 0)
 		{
 			bufferPrintf("vfl: cannot find readable VFLCxt\n");
 			free(pageBuffer);

@@ -18,6 +18,7 @@ typedef struct _BootEntry
 	char *path; // Use for linux kernel args and image name
 	char *kernel;
 	char *ramdisk;
+	uint32_t machine; // Used for linux kernels.
 
 	LinkedList list_ptr;
 } BootEntry;
@@ -26,7 +27,7 @@ void chainload(uint32_t address);
 int chainload_image(char *name);
 void set_kernel(void* location, int size);
 void set_ramdisk(void* location, int size);
-void boot_linux(const char* args);
+void boot_linux(const char* args, uint32_t mach_id);
 
 BootEntry *setup_root();
 BootEntry *setup_current();

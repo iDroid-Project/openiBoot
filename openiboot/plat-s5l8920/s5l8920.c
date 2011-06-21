@@ -64,6 +64,8 @@ void platform_init()
 	spi_setup();
 
 	LeaveCriticalSection();
+
+	aes_setup();
 }
 
 void platform_shutdown()

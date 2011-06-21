@@ -125,6 +125,7 @@ void platform_init()
 		//audiohw_init();
 	
 		//TODO: remove
+	
 	task_init(&iboot_loader_task, "iboot loader", TASK_DEFAULT_STACK_SIZE);
 	task_start(&iboot_loader_task, &iboot_loader_run, NULL);
 }

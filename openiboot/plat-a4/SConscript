@@ -9,27 +9,12 @@ env.AddModules([
 	"usb-synopsys",
 	"vfl-vfl",
 	"vfl-vsvfl",
+	"ftl-yaftl",
 	])
 
-plat_a4_src = arch_arm_src + env.Localize([
-	# Include the bits of base_src we use
-	# until we implement it all
-	'#device.c',
-	'#mtd.c',
-	'#bdev.c',
-	'#nand.c',
-	'#vfl.c',
-	'#ftl.c',
-	'#openiboot.c',
-	'#util.c',
-	'#malloc.c',
-	'#tasks.c',
-	'#printf.c',
-	'#framebuffer.c',
-	'#commands.c',
-	'#stb_image.c',
-
+plat_a4_src = arch_arm_src + base_src + env.Localize([
 	'a4.c',
+	'aes.c',
 	'buttons.c',
 	'chipid.c',
 	'clock.c',
@@ -48,6 +33,7 @@ plat_a4_src = arch_arm_src + env.Localize([
 	'uart.c',
 	'cdma.c',
 	'usbphy.c',
+	'h2fmi.c',
 	]) + hfs_src
 Export('plat_a4_src')
 

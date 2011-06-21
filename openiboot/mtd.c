@@ -27,7 +27,7 @@ static error_t mtd_bdev_seek(block_device_t *_dev, seek_mode_t _mode, int64_t _a
 	switch(_mode)
 	{
 	case seek_begin:
-		dev->bdev_addr = (int)_amt;
+		dev->bdev_addr = (int64_t)_amt;
 		break;
 
 	case seek_end:
@@ -36,12 +36,12 @@ static error_t mtd_bdev_seek(block_device_t *_dev, seek_mode_t _mode, int64_t _a
 			if(sz <= 0)
 				return EIO;
 			
-			dev->bdev_addr = sz - (int)_amt;
+			dev->bdev_addr = sz - (int64_t)_amt;
 			break;
 		}
 
 	case seek_offset:
-		dev->bdev_addr += (int)_amt;
+		dev->bdev_addr += (int64_t)_amt;
 		break;
 	}
 
@@ -68,13 +68,13 @@ static error_t mtd_bdev_write(block_device_t *_dev, void *_src, int _sz)
 	return ret;
 }
 
-static int mtd_bdev_size(block_device_t *_dev)
+static int64_t mtd_bdev_size(block_device_t *_dev)
 {
 	mtd_t *dev = mtd_get_bdev(_dev);
 	return mtd_size(dev);
 }
 
-static int mtd_bdev_block_size(block_device_t *_dev)
+static int64_t mtd_bdev_block_size(block_device_t *_dev)
 {
 	mtd_t *dev = mtd_get_bdev(_dev);
 	return mtd_block_size(dev);
@@ -200,7 +200,7 @@ void mtd_finish(mtd_t *_mtd)
 		_mtd->prepare_count = 0;
 }
 
-int mtd_size(mtd_t *_mtd)
+int64_t mtd_size(mtd_t *_mtd)
 {
 	if(_mtd->size)
 		return _mtd->size(_mtd);
@@ -208,7 +208,7 @@ int mtd_size(mtd_t *_mtd)
 	return -1;
 }
 
-int mtd_block_size(mtd_t *_mtd)
+int64_t mtd_block_size(mtd_t *_mtd)
 {
 	if(_mtd->block_size)
 		return _mtd->block_size(_mtd);
@@ -216,7 +216,7 @@ int mtd_block_size(mtd_t *_mtd)
 	return -1;
 }
 
-error_t mtd_read(mtd_t *_mtd, void *_dest, uint32_t _off, int _sz)
+error_t mtd_read(mtd_t *_mtd, void *_dest, uint64_t _off, int _sz)
 {
 	if(_mtd->read == NULL)
 		return ENOENT;
@@ -224,7 +224,7 @@ error_t mtd_read(mtd_t *_mtd, void *_dest, uint32_t _off, int _sz)
 	return _mtd->read(_mtd, _dest, _off, _sz);
 }
 
-error_t mtd_write(mtd_t *_mtd, void *_src, uint32_t _off, int _sz)
+error_t mtd_write(mtd_t *_mtd, void *_src, uint64_t _off, int _sz)
 {
 	if(_mtd->write == NULL)
 		return ENOENT;
@@ -255,7 +255,7 @@ void cmd_mtd_read(int argc, char **argv)
 {
 	if(argc != 5)
 	{
-		bufferPrintf("Usage: %s [device] [destination] [offset] [size].\n");
+		bufferPrintf("Usage: %s [device] [destination] [offset] [size].\n", argv[0]);
 		return;
 	}
 	
@@ -284,7 +284,7 @@ void cmd_mtd_write(int argc, char **argv)
 {
 	if(argc != 5)
 	{
-		bufferPrintf("Usage: %s [device] [source] [offset] [size].\n");
+		bufferPrintf("Usage: %s [device] [source] [offset] [size].\n", argv[0]);
 		return;
 	}
 	

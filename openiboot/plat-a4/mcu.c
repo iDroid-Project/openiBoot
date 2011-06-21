@@ -4,6 +4,7 @@
 #include "tasks.h"
 #include "timer.h"
 #include "arm/arm.h"
+#include "commands.h"
 
 uint32_t mcu_inited = 0; // dword_5FF33D40
 uint32_t mcu_data = 0; // dword_5FF33D74
@@ -65,10 +66,10 @@ void mcu_uart_write_char(int ureg, uint8_t _char) {
 	uart_write(ureg, (char*)&_char, 1);
 }
 
-uint16_t mcu_calc_something(uint16_t _iv, uint8_t* _buffer, uint32_t _length) {
+uint16_t mcu_crc16(uint16_t _iv, uint8_t* _buffer, uint32_t _length) {
 	uint16_t calced = _iv;
 	uint32_t i;
-	for (i = 0; i != _length; i++) {
+	for (i = 0; i < _length; i++) {
 		uint32_t j;
 		uint32_t bitmask = 0x80;
 		for (j = 0; j < 8; j++) {
@@ -92,11 +93,10 @@ uint32_t mcu_write(uint32_t _arg0, uint8_t* _buffer, uint32_t _length) {
 	for (i = 0; i < sizeof(buffer); i++) {
 		mcu_uart_write_char(4, buffer[i]);
 	}
-	i = 0;
-	for (i = 0; i != _length; i++) {
+	for (i = 0; i < _length; i++) {
 		mcu_uart_write_char(4, _buffer[i]);
 	}
-	uint16_t calced = mcu_calc_something(mcu_calc_something(0xFFFF, buffer, 6), _buffer, _length);
+	uint16_t calced = mcu_crc16(mcu_crc16(0xFFFF, buffer, 6), _buffer, _length);
 	mcu_uart_write_char(4, calced >> 8);
 	mcu_uart_write_char(4, calced & 0xFF);
 	return 0;
@@ -120,8 +120,6 @@ void mcu_run(uint32_t _V) {
 	uint32_t goto_start_time;
 	uint32_t goto_no_calc = 0;
 	while (TRUE) {
-		task_sleep(500);
-		continue;
 		goto_start_time = 0;
 		uint64_t startTime = timer_get_system_microtime();
 		uint32_t ii = 0;
@@ -129,8 +127,8 @@ void mcu_run(uint32_t _V) {
 		uint16_t calc = 0xFFFF;
 		while(1) {
 			read = mcu_read(4, 0);
-			if(read <= 0) {
-				if (startTime + 1000000 <= timer_get_system_microtime()) {
+			if(read <= 0 || read == 0xFF) {
+				if (has_elapsed(startTime, 1000000)) {
 					goto_start_time = 1;
 					break;
 				}
@@ -141,7 +139,7 @@ void mcu_run(uint32_t _V) {
 				if(read != 0x53)
 					continue;
 				if(ii < jj+6) {
-					calc = mcu_calc_something(calc, &read, 1);
+					calc = mcu_crc16(calc, &read, 1);
 				}
 				ii++;
 				continue;
@@ -177,7 +175,7 @@ void mcu_run(uint32_t _V) {
 			}
 			if(!goto_no_calc) {
 				if(ii < jj+6) {
-					calc = mcu_calc_something(calc, &read, 1);
+					calc = mcu_crc16(calc, &read, 1);
 				}
 				ii++;
 				continue;
@@ -291,18 +289,17 @@ uint32_t mcu_init() {
 	uint32_t var2;
 	uint32_t* buffer = malloc(0x20);
 	uart_set(4, 250000, 8, 0, 1);
-	if(uart_set_rx_buf(4, 1, 0x400))
+	if(uart_set_rx_buf(4, UART_IRQ_MODE, 0x400))
 		system_panic("mcu_init: uart_set_rx_buf failed\r\n");
 
 	uart_send_break_signal(4, ON);
 	task_sleep(1); // 80 microseconds...
 	uart_send_break_signal(4, OFF);
-	return -1;
 //	mcu_init_dma_event(&mcu_dma[0], 1, 1);
 //	mcu_init_dma_event(&mcu_dma[1], 1, 0);
 //	mcu_init_dma_event(&mcu_dma[2], 1, 0);
 	uint32_t task_arg = 0x2000;
-	task_init(&mcu_task, "mcu");
+	task_init(&mcu_task, "mcu", TASK_DEFAULT_STACK_SIZE);
 	task_start(&mcu_task, &mcu_run, &task_arg);
 	if(mcu_write(2, NULL, 0) || mcu_read_imho(&var1, buffer, 0x20, &var2) || var1 != 0x80 || mcu_weird_hook(2, buffer, var2, &var1)) {
 		mcu_inited = 0;
@@ -312,9 +309,15 @@ uint32_t mcu_init() {
 	mcu_inited = 1;
 	return 0;
 }
-
+/*
 void display_init() {
 	if(mcu_init())
 		bufferPrintf("Oh, damnit.\r\n");
 }
 MODULE_INIT(display_init);
+*/
+static void cmd_mcu_setup(int argc, char** argv) {
+	bufferPrintf("setting up MCU\r\n");
+	mcu_init();
+}
+COMMAND("mcu_setup", "mcu setup", cmd_mcu_setup);

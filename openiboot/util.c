@@ -1,3 +1,26 @@
+/*
+ * util.c
+ *
+ * Copyright 2010 iDroid Project
+ *
+ * This file is part of iDroid. An android distribution for Apple products.
+ * For more information, please visit http://www.idroidproject.org/.
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; either version 3
+ * of the License, or (at your option) any later version.
+ * 
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ */
+
 #include "openiboot.h"
 #include "hardware/platform.h"
 #include "uart.h"
@@ -7,21 +30,51 @@
 
 static printf_handler_t printf_handler = NULL;
 
+/**
+ * __assert
+ *
+ * Sucks to be you right now...
+ *
+ * @param file Need help with this? if you do, stop looking at this code right now
+ * @param line I'll give you a clue, this will be a number
+ * @param m Whatever it is you wish to shout about
+ *
+ */
 void __assert(const char* file, int line, const char* m) {
 	bufferPrintf("ASSERT FAILED: %s at %s:%d\r\n", m, file, line);
 	panic();
 }
 
+/**
+ * abort
+ *
+ * OpeniBoot doesnt like you, and has aborted whatever it was doing
+ *
+ */
 void abort() {
 	bufferPrintf("openiboot ABORT!!\r\n");
 	while(TRUE);
 }
 
+/**
+ * panic
+ *
+ * OpeniBoot has just shit a brick, and now you are fucked - time for a reboot
+ *
+ */
 void panic() {
 	bufferPrintf("openiboot PANIC!!\r\n");
 	while(TRUE);
 }
 
+/**
+ * system_panic
+ *
+ * The bottom wiping performed prior to a total and sudden panic
+ *
+ * @param format Format of what is being printed to the buffer
+ *
+ */
 void system_panic(const char* format, ...) {
 	static char buffer[1000];
 	EnterCriticalSection();
@@ -36,6 +89,15 @@ void system_panic(const char* format, ...) {
 	panic();
 }
 
+/**
+ * memset
+ *
+ * Fills a block of memory
+ * 
+ * @param x The bread
+ * @param fill The filling
+ * @param size The amount of filling required
+ */
 void* memset(void* x, int fill, uint32_t size) {
 	uint32_t i;
 	for(i = 0; i < size; i++) {
@@ -44,6 +106,15 @@ void* memset(void* x, int fill, uint32_t size) {
 	return x;
 }
 
+/**
+ * memcpy
+ *
+ * Copies a block of memory
+ * 
+ * @param dest Pointer to the destination
+ * @param src Pointer to the source
+ * @param size Well how many 'kin bytes do you need?
+ */
 void* memcpy(void* dest, const void* src, uint32_t size) {
 	uint32_t i;
 	for(i = 0; i < size; i++) {
@@ -52,6 +123,14 @@ void* memcpy(void* dest, const void* src, uint32_t size) {
 	return dest;
 }
 
+/**
+ * strcmp
+ *
+ * Compares strings an' shit yo'
+ * 
+ * @param s1 First string
+ * @param s2 String to compare against s1
+ */
 int strcmp(const char* s1, const char* s2) {
 	while(*s1 == *(s2++)) {
 		if(*(s1++) == '\0')
@@ -61,6 +140,15 @@ int strcmp(const char* s1, const char* s2) {
 	return (*(const unsigned char *)s1 - *(const unsigned char *)(s2 - 1));
 }
 
+/**
+ * strncmp
+ *
+ * Compare characters of two strings
+ * 
+ * @param s1 First string
+ * @param s2 String to compare against s1
+ * @param n Maximum number of characters to compare
+ */
 int strncmp(const char* s1, const char* s2, size_t n) {
 	while(n-- > 0 && *s1 == *(s2++)) {
 		if(n == 0 || *(s1++) == '\0')
@@ -70,6 +158,14 @@ int strncmp(const char* s1, const char* s2, size_t n) {
 	return (*(const unsigned char *)s1 - *(const unsigned char *)(s2 - 1));
 }
 
+/**
+ * strchr
+ *
+ * Locate first occurrence of character in string
+ * 
+ * @param s1 First string
+ * @param s2 String to compare against s1
+ */
 char* strchr(const char* s1, int s2)
 {
 	while(*s1)
@@ -83,6 +179,13 @@ char* strchr(const char* s1, int s2)
 	return NULL;
 }
 
+/**
+ * strstr
+ * Find sharp shiny things in a heap of dead grass
+ * 
+ * @param s1 Needle
+ * @param s2 Haystack
+ */
 char* strstr(const char* s1, const char* s2)
 {
 	while(*s1)
@@ -107,6 +210,12 @@ char* strstr(const char* s1, const char* s2)
 	return NULL;
 }
 
+/**
+ * strdup
+ * Just like cloning, only different
+ * 
+ * @param str String to duplicate
+ */
 char* strdup(const char* str) {
 	size_t len = strlen(str);
 	char* toRet = (char*) malloc(len + 1);
@@ -115,17 +224,33 @@ char* strdup(const char* str) {
 	return toRet;
 }
 
+/**
+ * strcpy
+ * I couldn't think of anything witty for this one, and tbh you should know what it does
+ * 
+ * @param dst Destination
+ * @param src Source
+ */
 char* strcpy(char* dst, const char* src) {
-	char* origDest =dst;
+	char* origDest = dst;
 	while(*src != '\0') {
 		*dst = *src;
 		dst++;
 		src++;
 	}
 	*dst = '\0';
+	
 	return origDest;
 }
 
+/**
+ * memcmp
+ * compare bytes in memory
+ * 
+ * @param s1 What you want to compare
+ * @param s2 What you want to compare it against
+ * @param size mmmm, tasty bytes
+ */
 int memcmp(const void* s1, const void* s2, uint32_t size) {
 	uint32_t i;
 	const uint8_t* a = s1;
@@ -145,7 +270,14 @@ int memcmp(const void* s1, const void* s2, uint32_t size) {
 
 }
 
-/* Adapted from public domain memmove function from  David MacKenzie <djm@gnu.ai.mit.edu>.  */
+/**
+ * memmove
+ * Adapted from public domain memmove function from  David MacKenzie <djm@gnu.ai.mit.edu>.
+ * 
+ * @param dest Destination
+ * @param src Source
+ * @param length mmmm, tasty bytes
+ */
 void* memmove(void *dest, const void* src, size_t length)
 {
 	register uint8_t* myDest = dest;
@@ -163,6 +295,12 @@ void* memmove(void *dest, const void* src, size_t length)
 	return dest;
 }
 
+/**
+ * strlen
+ * How long is my di.. I mean string
+ * 
+ * @param str The string
+ */
 size_t strlen(const char* str) {
 	int ret = 0;
 	while(*str != '\0') {
@@ -172,6 +310,12 @@ size_t strlen(const char* str) {
 	return ret;
 }
 
+/**
+ * tolower
+ * Makes it all proper little an' that
+ * 
+ * @param c letter
+ */
 int tolower(int c) {
 	if(c >= 'A' && c <= 'Z')
 		return c - 'A' + 'a';
@@ -179,17 +323,35 @@ int tolower(int c) {
 		return c;
 }
 
+/**
+ * putchar
+ * Prints a letter to the buffer
+ * 
+ * @param c letter
+ */
 int putchar(int c) {
 	char toPrint[] = {c, 0};
 	bufferPrint(toPrint);
 	return c;
 }
 
+/**
+ * puts
+ * Prints a string to the buffer
+ * 
+ * @param str something stringy
+ */
 int puts(const char *str) {
 	bufferPrint(str);
 	return 0;
 }
 
+/**
+ * parseNumber
+ * Automagically makes numerical things from stringy things
+ * 
+ * @param str something stringy
+ */
 unsigned long int parseNumber(const char* str) {
 	int neg = 0;
 	int base = 10;
@@ -226,6 +388,14 @@ unsigned long int parseNumber(const char* str) {
 	return value;
 }
 
+/**
+ * strtoul
+ * Convert a string to an unsigned long
+ * 
+ * @param str something stringy
+ * @param endptr the next char in str after the numerical value
+ * @param base The data encoding (int)
+ */
 unsigned long int strtoul(const char* str, char** endptr, int base) {
 	if(base == 16) {
 		if(*str == '0' && *(str + 1) == 'x')
@@ -267,6 +437,14 @@ unsigned long int strtoul(const char* str, char** endptr, int base) {
 	return result;
 }
 
+/**
+ * hexToBytes
+ * This should need no explanation
+ * 
+ * @param hex hexskidecskimal
+ * @param buffer no, not those things trains bump in to
+ * @param bytes well, how many?
+ */
 void hexToBytes(const char* hex, uint8_t** buffer, int* bytes) {
 	*bytes = strlen(hex) / 2;
 	*buffer = (uint8_t*) malloc(*bytes);
@@ -283,6 +461,13 @@ void hexToBytes(const char* hex, uint8_t** buffer, int* bytes) {
 	}
 }
 
+/**
+ * bytesToHex
+ * The reverse of the above - This should also need no explanation
+ * 
+ * @param buffer no, not those things trains bump in to
+ * @param bytes well, how many?
+ */
 void bytesToHex(const uint8_t* buffer, int bytes) {
 	while(bytes > 0) {
 		bufferPrintf("%02x", *buffer);
@@ -291,6 +476,13 @@ void bytesToHex(const uint8_t* buffer, int bytes) {
 	}
 }
 
+/**
+ * tokenize
+ * ooh tokens
+ * 
+ * @param commandline Teh commands
+ * @param argc Arguments, women love them
+ */
 char** tokenize(char* commandline, int* argc) {
 	char* pos;
 	char** arguments;
@@ -357,6 +549,13 @@ char** tokenize(char* commandline, int* argc) {
 	return arguments;
 }
 
+/**
+ * dump_memory
+ * Quick - get a bucket!
+ * 
+ * @param start Where do we start?
+ * @param length Well, how much do you want exactly?
+ */
 void dump_memory(uint32_t start, int length) {
 	uint32_t curPos = start;
 	int x = 0;
@@ -381,6 +580,13 @@ void dump_memory(uint32_t start, int length) {
 	printf("\r\n");
 }
 
+/**
+ * buffer_dump_memory
+ * Cause OpeniBoot to have diahorea
+ * 
+ * @param start Where do we start?
+ * @param length Well, how much do you want exactly?
+ */
 void buffer_dump_memory(uint32_t start, int length) {
 	uint32_t curPos = start;
 	int x = 0;
@@ -405,6 +611,13 @@ void buffer_dump_memory(uint32_t start, int length) {
 	bufferPrintf("\r\n");
 }
 
+/**
+ * buffer_dump_memory2
+ * Cause OpeniBoot to have diahorea2.0
+ * 
+ * @param start Where do we start?
+ * @param length Well, how much do you want exactly?
+ */
 void buffer_dump_memory2(uint32_t start, int length, int width) {
 	uint32_t curPos = start;
 	int x = 0;
@@ -426,7 +639,13 @@ void buffer_dump_memory2(uint32_t start, int length, int width) {
 	bufferPrintf("\r\n");
 }
 
-
+/**
+ * hexdump
+ * Cause OpeniBoot to have hexidecimal-diahorea
+ * 
+ * @param start Where do we start?
+ * @param length Well, how much do you want exactly?
+ */
 void hexdump(void *start, int length) {
 	uint32_t curPos = (uint32_t)start;
 	uint32_t end = (uint32_t)start + length;
@@ -771,9 +990,30 @@ const char *strerr(error_t _err)
 
 uint32_t next_power_of_two(uint32_t n) {
 	uint32_t val = 1 << (31 - __builtin_clz(n));
-	
+
 	if (n % val)
 		val *= 2;
-		
+
 	return val;
+}
+
+inline void auto_store(void *_ptr, size_t _sz, uint32_t _val)
+{
+	switch(_sz)
+	{
+	case 0:
+		return;
+
+	case 1:
+		*((uint8_t*)_ptr) = _val;
+		return;
+
+	case 2:
+		*((uint16_t*)_ptr) = _val;
+		return;
+
+	case 4:
+		*((uint32_t*)_ptr) = _val;
+		return;
+	}
 }

@@ -1,3 +1,26 @@
+/*
+ * actions.c - OpeniBoot Actions
+ *
+ * Copyright 2010 iDroid Project
+ *
+ * This file is part of iDroid. An android distribution for Apple products.
+ * For more information, please visit http://www.idroidproject.org/.
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; either version 3
+ * of the License, or (at your option) any later version.
+ * 
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ */
+
 #include "actions.h"
 #include "commands.h"
 #include "hardware/platform.h"
@@ -17,7 +40,14 @@
 #include "platform.h"
 #include "timer.h"
 
-#define MACH_APPLE_IPHONE 1506
+#define MACH_APPLE_IPHONE	1506
+#ifndef MACH_ID
+#define MACH_ID MACH_APPLE_IPHONE
+#endif
+
+#ifndef INITRD_LOAD
+#define INITRD_LOAD (RAMStart + 0x08000000)
+#endif
 
 /* this code is adapted from http://www.simtec.co.uk/products/SWLINUX/files/booting_article.html, which is distributed under the BSD license */
 
@@ -240,19 +270,16 @@ static void setup_cmdline_tag(const char * line)
 
 static void setup_wifi_tags()
 {
+#if defined(CONFIG_IPHONE_2G) || defined(CONFIG_IPHONE_3G)
 	uint8_t* mac;
 	uint32_t calSize;
 	uint8_t* cal;
 
-#if defined(CONFIG_IPOD_TOUCH_1G) || defined(CONFIG_IPOD_TOUCH_2G) 
-	return;
-#else
 	if(radio_nvram_get(2, &mac) < 0)
 		return;
 
 	if((calSize = radio_nvram_get(1, &cal)) < 0)
 		return;
-#endif
 
 	memcpy(&params->u.wifi.mac, mac, 6);
 	params->u.wifi.calSize = calSize;
@@ -261,6 +288,7 @@ static void setup_wifi_tags()
 	params->hdr.tag = ATAG_IPHONE_WIFI;         /* iPhone NAND tag */
 	params->hdr.size = (sizeof(struct atag_header) + sizeof(struct atag_iphone_wifi) + calSize + 4) >> 2;
 	params = tag_next(params);              /* move pointer to next tag */
+#endif
 }
 
 static void setup_prox_tag()
@@ -342,12 +370,11 @@ void set_kernel(void* location, int size) {
 	memcpy(kernel, location, size);
 }
 
-#define INITRD_LOAD 0x06000000
 
 static void setup_tags(struct atag* parameters, const char* commandLine)
 {
 	setup_core_tag(parameters, 4096);       /* standard core tag 4k pagesize */
-	setup_mem_tag(MemoryStart, 0x08000000);    /* 128Mb at 0x00000000 */
+	setup_mem_tag(MemoryStart, RAMEnd-RAMStart);    /* 128Mb at 0x00000000 */
 	if(ramdisk != NULL && ramdiskSize > 0) {
 		setup_ramdisk_tag(ramdiskRealSize);
 		setup_initrd2_tag(INITRD_LOAD, ramdiskSize);
@@ -396,26 +423,34 @@ static int load_multitouch_images()
     return 1;
 }
 
-void boot_linux(const char* args) {
+void boot_linux(const char* args, uint32_t mach_type) {
 	uint32_t exec_at = (uint32_t) kernel;
 	uint32_t param_at = exec_at - 0x2000;
+	int i;
+
+#if RAMStart != MemoryStart
+	if(exec_at > RAMStart)
+		exec_at = (exec_at - RAMStart) + MemoryStart;
+#endif
 
 	load_multitouch_images();
 
 	setup_tags((struct atag*) param_at, args);
 
-	uint32_t mach_type = MACH_APPLE_IPHONE;
-
 	EnterCriticalSection();
+	exit_modules();
 	platform_shutdown();
+
+	bufferPrintf("Booting Linux...\r\n");
 
 	/* FIXME: This overwrites openiboot! We make the semi-reasonable assumption
 	 * that this function's own code doesn't reside in 0x0100-0x1100 */
 
-	int i;
-
-	for(i = 0; i < ((ramdiskSize + sizeof(uint32_t) - 1)/sizeof(uint32_t)); i++) {
-		((uint32_t*)INITRD_LOAD)[i] = ((uint32_t*)ramdisk)[i];
+	if(ramdiskSize > 0 && ramdisk != (void*)INITRD_LOAD)
+	{
+		for(i = 0; i < ((ramdiskSize + sizeof(uint32_t) - 1)/sizeof(uint32_t)); i++) {
+			((uint32_t*)INITRD_LOAD)[i] = ((uint32_t*)ramdisk)[i];
+		}
 	}
 
 	for(i = 0; i < (0x1000/sizeof(uint32_t)); i++) {
@@ -441,6 +476,7 @@ static void setup_init()
 	memset(&rootEntry, 0, sizeof(rootEntry));
 	rootEntry.type = kBootAuto;
 	rootEntry.title = "";
+	rootEntry.machine = MACH_ID;
 	rootEntry.list_ptr.next = &rootEntry;
 	rootEntry.list_ptr.prev = &rootEntry;
 	currentEntry = &rootEntry;
@@ -484,7 +520,10 @@ void setup_title(const char *title)
 
 	entry = malloc(sizeof(BootEntry));
 	memset(entry, 0, sizeof(BootEntry));
+
 	entry->title = strdup(title);
+	entry->machine = MACH_ID;
+
 	entry->list_ptr.prev = prev;
 	entry->list_ptr.next = &rootEntry;
 	rootEntry.list_ptr.prev = entry;
@@ -596,9 +635,9 @@ int setup_boot()
 			}
 
 			if(currentEntry->path == NULL)
-				boot_linux("console=tty root=/dev/ram0 init=/init rw");
+				boot_linux("console=tty root=/dev/ram0 init=/init rw", currentEntry->machine);
 			else
-				boot_linux(currentEntry->path);
+				boot_linux(currentEntry->path, currentEntry->machine);
 
 			return 0;
 		}
@@ -692,6 +731,27 @@ static void cmd_setup_image(int argc, char **argv)
 		setup_image(argv[1]);
 }
 COMMAND("image", "Set the image to chainload for the current boot entry.", cmd_setup_image);
+
+static void cmd_setup_machine(int argc, char **argv)
+{
+	if(argc != 2)
+	{
+		bufferPrintf("Usage: %s machine_id\n", argv[0]);
+		bufferPrintf("Current machine ID: %d.\r\n", currentEntry->machine);
+		return;
+	}
+
+	uint32_t num;
+	if(strcmp(argv[1], "default") == 0)
+		num = MACH_ID;
+	else if(strcmp(argv[1], "compat") == 0)
+		num = MACH_APPLE_IPHONE;
+	else
+		num = parseNumber(argv[1]);
+
+	currentEntry->machine = num;
+}
+COMMAND("machine_id", "Select a machine ID for booting the linux kernel.", cmd_setup_machine);
 
 static void cmd_setup_boot(int argc, char **argv)
 {

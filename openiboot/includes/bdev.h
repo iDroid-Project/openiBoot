@@ -50,11 +50,40 @@ typedef struct _GPT {
 	uint32_t partitionArrayChecksum;
 } __attribute__ ((packed)) GPT;
 
+typedef struct _LwVMPartitionRecord {
+	uint64_t type[2];
+	uint64_t guid[2];
+	uint64_t begin;
+	uint64_t end;
+	uint64_t attribute; // 0 == unencrypted; 0x1000000000000 == encrypted
+	char	partitionName[0x48];
+} __attribute__ ((packed)) LwVMPartitionRecord;
+
+typedef struct _LwVM {
+	uint64_t type[2];
+	uint64_t guid[2];
+	uint64_t mediaSize;
+	uint32_t numPartitions;
+	uint32_t crc32;
+	uint8_t unkn[464];
+	LwVMPartitionRecord partitions[12];
+	uint16_t chunks[1024]; // chunks[0] should be 0xF000
+} __attribute__ ((packed)) LwVM;
+
+static const char LwVMType[] = { 0x6A, 0x90, 0x88, 0xCF, 0x8A, 0xFD, 0x63, 0x0A, 0xE3, 0x51, 0xE2, 0x48, 0x87, 0xE0, 0xB9, 0x8B };
+static const char LwVMType_noCRC[] = { 0xB1, 0x89, 0xA5, 0x19, 0x4F, 0x59, 0x4B, 0x1D, 0xAD, 0x44, 0x1E, 0x12, 0x7A, 0xAF, 0x45, 0x39 };
+uint16_t** LwVM_chunks;
+uint32_t LwVM_numValidChunks;
+uint32_t LwVM_rangeShiftValue;
+uint32_t LwVM_rangeByteCount;
+uint64_t LwVM_seek;
+
 typedef enum _partitioning_mode
 {
 	partitioning_unknown,
 	partitioning_mbr,
 	partitioning_gpt,
+	partitioning_lwvm,
 	partitioning_none,
 } partitioning_mode_t;
 
@@ -74,7 +103,7 @@ typedef error_t (*block_device_write_t)(struct _block_device *, void *_src, int 
 typedef error_t (*block_device_seek_t)(struct _block_device *, seek_mode_t _mode, int64_t _amt);
 typedef error_t (*block_device_sync_t)(struct _block_device *);
 
-typedef int (*block_device_get_attribute_t)(struct _block_device *);
+typedef int64_t (*block_device_get_attribute_t)(struct _block_device *);
 
 typedef struct _block_device
 {
@@ -92,22 +121,28 @@ typedef struct _block_device
 	int setup_done;
 	LinkedList list_ptr;
 
+	struct _block_device_handle_struct *handle;
+
 	partitioning_mode_t part_mode;
 	MBR mbr;
 	GPT gpt;
+	LwVM lwvm;
 
 	MBRPartitionRecord *mbr_records;
 	GPTPartitionRecord *gpt_records;
+	LwVMPartitionRecord *lwvm_records;
 } block_device_t;
 
 typedef struct _block_device_handle_struct
 {
 	block_device_t *device;
+	int pIdx;
 
 	union
 	{
 		MBRPartitionRecord *mbr_record;
 		GPTPartitionRecord *gpt_record;
+		LwVMPartitionRecord *lwvm_record;
 	};
 	
 } block_device_handle_struct_t, *block_device_handle_t;

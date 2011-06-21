@@ -1,12 +1,11 @@
 #ifndef HW_GPIO_H
 #define HW_GPIO_H
 
-// gpioicBase
-// Device
-#define GPIOIC 0x39A00000	/* probably a part of the system controller */
-
 // gpioBaseAddress
 #define GPIO 0xBFA00000
+
+// Interrupt
+#define GPIO_INTERRUPT 0x74
 
 // Registers
 #define GPIO_INTLEVEL 0x80

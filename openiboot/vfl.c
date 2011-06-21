@@ -44,12 +44,38 @@ void vfl_close(vfl_device_t *_vfl)
 }
 
 error_t vfl_read_single_page(vfl_device_t *_vfl, uint32_t _page, uint8_t* buffer, uint8_t* spare,
-		int empty_ok, int* refresh_page)
+		int empty_ok, int* refresh_page, uint32_t disable_aes)
 {
 	if(!_vfl->read_single_page)
 		return ENOENT;
 
-	return _vfl->read_single_page(_vfl, _page, buffer, spare, empty_ok, refresh_page);
+	return _vfl->read_single_page(_vfl, _page, buffer, spare, empty_ok, refresh_page, disable_aes);
+}
+
+error_t vfl_erase_single_block(vfl_device_t *_vfl, uint32_t _block, int _replace_bad_block)
+{
+	if(!_vfl->erase_single_block)
+		return ENOENT;
+
+	return _vfl->erase_single_block(_vfl, _block, _replace_bad_block);
+}
+
+uint16_t *vfl_get_ftl_ctrl_block(vfl_device_t *_vfl)
+{
+	if(!_vfl->get_ftl_ctrl_block) {
+		return NULL;
+	}
+
+	return _vfl->get_ftl_ctrl_block(_vfl);
+}
+
+error_t vfl_get_info(vfl_device_t *_vfl, vfl_info_t _item, void *_result, size_t _sz)
+{
+	if(!_vfl->get_info) {
+		return ENOENT;
+	}
+
+	return _vfl->get_info(_vfl, _item, _result, _sz);
 }
 
 error_t vfl_detect(vfl_device_t **_vfl, nand_device_t *_nand, vfl_signature_style_t _sign)

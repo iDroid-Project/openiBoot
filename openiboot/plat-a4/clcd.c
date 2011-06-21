@@ -287,6 +287,8 @@ int displaypipe_init() {
 		clock_gate_switch(0xF, ON);
 		LCDTableunkn1is0xA = 1;
 	} else if (LCDTable->unkn1 == 0xB) {
+		// Hack
+		return -1;
 		clock_gate_switch(0x13, ON);
 		clock_gate_switch(0xD, ON);
 		LCDTableunkn1is0xB = 1;
@@ -487,7 +489,7 @@ int pinot_init(LCDInfo* LCDTable, ColorSpace colorspace, uint32_t* panelID, Wind
 		mipi_dsim_on_off(ON);
 
 #if defined(CONFIG_IPHONE_4)
-	gpio_switch(0x207, OFF);
+	gpio_pulldown_configure(0x207, GPIOPDDisabled);
 #endif
 
 	*panelID = pinot_panel_id;

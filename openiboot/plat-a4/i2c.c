@@ -24,6 +24,7 @@ int i2c_setup() {
 
 	init_i2c(&I2C[0]);
 	init_i2c(&I2C[1]);
+	init_i2c(&I2C[2]);
 	return 0;
 }
 

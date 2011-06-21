@@ -1,3 +1,26 @@
+/*
+ * images.c - Handles img3 and img2's from NOR devices
+ *
+ * Copyright 2010 iDroid Project
+ *
+ * This file is part of iDroid. An android distribution for Apple products.
+ * For more information, please visit http://www.idroidproject.org/.
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; either version 3
+ * of the License, or (at your option) any later version.
+ * 
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ */
+
 #include "openiboot.h"
 #include "commands.h"
 #include "images.h"
@@ -497,11 +520,28 @@ unsigned int images_read(Image* image, void** data) {
 		AppleImg3KBAGHeader* kbag = (AppleImg3KBAGHeader*) kbagOffset;
 
 		if(kbag != 0) {
-		  if(kbag->key_modifier == 1) {
-			aes_decrypt((void*)(kbagOffset + sizeof(AppleImg3KBAGHeader)), 16 + (kbag->key_bits / 8), AESGID, NULL, NULL);
-		  }
+			if(kbag->key_modifier == 1) {
+				aes_decrypt((void*)(kbagOffset + sizeof(AppleImg3KBAGHeader)), 16 + (kbag->key_bits / 8), AESGID, NULL, 0, NULL);
+			}
 
-		  aes_decrypt((void*)dataOffset, (dataLength / 16) * 16, AESCustom, (uint8_t*)(kbagOffset + sizeof(AppleImg3KBAGHeader) + 16), (uint8_t*)(kbagOffset + sizeof(AppleImg3KBAGHeader)));
+			AESKeyLen keyLen;
+			switch(kbag->key_bits)
+			{
+				case 128:
+					keyLen = AES128;
+					break;
+				case 192:
+					keyLen = AES192;
+					break;
+				case 256:
+					keyLen = AES256;
+					break;
+				default:
+					keyLen = AES128;
+					break;
+			}
+
+			aes_decrypt((void*)dataOffset, (dataLength / 16) * 16, AESCustom, (uint8_t*)(kbagOffset + sizeof(AppleImg3KBAGHeader) + 16), keyLen, (uint8_t*)(kbagOffset + sizeof(AppleImg3KBAGHeader)));
 		}
 
 		uint8_t* newBuf = malloc(dataLength);
@@ -777,7 +817,7 @@ void* images_inject_img3(const void* img3Data, const void* newData, size_t newDa
 
 	if(kbag != 0 && kbag->key_modifier == 1) {
 		memcpy(IVKey, (void*)(kbagOffset + sizeof(AppleImg3KBAGHeader)), 16 + (kbag->key_bits / 8));
-		aes_decrypt(IVKey, 16 + (kbag->key_bits / 8), AESGID, NULL, NULL);
+		aes_decrypt(IVKey, 16 + (kbag->key_bits / 8), AESGID, NULL, 0, NULL);
 	}
 
 	void* newImg3 = malloc(sizeof(AppleImg3RootHeader));
@@ -803,7 +843,7 @@ void* images_inject_img3(const void* img3Data, const void* newData, size_t newDa
 
 			memcpy(cursor + sizeof(AppleImg3Header), newData, newDataLen);
       if(kbag != 0) {
-  			aes_encrypt(cursor + sizeof(AppleImg3Header), (newDataLen / 16) * 16, AESCustom, Key, IV);
+  			aes_encrypt(cursor + sizeof(AppleImg3Header), (newDataLen / 16) * 16, AESCustom, Key, AES256, IV);
       }
 			cursor += newHeader->size;
 		} else {
@@ -869,6 +909,7 @@ int images_verify(Image* image) {
 	return retVal;
 }
 
+#if !defined(CONFIG_A4)
 void cmd_install(int argc, char** argv) {
 	if((argc > 2 && argc < 4) || argc > 4)
 	{
@@ -892,9 +933,10 @@ void cmd_install(int argc, char** argv) {
 COMMAND("install", "install openiboot onto the device", cmd_install);
 
 void cmd_uninstall(int argc, char** argv) {
-    images_uninstall(fourcc("ibot"), fourcc("ibox"));
+	images_uninstall(fourcc("ibot"), fourcc("ibox"));
 }
 COMMAND("uninstall", "uninstall openiboot from the device", cmd_uninstall);
+#endif
 
 void cmd_images_list(int argc, char** argv) {
 	images_list();
