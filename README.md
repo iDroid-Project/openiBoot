@@ -76,7 +76,7 @@ Running/Installing
 **If you're on linux, you'll need to install the following as /etc/udev/rules.d/51-android.rules:**
 	SUBSYSTEM=="usb" ID_VENDOR_ID=="0bb4", MODE="0666"
 	SUBSYSTEM=="usb" ID_VENDOR_ID=="18d1", MODE="0666"
-	SUBSYSTEM=="usb" ID_VENDOR_ID=="05ac", MODE="0666"
+	SUBSYSTEM=="usb" ID_VENDOR_ID=="05ac", MODE="0666"`
 
 **Put your phone into recovery mode**: hold home whilst powering on until you see the iTunes logo.
 
@@ -86,7 +86,7 @@ Running/Installing
 `../utils/syringe/loadibec device_revision_openiboot.img3`
 
 **For newer devices run: (substituting *device* and *revision* with the actual device, for example: iphone_4_openiboot.bin):**
-`../utils/syringe/loadibec device_revision_openiboot.bin`
+`../utils/syringe/utilities/loadibec device_revision_openiboot.bin`
 
 You should now see openiBoot on your phone, use the volume buttons to scroll to the console icon, then press home
 
@@ -101,6 +101,23 @@ You should now see the same output on your computer, as is on your phone's scree
 `install` and press return
 
 OpeniBoot will then be flashed to your device's NOR - This will take a while, your NOR will be backed up during this process, and can be found in the current directory as norbackup.dump.
+
+Menu Configuration
+---------------------------------------------------
+As of version 0.3 OpeniBoot now has a grub-style configurable menu system, OpeniBoot looks for /boot/menu.lst at boot.
+Below is an example menu.lst - put it in /boot (This section will be expanded upon at a later date, when newer device ports are further ahead)
+
+	title iOS
+	auto
+
+	title Android
+	kernel "(hd0,1)/idroid/zImage" "console=tty root=/dev/ram0 init=/init rw"
+	initrd "(hd0,1)/idroid/android.img.gz"
+
+	title iX
+	kernel "(hd0,1)/iX/zImage" "console=tty root=/dev/ram0 init=/init rw"
+	initrd "(hd0,1)/iX/initrd.img.gz"
+
 
 Reporting issues/requesting features
 --------------------------------------------------
