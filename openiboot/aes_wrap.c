@@ -1,11 +1,16 @@
 #include "util.h"
 #include "aes.h"
 
+static const unsigned char default_iv[] = { 0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6, };
+
 int aes_wrap_key(const uint8_t *_key, AESKeyLen _keyLen, const uint8_t *_iv,
 				uint8_t *_out, const uint8_t *_in, uint32_t _inLen)
 {
 	int j, i;
 	uint8_t A[16];
+
+	if(!_iv)
+		_iv = default_iv;
 	*(long long *)A = *(long long *)_iv;
 
 	memcpy(_out + 8, _in, _inLen);
@@ -71,6 +76,8 @@ int aes_unwrap_key(const uint8_t *_key, AESKeyLen _keyLen, const uint8_t *_iv,
 		}
 	}
 
+	if(!_iv)
+		_iv = default_iv;
 	if(memcmp(_out, _iv, 8) != 0)
 		return 0; // If IV doesn't match result, we failed!
 
