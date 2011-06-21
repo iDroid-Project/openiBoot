@@ -15,6 +15,8 @@ iDroid Project openiBoot
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+NOTE: Version 0.3 and above will not boot iDroid 2.6.32 series kernels without additional parameters being passed to the kernel.
+
 Compiling
 ---------------------------------------------------
 **Build an ARM toolchain (this only needs to be done once - for subsequent builds this step can be omitted unless there has been a toolchain update):**
@@ -74,6 +76,7 @@ Change into the openiboot subfolder
 Running/Installing
 ---------------------------------------------------
 **If you're on linux, you'll need to install the following as /etc/udev/rules.d/51-android.rules:**
+
 	SUBSYSTEM=="usb" ID_VENDOR_ID=="0bb4", MODE="0666"
 	SUBSYSTEM=="usb" ID_VENDOR_ID=="18d1", MODE="0666"
 	SUBSYSTEM=="usb" ID_VENDOR_ID=="05ac", MODE="0666"`
