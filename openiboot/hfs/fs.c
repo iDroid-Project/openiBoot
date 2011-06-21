@@ -331,11 +331,11 @@ uint32_t readHFSFile(HFSPlusCatalogFile* file, uint8_t** buffer, Volume* volume)
 		if(((HFSPlusCprotectV2*)cprotectFu)->xattr_version == 2) {
 			HFSPlusCprotectV2* cprotect = (HFSPlusCprotectV2*)cprotectFu;
 			aes_unwrap_key((const unsigned char*)DKey, AES256, NULL, cprotect_key, cprotect->wrapped_key, cprotect->wrapped_length);
-			h2fmi_set_key(1, cprotect_key, AES256, 0);
+			h2fmi_set_key(1, cprotect_key, AES256, 0, 0);
 		} else if (((HFSPlusCprotectV2*)cprotectFu)->xattr_version == 4) {
 			HFSPlusCprotectV4* cprotect = (HFSPlusCprotectV4*)cprotectFu;
 			aes_unwrap_key((const unsigned char*)DKey, AES256, NULL, cprotect_key, cprotect->wrapped_key, cprotect->wrapped_length);
-			h2fmi_set_key(1, cprotect_key, AES256, 1);
+			h2fmi_set_key(1, cprotect_key, AES256, 1, 0);
 		} else {
 			hfs_panic("cprotect version unknown");
 		}
@@ -346,7 +346,7 @@ uint32_t readHFSFile(HFSPlusCatalogFile* file, uint8_t** buffer, Volume* volume)
 	}
 #if defined(CONFIG_A4) || defined(CONFIG_S5L8920)
 	if(cprotectFu) {
-		h2fmi_set_key(0, NULL, 0, 0);
+		h2fmi_set_key(0, NULL, 0, 0, 0);
 		free(cprotectFu);
 	}
 #endif

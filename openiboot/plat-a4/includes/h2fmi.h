@@ -158,9 +158,9 @@ void h2fmi_set_whitening(uint32_t _arg);
 error_t h2fmi_read_single_page(uint32_t _ce, uint32_t _page, uint8_t *_ptr, uint8_t *_meta_ptr, uint8_t *_6, uint8_t *_7, uint32_t _8);
 error_t h2fmi_read_multi_ftl(uint32_t _ce, uint32_t _page, uint8_t *_ptr);
 
-void h2fmi_set_emf(uint32_t enable, uint32_t iv_input, uint32_t offset);
+void h2fmi_set_emf(uint32_t enable, uint32_t iv_input);
 uint32_t h2fmi_get_emf();
-void h2fmi_set_key(uint32_t enable, void* key, uint32_t length, uint32_t _sha);
+void h2fmi_set_key(uint32_t enable, void* key, uint32_t length, uint32_t _sha, uint32_t offset);
 
 typedef struct _emf_key {
 	uint32_t length;
