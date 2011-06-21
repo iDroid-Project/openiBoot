@@ -84,6 +84,6 @@ int aes_unwrap_key(const uint8_t *_key, AESKeyLen _keyLen, const uint8_t *_iv,
 	if(memcmp(_out, _iv, 8) != 0)
 		return 0; // If IV doesn't match result, we failed!
 
-	return _inLen-8;
+	return _inLen;
 }
 
