@@ -54,17 +54,19 @@ int aes_unwrap_key(const uint8_t *_key, AESKeyLen _keyLen, const uint8_t *_iv,
 
 	for(j = 0; j <= 5; j++)
 	{
-		uint32_t xor = 8 + (_inLen*j)/8;
+		uint32_t xor = (6 - j) * (_inLen/8);
 		uint8_t *t = (uint8_t*)&xor;
 
 		for(i = 1; i <= _inLen/8; i++)
 		{
-			A[4] ^= t[3];
-			A[5] ^= t[2];
-			A[6] ^= t[1];
-			A[7] ^= t[0];
+			if(xor > 0xFF) {
+				A[4] ^= t[0];
+				A[5] ^= t[1];
+				A[6] ^= t[2];
+			}
+			A[7] ^= t[3];
 
-			long long *R = (long long*)(_out + (_inLen/8)-(i*8));
+			long long *R = (long long*)(_out + _inLen - (i*8));
 
 			memcpy(A+8, R, 8);
 
