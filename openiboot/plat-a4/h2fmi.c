@@ -2053,6 +2053,9 @@ static uint32_t h2fmi_aes_key_2[] = {
 uint32_t h2fmi_emf = 0;
 uint32_t h2fmi_emf_iv_input = 0;
 uint32_t h2fmi_emf_iv_offset = 0;
+uint32_t h2fmi_emf_sha = 0;
+static uint32_t* h2fmi_key = (uint32_t*) EMF;
+static AESKeyLen h2fmi_keylength = AES256;
 void h2fmi_set_emf(uint32_t enable, uint32_t iv_input) {
 	h2fmi_emf = enable;
 	if(iv_input)
@@ -2062,8 +2065,6 @@ uint32_t h2fmi_get_emf() {
 	return h2fmi_emf;
 }
 
-static uint32_t h2fmi_emf_sha = 0;
-static uint32_t* h2fmi_key = (uint32_t*) EMF;
 static void h2fmi_aes_handler_emf(uint32_t _param, uint32_t _segment, uint32_t* _iv)
 {
 	uint32_t val = h2fmi_emf_iv_input;
@@ -2092,12 +2093,11 @@ static void h2fmi_aes_handler_emf(uint32_t _param, uint32_t _segment, uint32_t* 
 	}
 }
 
-static AESKeyLen h2fmi_keylength = AES256;
-void h2fmi_set_key(uint32_t enable, void* key, AESKeyLen keyLen, uint32_t _sha, uint32_t offset) {
+void h2fmi_set_key(uint32_t enable, void* key, AESKeyLen keyLen, uint32_t sha, uint32_t offset) {
 	if(enable) {
 		h2fmi_key = (uint32_t*) key;
 		h2fmi_keylength = keyLen;
-		h2fmi_emf_sha = _sha;
+		h2fmi_emf_sha = sha;
 		h2fmi_emf_iv_offset = offset;
 	} else {
 		h2fmi_key = (uint32_t*) EMF;
