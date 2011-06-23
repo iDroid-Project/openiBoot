@@ -23,3 +23,6 @@ loadibec:   $(LOADIBEC_OBJS)
 clean:
 	-rm *.o
 	-rm oibc
+
+install:
+	install -m +x oibc /usr/bin/
