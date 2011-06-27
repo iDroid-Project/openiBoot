@@ -40,6 +40,8 @@ int addToBuffer(const char* toBuffer, int len);
 printf_handler_t addPrintfHandler(printf_handler_t);
 void bufferPrint(const char* toBuffer);
 void bufferPrintf(const char* format, ...);
+void uartPrint(const char* toBuffer);
+void uartPrintf(const char* format, ...);
 void bufferFlush(char* destination, size_t length);
 char* getScrollback();
 size_t getScrollbackLen();

@@ -428,10 +428,8 @@ void boot_linux(const char* args, uint32_t mach_type) {
 	uint32_t param_at = exec_at - 0x2000;
 	int i;
 
-#if RAMStart != MemoryStart
 	if(exec_at > RAMStart)
 		exec_at = (exec_at - RAMStart) + MemoryStart;
-#endif
 
 	load_multitouch_images();
 
@@ -441,7 +439,7 @@ void boot_linux(const char* args, uint32_t mach_type) {
 	exit_modules();
 	platform_shutdown();
 
-	bufferPrintf("Booting Linux...\r\n");
+	bufferPrintf("Booting Linux (0x%08x)...\r\n", mach_type);
 
 	/* FIXME: This overwrites openiboot! We make the semi-reasonable assumption
 	 * that this function's own code doesn't reside in 0x0100-0x1100 */

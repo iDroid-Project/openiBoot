@@ -114,7 +114,7 @@ void uartIRQHandler(uint32_t token) {
 void uart_printf_handler(const char *_text)
 {
 	if(UartHasInit)
-		uart_write(0, _text, strlen(_text));
+		uartPrint(_text);
 
 	if(prev_printf_handler)
 		prev_printf_handler(_text);

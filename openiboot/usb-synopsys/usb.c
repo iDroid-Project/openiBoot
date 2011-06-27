@@ -654,6 +654,11 @@ static void usb_txrx(int endpoint, USBDirection direction, void* buffer, int buf
 	int daint;
 	USBEPRegisters *regs;
 
+	if(endpoint != 0)
+	{
+		//uartPrintf("USB: txrx %d.\r\n", endpoint);
+	}
+
 	// Setup register blocks, and the interrupt mask. -- Ricky26
 	CleanAndInvalidateCPUDataCache();
 	if(direction == USBOut)
@@ -704,6 +709,7 @@ static void usb_txrx(int endpoint, USBDirection direction, void* buffer, int buf
 
 	regs->interrupt = 0xffffffff;
 
+	regs->control &=~ USB_EPCON_DISABLE;
 	regs->control |= USB_EPCON_ENABLE | USB_EPCON_CLEARNAK; // Start the transfer
 }
 
@@ -843,7 +849,7 @@ static void queueMessage(int _ep, USBDirection _dir, char *_data, size_t _dataLe
 	USBMessageQueue *t;
 	USBMessageQueue *q;
 
-	//bufferPrintf("USB: q %d %d %d %d %d\n", _ep, _dir, _type, _data, _dataLen);
+	//uartPrintf("USB: q %d %d %d %d\n", _ep, _dir, _data, _dataLen);
 		
 	q = malloc(sizeof(USBMessageQueue));
 	q->next = NULL;
@@ -911,9 +917,12 @@ static void callEndpointHandlers() {
 					{
 						bufferPrintf("USB: Bad things! %d (0x%08x), %d (0x%08x)!\n", left, left, sent, sent);
 					}
-					
+
+					OutEPRegs[endpoint].control |= USB_EPCON_SETNAK;
+					while((OutEPRegs[endpoint].control & USB_EPCON_NAKSTS) == 0);
+
 					//if(endpoint != 0)
-					//	bufferPrintf("USB: xc 0x%08x, %d, %d, %d, %d, %d, %d\n", q, endpoint, q->dir, q->data, q->dataLen, sent, left);
+					//	uartPrintf("USB: xc 0x%08x, %d, %d, %d, %d, %d, %d\n", q, endpoint, q->dir, q->data, q->dataLen, sent, left);
 
 					endpoint_handlers[endpoint].out.handler(endpoint_handlers[endpoint].out.token, sent-left);
 				}
@@ -933,8 +942,11 @@ static void callEndpointHandlers() {
 						bufferPrintf("USB: Bad things! %d (0x%08x), %d (0x%08x)!\n", left, left, sent, sent);
 					}
 					
+					InEPRegs[endpoint].control |= USB_EPCON_SETNAK;
+					while((InEPRegs[endpoint].control & USB_EPCON_NAKSTS) == 0);
+
 					//if(endpoint != 0)
-					//	bufferPrintf("USB: xc 0x%08x, %d, %d, %d, %d, %d\n", q, endpoint, q->dir, q->type, q->data, q->dataLen);
+					//	uartPrintf("USB: xc 0x%08x, %d, %d, %d, %d\n", q, endpoint, q->dir, q->data, q->dataLen);
 
 					endpoint_handlers[endpoint].in.handler(endpoint_handlers[endpoint].in.token, sent-left);
 				}
@@ -1033,9 +1045,10 @@ static void handleRxInterrupts(int endpoint) {
 
 	if(outInterruptStatus[endpoint] & USB_EPINT_OUTTknEPDis) {
 		OutEPRegs[endpoint].interrupt = USB_EPINT_OUTTknEPDis;
-		if(endpoint > 0)
-			bufferPrintf("out %d tnk ep dis\n", endpoint);
+		//if(endpoint > 0)
+		//	bufferPrintf("out %d tnk ep dis\n", endpoint);
 
+		//continueMessageQueue(endpoint);
 		//advanceMessageQueue(endpoint);
 	}
 

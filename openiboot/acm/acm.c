@@ -19,7 +19,6 @@ static char* acm_file_ptr = NULL;
 static int acm_file_recv_left = 0;
 static int acm_file_send_left = 0;
 static int acm_usb_mps = 0;
-static int acm_unprocessed = 0;
 static int acm_busy = FALSE;
 int acm_is_ready = 0;
 printf_handler_t acm_prev_printf_handler = NULL;
@@ -27,6 +26,12 @@ TaskDescriptor acm_parse_task;
 
 static int acm_send()
 {
+	if(acm_file_recv_left > 0)
+	{
+		acm_busy = TRUE;
+		return 1;
+	}
+
 	if(acm_file_send_left > 0)
 	{
 		acm_busy = TRUE;
@@ -61,26 +66,85 @@ static int acm_send()
 		return 1;
 	}
 
+	acm_busy = FALSE;
 	return 0;
 }
 
 static void acm_parse(int32_t _amt)
 {
-	int start = 0;
 	int i = 0;
+	char **argv;
+	int argc;
+	char scratch[ACM_BUFFER_SIZE];
 
+	for(; i < _amt; i++)
+	{
+		if(acm_recv_buffer[i] == '\n'
+				|| acm_recv_buffer[i] == '\r')
+		{
+			_amt = i;
+			break;
+		}
+	}
+
+	acm_recv_buffer[_amt] = 0;
+
+	memcpy(scratch, acm_recv_buffer, _amt+1);
+	argv = command_parse(scratch, &argc);
+
+	if(argc >= 3 && strcmp(argv[0], "sendfile") == 0)
+	{
+		acm_busy = TRUE;
+
+		acm_file_ptr = (char*)parseNumber(argv[1]);
+		acm_file_recv_left = parseNumber(argv[2]);
+		received_file_size = acm_file_recv_left;
+		bufferPrintf("ACM: Started receiving file at 0x%08x - 0x%08x (%d bytes).\n", acm_file_ptr, acm_file_ptr + acm_file_recv_left, acm_file_recv_left);
+	}
+	else if(argc >= 3 && strcmp(argv[0], "recvfile") == 0)
+	{
+		acm_busy = TRUE;
+
+		acm_file_ptr = (char*)parseNumber(argv[1]);
+		acm_file_send_left = parseNumber(argv[2]);
+
+		bufferPrintf("ACM: Started sending file at 0x%08x - 0x%08x (%d bytes).\n", acm_file_ptr, acm_file_ptr + acm_file_send_left, acm_file_send_left);
+
+		int amt = sprintf(acm_send_buffer, "ACM: Starting File: %d %d\n", (uint32_t)acm_file_ptr, acm_file_send_left);
+		usb_send_bulk(ACM_EP_SEND, acm_send_buffer, amt);
+	}
+	else
+	{
+		bufferPrintf("ACM: Starting %s\n", acm_recv_buffer);
+		if(command_run(argc, argv) == 0)
+			bufferPrintf("ACM: Done: %s\n", acm_recv_buffer);
+		else
+			bufferPrintf("ACM: Unknown command: %s\n", argv[0]);
+	}
+
+	free(argv);
+
+	EnterCriticalSection(); // Deliberately unended.
+	usb_receive_bulk(ACM_EP_RECV, acm_recv_buffer, acm_usb_mps);
+	task_stop();
+}
+
+static void acm_received(uint32_t _tkn, int32_t _amt)
+{
 	if(acm_file_ptr != NULL && acm_file_recv_left > 0)
 	{
 		if(_amt >= acm_file_recv_left)
 		{
 			memcpy(acm_file_ptr, acm_recv_buffer, acm_file_recv_left);
-			i = acm_file_recv_left;
-			start = i;
 
 			bufferPrintf("ACM: Received file (finished at 0x%08x)!\n", acm_file_ptr + acm_file_recv_left);
 
+			acm_busy = FALSE;
+
 			acm_file_ptr = NULL;
 			acm_file_recv_left = 0;
+			usb_receive_bulk(ACM_EP_RECV, acm_recv_buffer, acm_usb_mps);
+			return;
 		}
 		else
 		{
@@ -90,96 +154,17 @@ static void acm_parse(int32_t _amt)
 			acm_file_recv_left -= _amt;
 			//bufferPrintf("ACM: Got %d of file (%d remain).\n", _amt, acm_file_recv_left);
 
-			EnterCriticalSection(); // Deliberately unended.
 			usb_receive_bulk(ACM_EP_RECV, acm_recv_buffer, acm_usb_mps);
 			return;
 		}
 	}
 
-	for(; i < _amt; i++)
-	{
-		if(acm_recv_buffer[i] == '\n')
-		{
-			acm_recv_buffer[i] = 0;
-			if(i > 0)
-				if(acm_recv_buffer[i-1] == '\r')
-					acm_recv_buffer[i-1] = 0;
-
-			char safeCommand[ACM_BUFFER_SIZE];
-			char *command = &acm_recv_buffer[start];
-			strcpy(safeCommand, command);
-			int argc;
-			char** argv = command_parse(command, &argc);
-
-			if(argc >= 3 && strcmp(argv[0], "sendfile") == 0)
-			{
-				acm_file_ptr = (char*)parseNumber(argv[1]);
-				acm_file_recv_left = parseNumber(argv[2]);
-				received_file_size = acm_file_recv_left;
-				bufferPrintf("ACM: Started receiving file at 0x%08x - 0x%08x (%d bytes).\n", acm_file_ptr, acm_file_ptr + acm_file_recv_left, acm_file_recv_left);
-				i = _amt;
-				start = i;
-			}
-			else if(argc >= 3 && strcmp(argv[0], "recvfile") == 0)
-			{
-				acm_busy = TRUE;
-
-				acm_file_ptr = (char*)parseNumber(argv[1]);
-				acm_file_send_left = parseNumber(argv[2]);
-
-				bufferPrintf("ACM: Started sending file at 0x%08x - 0x%08x (%d bytes).\n", acm_file_ptr, acm_file_ptr + acm_file_send_left, acm_file_send_left);
-
-				int amt = sprintf(acm_send_buffer, "ACM: Starting File: %d %d\n", (uint32_t)acm_file_ptr, acm_file_send_left);
-				usb_send_bulk(ACM_EP_SEND, acm_send_buffer, amt+1);
-
-				i = _amt;
-				start = i;
-			}
-			else
-			{
-				bufferPrintf("ACM: Starting %s\n", safeCommand);
-				if(command_run(argc, argv) == 0)
-					bufferPrintf("ACM: Done: %s\n", safeCommand);
-				else
-					bufferPrintf("ACM: Unknown command: %s\n", command);
-				
-				start = i+1;
-			}
-
-			free(argv);
-		}
-	}
-
-	EnterCriticalSection(); // Deliberately unended.
-
-	if(start < _amt)
-	{
-		if(acm_unprocessed > 0)
-		{
-			bufferPrintf("ACM: command too long, discarding...\n");
-			acm_unprocessed = 0;
-			usb_receive_bulk(ACM_EP_RECV, acm_recv_buffer, acm_usb_mps);
-			task_stop();
-			return;
-		}
-		else
-			memcpy(acm_recv_buffer, acm_recv_buffer+start, _amt-start);
-	}
-
-	acm_unprocessed = _amt-start;
-	usb_receive_bulk(ACM_EP_RECV, acm_recv_buffer+acm_unprocessed, acm_usb_mps);
-	task_stop();
-}
-
-static void acm_received(uint32_t _tkn, int32_t _amt)
-{
 	task_start(&acm_parse_task, &acm_parse, (void*)_amt);
 }
 
 static void acm_sent(uint32_t _tkn, int32_t _amt)
 {
-	if(!acm_send())
-		acm_busy = FALSE;
+	acm_send();
 }
 
 static int acm_setup(USBSetupPacket *setup)
@@ -234,7 +219,6 @@ static void acm_started()
 	acm_file_ptr = NULL;
 	acm_file_recv_left = 0;
 	acm_file_send_left = 0;
-	acm_unprocessed = 0;
 
 	usb_receive_bulk(ACM_EP_RECV, acm_recv_buffer, acm_usb_mps);
 
