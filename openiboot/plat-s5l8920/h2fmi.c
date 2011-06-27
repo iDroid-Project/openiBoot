@@ -10,6 +10,7 @@
 #include "commands.h"
 #include "arm/arm.h"
 #include "aes.h"
+#include "sha1.h"
 
 uint8_t DKey[32];
 uint8_t EMF[32];
@@ -1305,6 +1306,10 @@ static uint32_t h2fmi_aes_key_2[] = {
 
 uint32_t h2fmi_emf = 0;
 uint32_t h2fmi_emf_iv_input = 0;
+uint32_t h2fmi_emf_iv_offset = 0;
+uint32_t h2fmi_emf_sha = 0;
+static uint32_t* h2fmi_key = (uint32_t*) EMF;
+static AESKeyLen h2fmi_keylength = AES256;
 void h2fmi_set_emf(uint32_t enable, uint32_t iv_input) {
 	h2fmi_emf = enable;
 	if(iv_input)
@@ -1317,6 +1322,9 @@ uint32_t h2fmi_get_emf() {
 static void h2fmi_aes_handler_emf(uint32_t _param, uint32_t _segment, uint32_t* _iv)
 {
 	uint32_t val = h2fmi_emf_iv_input;
+	if(h2fmi_emf_sha)
+		val = h2fmi_emf_iv_offset;
+
 	uint32_t i;
 	for(i = 0; i < 4; i++)
 	{
@@ -1327,17 +1335,29 @@ static void h2fmi_aes_handler_emf(uint32_t _param, uint32_t _segment, uint32_t* 
 
 		_iv[i] = val;
 	}
+
+	if(h2fmi_emf_sha) {
+		SHA1_CTX context;
+		uint8_t sha1_hash[20];
+		SHA1Init(&context);
+		SHA1Update(&context, (unsigned char*)h2fmi_key, 32);
+		SHA1Final(sha1_hash, &context);
+		aes_encrypt(_iv, 16, AESCustom, sha1_hash, AES128, NULL);
+		h2fmi_emf_iv_offset += 0x1000;
+	}
 }
 
-static uint32_t* h2fmi_key = (uint32_t*) EMF;
-static AESKeyLen h2fmi_keylength = AES256;
-void h2fmi_set_key(uint32_t enable, void* key, AESKeyLen keyLen) {
+void h2fmi_set_key(uint32_t enable, void* key, AESKeyLen keyLen, uint32_t sha, uint32_t offset) {
 	if(enable) {
 		h2fmi_key = (uint32_t*) key;
 		h2fmi_keylength = keyLen;
+		h2fmi_emf_sha = sha;
+		h2fmi_emf_iv_offset = offset;
 	} else {
 		h2fmi_key = (uint32_t*) EMF;
 		h2fmi_keylength = AES256;
+		h2fmi_emf_sha = 0;
+		h2fmi_emf_iv_offset = 0;
 	}
 }
 
@@ -1358,6 +1378,7 @@ static void h2fmi_setup_aes(h2fmi_struct_t *_fmi, uint32_t _enabled, uint32_t _e
 			_fmi->aes_struct.inverse = !_encrypt;
 			_fmi->aes_struct.type = 0; // AES-128
 			if(h2fmi_emf) {
+				_fmi->aes_struct.dataSize = 0x1000;
 				_fmi->aes_struct.key = h2fmi_key;
 				_fmi->aes_struct.ivGenerator = h2fmi_aes_handler_emf;
 				switch(h2fmi_keylength) {

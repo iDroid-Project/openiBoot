@@ -160,7 +160,7 @@ error_t h2fmi_read_multi_ftl(uint32_t _ce, uint32_t _page, uint8_t *_ptr);
 
 void h2fmi_set_emf(uint32_t enable, uint32_t iv_input);
 uint32_t h2fmi_get_emf();
-void h2fmi_set_key(uint32_t enable, void* key, uint32_t length);
+void h2fmi_set_key(uint32_t enable, void* key, uint32_t length, uint32_t sha, uint32_t offset);
 
 typedef struct _emf_key {
 	uint32_t length;

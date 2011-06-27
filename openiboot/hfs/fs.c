@@ -262,9 +262,16 @@ void displayFileLSLine(Volume* volume, HFSPlusCatalogFile* file, const char* nam
 			if(!strcmp(attrs->name,"com.apple.system.cprotect")) {
 				uint8_t* cprotectFu = NULL;
 				getAttribute(volume, file->fileID, "com.apple.system.cprotect", (uint8_t**)(&cprotectFu));
-				HFSPlusCprotect* cprotect = (HFSPlusCprotect*)cprotectFu;
 				bufferPrintf("\t\twrapped_key: ");
-				bytesToHex(cprotect->wrapped_key, cprotect->wrapped_length);
+				if(((HFSPlusCprotectV2*)cprotectFu)->xattr_version == 2) {
+					HFSPlusCprotectV2* cprotect = (HFSPlusCprotectV2*)cprotectFu;
+					bytesToHex(cprotect->wrapped_key, cprotect->wrapped_length);
+				} else if (((HFSPlusCprotectV2*)cprotectFu)->xattr_version == 4) {
+					HFSPlusCprotectV4* cprotect = (HFSPlusCprotectV4*)cprotectFu;
+					bytesToHex(cprotect->wrapped_key, cprotect->wrapped_length);
+				} else {
+					hfs_panic("cprotect version unknown");
+				}
 				bufferPrintf("\r\n");
 			}
 			free(attrs->name);
@@ -274,7 +281,7 @@ void displayFileLSLine(Volume* volume, HFSPlusCatalogFile* file, const char* nam
 	}	
 }
 
-HFSPlusCprotect* cprotect_get(HFSPlusCatalogFile* file, Volume* volume) {
+void* cprotect_get(HFSPlusCatalogFile* file, Volume* volume) {
 	XAttrList* next;
 	XAttrList* attrs = getAllExtendedAttributes(file->fileID, volume);
 	if(attrs != NULL) {
@@ -284,8 +291,7 @@ HFSPlusCprotect* cprotect_get(HFSPlusCatalogFile* file, Volume* volume) {
 			if(!strcmp(attrs->name,"com.apple.system.cprotect")) {
 				uint8_t* cprotectFu = NULL;
 				getAttribute(volume, file->fileID, "com.apple.system.cprotect", (uint8_t**)(&cprotectFu));
-				HFSPlusCprotect* cprotect = (HFSPlusCprotect*)cprotectFu;
-				return cprotect;
+				return (void*)cprotectFu;
 			}
 			free(attrs->name);
 			free(attrs);
@@ -319,20 +325,29 @@ uint32_t readHFSFile(HFSPlusCatalogFile* file, uint8_t** buffer, Volume* volume)
 	}
 	
 #if defined(CONFIG_A4) || defined(CONFIG_S5L8920)
-	HFSPlusCprotect* cprotect = cprotect_get(file, volume);
-	if(cprotect) {
+	void* cprotectFu = (void*)cprotect_get(file, volume);
+	if(cprotectFu) {
 		uint8_t cprotect_key[32];
-		aes_unwrap_key((const unsigned char*)DKey, AES256, NULL, cprotect_key, cprotect->wrapped_key, cprotect->wrapped_length);
-		h2fmi_set_key(1, cprotect_key, AES256);
+		if(((HFSPlusCprotectV2*)cprotectFu)->xattr_version == 2) {
+			HFSPlusCprotectV2* cprotect = (HFSPlusCprotectV2*)cprotectFu;
+			aes_unwrap_key((const unsigned char*)DKey, AES256, NULL, cprotect_key, cprotect->wrapped_key, cprotect->wrapped_length);
+			h2fmi_set_key(1, cprotect_key, AES256, 0, 0);
+		} else if (((HFSPlusCprotectV2*)cprotectFu)->xattr_version == 4) {
+			HFSPlusCprotectV4* cprotect = (HFSPlusCprotectV4*)cprotectFu;
+			aes_unwrap_key((const unsigned char*)DKey, AES256, NULL, cprotect_key, cprotect->wrapped_key, cprotect->wrapped_length);
+			h2fmi_set_key(1, cprotect_key, AES256, 1, 0);
+		} else {
+			hfs_panic("cprotect version unknown");
+		}
 	}
 #endif
 	if(!READ(io, 0, bytesLeft, *buffer)) {
 		hfs_panic("error reading");
 	}
 #if defined(CONFIG_A4) || defined(CONFIG_S5L8920)
-	if(cprotect) {
-		h2fmi_set_key(0, NULL, 0);
-		free(cprotect);
+	if(cprotectFu) {
+		h2fmi_set_key(0, NULL, 0, 0, 0);
+		free(cprotectFu);
 	}
 #endif
 
