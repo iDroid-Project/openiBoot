@@ -2,13 +2,9 @@
 #define HW_MIPI_DSI_H
 
 // Device
-#if defined(CONFIG_S5L8720)
-#define MIPI_DSIM 0x3D800000
-#define MIPI_DSIM_CLOCKGATE 0xA
-#elif defined(CONFIG_A4)
 #define MIPI_DSIM 0x89500000
 #define MIPI_DSIM_CLOCKGATE 0x11
-#endif
+
 
 // Registers
 #define STATUS          0x0     // status register
@@ -43,13 +39,8 @@
 #define DATA_3  (1 << 3)
 
 // data lines enabled (depends on platform)
-#if defined(CONFIG_S5L8720)
-#define DATA_LANES_ENABLED (DATA_0 | DATA_1)
-#define NUM_DATA_LANES 2
-#elif defined(CONFIG_A4)
 #define DATA_LANES_ENABLED (DATA_0 | DATA_1 | DATA_2 | DATA_3)
 #define NUM_DATA_LANES 4
-#endif
 
 #define STATUS_STOP                 (1 << 8)
 #define STATUS_ULPS                 (1 << 9)

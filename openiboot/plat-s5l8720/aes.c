@@ -29,44 +29,44 @@ static uint8_t KeyImg2Verify[16];
 
 int aes_setup() {
 	memcpy(Key836, Gen836, 16);
-	aes_encrypt(Key836, 16, AESUID, NULL, NULL);
+	aes_encrypt(Key836, 16, AESUID, NULL, 0, NULL);
 
 	memcpy(Key838, Gen838, 16);
-	aes_encrypt(Key838, 16, AESUID, NULL, NULL);
+	aes_encrypt(Key838, 16, AESUID, NULL, 0, NULL);
 
 	memcpy(KeyImg2Verify, GenImg2VerifyData, 16);
-	aes_encrypt(KeyImg2Verify, 16, AESUID, NULL, GenImg2VerifyIV);
+	aes_encrypt(KeyImg2Verify, 16, AESUID, NULL, 0, GenImg2VerifyIV);
 
 	return 0;
 }
 
 void aes_img2verify_encrypt(void* data, int size, const void* iv) {
-	aes_encrypt(data, size, AESCustom, KeyImg2Verify, iv);
+	aes_encrypt(data, size, AESCustom, KeyImg2Verify, AES128, iv);
 }
 
 void aes_img2verify_decrypt(void* data, int size, const void* iv) {
-	aes_decrypt(data, size, AESCustom, KeyImg2Verify, iv);
+	aes_decrypt(data, size, AESCustom, KeyImg2Verify, AES128, iv);
 }
 
 
 void aes_836_encrypt(void* data, int size, const void* iv) {
-	aes_encrypt(data, size, AESCustom, Key836, iv);
+	aes_encrypt(data, size, AESCustom, Key836, AES128, iv);
 }
 
 void aes_836_decrypt(void* data, int size, const void* iv) {
-	aes_decrypt(data, size, AESCustom, Key836, iv);
+	aes_decrypt(data, size, AESCustom, Key836, AES128, iv);
 }
 
 void aes_838_encrypt(void* data, int size, const void* iv) {
-	aes_encrypt(data, size, AESCustom, Key838, iv);
+	aes_encrypt(data, size, AESCustom, Key838, AES128, iv);
 }
 
 void aes_838_decrypt(void* data, int size, const void* iv) {
-	aes_decrypt(data, size, AESCustom, Key838, iv);
+	aes_decrypt(data, size, AESCustom, Key838, AES128, iv);
 }
 
 
-void aes_encrypt(void* data, int size, AESKeyType keyType, const void* key, const void* iv) {
+void aes_encrypt(void* data, int size, AESKeyType keyType, const void* key, AESKeyLen keylen, const void* iv) {
 	clock_gate_switch(AES_CLOCKGATE, ON);
 	SET_REG(AES + CONTROL, 1);
 	unknown1 = 0;
@@ -102,7 +102,7 @@ void aes_encrypt(void* data, int size, AESKeyType keyType, const void* key, cons
 
 }
 
-void aes_decrypt(void* data, int size, AESKeyType keyType, const void* key, const void* iv) {
+void aes_decrypt(void* data, int size, AESKeyType keyType, const void* key, AESKeyLen keylen, const void* iv) {
 	clock_gate_switch(AES_CLOCKGATE, ON);
 	SET_REG(AES + CONTROL, 1);
 	unknown1 = 0;
@@ -250,13 +250,13 @@ void cmd_aes(int argc, char** argv)
 
 	if(strcmp(argv[1], "enc") == 0)
 	{
-		aes_encrypt(data, dataLength, keyType, key, iv);
+		aes_encrypt(data, dataLength, keyType, key, 0, iv);
 		bytesToHex(data, dataLength);
 		bufferPrintf("\r\n");
 	}
 	else if(strcmp(argv[1], "dec") == 0)
 	{
-		aes_decrypt(data, dataLength, keyType, key, iv);
+		aes_decrypt(data, dataLength, keyType, key, 0, iv);
 		bytesToHex(data, dataLength);
 		bufferPrintf("\r\n");
 	}
