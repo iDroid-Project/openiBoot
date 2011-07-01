@@ -12,7 +12,7 @@ ipad_1g_src = [plat_a4_src,
 Export('ipad_1g_src')
 
 env = env.Clone()
-env.Append(CPPDEFINES=['OPENIBOOT_VERSION_CONFIG=\\" for iPad 1G\\"'])
+env.Append(CPPDEFINES=['OPENIBOOT_VERSION_CONFIG=\\" for iPad 1G\\"', 'MACH_ID=3593'])
 
 env.AddModules([
 	"nor-spi",
