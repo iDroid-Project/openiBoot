@@ -79,14 +79,14 @@ Running/Installing
 
 	SUBSYSTEM=="usb" ID_VENDOR_ID=="0bb4", MODE="0666"
 	SUBSYSTEM=="usb" ID_VENDOR_ID=="18d1", MODE="0666"
-	SUBSYSTEM=="usb" ID_VENDOR_ID=="05ac", MODE="0666"`
+	SUBSYSTEM=="usb" ID_VENDOR_ID=="05ac", MODE="0666"
 
 **Put your phone into recovery mode**: hold home whilst powering on until you see the iTunes logo.
 
 *NOTE: For the 3GS, iPhone4, iPad and Apple TV 2G, you must put your device into DFU mode instead.*
 
 **For iPhone 2G, iPhone 3G & iPod Touch 1G run (substituting *device* and *revision* with the actual device, for example: iphone_3g_openiboot.img3):** 
-`../utils/syringe/loadibec device_revision_openiboot.img3`
+`../utils/syringe/utilities/loadibec device_revision_openiboot.img3`
 
 **For newer devices run: (substituting *device* and *revision* with the actual device, for example: iphone_4_openiboot.bin):**
 `../utils/syringe/utilities/loadibec device_revision_openiboot.bin`
