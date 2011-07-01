@@ -27,16 +27,15 @@
 #define VIDTCON2_LINEVALSHIFT 0
 #define VIDTCON2_HOZVALMASK 0x3FF
 #define VIDTCON2_HOZVALSHIFT 16
+
 #if defined(CONFIG_IPHONE_4)
 #define DISPLAYID 0
 #elif defined(CONFIG_IPAD_1G)
 #define DISPLAYID 1
 #elif defined(CONFIG_IPOD_TOUCH_4G)
 #define DISPLAYID 2
-#elif defined(CONFIG_IPOD_TOUCH_2G)
-#define DISPLAYID 3
 #elif defined(CONFIG_ATV_2G)
-#define DISPLAYID 4
+#define DISPLAYID 3
 #endif
 
 #define LCD_MAX_BACKLIGHT         2047
