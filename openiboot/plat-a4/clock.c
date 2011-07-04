@@ -4,6 +4,7 @@
 #include "hardware/clock.h"
 #include "timer.h"
 #include "arm/arm.h"
+#include "commands.h"
 
 uint32_t ClockPLL;
 uint32_t PLLFrequencies[4];
@@ -39,6 +40,15 @@ void clock_gate_switch(uint32_t gate, OnOff on_off) {
 	/* wait for the new state to take effect */
 	while ((GET_REG(reg) & 0xF) != ((GET_REG(reg) >> 4) & 0xF));
 }
+
+static void cmd_enable_all_clocks(int argc, char **argv)
+{
+	int i;
+	for(i = 0; i <= CLOCK_GATE_MAX; i++)
+		clock_gate_switch(i, ON);
+}
+COMMAND("enable_all_clocks", "Enable all clock-gates, for debugging.",
+		cmd_enable_all_clocks);
 
 void clock_gate_reset(uint32_t gate) {
 	uint32_t pin = gate-22;

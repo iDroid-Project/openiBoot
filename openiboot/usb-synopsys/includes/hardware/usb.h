@@ -158,12 +158,14 @@
 #define DAINTMSK_OUT_SHIFT          16
 #define DAINTMSK_IN_SHIFT           0
 
-#define DCTL_SFTDISCONNECT			0x2
 #define DCTL_PROGRAMDONE			(1 << 11)
 #define DCTL_CGOUTNAK				(1 << 10)
 #define DCTL_SGOUTNAK				(1 << 9)
 #define DCTL_CGNPINNAK				(1 << 8)
 #define DCTL_SGNPINNAK				(1 << 7)
+#define DCTL_GOUTNAKSTS				(1 << 3)
+#define DCTL_GPINNAKSTS				(1 << 2)
+#define DCTL_SFTDISCONNECT			(1 << 1)
 
 #define DSTS_GET_SPEED(x) GET_BITS(x, 1, 2)
 
