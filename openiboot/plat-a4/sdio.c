@@ -370,7 +370,7 @@ int sdio_wait_for_ready()
 {
 	// wait for CMD_STATE to be CMD_IDLE
 	int i = 0;
-	while((GET_REG(SDIO + SDIO_STATE) != 0) && (i < 20))
+	while(((GET_REG(SDIO + SDIO_STATE) & 1) != 0) && (i < 20))
 	{
 		task_sleep(5);
 		i++;
@@ -414,7 +414,7 @@ int sdio_send_io(uint8_t command, uint32_t ocr, uint32_t* rocr)
 	// clear the upper bits that would indicate card status
 	ocr &= 0x1FFFFFF;
 
-	if(GET_REG(SDIO + SDIO_STATE) != 0)
+	if((GET_REG(SDIO + SDIO_STATE) & 1) != 0)
 	{
 		ret = sdio_wait_for_ready();
 		if(ret)
