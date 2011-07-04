@@ -166,7 +166,7 @@ int sdio_block_reset()
 		i++;
 	}
 
-	if(i == 100);
+	if(i == 100)
 		return -1;
 
 	if(SDIOBLOCK_RESET_MASK & 1)
