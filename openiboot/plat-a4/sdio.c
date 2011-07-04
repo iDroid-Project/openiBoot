@@ -534,7 +534,7 @@ int sdio_parse_fn0_cis()
 		if((tuple != 21) && (tuple != 32))
 			continue;
 
-		if(tuple == 21) 
+		if(tuple == 21)
 		{
 			if (size <= 6)
 			{
