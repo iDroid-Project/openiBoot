@@ -179,7 +179,7 @@ int sdio_block_reset()
 			i++;
 		}
 
-		if(i == 10);
+		if(i == 10)
 			return -1;
 
 		set_card_interrupt(ON);
@@ -263,7 +263,7 @@ int sdio_set_controller (int _clkmode, int _clkrate, uint8_t _buswidth, int _spe
 			i++;
 		}
 
-		if(i == 10);
+		if(i == 10)
 		{ 
 			bufferPrintf("sdio: Failed to set clock rate!\r\n");
 			return -1;
@@ -312,7 +312,7 @@ int sdio_set_controller (int _clkmode, int _clkrate, uint8_t _buswidth, int _spe
 			i++;
 		}
 
-		if(i == 10);
+		if(i == 10)
 		{ 
 			bufferPrintf("sdio: Failed to complete soft reset!\r\n");
 			return -1;
@@ -534,7 +534,7 @@ int sdio_parse_fn0_cis()
 		if((tuple != 21) && (tuple != 32))
 			continue;
 
-		if(tuple == 21) 
+		if(tuple == 21)
 		{
 			if (size <= 6)
 			{
