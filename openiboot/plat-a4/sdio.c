@@ -433,7 +433,7 @@ int sdio_send_io(uint8_t command, uint32_t ocr, uint32_t* rocr)
 	else
 		cmd |= 0x1A;
 
-	SET_REG(SDIO + SDIO_CMD, (SDIO_CMD_COMMAND(GET_REG(SDIO + SDIO_CMD)) & 0xFFFF) | (cmd << 16));
+	SET_REG(SDIO + SDIO_CMD, SDIO_CMD_COMMAND(GET_REG(SDIO + SDIO_CMD)) | (cmd << 16));
 
 	if(((SDIO_IRQ_STATUS(GET_REG(SDIO + SDIO_IRQ)) & 1) == 0) && ((SDIO_IRQ_ERRSTAT(GET_REG(SDIO + SDIO_IRQ)) & 0xF) == 0))
 	{
