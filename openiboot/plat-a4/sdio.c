@@ -166,7 +166,7 @@ int sdio_block_reset()
 		i++;
 	}
 
-	if(i == 100);
+	if(i == 100)
 		return -1;
 
 	if(SDIOBLOCK_RESET_MASK & 1)
@@ -179,7 +179,7 @@ int sdio_block_reset()
 			i++;
 		}
 
-		if(i == 10);
+		if(i == 10)
 			return -1;
 
 		set_card_interrupt(ON);
@@ -263,7 +263,7 @@ int sdio_set_controller (int _clkmode, int _clkrate, uint8_t _buswidth, int _spe
 			i++;
 		}
 
-		if(i == 10);
+		if(i == 10)
 		{ 
 			bufferPrintf("sdio: Failed to set clock rate!\r\n");
 			return -1;
@@ -312,7 +312,7 @@ int sdio_set_controller (int _clkmode, int _clkrate, uint8_t _buswidth, int _spe
 			i++;
 		}
 
-		if(i == 10);
+		if(i == 10)
 		{ 
 			bufferPrintf("sdio: Failed to complete soft reset!\r\n");
 			return -1;
@@ -370,7 +370,7 @@ int sdio_wait_for_ready()
 {
 	// wait for CMD_STATE to be CMD_IDLE
 	int i = 0;
-	while((GET_REG(SDIO + SDIO_STATE) != 0) && (i < 20))
+	while(((GET_REG(SDIO + SDIO_STATE) & 1) != 0) && (i < 20))
 	{
 		task_sleep(5);
 		i++;
@@ -414,7 +414,7 @@ int sdio_send_io(uint8_t command, uint32_t ocr, uint32_t* rocr)
 	// clear the upper bits that would indicate card status
 	ocr &= 0x1FFFFFF;
 
-	if(GET_REG(SDIO + SDIO_STATE) != 0)
+	if((GET_REG(SDIO + SDIO_STATE) & 1) != 0)
 	{
 		ret = sdio_wait_for_ready();
 		if(ret)
