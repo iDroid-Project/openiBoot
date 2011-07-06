@@ -44,7 +44,7 @@ int sdio_setup()
 
 	//interrupt_install(0x26, sdio_handle_interrupt, 0);
 	//interrupt_enable(0x26);
-
+	
 	clock_gate_switch(SDIO_CLOCKGATE, ON);
 	
 	if (sdio_block_reset() != 0)
@@ -377,8 +377,12 @@ int sdio_wait_for_ready()
 	}
 	
 	if (i == 20)
+	{
+		bufferPrintf("sdio: %s: Never ready!\n", __func__);
 		return -1;
+	}
 
+	bufferPrintf("sdio: %s.\n", __func__);
 	return 0;
 }
 
@@ -394,15 +398,24 @@ int sdio_wait_for_cmd_ready()
 	}
 
 	if (i == 1000)
+	{
+		bufferPrintf("sdio: %s: Never ready!\n", __func__);
 		return -1;
+	}
 
+	bufferPrintf("sdio: %s.\n", __func__);
 	return 0;
 }
 
 int sdio_command_check_interr()
 {
-	if ((SDIO_IRQ_ERRSTAT(GET_REG(SDIO + SDIO_IRQ)) & 0xF) != 0)
+	if((SDIO_IRQ_ERRSTAT(GET_REG(SDIO + SDIO_IRQ)) & 0xF) != 0)
+	{
+		bufferPrintf("sdio: %s: Failed!\n", __func__);
 		return -1;
+	}
+	
+	bufferPrintf("sdio: %s OK.\n", __func__);
 	return 0;
 }
 
@@ -433,7 +446,7 @@ int sdio_send_io(uint8_t command, uint32_t ocr, uint32_t* rocr)
 	else
 		cmd |= 0x1A;
 
-	SET_REG(SDIO + SDIO_CMD, SDIO_CMD_COMMAND(GET_REG(SDIO + SDIO_CMD)) | (cmd << 16));
+	SET_REG(SDIO + SDIO_CMD, (0xFFFF & (GET_REG(SDIO + SDIO_CMD))) | (cmd << 16));
 
 	if(((SDIO_IRQ_STATUS(GET_REG(SDIO + SDIO_IRQ)) & 1) == 0) && ((SDIO_IRQ_ERRSTAT(GET_REG(SDIO + SDIO_IRQ)) & 0xF) == 0))
 	{
