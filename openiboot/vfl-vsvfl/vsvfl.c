@@ -601,8 +601,13 @@ static error_t vfl_vsvfl_erase_single_block(vfl_device_t *_vfl, uint32_t _vbn, i
 			if (!_replaceBadBlock)
 				return EINVAL;
 
-			// TODO: complete bad block replacement.
-			system_panic("vfl: found a bad block. we don't treat those for now. sorry!\r\n");
+			// Bad block management at erasing should actually be like this (improvised \o/)
+			vsvfl_replace_bad_block(vfl, pCE, bankStart + blockOffset);
+			if(!vfl_check_checksum(vfl, pCE))
+				system_panic("vfl_erase_single_block: failed checksum\r\n");
+			vfl->contexts[pCE].bad_block_count++;
+			vfl_gen_checksum(vfl, pCE);
+			vsvfl_store_vfl_cxt(vfl, pCE);
 		}
 	}
 
