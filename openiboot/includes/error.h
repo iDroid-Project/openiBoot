@@ -8,6 +8,10 @@
 #define SUCCEEDED(x)		(((x) & ERROR_BIT) == 0)
 #define SUCCESS_VALUE(x)	((x) &~ ERROR_BIT)
 
+#define FAIL_ON(x, y)		do { if(x) { return y; } } while(0)
+#define SUCCEED_ON(x)		FAIL_ON((x), SUCCESS)
+#define CHAIN_FAIL(x)		do { error_t val = (x); if(FAILED(x)) { return x; } } while(0)
+
 enum
 {
 	SUCCESS = 0,
