@@ -841,7 +841,7 @@ static error_t vfl_vsvfl_open(vfl_device_t *_vfl, nand_device_t *_nand)
 		}
 
 		// Since VFLCxtBlock is a ringbuffer, if blockA.page0.spare.usnDec < blockB.page0.usnDec, then for any page a
-	    // in blockA and any page b in blockB, a.spare.usNDec < b.spare.usnDec. Therefore, to begin finding the
+		// in blockA and any page b in blockB, a.spare.usNDec < b.spare.usnDec. Therefore, to begin finding the
 		// page/VFLCxt with the lowest usnDec, we should just look at the first page of each block in the ring.
 		int minUsn = 0xFFFFFFFF;
 		int VFLCxtIdx = 4;
