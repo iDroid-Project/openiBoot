@@ -552,7 +552,7 @@ static error_t vfl_vsvfl_erase_single_block(vfl_device_t *_vfl, uint32_t _vbn, i
 					if(curVFLCxt->scrub_list[i] != vfl->blockBuffer[bank])
 						continue;
 					if(!vfl_check_checksum(vfl, pCE))
-						system_panic("vsvfl_write_vfl_cxt: failed checksum\r\n");
+						system_panic("vfl_erase_single_block: failed checksum\r\n");
 					curVFLCxt->scrub_list[i] = 0;
 					curVFLCxt->scrub_list_length--;
 					if(i != curVFLCxt->scrub_list_length && curVFLCxt->scrub_list_length != 0)
