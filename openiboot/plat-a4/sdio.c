@@ -10,6 +10,49 @@
 #include "hardware/sdio.h"
 #include "tasks.h"
 
+typedef struct _sdio_regs
+{
+	reg32_t	sdma_addr;
+	reg16_t	blk_size;
+	reg16_t	blk_cnt;
+	reg32_t	argument;
+	reg16_t	tx_mode;
+	reg16_t	command;
+	reg32_t	response[4];
+	reg32_t	bdata;
+	reg32_t	prn_status;
+	reg8_t	host_control;
+	reg8_t	pwr_control;
+	reg8_t	blk_gap;
+	reg8_t	wake_control;
+	reg16_t clock_control;
+	reg8_t	timeout_control;
+	reg8_t	sw_reset;
+	reg16_t int_sts;
+	reg16_t err_int_sts;
+	reg16_t int_en;
+	reg16_t err_int_en;
+	reg16_t int_sig_en;
+	reg16_t err_int_sig_en;
+	reg32_t acmd12_err_status;
+	reg32_t capabilities;
+	reg32_t unused_44;
+	reg32_t max_curr_cap;
+	reg32_t unused_4C;
+	reg16_t feaer;
+	reg16_t feerr;
+	reg32_t adma_err;
+	reg32_t adma_addr;
+	reg32_t unused_5c[9];
+	reg32_t control2;
+	reg32_t control3;
+	reg32_t unused_88;
+	reg32_t control4;
+	reg32_t unused_90[27];
+	reg16_t unused_fc;
+	reg16_t version;
+} __attribute__((packed)) __attribute__((aligned(4))) sdio_regs_t;
+
 typedef struct SDIOFunction
 {
 	int blocksize;
@@ -19,6 +62,11 @@ typedef struct SDIOFunction
 	uint32_t irqHandlerToken;
 } SDIOFunction;
 
+typedef struct _sdio_controller
+{
+	sdio_regs_t *regs;
+} sdio_controller_t;
+
 //uint32_t RCA;
 static int NumberOfFunctions = 0;
 
@@ -26,141 +74,48 @@ SDIOFunction* SDIOFunctions;
 
 uint8_t* fn0cisBuf;
 
-int sdio_block_reset();
-int sdio_set_controller(int _clkmode, int _clkrate, uint8_t _buswidth, int _speedmode);
-int sdio_reset();
-int sdio_send_io(uint8_t command, uint32_t ocr, uint32_t* rocr);
-void enable_card_interrupt(int on_off);
-int sdio_read_cis (int function);
-int sdio_parse_fn0_cis();
-int sdio_io_rw_direct(int isWrite, int function, uint32_t address, uint8_t in, uint8_t* out);
-void set_card_interrupt (OnOff on_off);
+sdio_controller_t sdio0 = {
+	.regs = (sdio_regs_t*)SDIO,
+};
 
-int sdio_setup()
+void set_card_interrupt(sdio_controller_t *_sdio, OnOff on_off)
 {
-	int i;
-	uint8_t data;
-	fn0cisBuf = (uint8_t*)malloc(0x200); // check if this will work -- has to be done there
-
-	//interrupt_install(0x26, sdio_handle_interrupt, 0);
-	//interrupt_enable(0x26);
-	
-	clock_gate_switch(SDIO_CLOCKGATE, ON);
-	
-	if (sdio_block_reset() != 0)
+	if(on_off == ON)
 	{
-		bufferPrintf("sdio: Failed to complete soft reset!\r\n");
-		return -1;
+		SET_REG16(&_sdio->regs->int_en, GET_REG16(&_sdio->regs->int_en) | 1);
+		SET_REG16(&_sdio->regs->err_int_en, GET_REG16(&_sdio->regs->err_int_en) | 0xF);
+		SET_REG16(&_sdio->regs->int_en, GET_REG16(&_sdio->regs->int_en) | 2);
+		SET_REG16(&_sdio->regs->err_int_en, GET_REG16(&_sdio->regs->err_int_en) | 0x70);
 	}
-	
-	// clockmode=1, clockrate=25MHz, buswidth=4, speedmode=1
-	if (sdio_set_controller(1, 25000000, 4, 1) !=0)
-	{
-		bufferPrintf("sdio: failed to configure SDIO block! \r\n");
-		return -1;
-	}
-	
-	if(sdio_reset() != 0)
-	{
-		bufferPrintf("sdio: error resetting card\r\n");
-		return -1;
-	}
-	
-
-	// Enable SDIO IRQs - may not be here but well, who knows....
-	enable_card_interrupt(ON);
-    
-	//**Enumerate card slot**//
-	uint32_t ocr[4];
-	i = 0;
-	
-		// get initial card operating conditions
-	do
-	{	if(sdio_send_io(5, 0, ocr) != 0) //io_send_op_cond()
-		{
-			bufferPrintf("sdio: error querying card operating conditions\r\n");
-			return -1;
-		}
-		
-		task_sleep(1);
-		i++;
-	}
-	while((ocr[0] >> 0x1F == 0) && (i < 100));
-	
-	if (i == 100)
-	{
-		bufferPrintf("sdio: timeout waiting for CMD5 I/O ready! \r\n");
-		return -1;
-	}
-	
-	bufferPrintf("CMD5 response: OCR: 0x%8x\r\n", ocr[0] & 0xFFFFF);
-	bufferPrintf("CMD5 response: Device has memory: %d\r\n", (ocr[0] >> 0x1B) & 0x1);
-
-	if((ocr[0] & 0x70000000) == 0)
-		bufferPrintf("CMD5 response: No I/O functions");
 	else
-		NumberOfFunctions = 1;
-	
-		
-	if(sdio_send_io(5, 0xFFFF00, ocr) != 0) //io_send_op_cond()
-		{
-			bufferPrintf("sdio: error querying card operating conditions\r\n");
-			return -1;
-		}
-	bufferPrintf("sdio: Ready! CMD5 response: 0x%8x\r\n", ocr[0] >> 0x1F);
-	
-		// probe for relative card address
-	if(sdio_send_io(3, 0, ocr) != 0) //send_relative_addr()
-	{
-			bufferPrintf("sdio: probing card relative address failed!\r\n");
-			return -1;
+	{   
+		SET_REG16(&_sdio->regs->int_en, GET_REG16(&_sdio->regs->int_en) &~ 1);
+		SET_REG16(&_sdio->regs->err_int_en, GET_REG16(&_sdio->regs->err_int_en) &~ 0xF);
+		SET_REG16(&_sdio->regs->int_en, GET_REG16(&_sdio->regs->int_en) &~ 2);
+		SET_REG16(&_sdio->regs->err_int_en, GET_REG16(&_sdio->regs->err_int_en) &~ 0x70);
 	}
-	
-		// select/deselect card with relative address
-	if(sdio_send_io(7, ocr[0] & 0xFFFF0000, ocr) != 0) //select_deselect_card()
-	{
-			bufferPrintf("sdio: select card with relative address 0x%8x failed!\r\n", ocr[0] & 0xFFFF0000);
-			return -1;
-	}
-	
-	bufferPrintf("sdio: CMD7 response [0x%8x][0x%8x][0x%8x][0x%8x]", ocr[0], ocr[1], ocr[2], ocr[3]);
-	
-		// read card information structure
-	if(sdio_read_cis(0) != 0)
-	{
-		bufferPrintf("sdio: fail to read CIS data!! \r\n");
-		return -1;
-	}
-	
-	if(sdio_parse_fn0_cis() != 0)
-	{
-		bufferPrintf("sdio: error parsing function 0 CIS data!! \r\n");
-		return -1;
-	}
-	
-	if(sdio_io_rw_direct(FALSE, 0, 8, 0, &data) != 0)
-			return -1;
-	bufferPrintf("sdio: card capability 0x%4x\r\n", data);
-	
-	//** Done enumerate card slot**//
-	
-	bufferPrintf("sdio: Ready!!\r\n");
-	
-	return 0;
 }
 
-
-void sdio_init()
+void enable_card_interrupt(sdio_controller_t *_sdio, OnOff on_off)
 {
-	sdio_setup();
+	if(on_off == ON)
+	{
+		SET_REG16(&_sdio->regs->int_en, GET_REG16(&_sdio->regs->int_en) | 0x100);
+		SET_REG16(&_sdio->regs->int_sig_en, GET_REG16(&_sdio->regs->int_sig_en) | 0x100);
+	}
+	else
+	{   
+		SET_REG16(&_sdio->regs->int_en, GET_REG16(&_sdio->regs->int_en) &~ 0x100);
+		SET_REG16(&_sdio->regs->int_sig_en, GET_REG16(&_sdio->regs->int_sig_en) &~ 0x100);
+	}
 }
 
-
-int sdio_block_reset()
+int sdio_block_reset(sdio_controller_t *_sdio)
 {
-	SET_REG(SDIO + SDIO_CTRL2, (GET_REG(SDIO + SDIO_CTRL2) & 0xFFFFFF) | ((SDIO_CTRL2_SOFTRESET(GET_REG(SDIO + SDIO_CTRL2)) | (SDIOBLOCK_RESET_MASK & 0x7)) << 24));
 	int i = 0;
-	while(((SDIO_CTRL2_SOFTRESET(GET_REG(SDIO + SDIO_CTRL2)) & 0x7) != 0) && i < 100)
+
+	SET_REG8(&_sdio->regs->sw_reset, SDIO_SWRESET_ALL);
+	while(((GET_REG8(&_sdio->regs->sw_reset) & SDIO_SWRESET_ALL) != 0) && i < 100)
 	{
 		udelay(5000);
 		i++;
@@ -169,11 +124,13 @@ int sdio_block_reset()
 	if(i == 100)
 		return -1;
 
-	if(SDIOBLOCK_RESET_MASK & 1)
+	if(SDIO_SWRESET_ALL & 1)
 	{
-		SET_REG(SDIO + SDIO_CTRL2, (GET_REG(SDIO + SDIO_CTRL2) & 0xFFFF0000) | (SDIO_CTRL2_CLOCK(GET_REG(SDIO + SDIO_CTRL2)) | 1 ));
+		SET_REG16(&_sdio->regs->clock_control,
+				GET_REG16(&_sdio->regs->clock_control) | 1);
+
 		i = 0;
-		while(((SDIO_CTRL2_CLOCK(GET_REG(SDIO + SDIO_CTRL2)) & 0x2) == 0) && i < 10)
+		while(((GET_REG16(&_sdio->regs->clock_control) & 0x2) == 0) && i < 10)
 		{
 			udelay(5000);
 			i++;
@@ -182,144 +139,12 @@ int sdio_block_reset()
 		if(i == 10)
 			return -1;
 
-		set_card_interrupt(ON);
+		set_card_interrupt(_sdio, ON);
 
 		return 0;
 	}
 
 	udelay(400000);
-
-	return 0;
-}
-
-
-int sdio_set_controller (int _clkmode, int _clkrate, uint8_t _buswidth, int _speedmode)
-{
-	int i = 0;
-	int status = 0;
-	//reset sdio block
-	if (sdio_block_reset() !=0)
-		return -1;
-
-	//set bus speed mode
-	if (_speedmode != 1 && _speedmode != 2)
-	{
-		bufferPrintf("sdio: invalid bus speed mode setting! \r\n");
-		return -1;
-	}
-	if (_speedmode == 1)
-		SET_REG(SDIO + SDIO_CTRL1, (GET_REG(SDIO + SDIO_CTRL1) & 0xFFFFFF) | ((SDIO_CTRL1_WAKEUP(GET_REG(SDIO + SDIO_CTRL1)) & ~0x4) << 24));
-		
-	if (_speedmode == 2)
-		SET_REG(SDIO + SDIO_CTRL1, (GET_REG(SDIO + SDIO_CTRL1) & 0xFFFFFF) | ((SDIO_CTRL1_WAKEUP(GET_REG(SDIO + SDIO_CTRL1)) | 0x4) << 24));
-
-	//set bus width
-	if (_buswidth != 1 && _buswidth != 4)
-	{
-		bufferPrintf("sdio: invalid bus width setting! \r\n");
-		return -1;	
-	}
-
-	status = 0;
-	if ((SDIO_IRQEN_STATUS(GET_REG(SDIO + SDIO_IRQEN)) & 0x100) != 0)
-		status = (SDIO_ISREN_STATUS(GET_REG(SDIO + SDIO_ISREN)) >> 8) & 1;
-
-	enable_card_interrupt(OFF);
-
-	if (_buswidth == 4)
-		SET_REG(SDIO + SDIO_CTRL1, (GET_REG(SDIO + SDIO_CTRL1) & 0xFFFFFF00) | (SDIO_CTRL1_HOST(GET_REG(SDIO + SDIO_CTRL1)) | 0x2));
-	else
-		SET_REG(SDIO + SDIO_CTRL1, (GET_REG(SDIO + SDIO_CTRL1) & 0xFFFFFF00) | (SDIO_CTRL1_HOST(GET_REG(SDIO + SDIO_CTRL1)) & ~0x2));
-
-	enable_card_interrupt(status);
-
-	//set clock rate
-	if (_clkrate > SDIO_Max_Frequency)
-	{
-		bufferPrintf("sdio: clock frequency out of range!\r\n");
-		return -1;
-	}
-
-	status = SDIO_CTRL2_CLOCK(GET_REG(SDIO + SDIO_CTRL2)) & 0x4;
-	SET_REG(SDIO + SDIO_CTRL2, (GET_REG(SDIO + SDIO_CTRL2) & 0xFFFF0000) | (SDIO_CTRL2_CLOCK(GET_REG(SDIO + SDIO_CTRL2)) & ~0x4 ));	
-
-	i = 0;
-	while ((SDIO_Base_Frequency / (1 << i)) > _clkrate)
-		i++;
-    
-	int div = 1 << i;
-	if (div >= 256)
-		div = 256;
-	
-	SET_REG(SDIO + SDIO_CTRL2, (GET_REG(SDIO + SDIO_CTRL2) & 0xFFFF0000) | (SDIO_CTRL2_CLOCK(GET_REG(SDIO + SDIO_CTRL2)) & 0xFF ));	
-	SET_REG(SDIO + SDIO_CTRL2, (GET_REG(SDIO + SDIO_CTRL2) & 0xFFFF0000) | (SDIO_CTRL2_CLOCK(GET_REG(SDIO + SDIO_CTRL2)) | 0x1 | ((div >> 0x1) << 0x8)));	
-	
-	if (status != 0)
-	{
-		i = 0;
-		while(((SDIO_CTRL2_CLOCK(GET_REG(SDIO + SDIO_CTRL2)) & 0x2) == 0) && i < 10)
-		{
-			udelay(5000);
-			i++;
-		}
-
-		if(i == 10)
-		{ 
-			bufferPrintf("sdio: Failed to set clock rate!\r\n");
-			return -1;
-		}
-	}
-
-	i = 7;
-	int clock_state = SDIO_CTRL2_CLOCK(GET_REG(SDIO + SDIO_CTRL2)) & 0xFF00;
-	while (((clock_state & 1) == 0) && (i != 0))
-	{
-		i--;
-		clock_state <<= 1;		
-	}
-
-	int state = SDIO_IRQEN_ERRSTATUS(GET_REG(SDIO + SDIO_IRQEN));
-
-	SET_REG(SDIO + SDIO_IRQEN, (GET_REG(SDIO + SDIO_IRQEN) & 0xFFFF) | ((SDIO_IRQEN_ERRSTATUS(GET_REG(SDIO + SDIO_IRQEN)) & ~0x10) << 16));
-
-	SET_REG(SDIO + SDIO_CTRL2, (GET_REG(SDIO + SDIO_CTRL2) & 0xFFFFFF) | ((SDIO_CTRL2_SOFTRESET(GET_REG(SDIO + SDIO_CTRL2)) | (clock_state & 0xF)) << 24));
-
-	if (state & 0x10)
-		SET_REG(SDIO + SDIO_IRQEN, (GET_REG(SDIO + SDIO_IRQEN) & 0xFFFF) | ((SDIO_IRQEN_ERRSTATUS(GET_REG(SDIO + SDIO_IRQEN)) | 0x10) << 16));
-
-	if (status == 0)
-		SET_REG(SDIO + SDIO_CTRL2, (GET_REG(SDIO + SDIO_CTRL2) & 0xFFFFFF00) | (SDIO_CTRL2_CLOCK(GET_REG(SDIO + SDIO_CTRL2)) & ~0x4 ));	
-	else
-		SET_REG(SDIO + SDIO_CTRL2, (GET_REG(SDIO + SDIO_CTRL2) & 0xFFFFFF00) | (SDIO_CTRL2_CLOCK(GET_REG(SDIO + SDIO_CTRL2)) | 0x4 ));	
-
-	//set clock mode
-	if (_clkmode != 1 && _clkmode != -1)
-	{
-		bufferPrintf("sdio: invalid clock mode setting! \r\n");
-		return -1;
-	}
-
-	if (_clkmode == -1)
-		SET_REG(SDIO + SDIO_CTRL2, (GET_REG(SDIO + SDIO_CTRL2) & 0xFFFFFF00) | (SDIO_CTRL2_CLOCK(GET_REG(SDIO + SDIO_CTRL2)) & ~0x4 ));	
-
-	if (_clkmode == 1)
-	{
-		SET_REG(SDIO + SDIO_CTRL2, (GET_REG(SDIO + SDIO_CTRL2) & 0xFFFFFF00) | (SDIO_CTRL2_CLOCK(GET_REG(SDIO + SDIO_CTRL2)) | 1 ));
-		i = 0;
-		while(((SDIO_CTRL2_CLOCK(GET_REG(SDIO + SDIO_CTRL2)) & 0x2) == 0) && i < 10)
-		{
-			udelay(5000);
-			i++;
-		}
-
-		if(i == 10)
-		{ 
-			bufferPrintf("sdio: Failed to complete soft reset!\r\n");
-			return -1;
-		}
-
-		SET_REG(SDIO + SDIO_CTRL2, (GET_REG(SDIO + SDIO_CTRL2) & 0xFFFFFF00) | (SDIO_CTRL2_CLOCK(GET_REG(SDIO + SDIO_CTRL2)) | 0x4 ));
-	}
 
 	return 0;
 }
@@ -334,43 +159,165 @@ int sdio_reset()
 	return 0;
 }
 
-void set_card_interrupt (OnOff on_off)
+int sdio_set_controller(sdio_controller_t *_sdio, int _clkmode, int _clkrate, uint8_t _buswidth, int _speedmode)
 {
-	if(on_off == ON)
+	int i = 0;
+	int status = 0;
+
+	bufferPrintf("%s: A.\n", __func__);
+
+	//reset sdio block
+	if (sdio_block_reset(_sdio) != 0)
+		return -1;
+
+	bufferPrintf("%s: B.\n", __func__);
+
+	//set bus speed mode
+	if (_speedmode != 1 && _speedmode != 2)
 	{
-		SET_REG(SDIO + SDIO_IRQEN, (GET_REG(SDIO + SDIO_IRQEN) & 0xFFFF0000) | (SDIO_IRQEN_STATUS(GET_REG(SDIO + SDIO_IRQEN)) | 0x1));
-		SET_REG(SDIO + SDIO_IRQEN, (GET_REG(SDIO + SDIO_IRQEN) & 0xFFFF) | ((SDIO_IRQEN_ERRSTATUS(GET_REG(SDIO + SDIO_IRQEN)) | 0xF) << 16));
-		SET_REG(SDIO + SDIO_IRQEN, (GET_REG(SDIO + SDIO_IRQEN) & 0xFFFF0000) | (SDIO_IRQEN_STATUS(GET_REG(SDIO + SDIO_IRQEN)) | 0x2));
-		SET_REG(SDIO + SDIO_IRQEN, (GET_REG(SDIO + SDIO_IRQEN) & 0xFFFF) | ((SDIO_IRQEN_ERRSTATUS(GET_REG(SDIO + SDIO_IRQEN)) | 0x70) << 16));
+		bufferPrintf("sdio: invalid bus speed mode setting! \r\n");
+		return -1;
 	}
+
+	if(_speedmode == 1)
+		SET_REG8(&_sdio->regs->wake_control, GET_REG8(&_sdio->regs->wake_control) &~ 4);
+	else if(_speedmode == 2)
+		SET_REG8(&_sdio->regs->wake_control, GET_REG8(&_sdio->regs->wake_control) | 4);
+
+	//set bus width
+	if (_buswidth != 1 && _buswidth != 4)
+	{
+		bufferPrintf("sdio: invalid bus width setting! \r\n");
+		return -1;	
+	}
+	
+	bufferPrintf("%s: C.\n", __func__);
+
+	status = (GET_REG16(&_sdio->regs->int_en) & 0x100) && (GET_REG16(&_sdio->regs->int_sig_en) & 0x100);
+
+	enable_card_interrupt(_sdio, OFF);
+	
+	bufferPrintf("%s: D.\n", __func__);
+
+	if(_buswidth == 4)
+		SET_REG8(&_sdio->regs->host_control, GET_REG8(&_sdio->regs->host_control) | 2);
 	else
-	{   
-		SET_REG(SDIO + SDIO_IRQEN, (GET_REG(SDIO + SDIO_IRQEN) & 0xFFFF0000) | (SDIO_IRQEN_STATUS(GET_REG(SDIO + SDIO_IRQEN)) & ~0x1));
-		SET_REG(SDIO + SDIO_IRQEN, (GET_REG(SDIO + SDIO_IRQEN) & 0xFFFF) | ((SDIO_IRQEN_ERRSTATUS(GET_REG(SDIO + SDIO_IRQEN)) & ~0xF) << 16));
-		SET_REG(SDIO + SDIO_IRQEN, (GET_REG(SDIO + SDIO_IRQEN) & 0xFFFF0000) | (SDIO_IRQEN_STATUS(GET_REG(SDIO + SDIO_IRQEN)) & ~0x2));
-		SET_REG(SDIO + SDIO_IRQEN, (GET_REG(SDIO + SDIO_IRQEN) & 0xFFFF) | ((SDIO_IRQEN_ERRSTATUS(GET_REG(SDIO + SDIO_IRQEN)) & ~0x70) << 16));
+		SET_REG8(&_sdio->regs->host_control, GET_REG8(&_sdio->regs->host_control) &~ 2);
+
+	enable_card_interrupt(_sdio, status);
+	
+	bufferPrintf("%s: E.\n", __func__);
+
+	//set clock rate
+	if (_clkrate > SDIO_Max_Frequency)
+	{
+		bufferPrintf("sdio: clock frequency out of range!\r\n");
+		return -1;
 	}
+
+	status = GET_REG16(&_sdio->regs->clock_control) & 4;
+	SET_REG16(&_sdio->regs->clock_control, GET_REG16(&_sdio->regs->clock_control) &~ 4);
+
+	bufferPrintf("%s: F.\n", __func__);
+
+	i = 0;
+	while ((SDIO_Base_Frequency / (1 << i)) > _clkrate)
+		i++;
+    
+	int div = 1 << i;
+	if (div >= 256)
+		div = 256;
+	
+	SET_REG16(&_sdio->regs->clock_control, GET_REG16(&_sdio->regs->clock_control) & 0xff);
+	SET_REG16(&_sdio->regs->clock_control, GET_REG16(&_sdio->regs->clock_control) | 1 | ((div >> 1) << 8));
+
+	bufferPrintf("%s: G.\n", __func__);
+	
+	if (status != 0)
+	{
+		i = 0;
+		while((GET_REG16(&_sdio->regs->clock_control) & 0x2) == 0 && i < 10)
+		{
+			udelay(5000);
+			i++;
+		}
+
+		if(i == 10)
+		{ 
+			bufferPrintf("sdio: Failed to set clock rate!\r\n");
+			return -1;
+		}
+	}
+
+	i = 7;
+	int timeout = GET_REG16(&_sdio->regs->clock_control) & 0xFF00;
+	while(!(timeout & 1))
+	{
+		i--;
+		timeout >>= 1;		
+
+		if(!(i & 0xFF))
+			break;
+	}
+
+	bufferPrintf("%s: H 0x%08x.\n", __func__, timeout);
+
+	int state = GET_REG16(&_sdio->regs->err_int_en);
+
+	SET_REG16(&_sdio->regs->err_int_en, GET_REG16(&_sdio->regs->err_int_en) &~ 0x10);
+	SET_REG16(&_sdio->regs->timeout_control, timeout & 0xF);
+
+	if (state & 0x10)
+		SET_REG16(&_sdio->regs->err_int_en, GET_REG16(&_sdio->regs->err_int_en) | 0x10);
+
+	if (status == 0)
+		SET_REG16(&_sdio->regs->clock_control, GET_REG16(&_sdio->regs->clock_control) &~ 0x4);
+	else
+		SET_REG16(&_sdio->regs->clock_control, GET_REG16(&_sdio->regs->clock_control) | 0x4);
+
+	//set clock mode
+	if (_clkmode != 1 && _clkmode != -1)
+	{
+		bufferPrintf("sdio: invalid clock mode setting! \r\n");
+		return -1;
+	}
+
+	if (_clkmode == -1)
+		SET_REG16(&_sdio->regs->clock_control, GET_REG16(&_sdio->regs->clock_control) &~ 0x4);
+
+	bufferPrintf("%s: I.\n", __func__);
+
+	if (_clkmode == 1)
+	{
+		SET_REG16(&_sdio->regs->clock_control, GET_REG16(&_sdio->regs->clock_control) | 1);
+
+		i = 0;
+		while(((GET_REG16(&_sdio->regs->clock_control) & 0x2) == 0) && i < 10)
+		{
+			bufferPrintf("%s: 0x%08x.\n", __func__, GET_REG16(&_sdio->regs->clock_control));
+			udelay(5000);
+			i++;
+		}
+
+		if(i == 10)
+		{ 
+			bufferPrintf("sdio: Failed to complete soft reset!\r\n");
+			return -1;
+		}
+
+		SET_REG16(&_sdio->regs->clock_control, GET_REG16(&_sdio->regs->clock_control) | 4);
+	}
+
+	return 0;
 }
 
-void enable_card_interrupt (int on_off)
-{
-	if(on_off == ON)
-	{
-		SET_REG(SDIO + SDIO_IRQEN, (GET_REG(SDIO + SDIO_IRQEN) & 0xFFFF0000) | (SDIO_IRQEN_STATUS(GET_REG(SDIO + SDIO_IRQEN)) | 0x100));
-		SET_REG(SDIO + SDIO_ISREN, (GET_REG(SDIO + SDIO_ISREN) & 0xFFFF) | (SDIO_ISREN_STATUS(GET_REG(SDIO + SDIO_ISREN)) | 0x100));
-	}
-	else
-	{   
-		SET_REG(SDIO + SDIO_IRQEN, (GET_REG(SDIO + SDIO_IRQEN) & 0xFFFF0000) | (SDIO_IRQEN_STATUS(GET_REG(SDIO + SDIO_IRQEN)) & ~0x100));
-		SET_REG(SDIO + SDIO_ISREN, (GET_REG(SDIO + SDIO_ISREN) & 0xFFFF) | (SDIO_ISREN_STATUS(GET_REG(SDIO + SDIO_ISREN)) & ~0x100));
-	}
-}
-
-int sdio_wait_for_ready()
+int sdio_wait_for_ready(sdio_controller_t *_sdio)
 {
 	// wait for CMD_STATE to be CMD_IDLE
 	int i = 0;
-	while(((GET_REG(SDIO + SDIO_STATE) & 1) != 0) && (i < 20))
+
+	bufferPrintf("%s\n", __func__);
+	while(((GET_REG(&_sdio->regs->prn_status) & 1) != 0) && (i < 20))
 	{
 		task_sleep(5);
 		i++;
@@ -382,18 +329,22 @@ int sdio_wait_for_ready()
 		return -1;
 	}
 
-	bufferPrintf("sdio: %s.\n", __func__);
+	bufferPrintf("sdio: %s done.\n", __func__);
 	return 0;
 }
 
-
-
-int sdio_wait_for_cmd_ready()
+int sdio_wait_for_cmd_ready(sdio_controller_t *_sdio)
 {
 	// wait for the command to be ready to transmit
 	int i = 0;
-	while(((SDIO_IRQ_STATUS(GET_REG(SDIO + SDIO_IRQ)) & 1) == 0) && ((SDIO_IRQ_ERRSTAT(GET_REG(SDIO + SDIO_IRQ)) & 0xF) == 0) && i < 1000)
+
+	bufferPrintf("%s.\n", __func__);
+
+	while((GET_REG16(&_sdio->regs->int_sts) & 1) == 0
+			&& (GET_REG16(&_sdio->regs->err_int_sts) & 0xf)== 0
+			&& i < 1000)
 	{
+		task_sleep(5);
 		i++;
 	}
 
@@ -403,15 +354,16 @@ int sdio_wait_for_cmd_ready()
 		return -1;
 	}
 
-	bufferPrintf("sdio: %s.\n", __func__);
+	bufferPrintf("sdio: %s done.\n", __func__);
 	return 0;
 }
 
-int sdio_command_check_interr()
+int sdio_command_check_interr(sdio_controller_t *_sdio)
 {
-	if((SDIO_IRQ_ERRSTAT(GET_REG(SDIO + SDIO_IRQ)) & 0xF) != 0)
+	if((GET_REG16(&_sdio->regs->err_int_sts) & 0xF) != 0)
 	{
-		bufferPrintf("sdio: %s: Failed!\n", __func__);
+		bufferPrintf("sdio: %s: Failed (0x%x)!\n", __func__,
+				GET_REG16(&_sdio->regs->err_int_sts));
 		return -1;
 	}
 	
@@ -419,7 +371,7 @@ int sdio_command_check_interr()
 	return 0;
 }
 
-int sdio_send_io(uint8_t command, uint32_t ocr, uint32_t* rocr)
+int sdio_send_io(sdio_controller_t *_sdio, uint8_t command, uint32_t ocr, uint32_t* rocr)
 {
 	int ret;
 	uint16_t cmd;
@@ -427,14 +379,11 @@ int sdio_send_io(uint8_t command, uint32_t ocr, uint32_t* rocr)
 	// clear the upper bits that would indicate card status
 	ocr &= 0x1FFFFFF;
 
-	if((GET_REG(SDIO + SDIO_STATE) & 1) != 0)
-	{
-		ret = sdio_wait_for_ready();
-		if(ret)
-			return ret;
-	}
+	ret = sdio_wait_for_ready(_sdio);
+	if(ret)
+		return ret;
 
-	SET_REG(SDIO + SDIO_ARGU, ocr);
+	SET_REG32(&_sdio->regs->argument, ocr);
 
 	//set CMD
 	cmd = (command << 8) & 0x3F00;
@@ -446,32 +395,30 @@ int sdio_send_io(uint8_t command, uint32_t ocr, uint32_t* rocr)
 	else
 		cmd |= 0x1A;
 
-	SET_REG(SDIO + SDIO_CMD, (0xFFFF & (GET_REG(SDIO + SDIO_CMD))) | (cmd << 16));
+	SET_REG16(&_sdio->regs->command, cmd);
 
-	if(((SDIO_IRQ_STATUS(GET_REG(SDIO + SDIO_IRQ)) & 1) == 0) && ((SDIO_IRQ_ERRSTAT(GET_REG(SDIO + SDIO_IRQ)) & 0xF) == 0))
-	{
-		ret = sdio_wait_for_cmd_ready();
-		if(ret)
-			return ret;
-	}
+	ret = sdio_wait_for_cmd_ready(_sdio);
+	if(ret)
+		return ret;
 
-	if(sdio_command_check_interr())
+	if(sdio_command_check_interr(_sdio))
 		return -1;
 
 	//clear interrupt	
-	SET_REG(SDIO + SDIO_IRQ, 1 | (0xF << 16));
+	SET_REG16(&_sdio->regs->int_sts, 1);
+	SET_REG16(&_sdio->regs->err_int_sts, 0xF);
 
 	//get response
-	rocr[0] = GET_REG(SDIO + SDIO_RESP0);
-	rocr[1] = GET_REG(SDIO + SDIO_RESP1);
-	rocr[2] = GET_REG(SDIO + SDIO_RESP2);
-	rocr[3] = GET_REG(SDIO + SDIO_RESP3);
+	rocr[0] = GET_REG(&_sdio->regs->response[0]);
+	rocr[1] = GET_REG(&_sdio->regs->response[1]);
+	rocr[2] = GET_REG(&_sdio->regs->response[2]);
+	rocr[3] = GET_REG(&_sdio->regs->response[3]);
 
 	return 0;
 }
 
 
-int sdio_io_rw_direct(int isWrite, int function, uint32_t address, uint8_t in, uint8_t* out)
+int sdio_io_rw_direct(sdio_controller_t *_sdio, int isWrite, int function, uint32_t address, uint8_t in, uint8_t* out)
 {
 	uint32_t arg = 0;
 	uint32_t response[4];
@@ -482,7 +429,7 @@ int sdio_io_rw_direct(int isWrite, int function, uint32_t address, uint8_t in, u
 	arg |= address << 9;
 
 
-	if(sdio_send_io(52, arg, &response[0]) != 0)
+	if(sdio_send_io(_sdio, 52, arg, response) != 0)
 	{
 		bufferPrintf("sdio: error doing cmd52 read/write!\r\n");
 		return -1;
@@ -494,7 +441,7 @@ int sdio_io_rw_direct(int isWrite, int function, uint32_t address, uint8_t in, u
 }
 
 
-int sdio_read_cis (int function)
+int sdio_read_cis(sdio_controller_t *_sdio, int function)
 {
 	int i;
 	uint8_t data;
@@ -502,7 +449,7 @@ int sdio_read_cis (int function)
 	uint32_t ptr = 0;
 	for(i = 0; i < 3; ++i)
 	{
-		if(sdio_io_rw_direct(FALSE, 0, (function * 0x100) + 0x9 + i, 0, &data) != 0)
+		if(sdio_io_rw_direct(_sdio, FALSE, 0, (function * 0x100) + 0x9 + i, 0, &data) != 0)
 			return -1;
 
 		ptr += data << (8 * i);
@@ -510,7 +457,7 @@ int sdio_read_cis (int function)
 
 	for(i = 0; i < 200; ++i)
 	{
-		if(sdio_io_rw_direct(FALSE, 0, ptr + i, 0, &fn0cisBuf[i]) != 0)
+		if(sdio_io_rw_direct(_sdio, FALSE, 0, ptr + i, 0, &fn0cisBuf[i]) != 0)
 			return -1;
 	}
 
@@ -518,7 +465,7 @@ int sdio_read_cis (int function)
 }
 
 
-int sdio_parse_fn0_cis()
+int sdio_parse_fn0_cis(sdio_controller_t *_sdio)
 {
 	uint32_t bufferSize = 0x200;
 	uint32_t size;
@@ -578,14 +525,14 @@ int sdio_parse_fn0_cis()
 	return 0;
 }
 
-int sdio_enable_func_interrupt(uint8_t function, OnOff on_off)
+int sdio_enable_func_interrupt(sdio_controller_t *_sdio, uint8_t function, OnOff on_off)
 {
 	uint8_t reg;
 
 	if(function > 7)
 		return -1;
 
-	if(sdio_io_rw_direct(FALSE, 0, 0x4, 0, &reg) != 0)
+	if(sdio_io_rw_direct(_sdio, FALSE, 0, 0x4, 0, &reg) != 0)
 		return -1;
 
 	if(on_off == ON)
@@ -593,20 +540,20 @@ int sdio_enable_func_interrupt(uint8_t function, OnOff on_off)
 	else
 		reg &= ~(1 << function); //disable
 
-	if(sdio_io_rw_direct(TRUE, 0, 0x4, reg, NULL) != 0)
+	if(sdio_io_rw_direct(_sdio, TRUE, 0, 0x4, reg, NULL) != 0)
 		return -1;
 
 	return 0;
 }
 
-int sdio_enable_function(uint8_t function, OnOff on_off)
+int sdio_enable_function(sdio_controller_t *_sdio, uint8_t function, OnOff on_off)
 {
 	uint8_t reg;
 
 	if(function <= 0 || function > 7)
 		return -1;
 
-	if(sdio_io_rw_direct(FALSE, 0, 0x2, 0, &reg) != 0)
+	if(sdio_io_rw_direct(_sdio, FALSE, 0, 0x2, 0, &reg) != 0)
 		return -1;
 
 	if(on_off == ON)
@@ -614,14 +561,14 @@ int sdio_enable_function(uint8_t function, OnOff on_off)
 	else
 		reg &= ~(1 << function);
 
-	if(sdio_io_rw_direct(TRUE, 0, 0x2, reg, NULL) != 0)
+	if(sdio_io_rw_direct(_sdio, TRUE, 0, 0x2, reg, NULL) != 0)
 		return -1;
 
 	if(on_off == ON)
 	{
 		uint64_t startTime = timer_get_system_microtime();
 		while (1) {
-			if(sdio_io_rw_direct(FALSE, 0, 0x3, 0, &reg) != 0)
+			if(sdio_io_rw_direct(_sdio, FALSE, 0, 0x3, 0, &reg) != 0)
 				return -1;
 
 			if (reg & (1 << function))
@@ -637,6 +584,147 @@ int sdio_enable_function(uint8_t function, OnOff on_off)
 	}
 
 	return 0;
+}
+
+static void sdio_handle_interrupt(uint32_t _tnk)
+{
+	bufferPrintf("%s\n", __func__);
+}
+
+int sdio_setup()
+{
+	int i;
+	uint8_t data;
+	sdio_controller_t *sdio = &sdio0;
+	fn0cisBuf = (uint8_t*)malloc(0x200); 
+
+	SET_REG16(&sdio->regs->int_en, 0);
+	SET_REG16(&sdio->regs->int_sig_en, 0);
+	SET_REG16(&sdio->regs->int_sts, 0xFFFF);
+	SET_REG16(&sdio->regs->err_int_en, 0);
+	SET_REG16(&sdio->regs->err_int_sig_en, 0);
+	SET_REG16(&sdio->regs->err_int_sts, 0xFFFF);
+
+	bufferPrintf("%s: clk_con = 0x%p\n", __func__, &sdio->regs->clock_control);
+
+	interrupt_install(0x26, sdio_handle_interrupt, 0);
+	interrupt_enable(0x26);
+	
+	bufferPrintf("%s: A.\n", __func__);
+	
+	clock_gate_switch(SDIO_CLOCKGATE, ON);
+	
+	if (sdio_block_reset(sdio) != 0)
+	{
+		bufferPrintf("sdio: Failed to complete soft reset!\r\n");
+		return -1;
+	}
+
+	bufferPrintf("%s: B.\n", __func__);
+	
+	// clockmode=1, clockrate=25MHz, buswidth=4, speedmode=1
+	if (sdio_set_controller(sdio, 1, 25000000, 4, 1) !=0)
+	{
+		bufferPrintf("sdio: failed to configure SDIO block! \r\n");
+		return -1;
+	}
+	
+	bufferPrintf("%s: B.5.\n", __func__);
+	
+	if(sdio_reset() != 0)
+	{
+		bufferPrintf("sdio: error resetting card\r\n");
+		return -1;
+	}
+	
+	bufferPrintf("%s: C.\n", __func__);
+
+	// Enable SDIO IRQs - may not be here but well, who knows....
+	enable_card_interrupt(sdio, ON);
+    
+	//**Enumerate card slot**//
+	uint32_t ocr[4];
+	i = 0;
+	
+		// get initial card operating conditions
+	do
+	{	if(sdio_send_io(sdio, 5, 0, ocr) != 0) //io_send_op_cond()
+		{
+			bufferPrintf("sdio: error querying card operating conditions\r\n");
+			return -1;
+		}
+		
+		task_sleep(1);
+		i++;
+	}
+	while((ocr[0] >> 0x1F == 0) && (i < 100));
+	
+	if (i == 100)
+	{
+		bufferPrintf("sdio: timeout waiting for CMD5 I/O ready! \r\n");
+		return -1;
+	}
+	
+	bufferPrintf("CMD5 response: OCR: 0x%8x\r\n", ocr[0] & 0xFFFFF);
+	bufferPrintf("CMD5 response: Device has memory: %d\r\n", (ocr[0] >> 0x1B) & 0x1);
+
+	if((ocr[0] & 0x70000000) == 0)
+		bufferPrintf("CMD5 response: No I/O functions");
+	else
+		NumberOfFunctions = 1;
+	
+		
+	if(sdio_send_io(sdio, 5, 0xFFFF00, ocr) != 0) //io_send_op_cond()
+		{
+			bufferPrintf("sdio: error querying card operating conditions\r\n");
+			return -1;
+		}
+	bufferPrintf("sdio: Ready! CMD5 response: 0x%8x\r\n", ocr[0] >> 0x1F);
+	
+		// probe for relative card address
+	if(sdio_send_io(sdio, 3, 0, ocr) != 0) //send_relative_addr()
+	{
+			bufferPrintf("sdio: probing card relative address failed!\r\n");
+			return -1;
+	}
+	
+		// select/deselect card with relative address
+	if(sdio_send_io(sdio, 7, ocr[0] & 0xFFFF0000, ocr) != 0) //select_deselect_card()
+	{
+			bufferPrintf("sdio: select card with relative address 0x%8x failed!\r\n", ocr[0] & 0xFFFF0000);
+			return -1;
+	}
+	
+	bufferPrintf("sdio: CMD7 response [0x%8x][0x%8x][0x%8x][0x%8x]", ocr[0], ocr[1], ocr[2], ocr[3]);
+	
+		// read card information structure
+	if(sdio_read_cis(sdio, 0) != 0)
+	{
+		bufferPrintf("sdio: fail to read CIS data!! \r\n");
+		return -1;
+	}
+	
+	if(sdio_parse_fn0_cis(sdio) != 0)
+	{
+		bufferPrintf("sdio: error parsing function 0 CIS data!! \r\n");
+		return -1;
+	}
+	
+	if(sdio_io_rw_direct(sdio, FALSE, 0, 8, 0, &data) != 0)
+			return -1;
+	bufferPrintf("sdio: card capability 0x%4x\r\n", data);
+	
+	//** Done enumerate card slot**//
+	
+	bufferPrintf("sdio: Ready!!\r\n");
+	
+	return 0;
+}
+
+
+void sdio_init()
+{
+	sdio_setup();
 }
 
 static void cmd_sdio_setup(int argc, char** argv)
