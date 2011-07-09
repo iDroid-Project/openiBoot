@@ -156,7 +156,7 @@ void clock_init()
 	SET_REG(CLOCK_REFERENCE2, GET_REG(CLOCK_REFERENCE2) &~ 1);
 }
 
-int clock_setup()
+error_t clock_setup()
 {
 	clock_init();
 
@@ -211,7 +211,7 @@ int clock_setup()
 	clock_frequencies[27] = PLLFrequencies[3];
 	TicksPerSec = PLLFrequencies[3];
 
-	return 0;
+	return SUCCESS;
 }
 
 void cmd_frequencies(int argc, char **argv)

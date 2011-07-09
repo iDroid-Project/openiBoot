@@ -13,20 +13,8 @@ typedef enum ClockDivisorCode {
 
 extern uint32_t ClockPLL;
 extern uint32_t PLLFrequencies[NUM_PLL];
-
 extern uint32_t CalculatedFrequencyTable[55];
-
-extern uint32_t ClockFrequency;
-extern uint32_t MemoryFrequency;
-extern uint32_t BusFrequency;
-extern uint32_t PeripheralFrequency;
-extern uint32_t UnknownFrequency;
-extern uint32_t DisplayFrequency;
-extern uint32_t FixedFrequency;
-extern uint32_t TimebaseFrequency;
-
 extern uint32_t ClockSDiv;
-
 extern uint32_t TicksPerSec;
 
 typedef enum FrequencyBase {
@@ -43,7 +31,7 @@ typedef enum FrequencyBase {
 } FrequencyBase;
 
 int clock_set_base_divisor(ClockDivisorCode code);
-int clock_setup();
+error_t clock_setup();
 
 void clock_gate_switch(uint32_t gate, OnOff on_off);
 void clock_gate_reset(uint32_t gate);
