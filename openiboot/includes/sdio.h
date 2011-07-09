@@ -4,8 +4,6 @@
 #include "openiboot.h"
 #include "interrupt.h"
 
-int sdio_setup();
-
 void sdio_status();
 
 int sdio_set_block_size(int function, int blocksize);
