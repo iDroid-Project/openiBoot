@@ -12,7 +12,7 @@ typedef struct _vfl_vsvfl_context
 	uint16_t active_context_block; // 0x010
 	uint16_t write_failure_count; // 0x012
 	uint16_t bad_block_count; // 0x014
-	uint16_t replaced_block_count[4]; // 0x016
+	uint8_t replaced_block_count[4]; // 0x016
 	uint16_t num_reserved_blocks; // 0x01A
 	uint16_t field_1C; // 0x01C
 	uint16_t total_reserved_blocks; // 0x01E
