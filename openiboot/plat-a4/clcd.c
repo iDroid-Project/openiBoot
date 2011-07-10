@@ -115,7 +115,7 @@ volatile uint32_t* CurFramebuffer;
 static LCDInfo* LCDTable;
 static uint32_t TimePerMillionFrames = 0;
 
-static uint32_t dword_5FF3D0D0;
+static uint32_t clcd_clock_frequency;
 
 static int gammaVar1;
 static int gammaVar2;
@@ -196,32 +196,37 @@ void lcd_shutdown() {
 	}
 }
 
-void configureLCDClock(uint32_t unkn1, int zero0, int zero1, int zero2, int zero3, unsigned int divider) {
-	uint32_t v6;
-	uint32_t v7;
-	uint32_t v8;
-	uint32_t v10;
+void configureLCDClock(uint32_t type, int zero0, int zero1, int zero2, int zero3, unsigned int freq)
+{
+	if(type == 0xA)
+	{
+		// Our desired divisor
+		uint32_t div = CalculatedFrequencyTable[3] / freq;
 
-	// I actually hate this part. -- Bluerise
-	// <CPICH> it's just result = r0 - r1*(r0/r1)
-	// <CPICH> uint64_t r0, r1;
+		// Make sure it fits into the 32-bits
+		// by using two divisors.
+		
+		uint32_t div1 = 31;
 
-	if (unkn1 == 0xA) {
-		v6 = 31;
-		v7 = CalculatedFrequencyTable[3];
-		v8 = CalculatedFrequencyTable[3] / divider;
-		do
+		for(div1 = 31; div1 >= 1; div1--)
 		{
-			if (!(v8 % v6))
+			if((div % div1) == 0)
 				break;
-			--v6;
 		}
-		while (v6 != 1);
-		SET_REG(0xBF100054, (GET_REG(0xBF100054) & 0xFFFFFFE0) | v6);
-		v10 = v8 / v6;
-		SET_REG(0xBF100094, (GET_REG(0xBF100094) & 0xFFFFFFE0) | v10);
-//		unk_5FF3D078 = v7 / v6;
-		dword_5FF3D0D0 = v7 / v6 / v10;
+
+		if(!div1)
+		{
+			bufferPrintf("clcd: Failed to find appropriate divisor for CLCD!\n");
+			return;
+		}
+
+		uint32_t div2 = div / div1;
+
+		clock_set_divisor(14, div1);
+		clock_set_divisor(36, div2);
+
+		clcd_clock_frequency = (CalculatedFrequencyTable[3] / div1) / div2;
+		bufferPrintf("clcd: Clock configured at %d.\n", clcd_clock_frequency);
 	}
 }
 

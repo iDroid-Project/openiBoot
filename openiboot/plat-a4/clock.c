@@ -52,7 +52,7 @@ clock_t clocks[] = {
 	{ PMGR0_BASE + 0x40,	3,	{ 1,	2,	3,	0 }}, // PCLK_PSYS?
 	{ PMGR0_BASE + 0x40,	4,	{ 1,	2,	3,	0 }}, // HCLK_MSYS?
 	{ PMGR0_BASE + 0x40,	5,	{ 1,	2,	3,	0 }}, // HCLK_MSYS?
-	{ PMGR0_BASE + 0x44,	1,	{ 7,	8,	3,	0 }},
+	{ PMGR0_BASE + 0x44,	1,	{ 7,	8,	3,	0 }}, // 10
 	{ PMGR0_BASE + 0x48,	1,	{ 7,	8,	3,	0 }},
 	{ PMGR0_BASE + 0x4C,	1,	{ 7,	8,	3,	0 }},
 	{ PMGR0_BASE + 0x50,	1,	{ 7,	8,	3,	0 }},
@@ -62,7 +62,7 @@ clock_t clocks[] = {
 	{ PMGR0_BASE + 0x70,	2,	{ 0xF,	0xF,	0xF,	0xF }},
 	{ PMGR0_BASE + 0x74,	0,	{ 0xA,	0xB,	0xC,	0xD }},
 	{ PMGR0_BASE + 0x74,	1,	{ 0x12,	0x12,	0x12,	0x12 }},
-	{ PMGR0_BASE + 0x78,	1,	{ 9,	9,	9,	9 }},
+	{ PMGR0_BASE + 0x78,	1,	{ 9,	9,	9,	9 }}, // 20
 	{ PMGR0_BASE + 0x68,	1,	{ 7,	8,	3,	0 }},
 	{ PMGR0_BASE + 0xCC,	1,	{ 4,	4,	4,	4 }},
 	{ PMGR0_BASE + 0xC4,	1,	{ 0,	0,	0,	0 }},
@@ -72,7 +72,7 @@ clock_t clocks[] = {
 	{ PMGR0_BASE + 0xB4,	0,	{ 0x13,	0x10,	0x11,	0x12 }},
 	{ PMGR0_BASE + 0x98,	0,	{ 0xF,	0x10,	0x14,	0x12 }},
 	{ PMGR0_BASE + 0x90,	1,	{ 0xA,	0xB,	0xC,	0xD }},
-	{ PMGR0_BASE + 0x9C,	0,	{ 0xF,	0x10,	0x14,	0x12 }},
+	{ PMGR0_BASE + 0x9C,	0,	{ 0xF,	0x10,	0x14,	0x12 }}, // 30
 	{ PMGR0_BASE + 0x8C,	1,	{ 0xA,	0xB,	0xC,	0xD }},
 	{ PMGR0_BASE + 0xA4,	0,	{ 0x13,	0x10,	0x11,	0x12 }},
 	{ PMGR0_BASE + 0xA8,	0,	{ 0xF,	0x10,	0x14,	0x12 }},
@@ -82,7 +82,7 @@ clock_t clocks[] = {
 	{ PMGR0_BASE + 0x5C,	1,	{ 7,	8,	3,	0 }},
 	{ PMGR0_BASE + 0x80,	1,	{ 0xA,	0xB,	0xC,	0xD }},
 	{ PMGR0_BASE + 0x84,	1,	{ 0xA,	0xB,	0xC,	0xD }},
-	{ PMGR0_BASE + 0x88,	1,	{ 0xA,	0xB,	0xC,	0xD }},
+	{ PMGR0_BASE + 0x88,	1,	{ 0xA,	0xB,	0xC,	0xD }}, // 40
 	{ PMGR0_BASE + 0xB8,	0,	{ 0x13,	0x10,	0x11,	0x12 }},
 	{ PMGR0_BASE + 0xFC,	1,	{ 0x17,	0x17,	0x17,	0x17 }},
 	{ PMGR0_BASE + 0xBC,	0,	{ 0x13,	0x10,	0x11,	0x12 }},
@@ -92,7 +92,7 @@ clock_t clocks[] = {
 	{ PMGR0_BASE + 0xDC,	0,	{ 0x15,	0x16,	0,	0 }},
 	{ PMGR0_BASE + 0xE0,	0,	{ 0x15,	0x16,	0,	0 }},
 	{ PMGR0_BASE + 0xE4,	0,	{ 0x15,	0x16,	0,	0 }},
-	{ PMGR0_BASE + 0xE8,	0,	{ 0x15,	0x16,	0,	0 }},
+	{ PMGR0_BASE + 0xE8,	0,	{ 0x15,	0x16,	0,	0 }}, // 50
 	{ PMGR0_BASE + 0xEC,	0,	{ 0x15,	0x16,	0,	0 }},
 	{ PMGR0_BASE + 0xF0,	1,	{ 0x17,	0x17,	0x17,	0x17 }},
 	{ PMGR0_BASE + 0xF4,	1,	{ 0x17,	0x17,	0x17,	0x17 }},
@@ -111,7 +111,7 @@ uint32_t clock_reset_values[] = {
 	0, 0x80000001, 0x80000000, 0x8000001F,
 	0xB0000000,	0xB0000001, 0, 0xB0000000,
 	0xB0000000, 0xB0000000,	0xB0000000, 0xB0000000,
-   	0x80000001, 0x80000001,	0x80000001, 0x80000001,
+   	0x80000001, 0x80000001,	0x80000001, 0x80000001
 };
 
 uint32_t clock_init_values[] = {
@@ -125,7 +125,11 @@ uint32_t clock_init_values[] = {
 	0x90000000, 0x90000000, 0x80000000, 0,
 	0, 0x8000000C, 0x80000000, 0x80000001,
 	0x90000000, 0x80000002, 0, 0xB0000000,
+#ifdef CONFIG_IPOD_TOUCH_4G
+	0xB0000000, 0xB0000000, 0xB0000000, 0xB0000000,
+#else
 	0xB0000000, 0x80000000, 0xB0000000, 0xB0000000,
+#endif
 	0x80000002, 0x80000002, 0x80000002, 0
 };
 
@@ -216,9 +220,9 @@ uint32_t clock_get_frequency(FrequencyBase freqBase) {
 
 static void clock_reset()
 {
-	static const uint64_t defaultClocks = 0x80000080300002ULL;
+	/*static const uint64_t defaultClocks = 0x80000080300002ULL;
 	clock_gate_many(defaultClocks, ON);
-	clock_gate_many(~defaultClocks, OFF);
+	clock_gate_many(~defaultClocks, OFF);*/
 
 	int i;
 	for(i = 1; i < ARRAY_SIZE(clock_reset_values); i++)
@@ -235,7 +239,7 @@ static void clock_reset()
 	SET_REG(CLOCK_CON0, GET_REG(CLOCK_CON0) &~ 0x3);
 }
 
-static error_t clock_setup_pll(uint32_t _pll, uint32_t _m, uint32_t _p, uint32_t _s, uint32_t _freq)
+static error_t clock_setup_pll(uint32_t _pll, uint32_t _p, uint32_t _m, uint32_t _s, uint32_t _freq)
 {
 	if(_pll >= NUM_PLL)
 		return EINVAL;
@@ -263,8 +267,8 @@ uint32_t calculate_pll_frequency(uint32_t _pll)
 
 	uint32_t conf = GET_REG(pll_regs[_pll].con0);
 	
-	uint64_t ret = PLLCON0_P(conf) * (uint64_t)CLOCK_BASE_HZ;
-	ret /= PLLCON0_M(conf) * (uint64_t)(1 << PLLCON0_S(conf));
+	uint64_t ret = PLLCON0_M(conf) * (uint64_t)CLOCK_BASE_HZ;
+	ret /= PLLCON0_P(conf) * (uint64_t)(1 << PLLCON0_S(conf));
 
 	return ret;
 }
@@ -284,11 +288,11 @@ static error_t clock_init_perf()
 static error_t clock_init_clocks()
 {
 	int i;
-	for(i = 48; i >= 0; i--)
+	for(i = 48; i > 0; i--)
 	{
 		if(i == 48)
 		{
-			SET_REG(&CLOCK_CON_BASE[0], 0x80802404);
+			SET_REG(&CLOCK_CON_BASE[0], clock_init_values[0]);
 			continue;
 		}
 
@@ -298,57 +302,100 @@ static error_t clock_init_clocks()
 	return SUCCESS;
 }
 
+static uint32_t clock_frequency(uint32_t _clock)
+{
+	if(_clock >= ARRAY_SIZE(clocks))
+		return 0;
+
+	if(clocks[_clock].reg)
+	{
+		uint32_t conf = GET_REG(clocks[_clock].reg);
+		uint8_t src = CLOCK_CON_SRC(conf);
+		uint32_t freq = CalculatedFrequencyTable[clocks[_clock].sources[src]];
+
+		if(clocks[_clock].divider)
+		{
+			uint32_t div = CLOCK_CON_DIV(conf, clocks[_clock].divider);
+			if(div)
+			{
+				uint32_t mul = (_clock == 5)? 4 : 1;
+				freq = (mul * freq) / div;
+			}
+			else
+				freq = 0;
+		}
+
+		return freq;
+	}
+	else
+		return 0;
+}
+
+uint32_t clock_get_divisor(uint32_t _clock)
+{
+	if(_clock >= ARRAY_SIZE(clocks))
+		return 0;
+
+	clock_t *clk = &clocks[_clock];
+	if(!clk->reg)
+		return 0;
+
+	if(!clk->divider)
+		return 1;
+
+	return CLOCK_CON_DIV(GET_REG(clk->reg), clk->divider);
+}
+
+error_t clock_set_divisor(uint32_t _clock, uint32_t _div)
+{
+	if(_clock >= ARRAY_SIZE(clocks))
+		return EINVAL;
+
+	clock_t *clk = &clocks[_clock];
+	if(!clk->reg)
+		return EINVAL;
+
+	clock_divider_t *div = &clock_dividers[clk->divider];
+
+	uint32_t conf = (GET_REG(clk->reg) &~ div->mask);
+	conf |= (_div << div->shift) & div->mask;
+	SET_REG(clk->reg, conf);
+
+	uint32_t freq = clock_frequency(_clock);
+	CalculatedFrequencyTable[_clock] = freq;
+
+	bufferPrintf("clocks: Reconfigured clock %d to %u. (0x%08x)\n",
+			_clock, freq, conf);
+
+	return SUCCESS;
+}
+
 static void clock_calculate_frequencies()
 {
 	CalculatedFrequencyTable[0] = 24000000;
-	CalculatedFrequencyTable[1] = 800000000;
-	CalculatedFrequencyTable[2] = 500000000;
-	CalculatedFrequencyTable[3] = 1026000000;
-	CalculatedFrequencyTable[4] = 48000000;
+	CalculatedFrequencyTable[1] = calculate_pll_frequency(0);
+	CalculatedFrequencyTable[2] = calculate_pll_frequency(1);
+	CalculatedFrequencyTable[3] = calculate_pll_frequency(2);
+	CalculatedFrequencyTable[4] = calculate_pll_frequency(3)/16;
 
 	int i;
 	for(i = 5; i < 55; i++)
-	{
-		if(clocks[i].reg)
-		{
-			uint32_t conf = GET_REG(clocks[i].reg);
-			uint8_t src = CLOCK_CON_SRC(conf);
-			uint32_t freq = CalculatedFrequencyTable[src];
-
-			if(clocks[i].divider)
-			{
-				uint32_t div = CLOCK_CON_DIV(conf, clocks[i].divider);
-				if(div)
-				{
-					uint32_t mul = (i == 5)? 4 : 1;
-					freq = (mul * freq) / div;
-				}
-				else
-					freq = 0;
-			}
-
-			CalculatedFrequencyTable[i] = freq;
-		}
-		else
-			CalculatedFrequencyTable[i] = 0;
-	}
+		CalculatedFrequencyTable[i] = clock_frequency(i);
 }
 
 error_t clock_setup()
 {
-	if(1)
-	{
-		clock_reset();
-		clock_init_perf();
+	clock_reset();
+	clock_init_perf();
 
-		CHAIN_FAIL(clock_setup_pll(0, 6, 200, 1, 1600000000));
-		CHAIN_FAIL(clock_setup_pll(1, 6, 125, 1, 1000000000));
-		CHAIN_FAIL(clock_setup_pll(2, 4, 171, 1, 2052000000));
-		CHAIN_FAIL(clock_setup_pll(3, 2, 64, 5, 1536000000));
+	CHAIN_FAIL(clock_setup_pll(0, 6, 200, 1, 1600000000));
+	CHAIN_FAIL(clock_setup_pll(1, 6, 125, 1, 1000000000));
+	CHAIN_FAIL(clock_setup_pll(2, 4, 171, 1, 2052000000));
+	CHAIN_FAIL(clock_setup_pll(3, 2, 64, 5, 1536000000));
 
-		SET_REG(CLOCK_CON0, 7);
-	}
-	
+	SET_REG(CLOCK_CON1, 7);
+	while(GET_REG(CLOCK_CON1) & CLOCK_CON1_UNSTABLE);
+
 	clock_init_clocks();
 	clock_calculate_frequencies();
 
@@ -402,32 +449,9 @@ static void cmd_frequencies(int argc, char **argv)
 {
 	int i;
 	for(i = 0; i < NUM_PLL; i++)
-		bufferPrintf("clocks: PLL%d %d.\n", i, calculate_pll_frequency(i));
+		bufferPrintf("clocks: PLL%d %u.\n", i, calculate_pll_frequency(i));
 
 	for(i = 0; i < 55; i++)
-		bufferPrintf("clocks: clock %d %d.\n", i, CalculatedFrequencyTable[i]);
+		bufferPrintf("clocks: clock %d %u.\n", i, CalculatedFrequencyTable[i]);
 }
 COMMAND("frequencies", "Print clock frequencies.", cmd_frequencies);
-
-/*
-	CLOCK_FREQUENCY = get_frequency(0);
-	MEMORY_FREQUENCY = get_frequency(2);
-	BUS_FREQUENCY = get_frequency(3);
-	PERIPHERAL_FREQUENCY = get_frequency(1);
-	FIXED_FREQUENCY = get_frequency(4);
-	TIMEBASE_FREQUENCY = get_frequency(5);
-	CLOCK_FREQUENCIES = get_derived_frequencies.. omg;
-	USBPHY_FREQUENCY = get_frequency(0xE);
-	NCOREF_FREQUENCY = get_frequency(0xF); // 15
-BASE = 0x5FF3D040;
-default, 11, 12 => Frequency = 0;
-0, 6 => BASE + 0x14; 5
-2, 7 => BASE + 0x18; 6
-3, 8 => BASE + 0x6C; 27
-1, 9 => BASE + 0x80; 32
-16 => BASE + 0x84; 33
-4, 5, 13, 14 => BASE;
-15 => BASE + 0x60; 24
-10 => BASE + 0x90; 36
-	*/
-

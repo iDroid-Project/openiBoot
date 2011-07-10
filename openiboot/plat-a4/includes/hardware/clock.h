@@ -20,15 +20,18 @@
 #define CLOCK_VPLL_CON1		(PMGR0_BASE + 0x24)
 
 #define CLOCK_CON0			(PMGR0_BASE + 0x30)
+#define CLOCK_CON1			(PMGR0_BASE + 0x5030)
+
+#define CLOCK_CON1_UNSTABLE	(1 << 16)
 
 #define PLLCON0_ENABLE		(1 << 31)
 #define PLLCON0_LOCKED		(1 << 29)
 #define PLLCON0_UPDATE		(1 << 27)
-#define PLLCON0_M_SHIFT		14
-#define PLLCON0_M_MASK		0x3F
+#define PLLCON0_M_SHIFT		3
+#define PLLCON0_M_MASK		0x3FF
 #define PLLCON0_M(x)		(((x) >> PLLCON0_M_SHIFT) & PLLCON0_M_MASK)
-#define PLLCON0_P_SHIFT		3
-#define PLLCON0_P_MASK		0x3FF
+#define PLLCON0_P_SHIFT		14
+#define PLLCON0_P_MASK		0x3F
 #define PLLCON0_P(x)		(((x) >> PLLCON0_P_SHIFT) & PLLCON0_P_MASK)
 #define PLLCON0_S_SHIFT		0
 #define PLLCON0_S_MASK		0x3
