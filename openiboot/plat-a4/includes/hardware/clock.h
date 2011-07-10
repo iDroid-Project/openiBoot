@@ -34,7 +34,7 @@
 #define PLLCON0_P_MASK		0x3F
 #define PLLCON0_P(x)		(((x) >> PLLCON0_P_SHIFT) & PLLCON0_P_MASK)
 #define PLLCON0_S_SHIFT		0
-#define PLLCON0_S_MASK		0x3
+#define PLLCON0_S_MASK		0x7
 #define PLLCON0_S(x)		(((x) >> PLLCON0_S_SHIFT) & PLLCON0_S_MASK)
 
 #define PLLCON1_FSEL_SHIFT	17

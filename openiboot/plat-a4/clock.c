@@ -239,15 +239,16 @@ static void clock_reset()
 	SET_REG(CLOCK_CON0, GET_REG(CLOCK_CON0) &~ 0x3);
 }
 
-static error_t clock_setup_pll(uint32_t _pll, uint32_t _p, uint32_t _m, uint32_t _s, uint32_t _freq)
+static error_t clock_setup_pll(uint32_t _pll, uint32_t _p, uint32_t _m, uint32_t _s)
 {
 	if(_pll >= NUM_PLL)
 		return EINVAL;
 
+	uint32_t freq = (_m * (uint64_t)CLOCK_BASE_HZ) / _p;
 	uint32_t freq_sel;
-	if(_freq > 1500000000)
+	if(freq > 1500000000)
 		freq_sel = PLLCON1_FSEL_2;
-	else if(_freq > 1099999999)
+	else if(freq > 1099999999)
 		freq_sel = PLLCON1_FSEL_1;
 	else
 		freq_sel = PLLCON1_FSEL_0;
@@ -266,10 +267,11 @@ uint32_t calculate_pll_frequency(uint32_t _pll)
 		return 0;
 
 	uint32_t conf = GET_REG(pll_regs[_pll].con0);
-	
-	uint64_t ret = PLLCON0_M(conf) * (uint64_t)CLOCK_BASE_HZ;
-	ret /= PLLCON0_P(conf) * (uint64_t)(1 << PLLCON0_S(conf));
+	if(!(conf & PLLCON0_ENABLE))
+		return 0;
 
+	uint64_t ret = (PLLCON0_M(conf) * (uint64_t)CLOCK_BASE_HZ)
+		/ (((uint64_t)PLLCON0_P(conf)) << PLLCON0_S(conf));
 	return ret;
 }
 
@@ -376,7 +378,7 @@ static void clock_calculate_frequencies()
 	CalculatedFrequencyTable[1] = calculate_pll_frequency(0);
 	CalculatedFrequencyTable[2] = calculate_pll_frequency(1);
 	CalculatedFrequencyTable[3] = calculate_pll_frequency(2);
-	CalculatedFrequencyTable[4] = calculate_pll_frequency(3)/16;
+	CalculatedFrequencyTable[4] = calculate_pll_frequency(3);
 
 	int i;
 	for(i = 5; i < 55; i++)
@@ -388,10 +390,10 @@ error_t clock_setup()
 	clock_reset();
 	clock_init_perf();
 
-	CHAIN_FAIL(clock_setup_pll(0, 6, 200, 1, 1600000000));
-	CHAIN_FAIL(clock_setup_pll(1, 6, 125, 1, 1000000000));
-	CHAIN_FAIL(clock_setup_pll(2, 4, 171, 1, 2052000000));
-	CHAIN_FAIL(clock_setup_pll(3, 2, 64, 5, 1536000000));
+	CHAIN_FAIL(clock_setup_pll(0, 6, 200, 1));
+	CHAIN_FAIL(clock_setup_pll(1, 6, 125, 1));
+	CHAIN_FAIL(clock_setup_pll(2, 4, 171, 1));
+	CHAIN_FAIL(clock_setup_pll(3, 2, 64, 5));
 
 	SET_REG(CLOCK_CON1, 7);
 	while(GET_REG(CLOCK_CON1) & CLOCK_CON1_UNSTABLE);
