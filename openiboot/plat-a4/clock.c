@@ -12,7 +12,7 @@ typedef struct _pll_regs
 	reg32_t con1;
 } pll_regs_t;
 
-pll_regs_t pll_regs[] = {
+static const pll_regs_t pll_regs[] = {
 	{ CLOCK_APLL_CON0, CLOCK_APLL_CON1, },
 	{ CLOCK_MPLL_CON0, CLOCK_MPLL_CON1, },
 	{ CLOCK_EPLL_CON0, CLOCK_EPLL_CON1, },
@@ -25,7 +25,7 @@ typedef struct _clock_divider
 	uint32_t shift;
 } clock_divider_t;
 
-clock_divider_t clock_dividers[] = {
+static const clock_divider_t clock_dividers[] = {
 	{0,			0, },
 	{0x1F,		0, },
 	{0x1F00,	8, },
@@ -41,17 +41,17 @@ typedef struct _clock_t
 	uint8_t sources[4];
 } clock_t;
 
-clock_t clocks[] = {
+static const clock_t clocks[] = {
 	{ 0,					0,	{ 0,	0,	0,	0 }},
 	{ 0,					0,	{ 0,	0,	0,	0 }},
 	{ 0,					0,	{ 0,	0,	0,	0 }},
 	{ 0,					0,	{ 0,	0,	0,	0 }},
 	{ 0,					0,	{ 0,	0,	0,	0 }},
 	{ PMGR0_BASE + 0x40,	1,	{ 1,	2,	3,	0 }}, // ARMCLK
-	{ PMGR0_BASE + 0x40,	2,	{ 5,	5,	5,	5 }}, // HCLK_PSYS?
-	{ PMGR0_BASE + 0x40,	3,	{ 1,	2,	3,	0 }}, // PCLK_PSYS?
-	{ PMGR0_BASE + 0x40,	4,	{ 1,	2,	3,	0 }}, // HCLK_MSYS?
-	{ PMGR0_BASE + 0x40,	5,	{ 1,	2,	3,	0 }}, // HCLK_MSYS?
+	{ PMGR0_BASE + 0x40,	2,	{ 5,	5,	5,	5 }},
+	{ PMGR0_BASE + 0x40,	3,	{ 1,	2,	3,	0 }},
+	{ PMGR0_BASE + 0x40,	4,	{ 1,	2,	3,	0 }},
+	{ PMGR0_BASE + 0x40,	5,	{ 1,	2,	3,	0 }},
 	{ PMGR0_BASE + 0x44,	1,	{ 7,	8,	3,	0 }}, // 10
 	{ PMGR0_BASE + 0x48,	1,	{ 7,	8,	3,	0 }},
 	{ PMGR0_BASE + 0x4C,	1,	{ 7,	8,	3,	0 }},
@@ -99,7 +99,7 @@ clock_t clocks[] = {
 	{ PMGR0_BASE + 0xF8,	1,	{ 0x17,	0x17,	0x17,	0x17 }}
 };
 
-uint32_t clock_reset_values[] = {
+static const uint32_t clock_reset_values[] = {
 	0xB0842101, 0xB0000001, 0xB0000001, 0xB0000001,
 	0xB0000001, 0xB0000001, 0, 0xB0000001,
 	0xB0000001, 0xB0000001, 0xB0000001, 0,
@@ -114,7 +114,7 @@ uint32_t clock_reset_values[] = {
    	0x80000001, 0x80000001,	0x80000001, 0x80000001
 };
 
-uint32_t clock_init_values[] = {
+static const uint32_t clock_init_values[] = {
 	0x80802401, 0x80000004, 0xA000000A, 0xA0000001,
 	0x80000005, 0xA000001F, 0, 0xA0000013,
 	0xA0000003, 0x30000000, 0xA0000015, 0,
@@ -338,7 +338,7 @@ uint32_t clock_get_divisor(uint32_t _clock)
 	if(_clock >= ARRAY_SIZE(clocks))
 		return 0;
 
-	clock_t *clk = &clocks[_clock];
+	const clock_t *clk = &clocks[_clock];
 	if(!clk->reg)
 		return 0;
 
@@ -353,11 +353,11 @@ error_t clock_set_divisor(uint32_t _clock, uint32_t _div)
 	if(_clock >= ARRAY_SIZE(clocks))
 		return EINVAL;
 
-	clock_t *clk = &clocks[_clock];
+	const clock_t *clk = &clocks[_clock];
 	if(!clk->reg)
 		return EINVAL;
 
-	clock_divider_t *div = &clock_dividers[clk->divider];
+	const clock_divider_t *div = &clock_dividers[clk->divider];
 
 	uint32_t conf = (GET_REG(clk->reg) &~ div->mask);
 	conf |= (_div << div->shift) & div->mask;
@@ -385,20 +385,28 @@ static void clock_calculate_frequencies()
 		CalculatedFrequencyTable[i] = clock_frequency(i);
 }
 
+static uint32_t regdata[48];
 error_t clock_setup()
 {
-	clock_reset();
-	clock_init_perf();
+	if(0)
+	{
+		clock_reset();
+		clock_init_perf();
 
-	CHAIN_FAIL(clock_setup_pll(0, 6, 200, 1));
-	CHAIN_FAIL(clock_setup_pll(1, 6, 125, 1));
-	CHAIN_FAIL(clock_setup_pll(2, 4, 171, 1));
-	CHAIN_FAIL(clock_setup_pll(3, 2, 64, 5));
+		CHAIN_FAIL(clock_setup_pll(0, 6, 200, 1));
+		CHAIN_FAIL(clock_setup_pll(1, 6, 125, 1));
+		CHAIN_FAIL(clock_setup_pll(2, 4, 171, 1));
+		CHAIN_FAIL(clock_setup_pll(3, 2, 64, 5));
 
-	SET_REG(CLOCK_CON1, 7);
-	while(GET_REG(CLOCK_CON1) & CLOCK_CON1_UNSTABLE);
+		SET_REG(CLOCK_CON1, 7);
+		while(GET_REG(CLOCK_CON1) & CLOCK_CON1_UNSTABLE);
 
-	clock_init_clocks();
+		SET_REG(&CLOCK_CON_BASE[5], clock_reset_values[5]);
+		SET_REG(&CLOCK_CON_BASE[21], clock_reset_values[21]);
+
+		clock_init_clocks();
+	}
+
 	clock_calculate_frequencies();
 
 	clock_freq_multiplier = GET_BITS(GET_REG(CLOCK_CPUFREQ), 0, 5);
@@ -449,6 +457,8 @@ void set_CPU_clockconfig(uint32_t _mode)
 
 static void cmd_frequencies(int argc, char **argv)
 {
+	bufferPrintf("clocks: 0x%p.\n", regdata);
+
 	int i;
 	for(i = 0; i < NUM_PLL; i++)
 		bufferPrintf("clocks: PLL%d %u.\n", i, calculate_pll_frequency(i));
