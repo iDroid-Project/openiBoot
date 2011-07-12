@@ -152,9 +152,9 @@ error_t sdio_block_reset(sdio_controller_t *_sdio)
 error_t sdio_reset()
 {
 	// function-device_reset
-	gpio_pin_output(SDIO_GPIO_DEVICE_RESET, 1);
-	udelay(12000);
 	gpio_pin_output(SDIO_GPIO_DEVICE_RESET, 0);
+	udelay(12000);
+	gpio_pin_output(SDIO_GPIO_DEVICE_RESET, 1);
 	udelay(150000);
 
 	return SUCCESS;
