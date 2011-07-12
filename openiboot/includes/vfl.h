@@ -56,7 +56,7 @@ typedef error_t (*vfl_read_single_page_t)(struct _vfl_device *, uint32_t _page, 
 		uint8_t *_sparebuffer, int _empty_ok, int *_refresh, uint32_t _disable_aes);
 
 typedef error_t (*vfl_write_single_page_t)(struct _vfl_device *, uint32_t _page, uint8_t *_buffer,
-		uint8_t *_sparebuffer);
+		uint8_t *_sparebuffer, int _scrub);
 
 typedef error_t (*vfl_erase_single_block_t)(struct _vfl_device *, uint32_t _block, int _replace_bad_block);
 
@@ -195,7 +195,7 @@ error_t vfl_read_single_page(vfl_device_t *_vfl, uint32_t _page, uint8_t* _buffe
  *
  * @ingroup VFL
  */
-error_t vfl_write_single_page(vfl_device_t *_vfl, uint32_t _page, uint8_t* _buffer, uint8_t* _spare);
+error_t vfl_write_single_page(vfl_device_t *_vfl, uint32_t _page, uint8_t* _buffer, uint8_t* _spare, int _scrub);
 
 /**
  * Erase a single block in the VFL.

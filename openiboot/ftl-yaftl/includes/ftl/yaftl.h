@@ -55,7 +55,7 @@ typedef struct {
 } __attribute__((packed)) SpareData;
 
 typedef struct {
-	uint32_t unkn0;
+	uint32_t eraseCount;
 	uint16_t validPagesDNo;			// Data validity counter
 	uint16_t validPagesINo;			// Index validity counter
 	uint16_t readCount;				// Number of reads
@@ -103,7 +103,10 @@ typedef struct {
 	uint32_t latestIndexBlock; // 5C
 	uint32_t* indexTOCBuffer;
 	uint32_t unk64; // 64
+	uint32_t selCtrlBlockIndex;
 	uint32_t maxIndexUsn; // 6C
+	uint8_t field_70; // Heh, wtf?
+	uint8_t field_78; // Heh, wtf?
 	uint32_t unk74_4;
 	uint32_t unk78_counter;
 	uint32_t unk7C_byteMask;
@@ -148,14 +151,14 @@ typedef struct {
 	uint32_t nPagesTocPageIndices;
 	uint32_t nPagesBlockStatuses;
 	uint32_t nPagesBlockReadCounts;
-	uint32_t nPagesBlockUnkn0s;
+	uint32_t nPagesBlockEraseCounts;
 	uint32_t nPagesBlockValidPagesDNumbers;
 	uint32_t nPagesBlockValidPagesINumbers;
 	uint32_t ftlCxtPage;
 	uint16_t FTLCtrlBlock[3];
 	uint16_t unkn_1;
-	uint32_t maxBlockUnkn0;
-	uint32_t minBlockUnkn0;
+	uint32_t maxBlockEraseCount;
+	uint32_t minBlockEraseCount;
 	uint32_t unk184_0xA;
 	uint8_t unk188_0x63;
 	uint32_t pagesAvailable;

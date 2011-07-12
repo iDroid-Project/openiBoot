@@ -288,7 +288,7 @@ static int add_block_to_scrub_list(vfl_vsvfl_device_t *_vfl, uint32_t _ce, uint3
 	return vsvfl_store_vfl_cxt(_vfl, _ce);
 }
 
-static error_t vfl_vsvfl_write_single_page(vfl_device_t *_vfl, uint32_t dwVpn, uint8_t* buffer, uint8_t* spare)
+static error_t vfl_vsvfl_write_single_page(vfl_device_t *_vfl, uint32_t dwVpn, uint8_t* buffer, uint8_t* spare, int _scrub)
 {
 	vfl_vsvfl_device_t *vfl = CONTAINER_OF(vfl_vsvfl_device_t, vfl, _vfl);
 
@@ -314,8 +314,7 @@ static error_t vfl_vsvfl_write_single_page(vfl_device_t *_vfl, uint32_t dwVpn, u
 		// TODO: add block map support
 		// vsvfl_mark_page_as_bad(pCE, pPage, ret);
 
-		int scrub = 0;
-		if(scrub)
+		if(_scrub)
 			add_block_to_scrub_list(vfl, pCE, pPage / vfl->geometry.pages_per_block); // Something like that, I think
 
 		return ret;
