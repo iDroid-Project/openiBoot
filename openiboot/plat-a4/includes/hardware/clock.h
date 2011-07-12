@@ -53,7 +53,7 @@
 #define CLOCK_CON_SRC_SHIFT	28
 #define CLOCK_CON_SRC_MASK	0x3
 #define CLOCK_CON_SRC(x)	(((x) >> CLOCK_CON_SRC_SHIFT) & CLOCK_CON_SRC_MASK)
-#define CLOCK_CON_DIV(x, y)	({ clock_divider_t *div = &clock_dividers[(y)]; (((x) & div->mask) >> div->shift); })
+#define CLOCK_CON_DIV(x, y)	({ const clock_divider_t *div = &clock_dividers[(y)]; (((x) & div->mask) >> div->shift); })
 
 #define CLOCK_CPUFREQ	(&CLOCK_CON_BASE[0])
 
