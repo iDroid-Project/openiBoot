@@ -152,6 +152,7 @@ void menu_main()
 
 	if(script_run_file("(0)/boot/menu.lst"))
 	{
+		bufferPrintf("menu.lst NOT FOUND - Switching to console...\n");
 		OpenIBootConsole();
 		return;
 	}

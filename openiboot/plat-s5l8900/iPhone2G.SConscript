@@ -8,10 +8,10 @@ iphone_2g_src = [
 	plat_s5l8900_src,
 	env.Localize([
 	'camera.c',
-	'als.c',
-	'multitouch.c',
+	'als-TSL2561.c',
+	'multitouch-z1.c',
 	'wm8958.c',
-	'vibrator.c',
+	'vibrator-2G.c',
 	])]
 Export('iphone_2g_src')
 
