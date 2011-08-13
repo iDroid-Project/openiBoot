@@ -235,6 +235,8 @@ int displaypipe_init() {
 	uint32_t clcd_reg;
 	uint32_t panelID;
 
+	clock_gate_switch(0xB, ON); // HPERF2
+
 	memset((void*)CLCD_FRAMEBUFFER, 0, 0x800000);
 
 	bufferPrintf("displaypipe_init: framebuffer address: 0x%08x\n", CLCD_FRAMEBUFFER);
@@ -243,13 +245,13 @@ int displaypipe_init() {
 		LCDTable = &LCDInfoTable[DISPLAYID];
 
 	if (LCDTable->unkn1 == 0xA) {
-		clock_gate_switch(0x12, ON);
+		clock_gate_switch(0x12, ON); // CLCD
 		clock_gate_switch(0xF, ON);
 		LCDTableunkn1is0xA = 1;
 	} else if (LCDTable->unkn1 == 0xB) {
 		// Hack
 		return -1;
-		clock_gate_switch(0x13, ON);
+		clock_gate_switch(0x13, ON); // RGBOUT
 		clock_gate_switch(0xD, ON);
 		LCDTableunkn1is0xB = 1;
 	}
