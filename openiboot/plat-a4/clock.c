@@ -52,51 +52,51 @@ static const clock_t clocks[] = {
 	{ PMGR0_BASE + 0x40,	3,	{ 1,	2,	3,	0 }},
 	{ PMGR0_BASE + 0x40,	4,	{ 1,	2,	3,	0 }},
 	{ PMGR0_BASE + 0x40,	5,	{ 1,	2,	3,	0 }},
-	{ PMGR0_BASE + 0x44,	1,	{ 7,	8,	3,	0 }}, // 10
-	{ PMGR0_BASE + 0x48,	1,	{ 7,	8,	3,	0 }},
-	{ PMGR0_BASE + 0x4C,	1,	{ 7,	8,	3,	0 }},
-	{ PMGR0_BASE + 0x50,	1,	{ 7,	8,	3,	0 }},
-	{ PMGR0_BASE + 0x54,	1,	{ 7,	8,	3,	0 }},
-	{ PMGR0_BASE + 0x70,	0,	{ 0xA,	0xB,	0xC,	0xD }},
-	{ PMGR0_BASE + 0x70,	1,	{ 0xF,	0xF,	0xF,	0xF }},
-	{ PMGR0_BASE + 0x70,	2,	{ 0xF,	0xF,	0xF,	0xF }},
-	{ PMGR0_BASE + 0x74,	0,	{ 0xA,	0xB,	0xC,	0xD }},
-	{ PMGR0_BASE + 0x74,	1,	{ 0x12,	0x12,	0x12,	0x12 }},
-	{ PMGR0_BASE + 0x78,	1,	{ 9,	9,	9,	9 }}, // 20
-	{ PMGR0_BASE + 0x68,	1,	{ 7,	8,	3,	0 }},
-	{ PMGR0_BASE + 0xCC,	1,	{ 4,	4,	4,	4 }},
-	{ PMGR0_BASE + 0xC4,	1,	{ 0,	0,	0,	0 }},
-	{ PMGR0_BASE + 0x60,	1,	{ 7,	8,	3,	0 }},
-	{ PMGR0_BASE + 0x64,	1,	{ 7,	8,	3,	0 }},
-	{ PMGR0_BASE + 0xA0,	1,	{ 0xF,	0x10,	0x14,	0x12 }},
+	{ PMGR0_BASE + 0x44,	1,	{ 7,	8,	3,	0 }}, // 10	// PREDIV0
+	{ PMGR0_BASE + 0x48,	1,	{ 7,	8,	3,	0 }},		// PREDIV1
+	{ PMGR0_BASE + 0x4C,	1,	{ 7,	8,	3,	0 }},		// PREDIV2
+	{ PMGR0_BASE + 0x50,	1,	{ 7,	8,	3,	0 }},		// PREDIV3
+	{ PMGR0_BASE + 0x54,	1,	{ 7,	8,	3,	0 }},		// PREDIV4
+	{ PMGR0_BASE + 0x70,	0,	{ 0xA,	0xB,	0xC,	0xD }},	// BASE0
+	{ PMGR0_BASE + 0x70,	1,	{ 0xF,	0xF,	0xF,	0xF }},	// BASE0_DIV0
+	{ PMGR0_BASE + 0x70,	2,	{ 0xF,	0xF,	0xF,	0xF }},	// BASE0_DIV1
+	{ PMGR0_BASE + 0x74,	0,	{ 0xA,	0xB,	0xC,	0xD }},	// BASE1
+	{ PMGR0_BASE + 0x74,	1,	{ 0x12,	0x12,	0x12,	0x12 }},// BASE1_DIV0
+	{ PMGR0_BASE + 0x78,	1,	{ 9,	9,	9,	9 }}, // 20		// BASE2
+	{ PMGR0_BASE + 0x68,	1,	{ 7,	8,	3,	0 }},	// MEDIUM0
+	{ PMGR0_BASE + 0xCC,	1,	{ 4,	4,	4,	4 }},	// MEDIUM1
+	{ PMGR0_BASE + 0xC4,	1,	{ 0,	0,	0,	0 }},	
+	{ PMGR0_BASE + 0x60,	1,	{ 7,	8,	3,	0 }},	// NCO_REF0
+	{ PMGR0_BASE + 0x64,	1,	{ 7,	8,	3,	0 }},	// NCO_REF1
+	{ PMGR0_BASE + 0xA0,	1,	{ 0xF,	0x10,	0x14,	0x12 }}, // CDMA
 	{ PMGR0_BASE + 0xB4,	0,	{ 0x13,	0x10,	0x11,	0x12 }},
-	{ PMGR0_BASE + 0x98,	0,	{ 0xF,	0x10,	0x14,	0x12 }},
-	{ PMGR0_BASE + 0x90,	1,	{ 0xA,	0xB,	0xC,	0xD }},
-	{ PMGR0_BASE + 0x9C,	0,	{ 0xF,	0x10,	0x14,	0x12 }}, // 30
-	{ PMGR0_BASE + 0x8C,	1,	{ 0xA,	0xB,	0xC,	0xD }},
-	{ PMGR0_BASE + 0xA4,	0,	{ 0x13,	0x10,	0x11,	0x12 }},
-	{ PMGR0_BASE + 0xA8,	0,	{ 0xF,	0x10,	0x14,	0x12 }},
-	{ PMGR0_BASE + 0xAC,	0,	{ 0x13,	0x10,	0x11,	0x12 }},
-	{ PMGR0_BASE + 0xB0,	0,	{ 0x13,	0x10,	0x11,	0x12 }},
-	{ PMGR0_BASE + 0x94,	1,	{ 0xA,	0xB,	0xC,	0xE }},
-	{ PMGR0_BASE + 0x5C,	1,	{ 7,	8,	3,	0 }},
+	{ PMGR0_BASE + 0x98,	0,	{ 0xF,	0x10,	0x14,	0x12 }}, // HPERF0
+	{ PMGR0_BASE + 0x90,	1,	{ 0xA,	0xB,	0xC,	0xD }},	// HPERF1
+	{ PMGR0_BASE + 0x9C,	0,	{ 0xF,	0x10,	0x14,	0x12 }}, // 30 // HPERF2-CLK
+	{ PMGR0_BASE + 0x8C,	1,	{ 0xA,	0xB,	0xC,	0xD }},		// MPERF
+	{ PMGR0_BASE + 0xA4,	0,	{ 0x13,	0x10,	0x11,	0x12 }},	// LPERF0
+	{ PMGR0_BASE + 0xA8,	0,	{ 0xF,	0x10,	0x14,	0x12 }},	// LPERF1
+	{ PMGR0_BASE + 0xAC,	0,	{ 0x13,	0x10,	0x11,	0x12 }},	// LPERF2
+	{ PMGR0_BASE + 0xB0,	0,	{ 0x13,	0x10,	0x11,	0x12 }},	// LPERF3
+	{ PMGR0_BASE + 0x94,	1,	{ 0xA,	0xB,	0xC,	0xE }},	// VID0-CLK
+	{ PMGR0_BASE + 0x5C,	1,	{ 7,	8,	3,	0 }},			// VID1-CLK
 	{ PMGR0_BASE + 0x80,	1,	{ 0xA,	0xB,	0xC,	0xD }},
-	{ PMGR0_BASE + 0x84,	1,	{ 0xA,	0xB,	0xC,	0xD }},
-	{ PMGR0_BASE + 0x88,	1,	{ 0xA,	0xB,	0xC,	0xD }}, // 40
-	{ PMGR0_BASE + 0xB8,	0,	{ 0x13,	0x10,	0x11,	0x12 }},
+	{ PMGR0_BASE + 0x84,	1,	{ 0xA,	0xB,	0xC,	0xD }}, // AUDIO-CLK
+	{ PMGR0_BASE + 0x88,	1,	{ 0xA,	0xB,	0xC,	0xD }}, // 40 // MIPI-CLK
+	{ PMGR0_BASE + 0xB8,	0,	{ 0x13,	0x10,	0x11,	0x12 }}, // SDIO-CLKs
 	{ PMGR0_BASE + 0xFC,	1,	{ 0x17,	0x17,	0x17,	0x17 }},
-	{ PMGR0_BASE + 0xBC,	0,	{ 0x13,	0x10,	0x11,	0x12 }},
+	{ PMGR0_BASE + 0xBC,	0,	{ 0x13,	0x10,	0x11,	0x12 }}, // CLK50-CLK
 	{ PMGR0_BASE + 0xC8,	1,	{ 4,	4,	4,	4 }},
 	{ PMGR0_BASE + 0xD0,	0,	{ 0x15,	0x16,	0,	0 }},
 	{ PMGR0_BASE + 0xD4,	1,	{ 0,	0,	0,	0 }},
-	{ PMGR0_BASE + 0xDC,	0,	{ 0x15,	0x16,	0,	0 }},
-	{ PMGR0_BASE + 0xE0,	0,	{ 0x15,	0x16,	0,	0 }},
-	{ PMGR0_BASE + 0xE4,	0,	{ 0x15,	0x16,	0,	0 }},
-	{ PMGR0_BASE + 0xE8,	0,	{ 0x15,	0x16,	0,	0 }}, // 50
-	{ PMGR0_BASE + 0xEC,	0,	{ 0x15,	0x16,	0,	0 }},
-	{ PMGR0_BASE + 0xF0,	1,	{ 0x17,	0x17,	0x17,	0x17 }},
-	{ PMGR0_BASE + 0xF4,	1,	{ 0x17,	0x17,	0x17,	0x17 }},
-	{ PMGR0_BASE + 0xF8,	1,	{ 0x17,	0x17,	0x17,	0x17 }}
+	{ PMGR0_BASE + 0xDC,	0,	{ 0x15,	0x16,	0,	0 }},		// SPI0
+	{ PMGR0_BASE + 0xE0,	0,	{ 0x15,	0x16,	0,	0 }},		// SPI1
+	{ PMGR0_BASE + 0xE4,	0,	{ 0x15,	0x16,	0,	0 }},		// SPI2	
+	{ PMGR0_BASE + 0xE8,	0,	{ 0x15,	0x16,	0,	0 }}, // 50 // SPI3
+	{ PMGR0_BASE + 0xEC,	0,	{ 0x15,	0x16,	0,	0 }},		// SPI4
+	{ PMGR0_BASE + 0xF0,	1,	{ 0x17,	0x17,	0x17,	0x17 }}, // I2C0
+	{ PMGR0_BASE + 0xF4,	1,	{ 0x17,	0x17,	0x17,	0x17 }}, // I2C1
+	{ PMGR0_BASE + 0xF8,	1,	{ 0x17,	0x17,	0x17,	0x17 }}  // I2C2
 };
 
 static const uint32_t clock_reset_values[] = {
@@ -220,9 +220,9 @@ uint32_t clock_get_frequency(FrequencyBase freqBase) {
 
 static void clock_reset()
 {
-	/*static const uint64_t defaultClocks = 0x80000080300002ULL;
+	static const uint64_t defaultClocks = 0x80000080300002ULL;
 	clock_gate_many(defaultClocks, ON);
-	clock_gate_many(~defaultClocks, OFF);*/
+	clock_gate_many(~defaultClocks, OFF);
 
 	int i;
 	for(i = 1; i < ARRAY_SIZE(clock_reset_values); i++)
@@ -283,6 +283,9 @@ static error_t clock_init_perf()
 		SET_REG(&CLOCK_PERF_BASE[1+i*2], 0x9009); 	// Bus divider?
 		SET_REG(&CLOCK_PERF_BASE[i*2], 0x8241);		// CPU divider?
 	}
+
+	SET_REG(CLOCK_CON1, 7);
+	while(GET_REG(CLOCK_CON1) & CLOCK_CON1_UNSTABLE);
 
 	return SUCCESS;
 }
@@ -385,7 +388,6 @@ static void clock_calculate_frequencies()
 		CalculatedFrequencyTable[i] = clock_frequency(i);
 }
 
-static uint32_t regdata[48];
 error_t clock_setup()
 {
 	if(0)
@@ -397,16 +399,9 @@ error_t clock_setup()
 		CHAIN_FAIL(clock_setup_pll(1, 6, 125, 1));
 		CHAIN_FAIL(clock_setup_pll(2, 4, 171, 1));
 		CHAIN_FAIL(clock_setup_pll(3, 2, 64, 5));
-
-		SET_REG(CLOCK_CON1, 7);
-		while(GET_REG(CLOCK_CON1) & CLOCK_CON1_UNSTABLE);
-
-		SET_REG(&CLOCK_CON_BASE[5], clock_reset_values[5]);
-		SET_REG(&CLOCK_CON_BASE[21], clock_reset_values[21]);
-
-		clock_init_clocks();
 	}
 
+	clock_init_clocks();
 	clock_calculate_frequencies();
 
 	clock_freq_multiplier = GET_BITS(GET_REG(CLOCK_CPUFREQ), 0, 5);
@@ -457,8 +452,6 @@ void set_CPU_clockconfig(uint32_t _mode)
 
 static void cmd_frequencies(int argc, char **argv)
 {
-	bufferPrintf("clocks: 0x%p.\n", regdata);
-
 	int i;
 	for(i = 0; i < NUM_PLL; i++)
 		bufferPrintf("clocks: PLL%d %u.\n", i, calculate_pll_frequency(i));
