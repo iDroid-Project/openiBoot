@@ -9,14 +9,17 @@
 #include "spi.h"
 #include "chipid.h"
 #include "hardware/power.h"
+#include "commands.h"
 
-typedef struct {
-	uint32_t flags[32];
-	uint32_t token[32];
-	InterruptServiceRoutine handler[32];
-} GPIOInterruptGroup;
+#define NUM_GPIO 276
 
-GPIOInterruptGroup InterruptGroups[GPIO_NUMINTGROUPS];
+typedef struct _gpio_interrupt
+{
+	uint32_t token;
+	InterruptServiceRoutine func;
+} gpio_interrupt_t;
+
+gpio_interrupt_t gpio_interrupts[NUM_GPIO];
 
 static void gpio_handle_interrupt(uint32_t token);
 void gpio_custom_io(int pinport, int mode);
@@ -118,21 +121,111 @@ int gpio_setup() {
 	return 0;
 }
 
-static void gpio_handle_interrupt(uint32_t token) {
-	bufferPrintf("gpio: Interrupt!\r\n");
+static void gpio_handle_interrupt(uint32_t token)
+{
+	while(TRUE)
+	{
+		uint32_t gsts = GET_REG(GPIO+GPIOIC_INT);
+		if(!gsts)
+			break;
+
+		uint32_t block = (31 - __builtin_clz(GET_REG(GPIO + GPIOIC_INT)));
+		reg32_t sts_reg = GPIO + GPIOIC_INTSTS + sizeof(uint32_t)*block;
+		uint32_t sts = GET_REG(sts_reg);
+
+		if(sts)
+		{
+			uint32_t sub = 31 - __builtin_clz(sts);
+			uint32_t bit = (1 << sub);
+			uint32_t gpio = sub + (32*block);
+			reg32_t reg = GPIO + (gpio << 2);
+
+			uint32_t done;
+			if((GET_REG(reg) & 0xC) == 4)
+			{
+				done = 1;
+				SET_REG(sts_reg, bit); // Clear this interrupt
+			}
+			else
+				done  = 0;
+
+			uint32_t id = ((gpio/8) << 8) | (gpio % 8);
+
+			if(gpio_interrupts[gpio].func)
+				gpio_interrupts[gpio].func(gpio_interrupts[gpio].token);
+
+			if(!done)
+				SET_REG(sts_reg, bit);
+		}
+	}
 }
 
-void gpio_register_interrupt(uint32_t interrupt, int type, int level, int autoflip, InterruptServiceRoutine handler, uint32_t token) {
-	return;
+void gpio_register_interrupt(uint32_t interrupt, int type, int level, int autoflip, InterruptServiceRoutine handler, uint32_t token)
+{
+	uint8_t mode;
+	if(autoflip)
+		mode = 0xC;
+	else if(type)
+	{
+		if(level)
+			mode = 0x4;
+		else
+			mode = 0x6;
+	}
+	else
+	{
+		if(level)
+			mode = 0x8;
+		else
+			mode = 0xa;
+	}
+
+	gpio_interrupts[interrupt].token = token;
+	gpio_interrupts[interrupt].func = handler;
+
+	EnterCriticalSection();
+
+	reg32_t reg = GPIO + sizeof(uint32_t)*interrupt;
+	SET_REG(reg, (GET_REG(reg) &~ 0xE) | mode | 0x200);
+
+	LeaveCriticalSection();
 }
 
-void gpio_interrupt_enable(uint32_t interrupt) {
-	return;
+void gpio_interrupt_enable(uint32_t interrupt)
+{
+	uint32_t block = interrupt >> 5;
+	uint32_t gpio = interrupt & 0x1f;
+	uint32_t bit = (1 << gpio);
+
+	reg32_t reg = GPIO + sizeof(uint32_t)*interrupt;
+	if((GET_REG(reg) & 0xC) == 4)
+	{
+		reg32_t sts_reg = GPIO + GPIOIC_INTSTS + sizeof(uint32_t)*block;
+		SET_REG(sts_reg, bit);
+	}
+
+	reg32_t en_reg = GPIO + GPIOIC_ENABLE + sizeof(uint32_t)*block;
+	SET_REG(en_reg, bit);
 }
 
-void gpio_interrupt_disable(uint32_t interrupt) {
-	return;
+void gpio_interrupt_disable(uint32_t interrupt)
+{
+	uint32_t block = interrupt >> 5;
+	uint32_t gpio = interrupt & 0x1f;
+	uint32_t bit = (1 << gpio);
+
+	reg32_t ic_reg = GPIO + GPIOIC_DISABLE + sizeof(uint32_t)*block;
+	SET_REG(ic_reg, bit);
 }
+
+static void cmd_test_gpioic(int _argc, char **_argv)
+{
+	uint32_t num = parseNumber(_argv[1]);
+	uint32_t flags = parseNumber(_argv[2]);
+	gpio_register_interrupt(num, flags & 1, (flags >> 1) & 1, (flags >> 2) & 1, NULL, 0);
+	gpio_interrupt_enable(((num >> 8) * 8) + (num & 0x7));
+};
+COMMAND("test_gpioic", "Test GPIOIC", cmd_test_gpioic);
 
 int gpio_pin_state(int port) {
 	uint8_t pin = port & 0x7;
@@ -151,12 +244,14 @@ void gpio_pin_use_as_input(int port) {
 }
 
 void gpio_pin_output(int pinport, int bit) {
+	uint8_t pin = pinport & 0x7;
 	uint8_t port = (pinport >> 8) & 0xFF;
 
 	if (port == 0x16) {
 //		sub_5FF0EF38(pinport, bit); // SPI related, not yet, sorry.
 	} else {
-		gpio_custom_io(pinport, (bit&1)+2);
+		reg32_t reg = GPIO + (8 * port + pin) * sizeof(uint32_t);
+		SET_REG(reg, (GET_REG(reg) &~1) | (bit & 1));
 	}
 }
 
