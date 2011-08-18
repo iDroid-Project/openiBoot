@@ -149,8 +149,6 @@ static void gpio_handle_interrupt(uint32_t token)
 			else
 				done  = 0;
 
-			uint32_t id = ((gpio/8) << 8) | (gpio % 8);
-
 			if(gpio_interrupts[gpio].func)
 				gpio_interrupts[gpio].func(gpio_interrupts[gpio].token);
 

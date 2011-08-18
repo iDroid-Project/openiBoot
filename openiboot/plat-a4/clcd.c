@@ -123,8 +123,8 @@ static uint8_t gammaVar3;
 
 Window* currentWindow;
 
-static int LCDTableunkn1is0xA = 0;
-static int LCDTableunkn1is0xB = 0;
+static int displaypipe_uses_clcd = 0;
+static int displaypipe_uses_rgbout = 0;
 
 OnOff SyncFramebufferToDisplayActivated = OFF;
 uint32_t framebufferLastFill = 0;
@@ -140,6 +140,11 @@ static void hline_rgb888(Framebuffer* framebuffer, int start, int line_no, int l
 static void hline_rgb565(Framebuffer* framebuffer, int start, int line_no, int length, int fill);
 static void vline_rgb888(Framebuffer* framebuffer, int start, int line_no, int length, int fill);
 static void vline_rgb565(Framebuffer* framebuffer, int start, int line_no, int length, int fill);
+
+static inline uint32_t make_underrun_colour(uint16_t _r, uint16_t _g, uint16_t _b)
+{
+	return 0x80000000 | ((_r & 0x3FF) << 20) | ((_g & 0x3FF) << 10) | (_b & 0x3FF);
+}
 
 void displaytime_sleep(uint32_t time) {
 	task_sleep(time * TimePerMillionFrames / 1000);
@@ -160,20 +165,20 @@ void lcd_fill_switch(OnOff on_off, uint32_t color) {
 			framebufferLastFill = color;
 
 		framebuffer_fill(&currentWindow->framebuffer, 0, 0, currentWindow->framebuffer.width, currentWindow->framebuffer.height, color);
-		if (LCDTableunkn1is0xA)
-			SET_REG(0x89200050, GET_REG(0x89200050) | 1);
-		if (LCDTableunkn1is0xB)
-			SET_REG(0x89600000, 9);
+		if (displaypipe_uses_clcd)
+			SET_REG(CLCD + 0x50, GET_REG(CLCD + 0x50) | 1);
+		if (displaypipe_uses_rgbout)
+			SET_REG(RGBOUT + 0x00, 9);
 	} else {
 		if (SyncFramebufferToDisplayActivated == OFF) // It used to return, when on_off == SyncFramebufferToDisplayActivated == ON, too -- Bluerise
 			return;
-		if (LCDTableunkn1is0xA) {
-			SET_REG(0x89200050, GET_REG(0x89200050) & (~1));
-			while (!(GET_REG(0x89200050) & 2)) ;
+		if (displaypipe_uses_clcd) {
+			SET_REG(CLCD + 0x50, GET_REG(CLCD + 0x50) & (~1));
+			while (!(GET_REG(CLCD + 0x50) & 2)) ;
 		}
-		if (LCDTableunkn1is0xB) {
-			SET_REG(0x89600008, 1);
-			while(GET_REG(0x89600008) & 1);
+		if (displaypipe_uses_rgbout) {
+			SET_REG(RGBOUT + 0x08, 1);
+			while(GET_REG(RGBOUT + 0x08) & 1);
 		}
 	}
 	SyncFramebufferToDisplayActivated = on_off;
@@ -216,7 +221,7 @@ void configureLCDClock(uint32_t type, int zero0, int zero1, int zero2, int zero3
 
 		if(!div1)
 		{
-			bufferPrintf("clcd: Failed to find appropriate divisor for CLCD!\n");
+			bufferPrintf("clcd: Failed to find appropriate divisor for DISPLAY_PIPE!\n");
 			return;
 		}
 
@@ -245,46 +250,47 @@ int displaypipe_init() {
 		LCDTable = &LCDInfoTable[DISPLAYID];
 
 	if (LCDTable->unkn1 == 0xA) {
-		clock_gate_switch(0x12, ON); // CLCD
+		clock_gate_switch(0x12, ON); // DISPLAY_PIPE
 		clock_gate_switch(0xF, ON);
-		LCDTableunkn1is0xA = 1;
+		displaypipe_uses_clcd = 1;
 	} else if (LCDTable->unkn1 == 0xB) {
 		// Hack
 		return -1;
 		clock_gate_switch(0x13, ON); // RGBOUT
 		clock_gate_switch(0xD, ON);
-		LCDTableunkn1is0xB = 1;
+		displaypipe_uses_rgbout = 1;
 	}
-	SET_REG(CLCD + 0x104C, GET_REG(CLCD + 0x104C) | 0x10);
-	SET_REG(CLCD + 0x104C, (GET_REG(CLCD + 0x104C) & 0xFFFFF8FF) | 0x100);
-	SET_REG(CLCD + 0x104C, (GET_REG(CLCD + 0x104C) & 0xF800FFFF) | 0x4000000);
-	SET_REG(CLCD + 0x1030, (LCDTable->width << 16) | LCDTable->height);
-	if (CLCD == 0x89000000) {
+
+	SET_REG(DISPLAY_PIPE + 0x104C, GET_REG(DISPLAY_PIPE + 0x104C) | 0x10); //DPCPFDMA
+	SET_REG(DISPLAY_PIPE + 0x104C, (GET_REG(DISPLAY_PIPE + 0x104C) & 0xFFFFF8FF) | 0x100);
+	SET_REG(DISPLAY_PIPE + 0x104C, (GET_REG(DISPLAY_PIPE + 0x104C) & 0xF800FFFF) | 0x4000000);
+	SET_REG(DISPLAY_PIPE + 0x1030, (LCDTable->width << 16) | LCDTable->height);
+	if (DISPLAY_PIPE == 0x89000000) {
 		clcd_reg = 0x180;
-	} else if (CLCD == 0x89100000) {
+	} else if (DISPLAY_PIPE == 0x89100000) {
 		clcd_reg = 0x1C0;
 	} else {
-		system_panic("displaypipe_init: unsupported displaypipe_base_addr: 0x%08lx\r\n", CLCD);
+		system_panic("displaypipe_init: unsupported displaypipe_base_addr: 0x%08lx\r\n", DISPLAY_PIPE);
 	}
-	SET_REG(CLCD + 0x205C, (clcd_reg << 16) | 0x1F0);
-	SET_REG(CLCD + 0x2060, 0x90);
-	SET_REG(CLCD + 0x105C, 0x13880801);
-	SET_REG(CLCD + 0x2064, 0xBFF00000);
-	if (LCDTableunkn1is0xA) {
-		SET_REG(0x89200000, 0x100);
-		while (GET_REG(0x89200000) & 0x100);
+	SET_REG(DISPLAY_PIPE + 0x205C, (clcd_reg << 16) | 0x1F0);
+	SET_REG(DISPLAY_PIPE + 0x2060, 0x90);
+	SET_REG(DISPLAY_PIPE + 0x105C, 0x13880801);
+	SET_REG(DISPLAY_PIPE + 0x2064, make_underrun_colour(0, 0, 0x3FF)); //0xBFF00000);
+	if (displaypipe_uses_clcd) {
+		SET_REG(CLCD + 0x00, 0x100);
+		while (GET_REG(CLCD + 0x00) & 0x100);
 		udelay(1);
-		SET_REG(0x89200000, 4);
-		SET_REG(0x89200004, 3);
-		SET_REG(0x89200014, 0x80000001);
-		SET_REG(0x89200018, 0x20408);
+		SET_REG(CLCD + 0x00, 4);
+		SET_REG(CLCD + 0x04, 3);
+		SET_REG(CLCD + 0x14, 0x80000001);
+		SET_REG(CLCD + 0x18, 0x20408);
 		if (LCDTable->bitsPerPixel <= 18)
-			SET_REG(0x89200014, GET_REG(0x89200014) | 0x1110000);
-		SET_REG(0x89200050, 0);
-		SET_REG(0x89200054, (LCDTable->IVClk << VIDCON1_IVCLKSHIFT) | (LCDTable->IHSync << VIDCON1_IHSYNCSHIFT) | (LCDTable->IVSync << VIDCON1_IVSYNCSHIFT) | (LCDTable->IVDen << VIDCON1_IVDENSHIFT));
-		SET_REG(0x89200058, ((LCDTable->verticalBackPorch - 1) << VIDTCON_BACKPORCHSHIFT) | ((LCDTable->verticalFrontPorch - 1) << VIDTCON_FRONTPORCHSHIFT) | ((LCDTable->verticalSyncPulseWidth - 1) << VIDTCON_SYNCPULSEWIDTHSHIFT));
-		SET_REG(0x8920005C, ((LCDTable->horizontalBackPorch - 1) << VIDTCON_BACKPORCHSHIFT) | ((LCDTable->horizontalFrontPorch - 1) << VIDTCON_FRONTPORCHSHIFT) | ((LCDTable->horizontalSyncPulseWidth - 1) << VIDTCON_SYNCPULSEWIDTHSHIFT));
-		SET_REG(0x89200060, ((LCDTable->width - 1) << VIDTCON2_HOZVALSHIFT) | ((LCDTable->height - 1) << VIDTCON2_LINEVALSHIFT));
+			SET_REG(CLCD + 0x14, GET_REG(CLCD + 0x14) | 0x1110000);
+		SET_REG(CLCD + 0x50, 0);
+		SET_REG(CLCD + 0x54, (LCDTable->IVClk << VIDCON1_IVCLKSHIFT) | (LCDTable->IHSync << VIDCON1_IHSYNCSHIFT) | (LCDTable->IVSync << VIDCON1_IVSYNCSHIFT) | (LCDTable->IVDen << VIDCON1_IVDENSHIFT));
+		SET_REG(CLCD + 0x58, ((LCDTable->verticalBackPorch - 1) << VIDTCON_BACKPORCHSHIFT) | ((LCDTable->verticalFrontPorch - 1) << VIDTCON_FRONTPORCHSHIFT) | ((LCDTable->verticalSyncPulseWidth - 1) << VIDTCON_SYNCPULSEWIDTHSHIFT));
+		SET_REG(CLCD + 0x5C, ((LCDTable->horizontalBackPorch - 1) << VIDTCON_BACKPORCHSHIFT) | ((LCDTable->horizontalFrontPorch - 1) << VIDTCON_FRONTPORCHSHIFT) | ((LCDTable->horizontalSyncPulseWidth - 1) << VIDTCON_SYNCPULSEWIDTHSHIFT));
+		SET_REG(CLCD + 0x60, ((LCDTable->width - 1) << VIDTCON2_HOZVALSHIFT) | ((LCDTable->height - 1) << VIDTCON2_LINEVALSHIFT));
 		TimePerMillionFrames = 1000000
 			* (LCDTable->verticalBackPorch
 				+ LCDTable->verticalFrontPorch
@@ -296,30 +302,30 @@ int displaypipe_init() {
 				+ LCDTable->width)
 			/ LCDTable->DrivingClockFrequency;
 	}
-	if (LCDTableunkn1is0xB) {
-		SET_REG(0x89600008, 1);
-		while(GET_REG(0x89600008) & 1);
-		SET_REG(0x8960001C, 0);
-		SET_REG(0x89600024, 0);
-		SET_REG(0x89600050, LCDTable->width - 1);
-		SET_REG(0x89600044, LCDTable->height - 1);
-		SET_REG(0x89600004, 0x23);
-		uint32_t some_value = GET_REG(0x89600054);
-		SET_REG(0x89600054, some_value & 0xFFFE0F00);
+	if (displaypipe_uses_rgbout) {
+		SET_REG(RGBOUT + 0x08, 1);
+		while(GET_REG(RGBOUT + 0x08) & 1);
+		SET_REG(RGBOUT + 0x1C, 0);
+		SET_REG(RGBOUT + 0x24, 0);
+		SET_REG(RGBOUT + 0x50, LCDTable->width - 1);
+		SET_REG(RGBOUT + 0x44, LCDTable->height - 1);
+		SET_REG(RGBOUT + 0x04, 0x23);
+		uint32_t some_value = GET_REG(RGBOUT + 0x54);
+		SET_REG(RGBOUT + 0x54, some_value & 0xFFFE0F00);
 		uint32_t i;
 		for (i = 0; i <= 0x100; i++) {
-			SET_REG(0x89600054, i | some_value | 0x14000);
-			SET_REG(0x89600058, atv_values[i] & 0xFFFFF);
+			SET_REG(RGBOUT + 0x54, i | some_value | 0x14000);
+			SET_REG(RGBOUT + 0x58, atv_values[i] & 0xFFFFF);
 		}
 		for (i = 0; i <= 0x100; i++) {
-			SET_REG(0x89600054, i | some_value | 0x15000);
-			SET_REG(0x89600058, atv_values[i] & 0xFFFFF);
+			SET_REG(RGBOUT + 0x54, i | some_value | 0x15000);
+			SET_REG(RGBOUT + 0x58, atv_values[i] & 0xFFFFF);
 		}
 		for (i = 0; i <= 0x100; i++) {
-			SET_REG(0x89600054, i | some_value | 0x16000);
-			SET_REG(0x89600058, atv_values[i] & 0xFFFFF);
+			SET_REG(RGBOUT + 0x54, i | some_value | 0x16000);
+			SET_REG(RGBOUT + 0x58, atv_values[i] & 0xFFFFF);
 		}
-		SET_REG(0x8960004C, 9);
+		SET_REG(RGBOUT + 0x4C, 9);
 	}
 
 	ColorSpace colorSpace;
@@ -361,12 +367,12 @@ int displaypipe_init() {
 	}
 	buffer3[256] = buffer1[256];
 	buffer2[256] = buffer1[256];
-	if (LCDTableunkn1is0xA) {
+	if (displaypipe_uses_clcd) {
 		installGammaTables(panelID, 257, (uint32_t)buffer1, (uint32_t)buffer2, (uint32_t)buffer3);
 		setWindowBuffer(4, buffer1);
 		setWindowBuffer(5, buffer2);
 		setWindowBuffer(6, buffer3);
-		SET_REG(0x8920002C, 1);
+		//SET_REG(CLCD + 0x2C, 1);
 	}
 
 	free(buffer1);
@@ -482,6 +488,33 @@ void pinot_quiesce() {
 	return;
 }
 
+static void cmd_clcd_dump(int _argc, char **_argv)
+{
+	bufferPrintf("DisplayPipe dump:\n");
+
+	bufferPrintf("Control regs:\n");
+	dump_memory(DISPLAY_PIPE + 0x1000, 24*4);
+
+	bufferPrintf("Blend regs:\n");
+	dump_memory(DISPLAY_PIPE + 0x2000, 26*4);
+
+	//bufferPrintf("Video regs:\n");
+	//dump_memory(DISPLAY_PIPE + 0x3000, 849*4);
+	
+	bufferPrintf("UI0 regs:\n");
+	dump_memory(DISPLAY_PIPE + 0x4000, 31*4);
+
+	bufferPrintf("UI1 regs:\n");
+	dump_memory(DISPLAY_PIPE + 0x5000, 31*4);
+
+	bufferPrintf("CLCD dump:\n");
+	dump_memory(CLCD, 0x64);
+
+	bufferPrintf("MIPI DSIM dump:\n");
+	dump_memory(MIPI_DSIM, 0x60);
+}
+COMMAND("clcd_dump", "Dump the CLCD registers to the screen.", cmd_clcd_dump);
+
 static uint8_t installGammaTableHelper(uint8_t* table) {
 	if(gammaVar2 == 0) {
 		gammaVar3 = table[gammaVar1++];
@@ -573,17 +606,17 @@ void setWindowBuffer(int window, uint32_t* buffer) {
 	else
 		size = 256;
 
-	SET_REG(0x89200034, window_bit | 0x10000);
+	SET_REG(CLCD + 0x34, window_bit | 0x10000);
 
 	for (cur_size = 0; cur_size < size; cur_size++) {
 		to_set = *buffer;
 		if ((window - 4) <= 2)
 			to_set = (*(buffer+1) & 0x3FF) | ((*buffer << 10) & 0xFFC00);
-		SET_REG(0x89200038, to_set | (1 << 31));
+		SET_REG(CLCD + 0x38, to_set | (1 << 31));
 		buffer++;
 	}
 
-	SET_REG(0x89200034, 0);
+	SET_REG(CLCD + 0x34, 0);
 }
 
 void framebuffer_fill(Framebuffer* framebuffer, int x, int y, int width, int height, int fill) {
@@ -689,17 +722,17 @@ static Window* createWindow(int zero0, int zero2, int width, int height, ColorSp
 
 	createFramebuffer(&newWindow->framebuffer, CLCD_FRAMEBUFFER, width, height, width, colorSpace);
 
-	SET_REG(CLCD + 0x4040, (reg_bit << 8) | 1);
-	SET_REG(CLCD + 0x4044, (uint32_t)newWindow->framebuffer.buffer);
-	SET_REG(CLCD + 0x4048, (newWindow->lineBytes & 0xFFFFFFC0) | 2);
-	SET_REG(CLCD + 0x4050, 0);
-	SET_REG(CLCD + 0x4060, (width << 16) | height);
-	SET_REG(CLCD + 0x2040, 0xFFFF0202);
-	SET_REG(CLCD + 0x404C, 1);
-	SET_REG(CLCD + 0x4074, 0x200060);
-	SET_REG(CLCD + 0x4078, 32);
+	SET_REG(DISPLAY_PIPE + 0x4040, (reg_bit << 8) | 1);
+	SET_REG(DISPLAY_PIPE + 0x4044, (uint32_t)newWindow->framebuffer.buffer);
+	SET_REG(DISPLAY_PIPE + 0x4048, (newWindow->lineBytes & 0xFFFFFFC0) | 2);
+	SET_REG(DISPLAY_PIPE + 0x4050, 0);
+	SET_REG(DISPLAY_PIPE + 0x4060, (width << 16) | height);
+	SET_REG(DISPLAY_PIPE + 0x2040, 0xFFFF0202);
+	SET_REG(DISPLAY_PIPE + 0x404C, 1);
+	SET_REG(DISPLAY_PIPE + 0x4074, 0x200060);
+	SET_REG(DISPLAY_PIPE + 0x4078, 32);
 
-	SET_REG(CLCD + 0x1038, GET_REG(CLCD + 0x1038) | 0x100);
+	SET_REG(DISPLAY_PIPE + 0x1038, GET_REG(DISPLAY_PIPE + 0x1038) | 0x100);
 	newWindow->created = TRUE;
 
 	return newWindow;
