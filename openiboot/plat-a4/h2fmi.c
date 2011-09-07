@@ -3241,6 +3241,44 @@ void cmd_nand_read(int argc, char** argv)
 }
 COMMAND("nand_read", "H2FMI NAND read single page", cmd_nand_read);
 
+void cmd_nand_dump(int argc, char ** argv)
+{
+	if(argc < 5)
+	{
+		bufferPrintf("Usage: %s [ce] [page] [end_page] [data]\r\n", argv[0]);
+		return;
+	}
+	
+	uint32_t page_size = h2fmi_geometry.bbt_format << 10;
+	uint32_t spare_size = h2fmi_geometry.meta_per_logical_page;
+	uint32_t total_size = page_size + spare_size + 1;
+	uint32_t ce = parseNumber(argv[1]);
+	uint32_t start = parseNumber(argv[2]);
+	uint32_t end = parseNumber(argv[3]);
+	uint8_t *ptr = (uint8_t*)parseNumber(argv[4]);
+
+	if(end < start)
+		return;
+
+	uint32_t i;
+	
+	for(i = start; i < end; i++)
+	{
+		uint32_t ret = h2fmi_read_single_page(ce, i,
+				ptr + 1, ptr + page_size, NULL, NULL, 1);
+		if(ret == ENOENT)
+		{
+			*ptr = '0';
+			memset(ptr+1, 0, total_size-1);
+		}
+		else
+			*ptr = '1';
+
+		ptr += total_size;
+	}
+}
+COMMAND("nand_dump", "Dump NAND", cmd_nand_dump);
+
 void cmd_nand_write(int argc, char** argv)
 {
 	if(argc < 6)
