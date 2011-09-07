@@ -32,6 +32,8 @@ int pmu_get_reg(int reg);
 int pmu_get_regs(int reg, uint8_t* out, int count);
 int pmu_write_reg(int reg, int data, int verify);
 int pmu_write_regs(const PMURegisterData* regs, int num);
+error_t pmu_setup_gpio(int _idx, int _dir, int _pol);
+error_t pmu_setup_ldo(int _idx, uint16_t _v, uint8_t _enable_gates, uint8_t _enable);
 int pmu_get_battery_voltage();
 PowerSupplyType pmu_get_power_supply();
 void pmu_charge_settings(int UseUSB, int SuspendUSB, int StopCharger);
