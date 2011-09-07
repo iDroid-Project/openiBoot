@@ -25,6 +25,15 @@
 #define PMU_UNKREG_START  0x50
 #define PMU_UNKREG_END    0x5A
 
+// GPIO
+#define PMU_GPIO		0x50
+#define PMU_GPIO_COUNT	10
+
+// LDO
+#define PMU_LDO_GATES	0x5f
+#define PMU_LDO_V		0x1d
+#define PMU_LDO_COUNT	19
+
 // Values
 #define PMU_POWERSUPPLY_USB       0x8
 #define PMU_POWERSUPPLY_FIREWIRE  0x10
