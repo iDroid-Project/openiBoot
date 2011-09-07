@@ -392,7 +392,7 @@ void dump_memory(uint32_t start, int length) {
 			printf(" ");
 		}
 		if(x == 3) {
-			printf("\r\n\n");
+			printf("\n");
 			x = 0;
 		} else {
 			x++;
@@ -401,7 +401,7 @@ void dump_memory(uint32_t start, int length) {
 		curPos += 4;
 	}
 
-	printf("\r\n");
+	printf("\n");
 }
 
 void buffer_dump_memory(uint32_t start, int length) {
