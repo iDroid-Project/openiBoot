@@ -13,6 +13,39 @@
 static uint32_t GPMemCachedPresent = 0;
 static uint8_t GPMemCache[PMU_MAXREG + 1];
 
+typedef struct _pmu_ldo
+{
+	uint16_t base_voltage;
+	uint8_t step_size;
+	uint8_t step_count;
+	uint8_t step_mask;
+	uint8_t gate_mask;
+	uint8_t reg;
+	uint8_t mask;
+} pmu_ldo_t;
+
+static pmu_ldo_t pmu_ldo[] = {
+	{ 2500, 50, 21, 0x1F, 1, 0x14, 4 },
+	{ 1650, 5, 31, 0x1F, 0, 0x14, 8 },
+	{ 2500, 50, 16, 0x1F, 0, 0x14, 0x10 },
+	{ 1800, 50, 30, 0x1F, 0, 0x14, 0x20 },
+	{ 2500, 50, 22, 0x1F, 2, 0x14, 0x40 },
+	{ 2500, 50, 22, 0x1F, 4, 0x14, 0x80 },
+	{ 1500, 100, 31, 0x1F, 0, 0x15, 1 },
+	{ 2000, 50, 31, 0x1F, 0, 0x15, 2 },
+	{ 1200, 25, 12, 0xF, 0, 0x15, 4 },
+	{ 1700, 50, 26, 0x1F, 8, 0x15, 8 },
+	{ 1700, 50, 26, 0x1F, 0, 0x15, 0x10 },
+	{ 600, 25, 28, 0x1F, 0, 0x15, 0x20 },
+	{ 0, 0, 0, 0, 0, 0x16, 2 },
+	{ 0, 0, 0, 0, 0, 0x16, 1 },
+	{ 0, 0, 0, 0, 0, 0x16, 0x10 },
+	{ 0, 0, 0, 0, 0, 0x16, 0x20 },
+	{ 0, 0, 0, 0, 0, 0x16, 8 },
+	{ 0, 0, 0, 0, 0, 0x18, 4 },
+	{ 0, 0, 0, 0, 0, 0x18, 0x80 },
+};
+
 static void pmu_init_boot()
 {
 	pmu_set_iboot_stage(0x20);
@@ -25,32 +58,96 @@ static void pmu_init()
 }
 MODULE_INIT(pmu_init);
 
-int pmu_write_unk(uint8_t regidx, int flag1, int flag2)
+error_t pmu_setup_gpio(int _idx, int _dir, int _pol)
 {
-	uint8_t registers = PMU_UNKREG_START + regidx;
-	uint8_t recv_buff = 0;
-	uint8_t data = 0;
-	int result;
+	uint8_t reg = PMU_GPIO + _idx;
+	uint8_t val;
 
-	if (regidx > PMU_UNKREG_END - PMU_UNKREG_START)
-		return -1;
+	if (_idx >= PMU_GPIO_COUNT)
+		return EINVAL;
+
+	val = pmu_get_reg(reg);
+	val &= 0x1D;
 	
-	result = i2c_rx(PMU_I2C_BUS, PMU_GETADDR, (void*)&registers, 1, (void*)&recv_buff, 1);
-	if (result != I2CNoError)
-		return result;
-	
-	recv_buff &= 0x1D;
-	
-	if (!flag1) {
-		data = recv_buff | 0x60;
-	} else {
-		data = recv_buff;
-		if (flag2)
-			data |= 2;
+	if(!_dir) // Input
+	{
+		val |= 0x40;
+	}
+	else // Output
+	{
+		if(_pol)
+			val |= 2; // High
+		else
+			val &=~ 2; // Low
 	}
 	
-	pmu_write_reg(registers, data, 1);
-	return 0;
+	pmu_write_reg(reg, val, 1);
+	return SUCCESS;
+}
+
+error_t pmu_setup_ldo(int _idx, uint16_t _v, uint8_t _enable_gates, uint8_t _enable)
+{
+	uint8_t val;
+
+	if(_idx >= PMU_LDO_COUNT)
+		return	EINVAL;
+
+	if(pmu_ldo[_idx].base_voltage && !_v)
+		return EINVAL;
+
+	if(pmu_ldo[_idx].gate_mask)
+	{
+		val = pmu_get_reg(PMU_LDO_GATES);
+		val &=~ pmu_ldo[_idx].gate_mask;
+		if(_enable && _enable_gates)
+			val |= pmu_ldo[_idx].gate_mask;
+
+		CHAIN_FAIL(pmu_write_reg(PMU_LDO_GATES, val, 1));
+	}
+
+	if(pmu_ldo[_idx].base_voltage)
+	{
+		uint8_t steps = (_v - pmu_ldo[_idx].base_voltage)
+			/ pmu_ldo[_idx].step_size;
+		if(steps > pmu_ldo[_idx].step_count)
+		{
+			bufferPrintf("pmu: Power too great for %d: %d > %d!\n",
+					_idx, steps, pmu_ldo[_idx].step_count);
+			return EINVAL;
+		}
+
+		val = pmu_get_reg(PMU_LDO_V + _idx);
+		val &=~ pmu_ldo[_idx].step_mask;
+		val |= (steps & pmu_ldo[_idx].step_mask);
+		CHAIN_FAIL(pmu_write_reg(PMU_LDO_V + _idx, val, 1));
+	}
+
+	val = pmu_get_reg(pmu_ldo[_idx].reg);
+	val &=~ pmu_ldo[_idx].mask;
+
+	if(_enable)
+		val |= pmu_ldo[_idx].mask;
+
+	if(_idx == 0x16)
+	{
+		// This is some haxxy dependancy code.
+		// Basically, pins 4 and 5 from 0x16
+		// rely on pin 3 being enabled.
+		//
+		// (Actually it's broken on disable,
+		//  but I'll fix it when it needs fixing.)
+		//  -- Ricky26
+		if(!(pmu_ldo[_idx].mask & 8))
+		{
+			if(val & 0x30)
+				val |= 8;
+			else
+				val &=~ 8;
+		}
+	}
+
+	CHAIN_FAIL(pmu_write_reg(pmu_ldo[_idx].reg, val, 1));
+	return SUCCESS;
 }
 
 int pmu_get_reg(int reg) {
