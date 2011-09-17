@@ -7,7 +7,9 @@
 
 // Device
 #define DMAC0 0x38200000
-#define DMAC1 0x39900000
+// iBoot has DMAC1 as 0x39900000 for some reason. ioreg and the devtree use
+// 0x38700000 instead. I think that the ioreg and devtree are more reliable.
+#define DMAC1 0x38700000	
 
 // Registers
 #define DMACIntStatus 0
