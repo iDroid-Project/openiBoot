@@ -46,6 +46,10 @@
 	#define NOR_CS	GPIO_SPI0_CS0
 	#define NOR_SPI	0
 	#define NOR_MAX_READ 16
+#elif defined(CONFIG_A4)
+	#define NOR_CS 0x505
+	#define NOR_SPI 0
+	#define NOR_MAX_READ 4
 #endif
 
 #endif

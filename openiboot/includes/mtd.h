@@ -7,10 +7,10 @@
 struct _mtd;
 typedef error_t (*mtd_prepare_t)(struct _mtd *);
 typedef void (*mtd_finish_t)(struct _mtd *);
-typedef error_t (*mtd_read_t)(struct _mtd *, void *_dest, uint32_t _off, int _sz);
-typedef error_t (*mtd_write_t)(struct _mtd *, void *_src, uint32_t _off, int _sz);
+typedef error_t (*mtd_read_t)(struct _mtd *, void *_dest, uint64_t _off, int _sz);
+typedef error_t (*mtd_write_t)(struct _mtd *, void *_src, uint64_t _off, int _sz);
 
-typedef int (*mtd_get_attribute_t)(struct _mtd *);
+typedef int64_t (*mtd_get_attribute_t)(struct _mtd *);
 
 typedef enum _mtd_use
 {
@@ -24,7 +24,7 @@ typedef struct _mtd
 {
 	device_t device;
 	block_device_t bdev;
-	uint32_t bdev_addr;
+	uint64_t bdev_addr;
 
 	LinkedList list_ptr;
 
@@ -53,11 +53,11 @@ mtd_t *mtd_find(mtd_t *_prev);
 error_t mtd_prepare(mtd_t *_mtd);
 void mtd_finish(mtd_t *_mtd);
 
-int mtd_size(mtd_t *_mtd);
-int mtd_block_size(mtd_t *_mtd);
+int64_t mtd_size(mtd_t *_mtd);
+int64_t mtd_block_size(mtd_t *_mtd);
 
-error_t mtd_read(mtd_t *_mtd, void *_dest, uint32_t _off, int _sz);
-error_t mtd_write(mtd_t *_mtd, void *_src, uint32_t _off, int _sz);
+error_t mtd_read(mtd_t *_mtd, void *_dest, uint64_t _off, int _sz);
+error_t mtd_write(mtd_t *_mtd, void *_src, uint64_t _off, int _sz);
 
 void mtd_list_devices();
 

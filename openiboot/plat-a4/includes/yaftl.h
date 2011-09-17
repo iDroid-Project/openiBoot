@@ -1,8 +1,0 @@
-#ifndef  YAFTL_H
-#define  YAFTL_H
-
-#define ERROR_ARG	0x80000001
-#define ERROR_NAND	0x80000002
-#define ERROR_EMPTY	0x80000003
-
-#endif //YAFTL_H

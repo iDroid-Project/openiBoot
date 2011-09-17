@@ -1,3 +1,26 @@
+/*
+ * util.c
+ *
+ * Copyright 2010 iDroid Project
+ *
+ * This file is part of iDroid. An android distribution for Apple products.
+ * For more information, please visit http://www.idroidproject.org/.
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; either version 3
+ * of the License, or (at your option) any later version.
+ * 
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ */
+
 #include "openiboot.h"
 #include "hardware/platform.h"
 #include "uart.h"
@@ -116,13 +139,14 @@ char* strdup(const char* str) {
 }
 
 char* strcpy(char* dst, const char* src) {
-	char* origDest =dst;
+	char* origDest = dst;
 	while(*src != '\0') {
 		*dst = *src;
 		dst++;
 		src++;
 	}
 	*dst = '\0';
+	
 	return origDest;
 }
 
@@ -145,7 +169,6 @@ int memcmp(const void* s1, const void* s2, uint32_t size) {
 
 }
 
-/* Adapted from public domain memmove function from  David MacKenzie <djm@gnu.ai.mit.edu>.  */
 void* memmove(void *dest, const void* src, size_t length)
 {
 	register uint8_t* myDest = dest;
@@ -425,7 +448,6 @@ void buffer_dump_memory2(uint32_t start, int length, int width) {
 
 	bufferPrintf("\r\n");
 }
-
 
 void hexdump(void *start, int length) {
 	uint32_t curPos = (uint32_t)start;
@@ -771,9 +793,30 @@ const char *strerr(error_t _err)
 
 uint32_t next_power_of_two(uint32_t n) {
 	uint32_t val = 1 << (31 - __builtin_clz(n));
-	
+
 	if (n % val)
 		val *= 2;
-		
+
 	return val;
+}
+
+inline void auto_store(void *_ptr, size_t _sz, uint32_t _val)
+{
+	switch(_sz)
+	{
+	case 0:
+		return;
+
+	case 1:
+		*((uint8_t*)_ptr) = _val;
+		return;
+
+	case 2:
+		*((uint16_t*)_ptr) = _val;
+		return;
+
+	case 4:
+		*((uint32_t*)_ptr) = _val;
+		return;
+	}
 }

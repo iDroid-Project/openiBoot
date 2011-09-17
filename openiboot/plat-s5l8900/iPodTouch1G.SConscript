@@ -14,7 +14,7 @@ ipt_1g_src = [
 Export('ipt_1g_src')
 
 env = env.Clone()
-env.Append(CPPDEFINES=['OPENIBOOT_VERSION_CONFIG=\\" for iPod Touch 1G\\"'])
+env.Append(CPPDEFINES=['OPENIBOOT_VERSION_CONFIG=\\" for iPod Touch 1G\\"', 'MACH_ID=3558'])
 
 env.AddModules([
 	"nor-cfi",

@@ -10,13 +10,13 @@ iphone_3g_src = [
 	'camera.c',
 	'multitouch-z2.c',
 	'wm8991.c',
-	'alsISL29003.c',
+	'als-ISL29003.c',
 	'vibrator-3G.c',
 	])]
 Export('iphone_3g_src')
 
 env = env.Clone()
-env.Append(CPPDEFINES=['OPENIBOOT_VERSION_CONFIG=\\" for iPhone 3G\\"'])
+env.Append(CPPDEFINES=['OPENIBOOT_VERSION_CONFIG=\\" for iPhone 3G\\"', 'MACH_ID=3557'])
 
 env.AddModules([
 	"radio-pmb8878",

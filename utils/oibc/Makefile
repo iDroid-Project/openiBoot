@@ -1,8 +1,8 @@
 OIBC_OBJS = oibc.o
 LOADIBEC_OBJS = loadibec.c
-LIBRARIES = -L/opt/local/lib -lusb-1.0 -lpthread -lreadline
-LOADIBEC_LIBS = -L/opt/local/lib -lusb-1.0
-CFLAGS += -DHAVE_GETEUID -I/opt/local/include
+LIBRARIES = -lusb-1.0 -lpthread -lreadline
+LOADIBEC_LIBS = -lusb-1.0
+CFLAGS += -DHAVE_GETEUID
 
 ifeq ($(DEBUG),YES)
         CFLAGS += -ggdb
@@ -23,7 +23,3 @@ loadibec:   $(LOADIBEC_OBJS)
 clean:
 	-rm *.o
 	-rm oibc
-	-rm loadibec
-
-install:
-	install -m +x oibc /usr/bin/

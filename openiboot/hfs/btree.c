@@ -34,8 +34,11 @@ BTHeaderRec* readBTHeaderRec(io_func* io) {
 	BTHeaderRec* headerRec;
 
 	headerRec = (BTHeaderRec*) malloc(sizeof(BTHeaderRec));
-	if(!READ(io, sizeof(BTNodeDescriptor), sizeof(BTHeaderRec), headerRec))
+
+	if(!READ(io, sizeof(BTNodeDescriptor), sizeof(BTHeaderRec), headerRec)) {
+		free(headerRec);
 		return NULL;
+	}
 
 	FLIPENDIAN(headerRec->treeDepth);
 	FLIPENDIAN(headerRec->rootNode);
@@ -50,18 +53,18 @@ BTHeaderRec* readBTHeaderRec(io_func* io) {
 	FLIPENDIAN(headerRec->attributes);
 
 	/*printf("treeDepth: %d\n", headerRec->treeDepth);
-	  printf("rootNode: %d\n", headerRec->rootNode);
-	  printf("leafRecords: %d\n", headerRec->leafRecords);
-	  printf("firstLeafNode: %d\n", headerRec->firstLeafNode);
-	  printf("lastLeafNode: %d\n", headerRec->lastLeafNode);
-	  printf("nodeSize: %d\n", headerRec->nodeSize);
-	  printf("maxKeyLength: %d\n", headerRec->maxKeyLength);
-	  printf("totalNodes: %d\n", headerRec->totalNodes);
-	  printf("freeNodes: %d\n", headerRec->freeNodes);
-	  printf("clumpSize: %d\n", headerRec->clumpSize);
-	  printf("bTreeType: 0x%x\n", headerRec->btreeType);
-	  printf("keyCompareType: 0x%x\n", headerRec->keyCompareType);
-	  printf("attributes: 0x%x\n", headerRec->attributes);
+		bufferPrintf("rootNode: %d\n", headerRec->rootNode);
+		bufferPrintf("leafRecords: %d\n", headerRec->leafRecords);
+		bufferPrintf("firstLeafNode: %d\n", headerRec->firstLeafNode);
+		bufferPrintf("lastLeafNode: %d\n", headerRec->lastLeafNode);
+		bufferPrintf("nodeSize: %d\n", headerRec->nodeSize);
+		bufferPrintf("maxKeyLength: %d\n", headerRec->maxKeyLength);
+		bufferPrintf("totalNodes: %d\n", headerRec->totalNodes);
+		bufferPrintf("freeNodes: %d\n", headerRec->freeNodes);
+		bufferPrintf("clumpSize: %d\n", headerRec->clumpSize);
+		bufferPrintf("bTreeType: 0x%x\n", headerRec->btreeType);
+		bufferPrintf("keyCompareType: 0x%x\n", headerRec->keyCompareType);
+		bufferPrintf("attributes: 0x%x\n", headerRec->attributes);
 	  fflush(stdout);*/
 
 	return headerRec;
@@ -237,15 +240,435 @@ static void* searchNode(BTree* tree, uint32_t root, BTKey* searchKey, int *exact
 
 		free(descriptor);
 		return READ_DATA(tree, lastRecordDataOffset, tree->io);
-	} else {
+	} else if(descriptor->kind == kBTIndexNode) {
 
 		free(descriptor);
 		return searchNode(tree, getNodeNumberFromPointerRecord(lastRecordDataOffset, tree->io), searchKey, exact, nodeNumber, recordNumber);
-	}      
+	} else {
+		if(nodeNumber != NULL)
+			*nodeNumber = root;
+
+		if(recordNumber != NULL)
+			*recordNumber = i;
+
+		if(exact != NULL)
+			*exact = FALSE;
+
+		free(descriptor);
+		return NULL;
+	}
 }
 
 void* search(BTree* tree, BTKey* searchKey, int *exact, uint32_t *nodeNumber, int *recordNumber) {
 	return searchNode(tree, tree->headerRec->rootNode, searchKey, exact, nodeNumber, recordNumber);
+}
+
+static uint32_t linearCheck(uint32_t* heightTable, unsigned char* map, BTree* tree, uint32_t *errCount) {
+	uint8_t i;
+	uint8_t j;
+	uint32_t node;
+
+	uint32_t count;
+	uint32_t leafRecords;
+
+	BTNodeDescriptor* descriptor;
+
+	uint32_t prevNode;
+
+	off_t recordOffset;
+	BTKey* key;
+	BTKey* previousKey;
+
+	count = 0;
+
+	leafRecords = 0;
+
+	for(i = 0; i <= tree->headerRec->treeDepth; i++) {
+		node = heightTable[i];
+		if(node != 0) {
+			descriptor = readBTNodeDescriptor(node, tree);
+			while(descriptor->bLink != 0) {
+				node = descriptor->bLink;
+				free(descriptor);
+				descriptor = readBTNodeDescriptor(node, tree);
+			}
+			free(descriptor);
+
+			prevNode = 0;
+			previousKey = NULL;
+
+			if(i == 1) {
+				if(node != tree->headerRec->firstLeafNode) {
+					bufferPrintf("BTREE CONSISTENCY ERROR: First leaf node (%d) is not correct. Should be: %d\r\n", tree->headerRec->firstLeafNode, node);
+					(*errCount)++;
+				}
+			}
+
+			while(node != 0) {
+				descriptor = readBTNodeDescriptor(node, tree);
+				if(descriptor->bLink != prevNode) {
+					bufferPrintf("BTREE CONSISTENCY ERROR: Node %d is not properly linked with previous node %d\n", node, prevNode);
+					(*errCount)++;
+				}
+
+				if(descriptor->height != i) {
+					bufferPrintf("BTREE CONSISTENCY ERROR: Node %d (%d) is not properly linked with nodes of the same height %d\r\n", node, descriptor->height, i);
+					(*errCount)++;
+				}
+
+				if((map[node / 8] & (1 << (7 - (node % 8)))) == 0) {
+					bufferPrintf("BTREE CONSISTENCY ERROR: Node %d not marked allocated\r\n", node);
+					(*errCount)++;
+				}
+
+				/*if(descriptor->kind == kBTIndexNode && descriptor->numRecords < 2) {
+					bufferPrintf("BTREE CONSISTENCY ERROR: Node %d does not have at least two children\r\n", node);
+					(*errCount)++;
+				}*/
+
+				for(j = 0; j < descriptor->numRecords; j++) {
+					recordOffset = getRecordOffset(j, node, tree);
+					key = READ_KEY(tree, recordOffset, tree->io);
+					if(previousKey != NULL) {
+						if(COMPARE(tree, key, previousKey) < 0) {
+							bufferPrintf("BTREE CONSISTENCY ERROR: Ordering not preserved during linear check for record %d node %d: ", j, node);
+							(*errCount)++;
+							tree->keyPrint(previousKey);
+							bufferPrintf(" < ");
+							tree->keyPrint(key);
+							bufferPrintf("\r\n");
+						}
+						free(previousKey);
+					}
+
+					if(i == 1) {
+						leafRecords++;
+					}
+					previousKey = key;
+				}
+
+				count++;
+
+				prevNode = node;
+				node = descriptor->fLink;
+				free(descriptor);
+			}
+
+			if(i == 1) {
+				if(prevNode != tree->headerRec->lastLeafNode) {
+					bufferPrintf("BTREE CONSISTENCY ERROR: Last leaf node (%d) is not correct. Should be: %d\r\n", tree->headerRec->lastLeafNode, node);
+					(*errCount)++;
+				}
+			}
+
+			free(previousKey);
+		}
+	}
+
+	if(leafRecords != tree->headerRec->leafRecords) {
+		bufferPrintf("BTREE CONSISTENCY ERROR: leafRecords (%d) is not correct. Should be: %d\r\n", tree->headerRec->leafRecords, leafRecords);
+		(*errCount)++;
+	}
+
+	return count;
+}
+
+static uint32_t traverseNode(uint32_t nodeNum, BTree* tree, unsigned char* map, int parentHeight, BTKey** firstKey, BTKey** lastKey,
+				uint32_t* heightTable, uint32_t* errCount, int displayTree) {
+	BTNodeDescriptor* descriptor;
+	BTKey* key;
+	BTKey* previousKey;
+	BTKey* retFirstKey;
+	BTKey* retLastKey;
+	int i, j;
+
+	int res;
+
+	uint32_t count;
+
+	off_t recordOffset;
+	off_t recordDataOffset;
+
+	off_t lastrecordDataOffset;
+
+	descriptor = readBTNodeDescriptor(nodeNum, tree);
+
+	previousKey = NULL;
+
+	count = 1;
+
+	if(displayTree) {
+		for(i = 0; i < descriptor->height; i++) {
+			bufferPrintf("  ");
+		}
+	}
+
+	if(descriptor->kind == kBTLeafNode) {
+		if(displayTree)
+			bufferPrintf("Leaf %d: %d", nodeNum, descriptor->numRecords);
+
+		if(descriptor->height != 1) {
+			bufferPrintf("BTREE CONSISTENCY ERROR: Leaf node %d does not have height 1\r\n", nodeNum);
+			(*errCount)++;
+		}
+	} else if(descriptor->kind == kBTIndexNode) {
+		if(displayTree)
+			bufferPrintf("Index %d: %d", nodeNum, descriptor->numRecords);
+
+	} else {
+		bufferPrintf("BTREE CONSISTENCY ERROR: Unexpected node %d has kind %d\r\n", nodeNum, descriptor->kind);
+		(*errCount)++;
+	}
+
+	if(displayTree) {
+		bufferPrintf("\n");
+	}
+
+	if((map[nodeNum / 8] & (1 << (7 - (nodeNum % 8)))) == 0) {
+		printf("BTREE CONSISTENCY ERROR: Node %d not marked allocated\r\n", nodeNum);
+		(*errCount)++;
+	}
+
+	if(nodeNum == tree->headerRec->rootNode) {
+		if(descriptor->height != tree->headerRec->treeDepth) {
+			bufferPrintf("BTREE CONSISTENCY ERROR: Root node %d (%d) does not have the proper height (%d)\r\n", nodeNum,
+						descriptor->height, tree->headerRec->treeDepth);
+			(*errCount)++;
+		}
+	} else {
+		if(descriptor->height != (parentHeight - 1)) {
+			bufferPrintf("BTREE CONSISTENCY ERROR: Node %d does not have the proper height\r\n", nodeNum);
+			(*errCount)++;
+		}
+	}
+
+	/*if(descriptor->kind == kBTIndexNode && descriptor->numRecords < 2) {
+		bufferPrintf("BTREE CONSISTENCY ERROR: Node %d does not have at least two children\r\n", nodeNum);
+		(*errCount)++;
+	}*/
+
+	heightTable[descriptor->height] = nodeNum;
+	lastrecordDataOffset = 0;
+ 
+	for(i = 0; i < descriptor->numRecords; i++) {
+		recordOffset = getRecordOffset(i, nodeNum, tree);
+		key = READ_KEY(tree, recordOffset, tree->io);
+		recordDataOffset = recordOffset + key->keyLength + sizeof(key->keyLength);
+
+		if((recordDataOffset - (nodeNum * tree->headerRec->nodeSize)) > (tree->headerRec->nodeSize - (sizeof(uint16_t) * (descriptor->numRecords + 1)))) {
+			bufferPrintf("BTREE CONSISTENCY ERROR: Record data extends past offsets in node %d record %d\r\n", nodeNum, i);
+			(*errCount)++;
+		}
+
+		if(i == 0) {
+			*firstKey = READ_KEY(tree, recordOffset, tree->io);
+		}
+
+		if(i == (descriptor->numRecords - 1)) {
+			*lastKey = READ_KEY(tree, recordOffset, tree->io);
+		}
+
+		if(previousKey != NULL) {
+			res = COMPARE(tree, key, previousKey);
+			if(res < 0) {
+				bufferPrintf("BTREE CONSISTENCY ERROR(traverse): Ordering between records within node not preserved in record %d node %d for ", i, nodeNum);
+				(*errCount)++;
+				tree->keyPrint(previousKey);
+				bufferPrintf(" < ");
+				tree->keyPrint(key);
+				bufferPrintf("\r\n");
+			}
+			free(previousKey);
+			previousKey = NULL;
+		}
+
+		if(displayTree) {
+			for(j = 0; j < (descriptor->height - 1); j++) {
+				bufferPrintf("  ");
+			}
+			tree->keyPrint(key);
+			bufferPrintf("\r\n");
+		}
+
+		if(descriptor->kind == kBTIndexNode) {
+			count += traverseNode(getNodeNumberFromPointerRecord(recordDataOffset, tree->io),
+					tree, map, descriptor->height, &retFirstKey, &retLastKey, heightTable, errCount, displayTree);
+
+			if(COMPARE(tree, retFirstKey, key) != 0) {
+				bufferPrintf("BTREE CONSISTENCY ERROR: Index node key does not match first key in record %d node %d\r\n", i, nodeNum);
+				(*errCount)++;
+			}
+			if(COMPARE(tree, retLastKey, key) < 0) {
+				bufferPrintf("BTREE CONSISTENCY ERROR: Last key is less than the index node key in record %d node %d\r\n", i, nodeNum);
+				(*errCount)++;
+			}
+			free(retFirstKey);
+			free(key);
+			previousKey = retLastKey;
+		} else {
+			previousKey = key;
+		}
+
+		if(recordOffset < lastrecordDataOffset) {
+			bufferPrintf("BTREE CONSISTENCY ERROR: Record offsets are not in order in node %d starting at record %d\r\n", nodeNum, i);
+			(*errCount)++;
+		}
+
+		lastrecordDataOffset = recordDataOffset;
+	}
+
+	if(previousKey != NULL) free(previousKey);
+
+	free(descriptor);
+
+	return count;
+}
+
+static unsigned char* mapNodes(BTree* tree, uint32_t* numMapNodes, uint32_t* errCount) {
+	unsigned char *map;
+
+	BTNodeDescriptor* descriptor;
+
+	unsigned char byte;
+
+	uint32_t totalNodes;
+	uint32_t freeNodes;
+
+	uint32_t byteNumber;
+	uint32_t byteTracker;
+
+	uint32_t mapNode;
+
+	off_t mapRecordStart;
+	off_t mapRecordLength;
+
+	int i;
+
+	map = (unsigned char *)malloc(tree->headerRec->totalNodes/8 + 1);
+
+	byteTracker = 0;
+	freeNodes = 0;
+	totalNodes = 0;
+
+	mapRecordStart = getRecordOffset(2, 0, tree);
+	mapRecordLength = tree->headerRec->nodeSize - 256;
+	byteNumber = 0;
+	mapNode = 0;
+
+	*numMapNodes = 0;
+
+	while(TRUE) {
+		while(byteNumber < mapRecordLength) {
+			READ(tree->io, mapRecordStart + byteNumber, 1, &byte);
+			map[byteTracker] = byte;
+			byteTracker++;
+			byteNumber++;
+			for(i = 0; i < 8; i++) {
+				if((byte & (1 << (7 - i))) == 0) {
+					freeNodes++;
+				}
+				totalNodes++;
+
+				if(totalNodes == tree->headerRec->totalNodes)
+					goto done;
+			}
+		}
+
+		descriptor = readBTNodeDescriptor(mapNode, tree);
+		mapNode = descriptor->fLink;
+		free(descriptor);
+
+		(*numMapNodes)++;
+
+		if(mapNode == 0) {
+			bufferPrintf("BTREE CONSISTENCY ERROR: Not enough map nodes allocated! Allocated for: %d, needed: %d\r\n", totalNodes, tree->headerRec->totalNodes);
+			(*errCount)++;
+			break;
+		}
+
+		mapRecordStart = mapNode * tree->headerRec->nodeSize + 14;
+		mapRecordLength = tree->headerRec->nodeSize - 20;
+		byteNumber = 0;
+	}
+
+	done:
+
+	if(freeNodes != tree->headerRec->freeNodes) {
+		bufferPrintf("BTREE CONSISTENCY ERROR: Free nodes %d differ from actually allocated %d\r\n", tree->headerRec->freeNodes, freeNodes);
+		(*errCount)++;
+	}
+
+	return map;
+}
+
+int debugBTree(BTree* tree, int displayTree) {
+	unsigned char* map;
+	uint32_t *heightTable;
+	BTKey* retFirstKey;
+	BTKey* retLastKey;
+
+	uint32_t numMapNodes;
+	uint32_t traverseCount = 0;
+	uint32_t linearCount;
+	uint32_t errorCount;
+
+	uint8_t i;
+
+	errorCount = 0;
+
+	bufferPrintf("Mapping nodes...\n");
+	map = mapNodes(tree, &numMapNodes, &errorCount);
+	
+	bufferPrintf("Initializing height table...\n");
+	heightTable = (uint32_t*) malloc(sizeof(uint32_t) * (tree->headerRec->treeDepth + 1));
+	for(i = 0; i <= tree->headerRec->treeDepth; i++) {
+		heightTable[i] = 0;
+	}
+
+	if(tree->headerRec->rootNode == 0) {
+		if(tree->headerRec->firstLeafNode == 0 && tree->headerRec->lastLeafNode == 0) {
+			traverseCount = 0;
+			linearCount = 0;
+		} else {
+			bufferPrintf("BTREE CONSISTENCY ERROR: First leaf node (%d) and last leaf node (%d) inconsistent with empty BTree\r\n",
+					tree->headerRec->firstLeafNode, tree->headerRec->lastLeafNode);
+
+			// Try to see if we can get a linear count
+			if(tree->headerRec->firstLeafNode != 0)
+				heightTable[1] = tree->headerRec->firstLeafNode;
+			else
+				heightTable[1] = tree->headerRec->lastLeafNode;
+
+			linearCount = linearCheck(heightTable, map, tree, &errorCount);
+		}
+	} else {
+		bufferPrintf("Performing tree traversal...\r\n");
+		traverseCount = traverseNode(tree->headerRec->rootNode, tree, map, 0, &retFirstKey, &retLastKey, heightTable, &errorCount, displayTree);
+
+		free(retFirstKey);
+		free(retLastKey);
+
+		bufferPrintf("Performing linear traversal...\r\n");
+		linearCount = linearCheck(heightTable, map, tree, &errorCount);
+	}
+
+	bufferPrintf("Total traverse nodes: %d\r\n", traverseCount);
+	bufferPrintf("Total linear nodes: %d\r\n", linearCount);
+	bufferPrintf("Error count: %d\r\n", errorCount);
+
+	if(traverseCount != linearCount) {
+		bufferPrintf("BTREE CONSISTENCY ERROR: Linear count and traverse count are inconsistent\r\n");
+	}
+
+	if(traverseCount != (tree->headerRec->totalNodes - tree->headerRec->freeNodes - numMapNodes - 1)) {
+		bufferPrintf("BTREE CONSISTENCY ERROR: Free nodes and total nodes (%d) and traverse count are inconsistent\r\n",
+				tree->headerRec->totalNodes - tree->headerRec->freeNodes);
+	}
+
+	free(heightTable);
+	free(map);
+
+	return errorCount;
 }
 
 static uint32_t findFree(BTree* tree) {
@@ -360,6 +783,7 @@ static int growBTree(BTree* tree) {
 
 	if(byteNumber < (tree->headerRec->nodeSize - 256)) {
 		ASSERT(writeBTHeaderRec(tree), "writeBTHeaderREc");
+		free(buffer);
 		return TRUE;
 	} else {
 		byteNumber -= tree->headerRec->nodeSize - 256;
@@ -888,6 +1312,8 @@ static int increaseHeight(BTree* tree, uint32_t newNode) {
 	ASSERT(writeBTNodeDescriptor(&newDescriptor, tree->headerRec->rootNode, tree), "writeBTNodeDescriptor");
 	ASSERT(writeBTHeaderRec(tree), "writeBTHeaderRec");
 
+	free(oldRootKey);
+	free(newNodeKey);
 	return TRUE;
 }
 

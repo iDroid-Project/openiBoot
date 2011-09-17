@@ -3,6 +3,8 @@
 #include "hardware/arm.h"
 #include "hardware/a4.h"
 #include "arm/arm.h"
+#include "commands.h"
+#include "util.h"
 
 uint32_t* CurrentPageTable;
 
@@ -93,3 +95,40 @@ uint32_t get_physical_address(uint32_t address) {
 	uint32_t pbase = pageData & MMU_SECTION_MASK;
 	return (address &~ MMU_SECTION_MASK) | pbase;
 }
+
+static void cmd_mmu_dump(int argc, char **argv)
+{
+	int i;
+	uint32_t lastValid=0, last=0;
+	uint32_t *base;
+	asm("MRC	p15, 0,	%0, c2, c0": "=r"(base) :: "cc");
+
+	bufferPrintf("MMU pagetable:\r\n");
+
+	for(i = 0; i < (0xffffffff >> 20); i++)
+	{
+		uint32_t from = i << 20;
+
+		if((base[i] & MMU_SECTION) == 0)
+		{
+			bufferPrintf("\t0x%08x\t\tUNMAPPED\r\n", from);
+
+			lastValid = 0;
+		}
+		else
+		{
+			uint32_t to = base[i] & MMU_SECTION_MASK;
+			if(lastValid && last + MMU_SECTION_SIZE == to)
+			{
+				last = to;
+				continue;
+			}
+
+			bufferPrintf("\t0x%08x\t\t0x%08x\r\n", from, to);
+
+			lastValid = 1;
+			last = to;
+		}
+	}
+}
+COMMAND("mmu_dump", "Dump current MMU mappings.", cmd_mmu_dump);

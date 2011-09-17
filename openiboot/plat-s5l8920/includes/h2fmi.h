@@ -75,9 +75,7 @@ typedef struct _h2fmi_struct
 
 	uint32_t dma0;
 	uint32_t dma1;
-	
-	uint32_t field_8;
-	uint32_t field_C;
+
 	uint32_t is_ppn; // 10
 	uint32_t pages_per_block; // 14
 	uint32_t bbt_format; // 18
@@ -98,29 +96,29 @@ typedef struct _h2fmi_struct
 	uint8_t *aes_iv_pointer; // 68
 	h2fmi_state_t state; // 6C
 	uint32_t current_page_index; // 78
-	uint32_t num_pages_to_read;
+	uint32_t num_pages;
 	uint32_t field_80;
 	uint32_t field_100;
 	uint16_t *chips;
 	uint32_t *pages;
-	uint8_t **data_ptr; // 114
-	uint8_t **wmr_ptr; // 118
-	uint64_t field_124;
-	uint64_t field_12C;
-	uint64_t field_134;
-	uint32_t field_13C;
-	uint32_t field_140;
+	DMASegmentInfo *data_segments; // 114
+	DMASegmentInfo *meta_segments; // 118
+	uint64_t last_action_time;
+	uint64_t time_interval;
+	uint64_t stage_time_interval;
+	uint32_t current_status;
+	uint32_t needs_address_set;
 	uint16_t current_chip; // 144
-	uint8_t *field_148;
-	uint32_t field_14C;
-	uint32_t field_150;
-	uint32_t field_154;
-	uint8_t *field_158;
-	uint32_t field_15C;
+	uint8_t *page_ecc_output;
+	uint32_t num_pages_empty;
+	uint32_t num_pages_failed;
+	uint32_t num_pages_ecc_failed;
+	uint8_t *ecc_ptr;
+	uint32_t pages_done;
 	h2fmi_failure_details_t failure_details; // 160
 	uint32_t field_170;
 	uint32_t field_180;
-	uint8_t field_182;
+	uint8_t field_182[32];
 	
 } h2fmi_struct_t;
 
@@ -128,5 +126,38 @@ void h2fmi_setup_ftl(uint32_t _start_page, uint32_t _smth, uint32_t _dataBuf, ui
 void h2fmi_clear_ftl();
 
 uint32_t h2fmi_read_single_page(uint32_t _ce, uint32_t _page, uint8_t *_ptr, uint8_t *_meta_ptr, uint8_t *_6, uint8_t *_7, uint32_t _8);
+
+void h2fmi_set_emf(uint32_t enable, uint32_t iv_input);
+uint32_t h2fmi_get_emf();
+void h2fmi_set_key(uint32_t enable, void* key, uint32_t length);
+
+typedef struct _emf_key {
+	uint32_t length;
+	uint8_t key[1];
+} EMFKey;
+
+typedef struct _lwvm_key {
+	uint8_t unkn[32];
+	uint64_t partition_uuid[2];
+	uint8_t key[32];
+} LwVMKey;
+
+typedef struct _locker_entry {
+	uint16_t locker_magic; // 'kL'
+	uint16_t length;
+	uint8_t identifier[4];
+	uint8_t key[1];
+} LockerEntry;
+
+typedef struct _plog_struct {
+	uint8_t header[0x38]; // header[0:16] XOR header[16:32] = ’ecaF’ + dw(0x1) + dw(0x1) + dw(0x0)
+	uint32_t generation;
+	uint32_t crc32; // headers + data
+
+	LockerEntry locker;
+} PLog;
+uint8_t DKey[32];
+uint8_t EMF[32];
+
 
 #endif //H2FMI_H

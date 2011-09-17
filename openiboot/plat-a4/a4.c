@@ -19,6 +19,7 @@
 #include "images.h"
 #include "syscfg.h"
 #include "nvram.h"
+#include "aes.h"
 #include "accel.h"
 #include "util.h"
 #include "commands.h"
@@ -56,12 +57,17 @@ void platform_init()
 
 	dma_setup();
 
+	spi_setup();
+
 	LeaveCriticalSection();
 
-	displaypipe_init();
-	framebuffer_setup();
-	framebuffer_setdisplaytext(TRUE);
-	lcd_set_backlight_level(1500);
+	aes_setup();
+
+	if(!displaypipe_init()) {
+		framebuffer_setup();
+		framebuffer_setdisplaytext(TRUE);
+		lcd_set_backlight_level(1500);
+	}
 }
 
 void platform_shutdown()

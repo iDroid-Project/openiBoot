@@ -115,19 +115,19 @@ static error_t nor_write_short(nor_device_t *_dev, uint32_t offset, uint16_t dat
 	return SUCCESS;
 }
 
-static error_t nor_read(mtd_t *_dev, void *_dest, uint32_t _off, int _amt)
+static error_t nor_read(mtd_t *_dev, void *_dest, uint64_t _off, int _amt)
 {
 	uint16_t* alignedBuffer = (uint16_t*)_dest;
 	int len = _amt;
 	for(; len >= 2; len -= 2)
 	{
-		*alignedBuffer = GET_REG16(NOR + _off);
+		*alignedBuffer = GET_REG16(NOR + (uint32_t)_off);
 		_off += 2;
 		alignedBuffer++;
 	}
 
 	if(len > 0) {
-		uint16_t lastWord = GET_REG16(NOR + _off);
+		uint16_t lastWord = GET_REG16(NOR + (uint32_t)_off);
 		uint8_t* unalignedBuffer = (uint8_t*) alignedBuffer;
 		*unalignedBuffer = *((uint8_t*)(&lastWord));
 	}
@@ -135,7 +135,7 @@ static error_t nor_read(mtd_t *_dev, void *_dest, uint32_t _off, int _amt)
 	return SUCCESS_VALUE(_amt);
 }
 
-static error_t nor_write(mtd_t *_dev, void *_src, uint32_t _off, int _amt)
+static error_t nor_write(mtd_t *_dev, void *_src, uint64_t _off, int _amt)
 {
 	nor_device_t *dev = nor_device_get(_dev);
 	int startSector = _off / NOR_BLOCK_SIZE;
@@ -170,12 +170,12 @@ static error_t nor_write(mtd_t *_dev, void *_src, uint32_t _off, int _amt)
 	return SUCCESS;
 }
 
-static int nor_size(mtd_t *_dev)
+static int64_t nor_size(mtd_t *_dev)
 {
 	return 16 * 1024 * 1024;
 } 
 
-static int nor_block_size(mtd_t *_dev)
+static int64_t nor_block_size(mtd_t *_dev)
 {
 	return NOR_BLOCK_SIZE;
 }

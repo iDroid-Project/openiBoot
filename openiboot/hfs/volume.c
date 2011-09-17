@@ -142,7 +142,7 @@ Volume* openVolume(io_func* io) {
 	}
 
 	volume->allocationFile = openRawFile(kHFSAllocationFileID, &volume->volumeHeader->allocationFile, NULL, volume);
-	if(volume->catalogTree == NULL) {
+	if(volume->allocationFile == NULL) {
 		closeBTree(volume->catalogTree);
 		closeBTree(volume->extentsTree);
 		free(volume->volumeHeader);
@@ -150,10 +150,24 @@ Volume* openVolume(io_func* io) {
 		return NULL;
 	}
 
+	volume->attrTree = NULL;
+	file = openRawFile(kHFSAttributesFileID, &volume->volumeHeader->attributesFile, NULL, volume);
+	if(file != NULL) {
+		volume->attrTree = openAttributesTree(file);
+		if(!volume->attrTree) {
+			CLOSE(file);
+		}
+	}
+
+	volume->metadataDir = getMetadataDirectoryID(volume);
+
 	return volume;
 }
 
 void closeVolume(Volume *volume) {
+	if(volume->attrTree)
+		closeBTree(volume->attrTree);
+
 	CLOSE(volume->allocationFile);
 	closeBTree(volume->catalogTree);
 	closeBTree(volume->extentsTree);

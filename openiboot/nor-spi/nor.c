@@ -296,10 +296,10 @@ static error_t nor_erase_sector(nor_device_t *_dev, uint32_t _offset)
 	return SUCCESS;
 }
 
-static error_t nor_read(mtd_t *_dev, void *_dest, uint32_t _off, int _amt)
+static error_t nor_read(mtd_t *_dev, void *_dest, uint64_t _off, int _amt)
 {
 	nor_prepare(_dev);
-	
+
 	uint8_t command[4];
 	uint8_t* data = _dest;
 	nor_device_t *dev = nor_device_get(_dev);
@@ -329,7 +329,7 @@ static error_t nor_read(mtd_t *_dev, void *_dest, uint32_t _off, int _amt)
 	return SUCCESS_VALUE(_amt);
 }
 
-static error_t nor_write(mtd_t *_dev, void *_src, uint32_t _off, int _amt)
+static error_t nor_write(mtd_t *_dev, void *_src, uint64_t _off, int _amt)
 {
 	nor_prepare(_dev);
 
@@ -370,12 +370,12 @@ static error_t nor_write(mtd_t *_dev, void *_src, uint32_t _off, int _amt)
 	return ret;
 }
 
-static int nor_size(mtd_t *_dev)
+static int64_t nor_size(mtd_t *_dev)
 {
 	return 16 * 1024 * 1024;
 } 
 
-static int nor_block_size(mtd_t *_dev)
+static int64_t nor_block_size(mtd_t *_dev)
 {
 	nor_device_t *dev = nor_device_get(_dev);
 	return dev->block_size;
@@ -390,7 +390,7 @@ static error_t nor_setup_chip_info(nor_device_t *_dev)
 	nor_spi_txrx(_dev, command, sizeof(command), deviceID, sizeof(deviceID));
 
 	_dev->vendor = deviceID[0];
-	_dev->device = deviceID[2];
+	_dev->device = (deviceID[1] << 8) | deviceID[2];
 
 	if(deviceID[0] == 0)
 	{
@@ -400,63 +400,75 @@ static error_t nor_setup_chip_info(nor_device_t *_dev)
 
 	bufferPrintf("NOR vendor=%x, device=%x\r\n", _dev->vendor, _dev->device);
 
-	Boolean chipRecognized = FALSE;
+	int foundDevice = FALSE;
 	switch(_dev->vendor) {
 		// massive list of ids: http://flashrom.org/trac/flashrom/browser/trunk/flashchips.h
 		case 0xBF:
 			// vendor: SST, device: 0x41 or 0x8e
-			if (_dev->device != 0x41 && _dev->device != 0x8e) {
+			if (_dev->device != 0x41 && _dev->device != 0x8e && _dev->device != 0x2505) {
 				break;
 			}
-			chipRecognized = TRUE;
+
 			_dev->block_write_function = &nor_write_block_by_aai_word;
 			_dev->block_size = 0x1000;
 			_dev->block_protect_bits = 0x3C;
 			_dev->page_size = 0x1;
+			foundDevice = TRUE;
 			break;
+
 		case 0x1F:
 			// vendor: atmel, device: 0x02 -> AT25DF081A
 			// datasheet: http://www.atmel.com/dyn/resources/prod_documents/doc8715.pdf
-			if (_dev->device != 0x02) {
+			if (_dev->device != 0x4502) {
 				break;
 			}
-			chipRecognized = TRUE;
+			
 			_dev->block_write_function = &nor_write_block_by_page;
 			_dev->block_size = 0x1000;
 			_dev->block_protect_bits = 0xC;
 			_dev->page_size = 0x100;
+			foundDevice = TRUE;
 			break;
+
 		case 0x20:
 			// vendor: SGS/Thomson, device: 0x18, 0x16 or 0x14
 			if (_dev->device != 0x18 && _dev->device != 0x16 && _dev->device != 0x14) {
 				break;
 			}
-			chipRecognized = TRUE;
+		
 			_dev->block_write_function = &nor_write_block_by_page;
 			_dev->block_size = 0x1000;
 			_dev->block_protect_bits = 0x1C;
 			_dev->page_size = 0x100;
+			foundDevice = TRUE;
 			break;
+
 		case 0x01:
 			// vendor: AMD, device: 0x18
 			if (_dev->device != 0x18) {
 				break;
 			}
-			chipRecognized = TRUE;
+			
 			_dev->block_write_function = &nor_write_block_by_page;
 			_dev->block_size = 0x1000;
 			_dev->block_protect_bits = 0x1C;
 			_dev->page_size = 0x100;
+			foundDevice = TRUE;
 			break;
+
 		default:
 			break;
 	}
 
-	if (!chipRecognized) {
-		bufferPrintf("Unknown NOR chip!\r\n");
-		return EINVAL;
+	if(foundDevice != TRUE)
+	{
+		bufferPrintf("nor: Unrecognized Chip Vendor!\r\n");
+		_dev->block_write_function = &nor_write_block_by_byte;
+		_dev->block_size = 0x1000;
+		_dev->block_protect_bits = 0x3C;
+		_dev->page_size = 0x1;
 	}
-	
+
 	return SUCCESS;
 }
 

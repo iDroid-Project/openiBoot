@@ -8,6 +8,7 @@
 #define MemoryStart 0x00000000
 #define MemoryEnd 0xFFFFFFFF
 #define LargeMemoryStart 0x08000000				/* FIXME: This is an ugly hack to get around iBoot's memory rearrangement. Linux boot will only work for installed openiboot! */
+#define RAMStart 0
 #define RAMEnd 0x08000000
 #define MemoryHigher 0x80000000
 #define ExceptionVector MemoryStart

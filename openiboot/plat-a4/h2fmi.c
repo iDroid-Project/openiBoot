@@ -11,6 +11,10 @@
 #include "commands.h"
 #include "arm/arm.h"
 #include "interrupt.h"
+#include "aes.h"
+
+uint8_t DKey[32];
+uint8_t EMF[32];
 
 typedef struct _nand_chipid
 {
@@ -51,8 +55,7 @@ typedef struct _nand_board_id
 typedef struct _nand_board_info
 {
 	nand_board_id_t board_id;
-	uint16_t unk1;
-	uint16_t unk2;
+	uint32_t vendor_type;
 } __attribute__((__packed__)) nand_board_info_t;
 
 typedef struct _nand_timing_info
@@ -80,6 +83,8 @@ typedef struct _nand_info
 
 static nand_chip_info_t nand_chip_info[] = {
 #ifdef CONFIG_IPHONE_4
+	{ { 0x7A94D7EC, 0x0, }, 0x1038, 0x80, 0x2000, 0x280, 0x10, 0, 8, 1, 0 },
+	{ { 0x7AD5DEEC, 0x0, }, 0x2070, 0x80, 0x2000, 0x280, 0x10, 0, 8, 2, 0 },
 	{ { 0x7294D7EC, 0x0, }, 0x1038, 0x80, 0x2000, 0x1B4, 0xC, 0, 8, 1, 0 },
 	{ { 0x72D5DEEC, 0x0, }, 0x2070, 0x80, 0x2000, 0x1B4, 0xC, 0, 8, 2, 0 },
 	{ { 0x29D5D7EC, 0x0, }, 0x2000, 0x80, 0x1000, 0xDA, 0x8, 0, 2, 2, 0 },
@@ -90,9 +95,13 @@ static nand_chip_info_t nand_chip_info[] = {
 	{ { 0x3295EE98, 0x0, }, 0x2008, 0x80, 0x2000, 0x1C0, 0x18, 0, 1, 2, 0 },
 	{ { 0x4604682C, 0x0, }, 0x1000, 0x100, 0x1000, 0xE0, 0xC, 0, 7, 1, 0 },
 	{ { 0xC605882C, 0x0, }, 0x2000, 0x100, 0x1000, 0xE0, 0xE0, 0, 7, 2, 0 },
+	{ { 0xCB05A82C, 0x0, }, 0x2000, 0x100, 0x2000, 0x1C0, 0x18, 0, 7, 2, 0 },
+	{ { 0x4B04882C, 0x0, }, 0x1000, 0x100, 0x2000, 0x1C0, 0x18, 0, 7, 1, 0 },
 	{ { 0x3295DE45, 0x0, }, 0x2000, 0x80, 0x2000, 0x178, 0x8, 0, 9, 2, 0 },
 	{ { 0x32944845, 0x0, }, 0x1000, 0x80, 0x2000, 0x1C0, 0x8, 0, 9, 1, 0 },
 	{ { 0x32956845, 0x0, }, 0x2000, 0x80, 0x2000, 0x1C0, 0x8, 0, 9, 2, 0 },
+	{ { 0x82942D45, 0x0, }, 0x1000, 0x100, 0x2000, 0x280, 0x8, 0, 9, 1, 0 },
+	{ { 0x82944D45, 0x0, }, 0x1000, 0x100, 0x2000, 0x280, 0x8, 0, 9, 1, 0 },
 #endif
 #ifdef CONFIG_IPOD_TOUCH_4G
 	{ { 0x7A94D7EC, 0, }, 0x1038, 0x80, 0x2000, 0x280, 0x10, 0, 8, 1, 0 },
@@ -126,72 +135,81 @@ static nand_chip_info_t nand_chip_info[] = {
 
 static nand_board_info_t nand_board_info[] = {
 #ifdef CONFIG_IPHONE_4
-	{ { 2, 1, { 0x4604682C, 0x0 }, 4, { 0x0, 0x0, }, 0, }, 0x14, 0x12, },
-	{ { 2, 1, { 0xC605882C, 0x0 }, 4, { 0x0, 0x0, }, 0, }, 0x14, 0x12, },
-	{ { 2, 1, { 0x3295DE98, 0x0 }, 4, { 0x0, 0x0, }, 0, }, 0x11, 0x15, },
-	{ { 2, 1, { 0x3294D798, 0x0 }, 4, { 0x0, 0x0, }, 0, }, 0x11, 0x15, },
-	{ { 2, 1, { 0x3294E798, 0x0 }, 4, { 0x0, 0x0, }, 0, }, 0x11, 0x15, },
-	{ { 2, 1, { 0x3295EE98, 0x0 }, 4, { 0x0, 0x0, }, 0, }, 0x11, 0x15, },
-	{ { 2, 1, { 0x3295EE98, 0x0 }, 8, { 0x0, 0x0, }, 0, }, 0x11, 0x15, },
-	{ { 2, 1, { 0x2594D7AD, 0x0 }, 2, { 0x0, 0x0, }, 0, }, 0x14, 0x10, },
-	{ { 2, 1, { 0x2594D7AD, 0x0 }, 4, { 0x0, 0x0, }, 0, }, 0x14, 0x10, },
-	{ { 2, 1, { 0x29D5D7EC, 0x0 }, 4, { 0x0, 0x0, }, 0, }, 0x14, 0x10, },
-	{ { 2, 1, { 0x7294D7EC, 0x0 }, 4, { 0x0, 0x0, }, 0, }, 0x14, 0x10, },
-	{ { 2, 1, { 0x7294D7EC, 0x0 }, 2, { 0x0, 0x0, }, 0, }, 0x14, 0x10, },
-	{ { 2, 1, { 0x72D5DEEC, 0x0 }, 4, { 0x0, 0x0, }, 0, }, 0x14, 0x10, },
-	{ { 2, 1, { 0x72D5DEEC, 0x0 }, 8, { 0x0, 0x0, }, 0, }, 0x14, 0x10, },
-	{ { 2, 1, { 0x32944845, 0x0 }, 4, { 0x0, 0x0, }, 0, }, 0x11, 0x15, },
-	{ { 2, 1, { 0x32956845, 0x0 }, 4, { 0x0, 0x0, }, 0, }, 0x11, 0x15, },
-	{ { 2, 1, { 0x3295DE45, 0x0 }, 4, { 0x0, 0x0, }, 0, }, 0x11, 0x15, },
+	{ { 2, 1, { 0x4604682C, 0x0 }, 4, { 0x0, 0x0, }, 0, }, 0x120014 },
+	{ { 2, 1, { 0xC605882C, 0x0 }, 4, { 0x0, 0x0, }, 0, }, 0x120014 },
+	{ { 2, 1, { 0xCB05A82C, 0x0 }, 4, { 0x0, 0x0, }, 0, }, 0x120014 },
+	{ { 2, 1, { 0x3295DE98, 0x0 }, 4, { 0x0, 0x0, }, 0, }, 0x150011 },
+	{ { 2, 1, { 0x3294D798, 0x0 }, 4, { 0x0, 0x0, }, 0, }, 0x150011 },
+	{ { 2, 1, { 0x3294E798, 0x0 }, 4, { 0x0, 0x0, }, 0, }, 0x150011 },
+	{ { 2, 1, { 0x3295EE98, 0x0 }, 4, { 0x0, 0x0, }, 0, }, 0x150011 },
+	{ { 2, 1, { 0x3295EE98, 0x0 }, 8, { 0x0, 0x0, }, 0, }, 0x150011 },
+	{ { 2, 1, { 0x2594D7AD, 0x0 }, 2, { 0x0, 0x0, }, 0, }, 0x100014 },
+	{ { 2, 1, { 0x2594D7AD, 0x0 }, 4, { 0x0, 0x0, }, 0, }, 0x100014 },
+	{ { 2, 1, { 0x29D5D7EC, 0x0 }, 4, { 0x0, 0x0, }, 0, }, 0x100014 },
+	{ { 2, 1, { 0x7294D7EC, 0x0 }, 4, { 0x0, 0x0, }, 0, }, 0x100014 },
+	{ { 2, 1, { 0x7294D7EC, 0x0 }, 2, { 0x0, 0x0, }, 0, }, 0x100014 },
+	{ { 2, 1, { 0x72D5DEEC, 0x0 }, 4, { 0x0, 0x0, }, 0, }, 0x100014 },
+	{ { 2, 1, { 0x72D5DEEC, 0x0 }, 8, { 0x0, 0x0, }, 0, }, 0x100014 },
+	{ { 2, 1, { 0x7A94D7EC, 0x0 }, 4, { 0x0, 0x0, }, 0, }, 0x100014 },
+	{ { 2, 1, { 0x7AD5DEEC, 0x0 }, 4, { 0x0, 0x0, }, 0, }, 0x100014 },
+	{ { 2, 1, { 0x32944845, 0x0 }, 4, { 0x0, 0x0, }, 0, }, 0x150011 },
+	{ { 2, 1, { 0x32956845, 0x0 }, 4, { 0x0, 0x0, }, 0, }, 0x150011 },
+	{ { 2, 1, { 0x3295DE45, 0x0 }, 4, { 0x0, 0x0, }, 0, }, 0x150011 },
+	{ { 2, 1, { 0x4B04882C, 0x0 }, 2, { 0x0, 0x0, }, 0, }, 0x120014 },
+	{ { 2, 1, { 0x4B04882C, 0x0 }, 4, { 0x0, 0x0, }, 0, }, 0x120014 },
+	{ { 2, 1, { 0x82942D45, 0x0 }, 2, { 0x0, 0x0, }, 0, }, 0x150011 },
+	{ { 2, 1, { 0x82944D45, 0x0 }, 4, { 0x0, 0x0, }, 0, }, 0x150011 },
 #endif
 #ifdef CONFIG_IPOD_TOUCH_4G
-	{ { 2, 1, { 0x7A94D7EC, 0, }, 2, { 0, 0, }, 0, }, 0x14, 0x10 },
-	{ { 2, 1, { 0x7AD5DEEC, 0, }, 4, { 0, 0, }, 0, }, 0x14, 0x10 },
-	{ { 2, 1, { 0x7294D7EC, 0, }, 2, { 0, 0, }, 0, }, 0x14, 0x10 },
-	{ { 2, 1, { 0x7294D7EC, 0, }, 4, { 0, 0, }, 0, }, 0x14, 0x10 },
-	{ { 2, 1, { 0x72D5DEEC, 0, }, 4, { 0, 0, }, 0, }, 0x14, 0x10 },
-	{ { 2, 2, { 0x72D5DEEC, 0, }, 4, { 0x72D5DEEC, 0, }, 4, }, 0x14, 0x10 },
-	{ { 2, 1, { 0x72D5DEEC, 0, }, 8, { 0, 0, }, 0, }, 0x14, 0x10 },
-	{ { 2, 2, { 0x72D5DEEC, 0, }, 8, { 0x72D5DEEC, 0, }, 8, }, 0x14, 0x10 },
-	{ { 2, 1, { 0x9A94D7AD, 0, }, 2, { 0, 0, }, 0, }, 0x14, 0x10 },
-	{ { 2, 1, { 0x9A95DEAD, 0, }, 4, { 0, 0, }, 0, }, 0x14, 0x10 },
-	{ { 2, 1, { 0x3295EE98, 0, }, 4, { 0, 0, }, 0, }, 0x11, 0x15 },
-	{ { 2, 1, { 0x3294E798, 0, }, 4, { 0, 0, }, 0, }, 0x11, 0x15 },
-	{ { 2, 1, { 0x3294E798, 0, }, 2, { 0, 0, }, 0, }, 0x11, 0x15 },
-	{ { 2, 1, { 0x3295EE98, 0, }, 8, { 0, 0, }, 0, }, 0x11, 0x15 },
-	{ { 2, 1, { 0x32956845, 0, }, 4, { 0, 0, }, 0, }, 0x11, 0x15 },
-	{ { 2, 1, { 0xCB05A82C, 0, }, 4, { 0, 0, }, 0, }, 0x14, 0x12 },
-	{ { 2, 1, { 0x4B04882C, 0, }, 4, { 0, 0, }, 0, }, 0x14, 0x12 },
+	{ { 2, 1, { 0x7A94D7EC, 0, }, 2, { 0, 0, }, 0, }, 0x100014 },
+	{ { 2, 1, { 0x7AD5DEEC, 0, }, 4, { 0, 0, }, 0, }, 0x100014 },
+	{ { 2, 1, { 0x7294D7EC, 0, }, 2, { 0, 0, }, 0, }, 0x100014 },
+	{ { 2, 1, { 0x7294D7EC, 0, }, 4, { 0, 0, }, 0, }, 0x100014 },
+	{ { 2, 1, { 0x72D5DEEC, 0, }, 4, { 0, 0, }, 0, }, 0x100014 },
+	{ { 2, 2, { 0x72D5DEEC, 0, }, 4, { 0x72D5DEEC, 0, }, 4, }, 0x100014 },
+	{ { 2, 1, { 0x72D5DEEC, 0, }, 8, { 0, 0, }, 0, }, 0x100014 },
+	{ { 2, 2, { 0x72D5DEEC, 0, }, 8, { 0x72D5DEEC, 0, }, 8, }, 0x100014 },
+	{ { 2, 1, { 0x9A94D7AD, 0, }, 2, { 0, 0, }, 0, }, 0x100014 },
+	{ { 2, 1, { 0x9A95DEAD, 0, }, 4, { 0, 0, }, 0, }, 0x100014 },
+	{ { 2, 1, { 0x3295EE98, 0, }, 4, { 0, 0, }, 0, }, 0x150011 },
+	{ { 2, 1, { 0x3294E798, 0, }, 4, { 0, 0, }, 0, }, 0x150011 },
+	{ { 2, 1, { 0x3294E798, 0, }, 2, { 0, 0, }, 0, }, 0x150011 },
+	{ { 2, 1, { 0x3295EE98, 0, }, 8, { 0, 0, }, 0, }, 0x150011 },
+	{ { 2, 1, { 0x32956845, 0, }, 4, { 0, 0, }, 0, }, 0x150011 },
+	{ { 2, 1, { 0xCB05A82C, 0, }, 4, { 0, 0, }, 0, }, 0x120014 },
+	{ { 2, 1, { 0x4B04882C, 0, }, 4, { 0, 0, }, 0, }, 0x120014 },
 #endif
 #ifdef CONFIG_IPAD_1G
-	{ { 2, 1, { 0x7294D7EC, 0, }, 2, { 0, 0, }, 0, }, 0x14, 0x10 },
-	{ { 2, 2, { 0x7294D7EC, 0, }, 2, { 0x7294D7EC, 0, }, 2, }, 0x14, 0x10 },
-	{ { 2, 2, { 0x7294D7EC, 0, }, 4, { 0x7294D7EC, 0, }, 4, }, 0x14, 0x10 },
-	{ { 2, 2, { 0x72D5DEEC, 0, }, 4, { 0x72D5DEEC, 0, }, 4, }, 0x14, 0x10 },
-	{ { 2, 1, { 0x4604682C, 0, }, 4, { 0, 0, }, 0 }, 0x14, 0x12 },
-	{ { 2, 2, { 0x4604682C, 0, }, 4, { 0x4604682C, 0, }, 4, }, 0x14, 0x12 },
-	{ { 2, 2, { 0x4604682C, 0, }, 2, { 0x4604682C, 0, }, 2, }, 0x14, 0x12 },
-	{ { 2, 2, { 0x3294D798, 0, }, 2, { 0x3294D798, 0, }, 2, }, 0x11, 0x15 },
-	{ { 2, 2, { 0x3294D798, 0, }, 4, { 0x3294D798, 0, }, 4, }, 0x11, 0x15 },
-	{ { 2, 2, { 0x3295DE98, 0, }, 4, { 0x3295DE98, 0, }, 4, }, 0x11, 0x15 },
-	{ { 2, 2, { 0x3294E798, 0, }, 4, { 0x3294E798, 0, }, 4, }, 0x11, 0x15 },
-	{ { 2, 2, { 0x3294E798, 0, }, 2, { 0x3294E798, 0, }, 2, }, 0x11, 0x15 },
-	{ { 2, 2, { 0x3295EE98, 0, }, 4, { 0x3295EE98, 0, }, 4, }, 0x11, 0x15 },
-	{ { 2, 2, { 0x2594D7AD, 0, }, 2, { 0x2594D7AD, 0, }, 2, }, 0x14, 0x10 },
-	{ { 1, 1, { 0xB614D5AD, 0, }, 4, { 0, 0, }, 0 }, 0x14, 0x10 },
-	{ { 2, 1, { 0xB614D5AD, 0, }, 4, { 0, 0, }, 0 }, 0x14, 0x10 },
-	{ { 2, 2, { 0xB614D5AD, 0, }, 4, { 0xB614D5AD, 0, }, 4, }, 0x14, 0x10 },
+	{ { 2, 1, { 0x7294D7EC, 0, }, 2, { 0, 0, }, 0, }, 0x100014 },
+	{ { 2, 2, { 0x7294D7EC, 0, }, 2, { 0x7294D7EC, 0, }, 2, }, 0x100014 },
+	{ { 2, 2, { 0x7294D7EC, 0, }, 4, { 0x7294D7EC, 0, }, 4, }, 0x100014 },
+	{ { 2, 2, { 0x72D5DEEC, 0, }, 4, { 0x72D5DEEC, 0, }, 4, }, 0x100014 },
+	{ { 2, 1, { 0x4604682C, 0, }, 4, { 0, 0, }, 0 }, 0x120014 },
+	{ { 2, 2, { 0x4604682C, 0, }, 4, { 0x4604682C, 0, }, 4, }, 0x120014 },
+	{ { 2, 2, { 0x4604682C, 0, }, 2, { 0x4604682C, 0, }, 2, }, 0x120014 },
+	{ { 2, 2, { 0x3294D798, 0, }, 2, { 0x3294D798, 0, }, 2, }, 0x150011 },
+	{ { 2, 2, { 0x3294D798, 0, }, 4, { 0x3294D798, 0, }, 4, }, 0x150011 },
+	{ { 2, 2, { 0x3295DE98, 0, }, 4, { 0x3295DE98, 0, }, 4, }, 0x150011 },
+	{ { 2, 2, { 0x3294E798, 0, }, 4, { 0x3294E798, 0, }, 4, }, 0x150011 },
+	{ { 2, 2, { 0x3294E798, 0, }, 2, { 0x3294E798, 0, }, 2, }, 0x150011 },
+	{ { 2, 2, { 0x3295EE98, 0, }, 4, { 0x3295EE98, 0, }, 4, }, 0x150011 },
+	{ { 2, 2, { 0x2594D7AD, 0, }, 2, { 0x2594D7AD, 0, }, 2, }, 0x100014 },
+	{ { 1, 1, { 0xB614D5AD, 0, }, 4, { 0, 0, }, 0 }, 0x100014 },
+	{ { 2, 1, { 0xB614D5AD, 0, }, 4, { 0, 0, }, 0 }, 0x100014 },
+	{ { 2, 2, { 0xB614D5AD, 0, }, 4, { 0xB614D5AD, 0, }, 4, }, 0x100014 },
 #endif
 #ifdef CONFIG_ATV_2G
-	{ { 2, 1, { 0x7294D7EC, 0, }, 2, { 0, 0, }, 0, }, 0x14, 0x10 },
-	{ { 2, 2, { 0x7294D7EC, 0, }, 2, { 0x7294D7EC, 0, }, 2, }, 0x14, 0x10 },
-	{ { 2, 1, { 0x3294E798, 0, }, 2, { 0, 0, }, 0, }, 0x11, 0x15 },
-	{ { 2, 2, { 0x3294E798, 0, }, 2, { 0x3294E798, 0, }, 2, }, 0x11, 0x15 },
+	{ { 2, 1, { 0x7294D7EC, 0, }, 2, { 0, 0, }, 0, }, 0x100014 },
+	{ { 2, 2, { 0x7294D7EC, 0, }, 2, { 0x7294D7EC, 0, }, 2, }, 0x100014 },
+	{ { 2, 1, { 0x3294E798, 0, }, 2, { 0, 0, }, 0, }, 0x150011 },
+	{ { 2, 2, { 0x3294E798, 0, }, 2, { 0x3294E798, 0, }, 2, }, 0x150011 },
 #endif
 };
 
 static nand_timing_info_t nand_timing_info[] = {
 #ifdef CONFIG_IPHONE_4
+	{ { 2, 1, { 0x7A94D7EC, 0x0, }, 4, { 0x0, 0x0, }, 0, }, 0x19, 0xC, 0xA, 0x19, 0xC, 0xA, 0x14, 0xF, },
+	{ { 2, 1, { 0x7AD5DEEC, 0x0, }, 4, { 0x0, 0x0, }, 0, }, 0x19, 0xC, 0xA, 0x19, 0xC, 0xA, 0x14, 0xF, },
 	{ { 2, 1, { 0x7294D7EC, 0x0, }, 2, { 0x0, 0x0, }, 0, }, 0x1E, 0xF, 0xA, 0x1E, 0xF, 0xA, 0x19, 0xF, },
 	{ { 2, 1, { 0x7294D7EC, 0x0, }, 4, { 0x0, 0x0, }, 0, }, 0x1E, 0xF, 0xA, 0x1E, 0xF, 0xA, 0x19, 0xF, },
 	{ { 2, 1, { 0x72D5DEEC, 0x0, }, 4, { 0x0, 0x0, }, 0, }, 0x1E, 0xF, 0xA, 0x1E, 0xF, 0xA, 0x14, 0xF, },
@@ -207,9 +225,14 @@ static nand_timing_info_t nand_timing_info[] = {
 	{ { 2, 1, { 0x3295EE98, 0x0, }, 8, { 0x0, 0x0, }, 0, }, 0x19, 0xC, 0xA, 0x19, 0xC, 0xA, 0x14, 0x19, },
 	{ { 2, 1, { 0x4604682C, 0x0, }, 4, { 0x0, 0x0, }, 0, }, 0x19, 0xC, 0xA, 0x19, 0xC, 0xA, 0x14, 0xF, },
 	{ { 2, 1, { 0xC605882C, 0x0, }, 4, { 0x0, 0x0, }, 0, }, 0x14, 0xA, 0x7, 0x14, 0xA, 0x7, 0x10, 0xF, },
+	{ { 2, 1, { 0xCB05A82C, 0x0, }, 4, { 0x0, 0x0, }, 0, }, 0x14, 0xA, 0x7, 0x14, 0xA, 0x7, 0x10, 0xF, },
+	{ { 2, 1, { 0x4B04882C, 0x0, }, 2, { 0x0, 0x0, }, 0, }, 0x14, 0xA, 0x7, 0x14, 0xA, 0x7, 0x10, 0xF, },
+	{ { 2, 1, { 0x4B04882C, 0x0, }, 4, { 0x0, 0x0, }, 0, }, 0x14, 0xA, 0x7, 0x14, 0xA, 0x7, 0x10, 0xF, },
 	{ { 2, 1, { 0x3295DE45, 0x0, }, 4, { 0x0, 0x0, }, 0, }, 0x19, 0xC, 0xA, 0x19, 0xC, 0xA, 0x14, 0x1E, },
 	{ { 2, 1, { 0x32944845, 0x0, }, 4, { 0x0, 0x0, }, 0, }, 0x19, 0xC, 0xA, 0x19, 0xC, 0xA, 0x14, 0x19, },
 	{ { 2, 1, { 0x32956845, 0x0, }, 4, { 0x0, 0x0, }, 0, }, 0x19, 0xC, 0xA, 0x19, 0xC, 0xA, 0x14, 0x19, },
+	{ { 2, 1, { 0x82942D45, 0x0, }, 2, { 0x0, 0x0, }, 0, }, 0x19, 0xC, 0xA, 0x19, 0xC, 0xA, 0x14, 0x19, },
+	{ { 2, 1, { 0x82944D45, 0x0, }, 4, { 0x0, 0x0, }, 0, }, 0x19, 0xC, 0xA, 0x19, 0xC, 0xA, 0x14, 0x19, },
 #endif
 #ifdef CONFIG_IPOD_TOUCH_4G
 	{ { 2, 1, { 0x7A94D7EC, 0, }, 2, { 0, 0, }, 0, }, 0x19, 0xC, 0xA, 0x19, 0xC, 0xA, 0x14, 0xF },
@@ -320,6 +343,7 @@ static h2fmi_struct_t *h2fmi_busses[] = {
 };
 
 #define H2FMI_BUS_COUNT (ARRAY_SIZE(h2fmi_busses))
+#define H2FMI_CE_PER_BUS (8)
 
 h2fmi_geometry_t h2fmi_geometry;
 static nand_device_t h2fmi_device = {
@@ -457,22 +481,21 @@ static void h2fmi_device_reset(h2fmi_struct_t *_fmi)
 
 static void h2fmi_enable_chip(h2fmi_struct_t *_fmi, uint8_t _chip)
 {
-	h2fmi_struct_t *chipFMI = (_chip & 0x8) ? &fmi1: &fmi0;
-	if(_fmi->bus_num == 0 && (_fmi->bitmap & 0xFF00))
+	h2fmi_struct_t *chipFMI = (_chip >> 3) ? &fmi1 : &fmi0;
+	if(_fmi->bus_num == 0 && ((uint16_t)_fmi->bitmap & 0xFF00))
 	{
-		h2fmi_struct_t *fmi = (_fmi == chipFMI) ? &fmi1: _fmi;
+		h2fmi_struct_t *fmi = (chipFMI->bus_num == 0) ? &fmi1 : &fmi0;
 		SET_REG(H2FMI_CHIP_MASK(fmi), 0);
 	}
 
-	uint32_t reg = H2FMI_CHIP_MASK(chipFMI);
-	SET_REG(reg, GET_REG(reg) | (1 << (_chip & 0x7)));
+	SET_REG(H2FMI_CHIP_MASK(chipFMI), (1 << (_chip % 8)));
 }
 
 static void h2fmi_disable_chip(uint8_t _chip)
 {
-	h2fmi_struct_t *fmi = (_chip & 0x8) ? &fmi1: &fmi0;
+	h2fmi_struct_t *fmi = (_chip >> 3) ? &fmi1 : &fmi0;
 	SET_REG(H2FMI_CHIP_MASK(fmi),
-			GET_REG(H2FMI_CHIP_MASK(fmi)) &~ (1 << (_chip & 0x7)));
+			GET_REG(H2FMI_CHIP_MASK(fmi)) & ~(1 << (_chip % 8)));
 }
 
 static void h2fmi_set_address_inner(h2fmi_struct_t *_fmi, uint32_t _addr)
@@ -1586,7 +1609,7 @@ int h2fmi_read_multi(h2fmi_struct_t *_fmi, uint16_t _num_pages, uint16_t *_chips
 uint32_t h2fmi_read_single(h2fmi_struct_t *_fmi, uint16_t _chip, uint32_t _page, uint8_t *_data, uint8_t *_wmr, uint8_t *_6, uint8_t *_7)
 {
 	//bufferPrintf("fmi: read_single.\r\n");
-	
+
 	DMASegmentInfo dataSegmentInfo = {
 		.ptr  = (uint32_t)_data,
 		.size = _fmi->bytes_per_page
@@ -1596,13 +1619,7 @@ uint32_t h2fmi_read_single(h2fmi_struct_t *_fmi, uint16_t _chip, uint32_t _page,
 		.size = _fmi->ecc_bytes
 		};
 	
-	// Calculate physical page number (according to banks layout).
-	uint32_t block = _page / h2fmi_geometry.pages_per_block;
-	block = (block % h2fmi_geometry.blocks_per_bank) + ((block / h2fmi_geometry.blocks_per_bank) * h2fmi_geometry.bank_address_space);
-	
-	uint32_t physPage = (block * h2fmi_geometry.pages_per_block) + (_page % h2fmi_geometry.pages_per_block);
-	
-	return h2fmi_read_multi(_fmi, 1, &_chip, &physPage, &dataSegmentInfo, &metaSegmentInfo, _6, _7);
+	return h2fmi_read_multi(_fmi, 1, &_chip, &_page, &dataSegmentInfo, &metaSegmentInfo, _6, _7);
 }
 
 static int h2fmi_write_set_ce(h2fmi_struct_t *_fmi)
@@ -2032,6 +2049,44 @@ static uint32_t h2fmi_aes_key_2[] = {
 	0xA579CCD3,
 };
 
+uint32_t h2fmi_emf = 0;
+uint32_t h2fmi_emf_iv_input = 0;
+void h2fmi_set_emf(uint32_t enable, uint32_t iv_input) {
+	h2fmi_emf = enable;
+	if(iv_input)
+		h2fmi_emf_iv_input = iv_input;
+}
+uint32_t h2fmi_get_emf() {
+	return h2fmi_emf;
+}
+
+static void h2fmi_aes_handler_emf(uint32_t _param, uint32_t _segment, uint32_t* _iv)
+{
+	uint32_t val = h2fmi_emf_iv_input;
+	uint32_t i;
+	for(i = 0; i < 4; i++)
+	{
+		if(val & 1)
+			val = (val >> 1) ^ 0x80000061;
+		else
+			val = (val >> 1);
+
+		_iv[i] = val;
+	}
+}
+
+static uint32_t* h2fmi_key = (uint32_t*) EMF;
+static AESKeyLen h2fmi_keylength = AES256;
+void h2fmi_set_key(uint32_t enable, void* key, AESKeyLen keyLen) {
+	if(enable) {
+		h2fmi_key = (uint32_t*) key;
+		h2fmi_keylength = keyLen;
+	} else {
+		h2fmi_key = (uint32_t*) EMF;
+		h2fmi_keylength = AES256;
+	}
+}
+
 uint32_t h2fmi_aes_enabled = 1;
 
 void h2fmi_set_encryption(uint32_t _arg) {
@@ -2052,6 +2107,22 @@ static void h2fmi_setup_aes(h2fmi_struct_t *_fmi, uint32_t _enabled, uint32_t _e
 			_fmi->aes_struct.key = h2fmi_aes_key_1;
 			_fmi->aes_struct.inverse = !_encrypt;
 			_fmi->aes_struct.type = 0; // AES-128
+			if(h2fmi_emf) {
+				_fmi->aes_struct.key = h2fmi_key;
+				_fmi->aes_struct.ivGenerator = h2fmi_aes_handler_emf;
+				switch(h2fmi_keylength) {
+					case AES128:
+						_fmi->aes_struct.type = 0 << 28;
+						break;
+					case AES192:
+						_fmi->aes_struct.type = 1 << 28;
+						break;
+					case AES256:
+						_fmi->aes_struct.type = 2 << 28;
+					default:
+						break;
+				}
+			}
 		}
 		else
 		{
@@ -2161,7 +2232,7 @@ error_t h2fmi_read_single_page(uint32_t _ce, uint32_t _page, uint8_t *_ptr, uint
 		ret = 0;
 	}
 	else if(read_ret == 2)
-		ret = 1;
+		ret = ENOENT;
 	else
 	{
 		bufferPrintf("fmi: read_single_page hardware error 0x%08x.\r\n", read_ret);
@@ -2566,7 +2637,11 @@ static void h2fmi_init_virtual_physical_map()
 	memset(h2fmi_map, 0xFF, sizeof(h2fmi_map));
 
 	uint32_t count[H2FMI_BUS_COUNT];
-	memset(count, 0, sizeof(count));
+
+	uint32_t i;
+	for (i = 0; i < H2FMI_BUS_COUNT; i++) {
+		count[i] = H2FMI_CE_PER_BUS * i;
+	}
 
 	uint16_t total = 0;
 	uint32_t bus;
@@ -2585,7 +2660,7 @@ static void h2fmi_init_virtual_physical_map()
 				e->bus = bus;
 				e->chip = count[bus];
 
-				fmi->field_1A2 = bus;
+				fmi->field_1A2[chip] = (uint8_t)count[bus];
 
 				chip++;
 			}
@@ -2597,10 +2672,10 @@ static void h2fmi_init_virtual_physical_map()
 
 // NAND Device Functions
 static error_t h2fmi_device_read_single_page(nand_device_t *_dev, uint32_t _chip, uint32_t _block,
-		uint32_t _page, uint8_t *_buffer, uint8_t *_spareBuffer)
+		uint32_t _page, uint8_t *_buffer, uint8_t *_spareBuffer, uint32_t disable_aes)
 {
 	return h2fmi_read_single_page(_chip, _block*h2fmi_geometry.pages_per_block + _page,
-			_buffer, _spareBuffer, NULL, NULL, 0);
+			_buffer, _spareBuffer, NULL, NULL, disable_aes);
 }
 
 static error_t h2fmi_device_write_single_page(nand_device_t *_dev, uint32_t _chip, uint32_t _block,
@@ -2608,6 +2683,11 @@ static error_t h2fmi_device_write_single_page(nand_device_t *_dev, uint32_t _chi
 {
 	return h2fmi_write_single_page(_chip, _block*h2fmi_geometry.pages_per_block + _page,
 			_buffer, _spareBuffer, 0);
+}
+
+static error_t h2fmi_device_erase_single_block(nand_device_t *_dev, uint32_t _chip, uint32_t _block)
+{
+	return h2fmi_erase_single_block(_chip, _block);
 }
 
 static error_t h2fmi_device_enable_encryption(nand_device_t *_dev, int _enabled)
@@ -2620,27 +2700,6 @@ static error_t h2fmi_device_enable_data_whitening(nand_device_t *_dev, int _enab
 {
 	h2fmi_data_whitening_enabled = _enabled;
 	return SUCCESS;
-}
-
-static inline void auto_store(void *_ptr, size_t _sz, uint32_t _val)
-{
-	switch(_sz)
-	{
-	case 0:
-		return;
-
-	case 1:
-		*((uint8_t*)_ptr) = _val;
-		return;
-
-	case 2:
-		*((uint16_t*)_ptr) = _val;
-		return;
-
-	case 4:
-		*((uint32_t*)_ptr) = _val;
-		return;
-	}
 }
 
 static error_t h2fmi_device_get_info(device_t *_dev, device_info_t _info, void *_result, size_t _size)
@@ -2749,6 +2808,10 @@ static error_t h2fmi_device_get_info(device_t *_dev, device_info_t _info, void *
 	case diNumCE:
 		auto_store(_result, _size, h2fmi_geometry.num_ce);
 		return SUCCESS;
+		
+	case diBankAddressSpace:
+		auto_store(_result, _size, h2fmi_geometry.bank_address_space);
+		return SUCCESS;
 
 	default:
 		return ENOENT;
@@ -2776,13 +2839,117 @@ static error_t h2fmi_device_set_info(device_t *_dev, device_info_t _info, void *
 	}
 }
 
+static void h2fmi_device_set_ftl_region(uint32_t _lpn, uint32_t _a2, uint32_t _count, void* _buf)
+{
+	h2fmi_ftl_count = _count;
+	h2fmi_ftl_databuf = (uint32_t)_buf;
+	h2fmi_ftl_smth[0] = _lpn;
+	h2fmi_ftl_smth[1] = _a2;
+}
+
+static void h2fmi_get_encryption_keys() {
+#if !defined(CONFIG_IPAD_1G)
+	uint8_t* buffer = memalign(DMA_ALIGN, h2fmi_geometry.bytes_per_page);
+	PLog* plog = (PLog*)buffer;
+	uint32_t ce;
+	uint32_t page = h2fmi_geometry.pages_per_block + 16;
+	for (ce = 0; ce < h2fmi_geometry.num_ce; ce++) {
+		h2fmi_read_single_page(ce, page, buffer, NULL, NULL, NULL, 1);
+		if(plog->locker.locker_magic == 0x4c6b) // 'kL'
+			break;
+		if(ce == h2fmi_geometry.num_ce - 1) {
+			free(buffer);
+			return;
+		}
+	}
+	LockerEntry* locker = &plog->locker;
+#else
+	mtd_t *imagesDevice = NULL;
+	mtd_t *dev = NULL;
+	while((dev = mtd_find(dev)))
+	{
+		if(dev->usage == mtd_boot_images)
+		{
+			imagesDevice = dev;
+			break;
+		}
+	}
+	if(!imagesDevice)
+		return;
+	dev = imagesDevice;
+
+	LockerEntry* locker = NULL;
+
+	mtd_prepare(dev);
+	uint8_t* buffer = malloc(0x2000);
+	mtd_read(dev, buffer, 0xFA000, 0x2000);
+	mtd_finish(dev);
+	uint32_t generation = 0;
+	uint32_t i;
+	for(i = 0; i < 0x2000; i += 0x400) {
+		PLog* plog = (PLog*)(buffer+i);
+		if(plog->locker.locker_magic == 0xffff)
+			continue;
+		if(plog->locker.locker_magic != 0x4c6b) // 'kL'
+			continue;
+		if(generation < plog->generation) {
+			generation = plog->generation;
+			locker = &plog->locker;
+		}
+	}
+	if(!locker) {
+		free(buffer);
+		return;
+	}
+#endif
+	bufferPrintf("h2fmi: Found Plog\r\n");
+
+	memset(EMF, 0, sizeof(EMF));
+	memset(DKey, 0, sizeof(DKey));
+
+	uint8_t emf_found = 0;
+	uint8_t dkey_found = 0;
+	while(TRUE) {
+		if(locker->length == 0 || (dkey_found && emf_found))
+			break;
+
+		if(!memcmp(locker->identifier, "yek", 3)) {
+			dkey_found = 1;
+			bufferPrintf("h2fmi: Found Dkey\r\n");
+			aes_835_unwrap_key(DKey, locker->key, locker->length, NULL);
+		}
+
+		if(!memcmp(locker->identifier, "!FM", 3)) {
+			emf_found = 1;
+			bufferPrintf("h2fmi: Found EMF\r\n");
+			EMFKey* emf = (EMFKey*)(locker->key);
+			memcpy((uint8_t*)EMF, emf->key, emf->length);
+			aes_89B_decrypt(EMF, sizeof(EMF), NULL);
+		}
+
+		// Does only work when there's only one encrypted partition.
+		if(!memcmp(locker->identifier, "MVwL", 4)) {
+			emf_found = 1;
+			bufferPrintf("h2fmi: Found LwVM\r\n");
+			aes_89B_decrypt(locker->key, locker->length, NULL);
+			LwVMKey* lwvmkey = (LwVMKey*)locker->key;
+			memcpy(EMF, lwvmkey->key, sizeof(EMF));
+		}
+
+		locker = (LockerEntry*)(((uint8_t*)locker->key)+(locker->length));
+	}
+	free(buffer);
+}
+
 static void h2fmi_init_device()
 {
 	nand_device_init(&h2fmi_device);
 	h2fmi_device.read_single_page = h2fmi_device_read_single_page;
 	h2fmi_device.write_single_page = h2fmi_device_write_single_page;
+	h2fmi_device.erase_single_block = h2fmi_device_erase_single_block;
 	h2fmi_device.enable_encryption = h2fmi_device_enable_encryption;
 	h2fmi_device.enable_data_whitening = h2fmi_device_enable_data_whitening;
+	h2fmi_device.set_ftl_region = h2fmi_device_set_ftl_region;
 	h2fmi_device.device.get_info = h2fmi_device_get_info;
 	h2fmi_device.device.set_info = h2fmi_device_set_info;
 	nand_device_register(&h2fmi_device);
@@ -2798,6 +2965,8 @@ static void h2fmi_init_device()
 		bufferPrintf("fmi: Failed to open FTL!\r\n");
 		return;
 	}
+
+	h2fmi_get_encryption_keys();
 }
 
 int isPPN = 0;
@@ -2962,7 +3131,7 @@ void h2fmi_init()
 			h2fmi_geometry.pages_per_ce
 				= h2fmi_geometry.banks_per_ce_vfl * h2fmi_geometry.pages_per_block;
 			h2fmi_geometry.unk1C = info->chip_info->unk7;
-			h2fmi_geometry.vendor_type = info->board_info->unk1;
+			h2fmi_geometry.vendor_type = info->board_info->vendor_type;
 
 		}
 
@@ -3112,20 +3281,70 @@ COMMAND("nand_erase", "H2FMI NAND erase single block", cmd_nand_erase);
 
 static void cmd_vfl_read(int argc, char** argv)
 {
-	if(argc < 5)
+	if(argc < 6)
 	{
-		bufferPrintf("Usage: %s [page] [data] [metadata] [empty_ok]\r\n", argv[0]);
+		bufferPrintf("Usage: %s [page] [data] [metadata] [empty_ok] [disable_aes]\r\n", argv[0]);
 		return;
 	}
-	
+
 	uint32_t page = parseNumber(argv[1]);
 	uint32_t data = parseNumber(argv[2]);
 	uint32_t meta = parseNumber(argv[3]);
 	uint32_t empty_ok = parseNumber(argv[4]);
+	uint32_t disable_aes = parseNumber(argv[5]);
 
 	uint32_t ret = vfl_read_single_page(h2fmi_vfl_device, page,
-			(uint8_t*)data, (uint8_t*)meta, empty_ok, NULL);
+			(uint8_t*)data, (uint8_t*)meta, empty_ok, NULL, disable_aes);
 
 	bufferPrintf("vfl: Command completed with result 0x%08x.\r\n", ret);
 }
 COMMAND("vfl_read", "VFL read single page", cmd_vfl_read);
+
+void cmd_vfl_erase(int argc, char** argv)
+{
+	bufferPrintf("Disabled for now.\r\n");
+	return;
+
+	if (argc < 3) {
+		bufferPrintf("Usage: %s [block] [replace if bad]\r\n", argv[0]);
+		return;
+	}
+
+	uint32_t block = parseNumber(argv[1]);
+	uint32_t replace = parseNumber(argv[2]);
+
+	uint32_t ret = vfl_erase_single_block(h2fmi_vfl_device, block, replace);
+
+	bufferPrintf("vfl: Command completed with result 0x%08x.\r\n", ret);
+}
+COMMAND("vfl_erase", "VFL erase single block", cmd_vfl_erase);
+
+static void cmd_ftl_read(int argc, char** argv)
+{
+	if(argc < 3)
+	{
+		bufferPrintf("Usage: %s [page] [data]\r\n", argv[0]);
+		return;
+	}
+
+	uint32_t page = parseNumber(argv[1]);
+	uint32_t data = parseNumber(argv[2]);
+
+	uint32_t ret = ftl_read_single_page(h2fmi_ftl_device, page, (uint8_t*)data);
+
+	bufferPrintf("ftl: Command completed with result 0x%08x.\r\n", ret);
+}
+COMMAND("ftl_read", "FTL read single page", cmd_ftl_read);
+
+static void cmd_emf_enable(int argc, char** argv)
+{
+	if(argc < 2)
+	{
+		bufferPrintf("Usage: %s [enable]", argv[0]);
+		return;
+	}
+
+	h2fmi_set_emf(parseNumber(argv[1]), 0);
+	bufferPrintf("h2fmi: set emf setting\r\n");
+}
+COMMAND("emf_enable", "EMF enable", cmd_emf_enable);

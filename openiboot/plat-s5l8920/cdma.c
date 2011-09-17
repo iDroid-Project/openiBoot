@@ -1,12 +1,15 @@
 #include "openiboot.h"
 #include "arm/arm.h"
 #include "util.h"
+#include "malloc.h"
 #include "hardware/dma.h"
 #include "cdma.h"
 #include "clock.h"
 #include "timer.h"
 #include "interrupt.h"
 #include "mmu.h"
+#include "tasks.h"
+#include "commands.h"
 
 typedef struct segmentBuffer {
 	uint32_t address;
@@ -23,7 +26,7 @@ typedef struct DMAInfo {
 	segmentBuffer* segmentBuffer;
 	uint32_t dmaSegmentNumber;
 	uint32_t unsegmentedSize;
-	uint32_t segmentationSetting;
+	DMASegmentInfo* segmentsInfo;
 	uint32_t segmentOffset;
 	uint32_t previousSegmentOffset;
 	uint32_t previousDmaSegmentNumber;
@@ -73,7 +76,7 @@ int dma_channel_activate(int channel, uint32_t activate) {
 	return 0;
 }
 
-signed int dma_init_channel(uint8_t direction, uint32_t channel, int segmentationSetting, uint32_t txrx_register, uint32_t size, uint32_t Setting1Index, uint32_t Setting2Index, void* handler) {
+signed int dma_init_channel(uint8_t direction, uint32_t channel, DMASegmentInfo* segmentsInfo, uint32_t txrx_register, uint32_t size, uint32_t Setting1Index, uint32_t Setting2Index, void* handler) {
 	int i = 0;
 	DMAInfo* dma = &dmaInfo[channel];
 
@@ -100,7 +103,7 @@ signed int dma_init_channel(uint8_t direction, uint32_t channel, int segmentatio
 
 	dma->irq_state = 0;
 	dma->dmaSegmentNumber = 0;
-	dma->segmentationSetting = segmentationSetting;
+	dma->segmentsInfo = segmentsInfo;
 	dma->segmentOffset = 0;
 	dma->dataSize = size;
 	dma->unsegmentedSize = size;
@@ -182,7 +185,6 @@ void dma_continue_async(int channel) {
 
 	//bufferPrintf("cdma: continue_async.\r\n");
 
-	uint32_t endOffset;
 	uint8_t segmentId;
 	uint32_t segmentLength;
 	uint32_t value;
@@ -194,11 +196,9 @@ void dma_continue_async(int channel) {
 	dma->previousUnsegmentedSize = dma->unsegmentedSize;
 	dma->previousDmaSegmentNumber = dma->dmaSegmentNumber;
 	dma->previousSegmentOffset = dma->segmentOffset;
-
 	if (dma->dmaAESInfo)
 	{
-		endOffset = dma->segmentationSetting + 8 * dma->dmaSegmentNumber;
-		for (segmentId = 0; segmentId != 28;) {
+		for (segmentId = 0; segmentId < 28;) {
 			if (!dma->unsegmentedSize)
 				break;
 
@@ -209,13 +209,13 @@ void dma_continue_async(int channel) {
 			segmentLength = 0;
 
 			int encryptedSegmentOffset;
-			int encryptedSegmentOffsetEnd = 0;
-			for (encryptedSegmentOffset = 0; encryptedSegmentOffset < dma->dmaAESInfo->dataSize; encryptedSegmentOffset += segmentLength) {
-				encryptedSegmentOffsetEnd = dma->dmaAESInfo->dataSize;
+			int encryptedSegmentOffsetEnd = dma->dmaAESInfo->dataSize;
+
+			for (encryptedSegmentOffset = 0; encryptedSegmentOffset < encryptedSegmentOffsetEnd; encryptedSegmentOffset += segmentLength) {
 				if (encryptedSegmentOffset >= encryptedSegmentOffsetEnd)
 					break;
 
-				segmentLength = endOffset + 4 - dma->segmentOffset;
+				segmentLength = dma->segmentsInfo[dma->dmaSegmentNumber].size - dma->segmentOffset;
 				if (encryptedSegmentOffset + segmentLength > encryptedSegmentOffsetEnd)
 					segmentLength = encryptedSegmentOffsetEnd - encryptedSegmentOffset;
 
@@ -224,7 +224,7 @@ void dma_continue_async(int channel) {
 					value = 0x30003;
 
 				dma->segmentBuffer[segmentId].value = value;
-				dma->segmentBuffer[segmentId].offset = dma->segmentOffset + endOffset;
+				dma->segmentBuffer[segmentId].offset = dma->segmentsInfo[dma->dmaSegmentNumber].ptr + dma->segmentOffset;
 				dma->segmentBuffer[segmentId].length = segmentLength;
 
 				if (!segmentLength)
@@ -232,9 +232,8 @@ void dma_continue_async(int channel) {
 
 				dma->segmentOffset += segmentLength;
 
-				if (dma->segmentOffset >= endOffset + 4)
+				if (dma->segmentOffset >= dma->segmentsInfo[dma->dmaSegmentNumber].size)
 				{
-					endOffset += 8;
 					++dma->dmaSegmentNumber;
 					dma->segmentOffset = 0;
 				}
@@ -251,10 +250,10 @@ void dma_continue_async(int channel) {
 		dma->segmentBuffer[segmentId].value = 0;
 	} else {
 		for (segmentId = 0; segmentId < 31; segmentId++) {
-			int segmentLength = dma->segmentationSetting + 8 * dma->dmaSegmentNumber + 4 - dma->segmentOffset;
+			int segmentLength = dma->segmentsInfo[dma->dmaSegmentNumber].size - dma->segmentOffset;
 
 			dma->segmentBuffer[segmentId].value = 3;
-			dma->segmentBuffer[segmentId].offset = dma->segmentationSetting + 8 * dma->dmaSegmentNumber + dma->segmentOffset;
+			dma->segmentBuffer[segmentId].offset = dma->segmentsInfo[dma->dmaSegmentNumber].ptr + dma->segmentOffset;
 			dma->segmentBuffer[segmentId].length = segmentLength;
 
 			if (!segmentLength)
@@ -272,10 +271,13 @@ void dma_continue_async(int channel) {
 			dma->dmaSegmentNumber++;
 		}
 
-		dma->segmentBuffer[segmentId+1].value = 0;
+		if (segmentId == 31)
+			dma->segmentBuffer[31].value = 0;
+		else
+			dma->segmentBuffer[segmentId+1].value = 0;
 	}
 
-	DataCacheOperation(1, (uint32_t)dma->segmentBuffer, 32 * sizeof(*dma->segmentBuffer));
+	DataCacheOperation(1, (uint32_t)dma->segmentBuffer, 32 * (segmentId + 2));
 
 	uint32_t channel_reg = channel << 12;
 	SET_REG(DMA + channel_reg + 0x14, get_physical_address((uint32_t)dma->segmentBuffer));
@@ -283,7 +285,7 @@ void dma_continue_async(int channel) {
 	value = 0x1C0009;
 
 	if (dma->dmaAESInfo)
-		value |= (dma->dmaAES_channel << 8);
+		value |= (uint8_t)(dma->dmaAES_channel) << 8;
 
 	//bufferPrintf("cdma: continue async 0x%08x.\r\n", value);
 	SET_REG(DMA + channel_reg, value);
@@ -292,7 +294,7 @@ void dma_continue_async(int channel) {
 int dma_set_aes(int channel, dmaAES* dmaAESInfo) {
 	//bufferPrintf("cdma: set_aes.\r\n");
 
-    DMAInfo* dma = &dmaInfo[channel];
+	DMAInfo* dma = &dmaInfo[channel];
 	uint32_t value;
 	int i;
 
@@ -319,8 +321,11 @@ int dma_set_aes(int channel, dmaAES* dmaAESInfo) {
 
 	uint32_t dmaAES_channel_reg = dma->dmaAES_channel << 12;
 
-	value = ((channel & 0xFF) << 8) | 0x20000;
-	if (!(dma->dmaAESInfo->inverse & 0xF))
+	value = (channel & 0xFF) << 8;
+
+	if (dma->dmaAESInfo->inverse & 0xF)
+		value |= 0x20000;
+	else
 		value |= 0x30000;
 
 	switch(GET_BITS(dma->dmaAESInfo->type, 28, 4))
@@ -436,8 +441,8 @@ void dmaIRQHandler(uint32_t token) {
 			dma->unsegmentedSize = GET_REG(DMA + DMA_SIZE + channel_reg) + dma->unsegmentedSize;
 			wholeSegment = dma->previousUnsegmentedSize - dma->unsegmentedSize;
 
-			for (segmentId = 0; segmentId != 32; segmentId++) {
-				currentSegment = GET_REG(8 * (dma->previousDmaSegmentNumber + segmentId) + dma->segmentationSetting + 4) - dma->previousSegmentOffset;
+			for (segmentId = 0; segmentId < 32; segmentId++) {
+				currentSegment = dma->segmentsInfo[dma->previousDmaSegmentNumber + segmentId].size - dma->previousSegmentOffset;
 				if (wholeSegment <= currentSegment)
 					break;
 				wholeSegment -= currentSegment;
@@ -464,3 +469,294 @@ void dmaIRQHandler(uint32_t token) {
 			dma->handler(dma->channel);
 	}
 }
+static dmaAES_CRYPTO *aes_crypto = NULL; // first one is not used. lol.
+
+uint32_t aes_hw_crypto_operation(uint32_t _arg0, uint32_t _channel, uint32_t *_buffer, uint32_t _arg3, uint32_t _size, uint32_t _arg5, uint32_t _arg6, uint32_t _arg7) {
+	uint32_t unkn0;
+	uint32_t value = 0;
+	uint32_t channel_reg = _channel << 12;
+
+	SET_REG(DMA + channel_reg, 2);
+
+	aes_crypto[_channel].buffer = _buffer;
+	aes_crypto[_channel].unkn0 = &aes_crypto[_channel].unkn8;
+	aes_crypto[_channel].unkn1 = (_arg7 ? 0x30103 : 0x103);
+	aes_crypto[_channel].size = _size;
+	aes_crypto[_channel].unkn9 = 0;
+
+	if(_arg0) {
+		switch(_arg5)
+		{
+			case 1:
+				value |= (0 << 2);
+				break;
+			case 2:
+				value |= (1 << 2);
+				break;
+			case 4:
+				value |= (2 << 2);
+				break;
+			default:
+				return -1;
+		}
+
+		switch(_arg6)
+		{
+			case 1:
+				value |= (0 << 4);
+				break;
+			case 2:
+				value |= (1 << 4);
+				break;
+			case 4:
+				value |= (2 << 4);
+				break;
+			case 8:
+				value |= (3 << 4);
+				break;
+			case 16:
+				value |= (4 << 4);
+				break;
+			case 32:
+				value |= (5 << 4);
+				break;
+			default:
+				return -1;
+		}
+		if(_arg0 == 1)
+			value |= 2;
+		unkn0 = 0;
+		SET_REG(DMA + channel_reg + DMA_SETTINGS, value);
+		SET_REG(DMA + channel_reg + DMA_TXRX_REGISTER, _arg3);
+	} else {
+		unkn0 = 128;
+	}
+	DataCacheOperation(1, (uint32_t)&aes_crypto[_channel], 0x20);
+	SET_REG(DMA + channel_reg + DMA_SIZE, _size);
+	SET_REG(DMA + channel_reg + 0x14, (uint32_t)&aes_crypto[_channel]);
+	SET_REG(DMA + channel_reg, (unkn0 | (_arg7 << 8) | 0x1C0000));
+	return 0;
+}
+
+void wait_for_dma_channel(uint32_t channel) {
+	uint32_t channel_reg = channel << 12;
+	while(GET_BITS(GET_REG(DMA + channel_reg), 16, 2) == 1)
+		task_yield();
+}
+
+uint32_t aes_hw_crypto_cmd(uint32_t _encrypt, uint32_t *_inBuf, uint32_t *_outBuf, uint32_t _size, uint32_t _type, uint32_t* _key, uint32_t *_iv) {
+	uint32_t value = 0;
+
+	clock_gate_switch(0x14, ON);
+	dma_channel_activate(1, 1);
+	dma_channel_activate(2, 1);
+
+	uint32_t channel = 1;
+	uint32_t channel_reg = channel << 12;
+	value = (channel & 0xFF) << 8;
+
+	if(_size & 0xF)
+		system_panic("aes_hw_crypto_cmd: bad arguments\r\n");
+
+	if(_encrypt & 0xF0) {
+		if((_encrypt & 0xF0) != 0x10)
+			system_panic("aes_hw_crypto_cmd: bad arguments\r\n");
+		value |= (1 << 17);
+	}
+
+	if(_encrypt & 0xF) {
+		if((_encrypt & 0xF) != 1)
+			system_panic("aes_hw_crypto_cmd: bad arguments\r\n");
+	} else {
+		value |= (1 << 16);
+	}
+
+	if(_iv) {
+		SET_REG(0x87801010, _iv[0]);
+		SET_REG(0x87801014, _iv[1]);
+		SET_REG(0x87801018, _iv[2]);
+		SET_REG(0x8780101C, _iv[3]);
+	} else {
+		SET_REG(0x87801010, 0);
+		SET_REG(0x87801014, 0);
+		SET_REG(0x87801018, 0);
+		SET_REG(0x8780101C, 0);
+	}
+
+	uint32_t key_shift = 0;
+	uint32_t key_set = 0;
+	if ((_type & 0xFFF) == 0) {
+		switch(GET_BITS(_type, 28, 4))
+		{
+			case 2:	// AES 256
+				value |= (2 << 18);
+				break;
+
+			case 1:	// AES 192
+				value |= (1 << 18);
+				break;
+
+			case 0:	// AES 128
+				value |= (0 << 18);
+				break;
+
+			default:// Fail
+				system_panic("aes_hw_crypto_cmd: bad arguments\r\n");
+		}
+		switch(GET_BITS(_type, 28, 4)) {
+			case 2:				// AES 256
+				SET_REG(DMA + DMA_AES + DMA_AES_KEY_7 + channel_reg, _key[7]);
+				SET_REG(DMA + DMA_AES + DMA_AES_KEY_6 + channel_reg, _key[6]);
+			case 1:				// AES 192
+				SET_REG(DMA + DMA_AES + DMA_AES_KEY_5 + channel_reg, _key[5]);
+				SET_REG(DMA + DMA_AES + DMA_AES_KEY_4 + channel_reg, _key[4]);
+			case 0:				// AES 128
+				SET_REG(DMA + DMA_AES + DMA_AES_KEY_3 + channel_reg, _key[3]);
+				SET_REG(DMA + DMA_AES + DMA_AES_KEY_2 + channel_reg, _key[2]);
+				SET_REG(DMA + DMA_AES + DMA_AES_KEY_1 + channel_reg, _key[1]);
+				SET_REG(DMA + DMA_AES + DMA_AES_KEY_0 + channel_reg, _key[0]);
+				break;
+			default:			// Fail
+				system_panic("aes_hw_crypto_cmd: bad arguments\r\n");
+		}
+		key_set = 1;
+	} else {
+		if ((_type & 0xFFF) == 512) {
+			key_shift = 1; // still broken
+		} else if ((_type & 0xFFF) == 513) {
+			key_shift = 0;
+		} else {
+			key_shift = 2; // wrong I guess but never used
+		}
+		// Key deactivated?
+		if(GET_REG(DMA + DMA_AES) & (1 << key_shift))
+			return -1;
+	}
+
+	if(key_shift)
+		value |= 1 << 19;
+
+	value |= (key_set << 20) | (key_shift << 21);
+	SET_REG(DMA + DMA_AES + channel_reg, value);
+
+	if(aes_hw_crypto_operation(0, 1, _inBuf, 0, _size, 0, 0, 1) || aes_hw_crypto_operation(0, 2, _outBuf, 0, _size, 0, 0, 0))
+		system_panic("aes_hw_crypto_cmd: bad arguments\r\n");
+
+	DataCacheOperation(1, (uint32_t)_inBuf, _size);
+	DataCacheOperation(3, (uint32_t)_outBuf, _size);
+	SET_REG(DMA + (1 << 12), GET_REG(DMA + (1 << 12)) | 1);
+	SET_REG(DMA + (2 << 12), GET_REG(DMA + (2 << 12)) | 1);
+
+	wait_for_dma_channel(1);
+	wait_for_dma_channel(2);
+
+	if(key_set)
+	{
+		SET_REG(DMA + DMA_AES + channel_reg + DMA_AES_KEY_0, 0);
+		SET_REG(DMA + DMA_AES + channel_reg + DMA_AES_KEY_1, 0);
+		SET_REG(DMA + DMA_AES + channel_reg + DMA_AES_KEY_2, 0);
+		SET_REG(DMA + DMA_AES + channel_reg + DMA_AES_KEY_3, 0);
+		SET_REG(DMA + DMA_AES + channel_reg + DMA_AES_KEY_4, 0);
+		SET_REG(DMA + DMA_AES + channel_reg + DMA_AES_KEY_5, 0);
+		SET_REG(DMA + DMA_AES + channel_reg + DMA_AES_KEY_6, 0);
+		SET_REG(DMA + DMA_AES + channel_reg + DMA_AES_KEY_7, 0);
+	}
+
+	dma_channel_activate(1, 0);
+	dma_channel_activate(2, 0);
+
+	return 0;
+}
+
+uint32_t aes_crypto_cmd(uint32_t _encrypt, void *_inBuf, void *_outBuf, uint32_t _size, uint32_t _type, void *_key, void *_iv) {
+	if(_size & 0xF || (!(_type & 0xFFF) && (_key == NULL)) || (_encrypt & 0xF) > 1) {
+		bufferPrintf("aes_crypto_cmd: bad arguments\r\n");
+		return -1;
+	}
+
+	aes_crypto = memalign(DMA_ALIGN, sizeof(dmaAES_CRYPTO) * 3);
+	if (!aes_crypto) {
+		bufferPrintf("aes_crypto_cmd: out of memory\r\n");
+		return -1;
+	}
+
+	if(aes_hw_crypto_cmd(_encrypt, (uint32_t*)_inBuf, (uint32_t*)_outBuf, _size, _type, (uint32_t*)_key, (uint32_t*)_iv)) {
+		free(aes_crypto);
+		return -1;
+	}
+
+	free(aes_crypto);
+	return 0;
+}
+
+static void cmd_cdma_aes(int argc, char** argv)
+{
+	uint8_t* key = NULL;
+	uint32_t keyLength;
+	uint32_t keyType;
+	uint8_t* iv = NULL;
+	uint32_t ivLength;
+
+	if(argc < 6) {
+		bufferPrintf("Usage: %s [enc/dec] [inBuf] [outBuf] [size] [gid/uid/key] [iv]\r\n", argv[0]);
+		return;
+	}
+
+	uint32_t *inBuf = (uint32_t*)parseNumber(argv[2]);
+	uint32_t *outBuf = (uint32_t*)parseNumber(argv[3]);
+	uint32_t size = parseNumber(argv[4]);
+
+	if(strcmp(argv[5], "gid") == 0)
+	{
+		keyType = 512 | (2 << 28);
+	}
+	else if(strcmp(argv[5], "uid") == 0)
+	{
+		keyType = 513 | (2 << 28);
+	}
+	else
+	{
+		hexToBytes(argv[5], &key, (int*)&keyLength);
+		switch(keyLength*8)
+		{
+			case 128:
+				keyType = 0 << 28;
+				break;
+			case 192:
+				keyType = 1 << 28;
+				break;
+			case 256:
+				keyType = 2 << 28;
+				break;
+			default:
+				bufferPrintf("Usage: %s [enc/dec] [inBuf] [outBuf] [size] [gid/uid/key] [iv]\r\n", argv[0]);
+				goto return_free;
+		}
+	}
+
+	if(argc > 6)
+	{
+		hexToBytes(argv[6], &iv, (int*)&ivLength);
+	}
+
+	if(strcmp(argv[1], "enc") == 0)
+	{
+		aes_crypto_cmd(0x10, inBuf, outBuf, size, keyType, key, iv);
+	}
+	else if(strcmp(argv[1], "dec") == 0)
+	{
+		aes_crypto_cmd(0x11, inBuf, outBuf, size, keyType, key, iv);
+	}
+	else
+	{
+		bufferPrintf("Usage: %s [enc/dec] [inBuf] [outBuf] [size] [gid/uid/key] [iv]\r\n", argv[0]);
+	}
+
+return_free:
+	if (key)
+		free(key);
+
+	if (iv)
+		free(iv);
+}
+COMMAND("cdma_aes", "use hw crypto on a buffer", cmd_cdma_aes);

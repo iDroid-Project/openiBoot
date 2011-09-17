@@ -15,6 +15,8 @@ iDroid Project openiBoot
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+NOTE: Version 0.3 and above will not boot iDroid 2.6.32 series kernels without additional parameters being passed to the kernel.
+
 Compiling
 ---------------------------------------------------
 **Build an ARM toolchain (this only needs to be done once - for subsequent builds this step can be omitted unless there has been a toolchain update):**
@@ -74,6 +76,7 @@ Change into the openiboot subfolder
 Running/Installing
 ---------------------------------------------------
 **If you're on linux, you'll need to install the following as /etc/udev/rules.d/51-android.rules:**
+
 	SUBSYSTEM=="usb" ID_VENDOR_ID=="0bb4", MODE="0666"
 	SUBSYSTEM=="usb" ID_VENDOR_ID=="18d1", MODE="0666"
 	SUBSYSTEM=="usb" ID_VENDOR_ID=="05ac", MODE="0666"
@@ -83,10 +86,10 @@ Running/Installing
 *NOTE: For the 3GS, iPhone4, iPad and Apple TV 2G, you must put your device into DFU mode instead.*
 
 **For iPhone 2G, iPhone 3G & iPod Touch 1G run (substituting *device* and *revision* with the actual device, for example: iphone_3g_openiboot.img3):** 
-`../utils/syringe/loadibec device_revision_openiboot.img3`
+`../utils/syringe/utilities/loadibec device_revision_openiboot.img3`
 
 **For newer devices run: (substituting *device* and *revision* with the actual device, for example: iphone_4_openiboot.bin):**
-`../utils/syringe/loadibec device_revision_openiboot.bin`
+`../utils/syringe/utilities/loadibec device_revision_openiboot.bin`
 
 You should now see openiBoot on your phone, use the volume buttons to scroll to the console icon, then press home
 
@@ -101,6 +104,23 @@ You should now see the same output on your computer, as is on your phone's scree
 `install` and press return
 
 OpeniBoot will then be flashed to your device's NOR - This will take a while, your NOR will be backed up during this process, and can be found in the current directory as norbackup.dump.
+
+Menu Configuration
+---------------------------------------------------
+As of version 0.3 OpeniBoot now has a grub-style configurable menu system, OpeniBoot looks for /boot/menu.lst at boot.
+Below is an example menu.lst - put it in /boot (This section will be expanded upon at a later date, when newer device ports are further ahead)
+
+	title iOS
+	auto
+
+	title Android
+	kernel "(hd0,1)/idroid/zImage" "console=tty root=/dev/ram0 init=/init rw"
+	initrd "(hd0,1)/idroid/android.img.gz"
+
+	title iX
+	kernel "(hd0,1)/iX/zImage" "console=tty root=/dev/ram0 init=/init rw"
+	initrd "(hd0,1)/iX/initrd.img.gz"
+
 
 Reporting issues/requesting features
 --------------------------------------------------
