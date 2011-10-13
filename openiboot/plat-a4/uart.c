@@ -114,7 +114,7 @@ void uartIRQHandler(uint32_t token) {
 void uart_printf_handler(const char *_text)
 {
 	if(UartHasInit)
-		uart_write(0, _text, strlen(_text));
+		uartPrint(_text);
 
 	if(prev_printf_handler)
 		prev_printf_handler(_text);
@@ -289,7 +289,7 @@ int uart_set_baud_rate(int ureg, uint32_t baud) {
 	if(ureg >= NUM_UARTS)
 		return -1; // Invalid ureg
 
-	uint32_t clockFrequency = (UARTs[ureg].clock == UART_CLOCK_PCLK) ? PeripheralFrequency : FixedFrequency;
+	uint32_t clockFrequency = (UARTs[ureg].clock == UART_CLOCK_PCLK) ? clock_get_frequency(FrequencyBasePeripheral) : clock_get_frequency(FrequencyBaseFixed);
 	uint32_t div_val = clockFrequency / (baud * UARTs[ureg].sample_rate) - 1;
 
 	SET_REG(HWUarts[ureg].UBAUD, (GET_REG(HWUarts[ureg].UBAUD) & (~UART_DIVVAL_MASK)) | div_val);

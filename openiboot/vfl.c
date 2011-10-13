@@ -75,6 +75,15 @@ error_t vfl_read_single_page(vfl_device_t *_vfl, uint32_t _page, uint8_t* buffer
 	return _vfl->read_single_page(_vfl, _page, buffer, spare, empty_ok, refresh_page, disable_aes);
 }
 
+error_t vfl_write_single_page(vfl_device_t *_vfl, uint32_t _page, uint8_t* buffer, uint8_t* spare,
+		int _scrub)
+{
+	if(!_vfl->write_single_page)
+		return ENOENT;
+
+	return _vfl->write_single_page(_vfl, _page, buffer, spare, _scrub);
+}
+
 error_t vfl_erase_single_block(vfl_device_t *_vfl, uint32_t _block, int _replace_bad_block)
 {
 	if(!_vfl->erase_single_block)
@@ -124,7 +133,9 @@ error_t vfl_detect(vfl_device_t **_vfl, nand_device_t *_nand, vfl_signature_styl
 	if(FAILED(ret))
 		return ret;
 
-	if(sigbuf[0] != ('0' + chipid_get_nand_epoch()) || sigbuf[3] != 'C'
+
+	// Starting from iOS5 there's a change in behaviour at chipid_get_nand_epich().
+	if((!chipid_get_nand_epoch() && sigbuf[0] != '1' && sigbuf[0] != '2') || sigbuf[3] != 'C'
 			|| sigbuf[1] > '1' || sigbuf[2] > '1'
 			 || sigbuf[4] > 6)
 	{

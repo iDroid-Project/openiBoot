@@ -22,7 +22,7 @@ uint32_t TicksPerSec;
 
 uint32_t ClockSDiv;
 
-int clock_setup() {
+error_t clock_setup() {
 	uint32_t config;
 
 	config = GET_REG(CLOCK1 + CLOCK1_CONFIG0);
@@ -157,8 +157,7 @@ int clock_setup() {
 	TimebaseFrequency = FREQUENCY_BASE / 2;
 
 	TicksPerSec = FREQUENCY_BASE;
-
-	return 0;
+	return SUCCESS;
 }
 
 void clock_gate_switch(uint32_t gate, OnOff on_off) {

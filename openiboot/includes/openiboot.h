@@ -148,14 +148,25 @@ extern TaskDescriptor* CurrentRunning;
  *	Macros
  */
 
-#define GET_REG(x) (*((volatile uint32_t*)(x)))
-#define SET_REG(x, y) (*((volatile uint32_t*)(x)) = (y))
-#define GET_REG32(x) GET_REG(x)
-#define SET_REG32(x, y) SET_REG(x, y)
-#define GET_REG16(x) (*((volatile uint16_t*)(x)))
-#define SET_REG16(x, y) (*((volatile uint16_t*)(x)) = (y))
-#define GET_REG8(x) (*((volatile uint8_t*)(x)))
-#define SET_REG8(x, y) (*((volatile uint8_t*)(x)) = (y))
+typedef volatile uint32_t reg32_t;
+typedef volatile uint16_t reg16_t;
+typedef volatile uint8_t reg8_t;
+
+#define GET_REGX(s, x)		(*((volatile reg##s##_t*)(x)))
+#define SET_REGX(s, x, y)	(*((volatile reg##s##_t*)(x)) = (y))
+
+#define GET_REG8(x)			GET_REGX(8, (x))
+#define SET_REG8(x, y)		SET_REGX(8, (x), (y))
+
+#define GET_REG16(x)		GET_REGX(16, (x))
+#define SET_REG16(x, y)		SET_REGX(16, (x), (y))
+
+#define GET_REG32(x)		GET_REGX(32, (x))
+#define SET_REG32(x, y)		SET_REGX(32, (x), (y))
+
+#define GET_REG				GET_REG32
+#define SET_REG				SET_REG32
+
 #define GET_BITS(x, start, length) ((((uint32_t)(x)) << (32 - ((start) + (length)))) >> (32 - (length)))
 
 //

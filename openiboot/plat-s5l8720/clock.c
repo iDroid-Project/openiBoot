@@ -22,7 +22,7 @@ uint32_t UsbPhyFrequency;
 
 uint32_t TicksPerSec;
 
-int clock_setup() {
+error_t clock_setup() {
 	uint32_t config;
 
 	config = GET_REG(CLOCK + CLOCK_CONFIG0);
@@ -143,8 +143,7 @@ int clock_setup() {
 	
 	// Set the base divisor
 	clock_set_base_divisor(ClockDivisorCode0);
-
-	return 0;
+	return SUCCESS;
 }
 
 ClockGate ClockGateTable[29] = {

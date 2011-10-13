@@ -236,6 +236,9 @@ static void setup_initrd2_tag(uint32_t start, uint32_t size)
 	params->hdr.tag = ATAG_INITRD2;         /* Initrd2 tag */
 	params->hdr.size = tag_size(atag_initrd2);  /* size tag */
 
+	if(start > RAMStart)
+		start -= RAMStart;
+
 	params->u.initrd2.start = start;        /* physical start */
 	params->u.initrd2.size = size;          /* compressed ramdisk size */
 
@@ -353,12 +356,29 @@ void set_ramdisk(void* location, int size) {
 	if(ramdisk)
 		free(ramdisk);
 
-	// the gzip file format places the uncompressed length in the last four bytes of the file. Read it and calculate the size in KB.
-	ramdiskRealSize = ((*((uint32_t*)((uint8_t*)location + size - sizeof(uint32_t)))) + 1023) / 1024;
+	if(location && size && *((unsigned short*)location) == 0x8b1f)
+	{
+		bufferPrintf("initrd: Detected GZipped InitRD.\n");
+
+		// the gzip file format places the uncompressed length in the last four bytes of the file. Read it and calculate the size in KB.
+		ramdiskRealSize = ((*((uint32_t*)((uint8_t*)location + size - sizeof(uint32_t)))) + 1023) / 1024;
+	}
+	else
+		ramdiskRealSize = 0;
 
 	ramdiskSize = size;
-	ramdisk = malloc(size);
-	memcpy(ramdisk, location, size);
+
+	bufferPrintf("%s\n", __func__);
+
+	if(location)
+	{
+		ramdisk = malloc(size);
+		memcpy(ramdisk, location, size);
+	}
+	else
+		ramdisk = NULL;
+
+	bufferPrintf("%s\n", __func__);
 }
 
 void set_kernel(void* location, int size) {
@@ -375,10 +395,15 @@ static void setup_tags(struct atag* parameters, const char* commandLine)
 {
 	setup_core_tag(parameters, 4096);       /* standard core tag 4k pagesize */
 	setup_mem_tag(MemoryStart, RAMEnd-RAMStart);    /* 128Mb at 0x00000000 */
-	if(ramdisk != NULL && ramdiskSize > 0) {
+
+	if(ramdiskRealSize > 0)
 		setup_ramdisk_tag(ramdiskRealSize);
+
+	if(ramdisk != NULL && ramdiskSize > 0)
 		setup_initrd2_tag(INITRD_LOAD, ramdiskSize);
-	}
+	else
+		setup_initrd2_tag(0, 0); // Prevent Linux from using defaults.
+
 	setup_cmdline_tag(commandLine);
 	setup_prox_tag();
 	setup_mt_tag();
@@ -428,10 +453,8 @@ void boot_linux(const char* args, uint32_t mach_type) {
 	uint32_t param_at = exec_at - 0x2000;
 	int i;
 
-#if RAMStart != MemoryStart
 	if(exec_at > RAMStart)
 		exec_at = (exec_at - RAMStart) + MemoryStart;
-#endif
 
 	load_multitouch_images();
 
@@ -441,7 +464,7 @@ void boot_linux(const char* args, uint32_t mach_type) {
 	exit_modules();
 	platform_shutdown();
 
-	bufferPrintf("Booting Linux...\r\n");
+	bufferPrintf("Booting Linux (0x%08x)...\r\n", mach_type);
 
 	/* FIXME: This overwrites openiboot! We make the semi-reasonable assumption
 	 * that this function's own code doesn't reside in 0x0100-0x1100 */
@@ -712,8 +735,11 @@ static void cmd_setup_initrd(int argc, char **argv)
 {
 	if(argc <= 1)
 	{
+		char *ptr = malloc(received_file_size);
+		memcpy(ptr, (void*)0x09000000, received_file_size);
+
 		char buff[128];
-		sprintf(buff, "0x09000000+%d", received_file_size);
+		sprintf(buff, "%d+%d", (uint32_t)ptr, received_file_size);
 		setup_initrd(buff);
 	}
 	else if(argc == 2)

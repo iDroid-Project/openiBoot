@@ -57,7 +57,7 @@ void wdt_enable()
 	EnterCriticalSection();
 	if(wdt_disabled)
 	{
-		period = 1000000 * 2048 / PeripheralFrequency * (PRESCALE + 1) * CLOCK_DIV / 4;
+		period = 1000000 * 2048 / clock_get_frequency(FrequencyBasePeripheral) * (PRESCALE + 1) * CLOCK_DIV / 4;
 		count = 0;
 		event_add(&WDTEvent, period, wdt_handler, NULL);
 		SET_REG(WDT_CTRL, WDT_CLR | WDT_ENABLE | ((PRESCALE & WDT_PRE_MASK) << WDT_PRE_SHIFT) | ((CLOCK_CS & WDT_CS_MASK) << WDT_CS_SHIFT));

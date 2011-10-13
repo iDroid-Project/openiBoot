@@ -12,7 +12,7 @@ uint32_t mcu_data = 0; // dword_5FF33D74
 typedef struct _mcu_buffer
 {
 	uint8_t type;
-	uint8_t data[23];
+	uint8_t data[35];
 	uint32_t length;
 } mcu_buffer_t;
 
@@ -115,7 +115,7 @@ uint8_t mcu_read(int ureg, uint32_t timeout) {
 static TaskDescriptor mcu_task;
 void mcu_run(uint32_t _V) {
 	mcu_buffer_t buffer;
-	memset(&buffer, 0x0, 40);
+	memset(&buffer, 0x0, sizeof(buffer));
 	uint8_t read;
 	uint32_t goto_start_time;
 	uint32_t goto_no_calc = 0;
@@ -214,7 +214,7 @@ void mcu_run(uint32_t _V) {
 		if(bla)
 			continue;
 
-		memcpy(&mcu_buffer, &buffer, 0x28);
+		memcpy(&mcu_buffer, &buffer, sizeof(buffer));
 		mcu_data = 1;
 //		mcu_handle_dma(&mcu_dma[1]);
 

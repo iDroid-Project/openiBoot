@@ -120,11 +120,11 @@ static I2CError i2c_readwrite(I2CInfo* i2c) {
 		task_yield();
 	}
 
-	i2c->operation_result = 0;
-	i2c->state = I2CDone;
-
 	if(i2c->operation_result & 0x20)
 		return 1;
+
+	i2c->operation_result = 0;
+	i2c->state = I2CDone;
 
 	return I2CNoError;
 }

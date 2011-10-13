@@ -567,7 +567,25 @@ void bufferPrint(const char* toBuffer)
 }
 
 void uartPrint(const char* toBuffer) {
-	uart_write(0, toBuffer, strlen(toBuffer));
+	size_t sz = strlen(toBuffer);
+	size_t last = 0;
+	size_t i;
+
+	static char fix[] = { '\r', '\n' };
+
+	for(i = 0; i < sz; i++)
+	{
+		if(toBuffer[i] == '\n' &&
+				(i == 0 || toBuffer[i-1] != '\r'))
+		{
+			uart_write(0, &toBuffer[last], i-last);
+			uart_write(0, fix, sizeof(fix));
+			last = i+1;
+		}
+	}
+
+	if(last < sz)
+		uart_write(0, &toBuffer[last], sz-last);
 }
 
 printf_handler_t addPrintfHandler(printf_handler_t _hndl)
