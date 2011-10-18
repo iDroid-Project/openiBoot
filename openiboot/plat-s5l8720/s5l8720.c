@@ -1,44 +1,29 @@
-#include "openiboot.h"
-#include "arm/arm.h"
-#include "hardware/s5l8720.h"
-#include "uart.h"
-#include "usb.h"
-#include "mmu.h"
-#include "clock.h"
-#include "timer.h"
-#include "event.h"
-#include "miu.h"
-#include "power.h"
-#include "interrupt.h"
-#include "gpio.h"
-#include "dma.h"
-#include "spi.h"
-#include "i2c.h"
 #include "aes.h"
-#include "lcd.h"
-#include "tasks.h"
-#include "images.h"
-#include "syscfg.h"
-#include "nvram.h"
-#include "accel.h"
-#include "sdio.h"
-#include "wlan.h"
-#include "camera.h"
-#include "util.h"
-#include "commands.h"
+#include "arm/arm.h"
+#include "clock.h"
+#include "dma.h"
+#include "event.h"
 #include "framebuffer.h"
-#include "menu.h"
-#include "pmu.h"
-#include "hfs/bdev.h"
-#include "hfs/fs.h"
-#include "scripting.h"
-#include "actions.h"
+#include "gpio.h"
+#include "i2c.h"
+#include "lcd.h"
+#include "miu.h"
+#include "mmu.h"
+#include "openiboot.h"
+#include "power.h"
+#include "spi.h"
+#include "tasks.h"
+#include "timer.h"
+#include "uart.h"
 #include "wdt.h"
 
-#include "buttons.h"
+#ifdef DEBUG
+#else
 
-//TODO: remove
+	// TODO: remove
 #include "actions.h"
+#include "buttons.h"
+#include "images.h"
 #include "mtd.h"
 void load_iboot() {
 	framebuffer_clear();
@@ -58,7 +43,7 @@ void load_iboot() {
 	chainload((uint32_t)imageData);
 }
 
-//TODO: remove
+	// TODO: remove
 static TaskDescriptor iboot_loader_task;
 void iboot_loader_run(void) {
 	uint64_t startTime = timer_get_system_microtime();
@@ -96,6 +81,7 @@ void iboot_loader_run(void) {
 		task_yield();
 	}
 }
+#endif
 
 void platform_init()
 {
@@ -136,11 +122,13 @@ void platform_init()
 	framebuffer_setdisplaytext(TRUE);
 	lcd_set_backlight_level(186);
 
-//	audiohw_init();
-	
-	//TODO: remove
+	// audiohw_init();
+#ifdef DEBUG
+#else
+	// TODO: remove
 	task_init(&iboot_loader_task, "iboot loader", TASK_DEFAULT_STACK_SIZE);
 	task_start(&iboot_loader_task, &iboot_loader_run, NULL);
+#endif
 }
 
 void platform_shutdown()
