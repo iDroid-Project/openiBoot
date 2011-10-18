@@ -1,3 +1,33 @@
+/**
+ * nand.h
+ *
+ * Copyright 2011 iDroid Project
+ *
+ * This file is part of iDroid. An android distribution for Apple products.
+ * For more information, please visit http://www.idroidproject.org/.
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; either version 3
+ * of the License, or (at your option) any later version.
+ * 
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ */
+
+/**
+ *	@file nand.h
+ *
+ *	@brief Header file for NAND, including reading, writing, setup, and NAND specific functions.
+ *
+ */
+
 #ifndef  NAND_H
 #define  NAND_H
 
@@ -10,7 +40,10 @@ enum
 	ENAND_ECC = ERROR(0x24),
 };
 
-// NAND Device Prototypes
+/**
+ *	NAND Device Prototypes
+ *
+ */
 struct _nand_device;
 
 typedef error_t (*nand_device_read_single_page_t)(struct _nand_device *, uint32_t _chip,
@@ -27,8 +60,10 @@ typedef error_t (*nand_device_enable_data_whitening_t)(struct _nand_device *, in
 
 typedef void (*nand_device_set_ftl_region_t)(uint32_t _lpn, uint32_t _a2, uint32_t _count, void* _buf);
 
-
-// NAND Device Struct
+/**
+ *	NAND Device Struct
+ *
+ */
 typedef struct _nand_device
 {
 	device_t device;
@@ -44,7 +79,10 @@ typedef struct _nand_device
 
 } nand_device_t;
 
-// NAND Device Functions
+/**
+ *	NAND Device Functions
+ *
+ */
 void nand_device_init(nand_device_t *_nand);
 void nand_device_cleanup(nand_device_t *_nand);
 

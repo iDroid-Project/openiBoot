@@ -1,4 +1,4 @@
-/*
+/**
  * menu.c - OpeniBoot Menu
  *
  * Copyright 2010 iDroid Project
