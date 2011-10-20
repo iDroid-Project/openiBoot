@@ -1,11 +1,13 @@
 #ifndef FTL_YAFTL_H
 #define FTL_YAFTL_H
 
-#include "ftl/yaftl_mem.h"
 #include "ftl.h"
 #include "vfl.h"
 #include "nand.h"
 #include "openiboot.h"
+#include "ftl/yaftl_common.h"
+#include "ftl/yaftl_mem.h"
+#include "ftl/yaftl_gc.h"
 
 typedef struct _ftl_yaftl_device {
 	ftl_device_t ftl;
@@ -18,13 +20,6 @@ ftl_yaftl_device_t *ftl_yaftl_device_allocate();
 #define ERROR_NAND	0x80000002
 #define ERROR_EMPTY	0x80000003
 
-// Page types (as defined in the spare data "type" bitfield)
-#define PAGETYPE_INDEX		(0x4)	// Index block indicator
-#define PAGETYPE_LBN		(0x10)	// User data (also called lbn: maybe logical block number? lBlock 0 is system and lBlock 1 is user?)
-#define PAGETYPE_FTL_CLEAN	(0x20)	// FTL context (unmounted, clean)
-// 0x40: ?
-#define PAGETYPE_VFL		(0x80)	// VFL context
-
 // Block status (as defined in the BlockStruct structure)
 #define BLOCKSTATUS_ALLOCATED		(0x1)
 #define BLOCKSTATUS_FTLCTRL			(0x2)
@@ -36,13 +31,10 @@ ftl_yaftl_device_t *ftl_yaftl_device_allocate();
 #define BLOCKSTATUS_I_CURRENT		(0x80)
 #define BLOCKSTATUS_FREE			(0xFF)
 
-typedef struct {
-	uint32_t lpn;			// Logical page number
-	uint32_t usn;			// Update sequence number
-	uint8_t  field_8;
-	uint8_t  type;			// Page type
-	uint16_t field_A;
-} __attribute__((packed)) SpareData;
+// Cache states
+#define CACHESTATE_DIRTY	(0x1)
+#define CACHESTATE_CLEAN	(0x2)
+#define CACHESTATE_FREE		(0xFFFF)
 
 typedef struct {
 	uint32_t eraseCount;
@@ -81,6 +73,8 @@ typedef struct {
 	uint32_t blockNum;
 	uint32_t* tocBuffer;
 	uint32_t usedPages;
+	uint16_t field_A;
+	uint32_t usn;
 } BlockToUse;
 
 typedef struct {
@@ -97,6 +91,7 @@ typedef struct {
 	BlockToUse latestIndexBlk;
 	uint32_t selCtrlBlockIndex;
 	uint32_t maxIndexUsn; // 6C
+	uint32_t field_A4;
 	uint8_t totalEraseCount;
 	uint8_t field_78; // Heh, wtf?
 	uint32_t unk74_4;
@@ -155,6 +150,7 @@ typedef struct {
 	uint8_t unk188_0x63;
 	uint32_t pagesAvailable;
 	uint32_t bytesPerPage;
+	GC gc;
 } YAFTLInfo;
 
 typedef struct {
@@ -170,9 +166,9 @@ typedef struct {
 	char version[4]; // 0
 	uint32_t unknCalculatedValue0; // 4
 	uint32_t totalPages; // 8
-	uint32_t latestUserBlock; // C
+	uint32_t latestUserBlk; // C
 	uint32_t cxt_unkn0; // 10 // placeholder
-	uint32_t latestIndexBlock; // 14
+	uint32_t latestIndexBlk; // 14
 	uint32_t maxIndexUsn; // 18
 	uint32_t blockStatsField4; // 1C
 	uint32_t blockStatsField10; // 20
