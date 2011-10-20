@@ -20,6 +20,7 @@ ftl_yaftl_device_t *ftl_yaftl_device_allocate();
 
 // Page types (as defined in the spare data "type" bitfield)
 #define PAGETYPE_INDEX		(0x4)	// Index block indicator
+#define PAGETYPE_CLOSED		(0x8)	// Closed (full) block
 #define PAGETYPE_LBN		(0x10)	// User data (also called lbn: maybe logical block number? lBlock 0 is system and lBlock 1 is user?)
 #define PAGETYPE_FTL_CLEAN	(0x20)	// FTL context (unmounted, clean)
 // 0x40: ?
@@ -81,6 +82,8 @@ typedef struct {
 	uint32_t blockNum;
 	uint32_t* tocBuffer;
 	uint32_t usedPages;
+	uint16_t field_A;
+	uint32_t usn;
 } BlockToUse;
 
 typedef struct {
@@ -170,9 +173,9 @@ typedef struct {
 	char version[4]; // 0
 	uint32_t unknCalculatedValue0; // 4
 	uint32_t totalPages; // 8
-	uint32_t latestUserBlock; // C
+	uint32_t latestUserBlk; // C
 	uint32_t cxt_unkn0; // 10 // placeholder
-	uint32_t latestIndexBlock; // 14
+	uint32_t latestIndexBlk; // 14
 	uint32_t maxIndexUsn; // 18
 	uint32_t blockStatsField4; // 1C
 	uint32_t blockStatsField10; // 20
