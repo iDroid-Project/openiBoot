@@ -2,6 +2,8 @@ Import('*')
 
 ftl_yaftl_src = env.Localize([
 	'yaftl.c',
+	'yaftl_mem.c',
+	'l2v.c',
 	])
 
 ftl_yaftl = env.CreateModule('ftl-yaftl', ftl_yaftl_src)

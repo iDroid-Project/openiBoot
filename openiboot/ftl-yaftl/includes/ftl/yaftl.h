@@ -1,6 +1,7 @@
-#ifndef  FTL_YAFTL_H
-#define  FTL_YAFTL_H
+#ifndef FTL_YAFTL_H
+#define FTL_YAFTL_H
 
+#include "ftl/yaftl_mem.h"
 #include "ftl.h"
 #include "vfl.h"
 #include "nand.h"
@@ -34,17 +35,6 @@ ftl_yaftl_device_t *ftl_yaftl_device_allocate();
 #define BLOCKSTATUS_I_ALLOCATED		(0x40)
 #define BLOCKSTATUS_I_CURRENT		(0x80)
 #define BLOCKSTATUS_FREE			(0xFF)
-
-typedef struct
-{
-  uint32_t buffer;
-  uint32_t endOfBuffer;
-  uint32_t size;
-  uint32_t numAllocs;
-  uint32_t numRebases;
-  uint32_t paddingsSize;
-  uint32_t state;
-} WMR_BufZone_t;
 
 typedef struct {
 	uint32_t lpn;			// Logical page number
@@ -88,8 +78,14 @@ typedef struct {
 } __attribute__((packed)) BlockStats;
 
 typedef struct {
-	WMR_BufZone_t zone;
-	WMR_BufZone_t segment_info_temp;
+	uint32_t blockNum;
+	uint32_t* tocBuffer;
+	uint32_t usedPages;
+} BlockToUse;
+
+typedef struct {
+	bufzone_t zone;
+	bufzone_t segment_info_temp;
 	uint16_t tocPagesPerBlock; // 38
 	uint16_t tocEntriesPerPage; // 3A
 	uint32_t unknCalculatedValue0; // 3C
@@ -97,15 +93,11 @@ typedef struct {
 	uint32_t totalPages; // 44
 	uint16_t tocArrayLength; // 48
 	uint16_t unkn_0x2A; // 4A
-	uint32_t latestUserBlock; // 4C
-	uint32_t* userTOCBuffer;
-	uint16_t userPagesPerBlock; // 54
-	uint32_t latestIndexBlock; // 5C
-	uint32_t* indexTOCBuffer;
-	uint32_t unk64; // 64
+	BlockToUse latestUserBlk;
+	BlockToUse latestIndexBlk;
 	uint32_t selCtrlBlockIndex;
 	uint32_t maxIndexUsn; // 6C
-	uint8_t field_70; // Heh, wtf?
+	uint8_t totalEraseCount;
 	uint8_t field_78; // Heh, wtf?
 	uint32_t unk74_4;
 	uint32_t unk78_counter;
@@ -114,7 +106,7 @@ typedef struct {
 	uint32_t** unk84_buffer;
 	uint32_t* unk88_buffer;
 	uint32_t* unk8c_buffer;
-	WMR_BufZone_t ftl_buffer2;
+	bufzone_t ftl_buffer2;
 	uint32_t unkAC_2;
 	uint32_t unkB0_1;
 	uint32_t* unkB4_buffer;
@@ -143,7 +135,7 @@ typedef struct {
 	uint8_t* pageBuffer;
 	uint32_t* tocPageBuffer;
 	uint32_t lastTOCPageRead;
-	uint32_t* buffer19;
+	SpareData* spareBuffer19;
 	uint32_t* unknBuffer3_ftl; // 148
 	SpareData* buffer20;
 	SpareData* spareBuffer18;
@@ -164,7 +156,6 @@ typedef struct {
 	uint32_t pagesAvailable;
 	uint32_t bytesPerPage;
 } YAFTLInfo;
-YAFTLInfo yaftl_info;
 
 typedef struct {
 	uint16_t pagesPerSublk;
@@ -174,7 +165,6 @@ typedef struct {
 	uint16_t total_banks_ftl;
 	uint32_t total_usable_pages;
 } NAND_GEOMETRY_FTL;
-NAND_GEOMETRY_FTL ftlGeometry;
 
 typedef struct {
 	char version[4]; // 0
@@ -195,8 +185,8 @@ typedef struct {
 	uint16_t tocPagesPerBlock; // 5E
 	uint16_t tocEntriesPerPage; // 60
 	uint16_t unkn_0x2A; // 62
-	uint16_t userPagesPerBlock; // 66
-	uint16_t unk64; // 68
+	uint16_t pagesUsedInLatestUserBlk; // 66
+	uint16_t pagesUsedInLatestIdxBlk; // 68
 	uint32_t cxt_unkn2[11]; // placeholder
 	uint8_t unk188_0x63; // 94
 } __attribute__((packed)) YAFTL_CXT;
@@ -214,4 +204,4 @@ typedef struct {
 	uint32_t lpnMax;
 } __attribute__((packed)) BlockLpn;
 
-#endif //FTL_YAFTL_H
+#endif // FTL_YAFTL_H
