@@ -1,6 +1,7 @@
 #include "ftl/yaftl.h"
 #include "ftl/yaftl_mem.h"
 #include "ftl/l2v.h"
+#include "ftl/yaftl_gc.h"
 #include "openiboot.h"
 #include "commands.h"
 #include "nand.h"
@@ -11,16 +12,12 @@
 #include "util.h"
 #include "h2fmi.h"
 
-static YAFTLInfo sInfo;
-static NAND_GEOMETRY_FTL sGeometry;
-
-static uint32_t yaftl_inited = 0;
-static vfl_device_t* vfl = 0;
-
 /* Generic */
 
 static uint32_t BTOC_Init()
 {
+	uint32_t i;
+
 	sInfo.unk74_4 = 4;
 	sInfo.unk78_counter = 0;
 	sInfo.unkAC_2 = 2;
@@ -32,15 +29,15 @@ static uint32_t BTOC_Init()
 	sInfo.unkB8_buffer = yaftl_alloc(sInfo.unkAC_2 << 2);
 	sInfo.unkB4_buffer = yaftl_alloc(sInfo.unkAC_2 << 2);
 
-	if(!sInfo.unk8c_buffer || !sInfo.unk8c_buffer || !sInfo.unk84_buffer || !sInfo.unkB8_buffer || !sInfo.unkB4_buffer)
-		return -1;
-
-	uint32_t i;
-	for(i = 0; i < sInfo.unk74_4; i++) {
-		sInfo.unk88_buffer[i] = -1;
+	if (!sInfo.unk8c_buffer || !sInfo.unk8c_buffer || !sInfo.unk84_buffer
+			|| !sInfo.unkB8_buffer || !sInfo.unkB4_buffer) {
+		return ENOMEM;
 	}
 
-	for(i = 0; i < sInfo.unkAC_2; i++) {
+	for (i = 0; i < sInfo.unk74_4; i++)
+		sInfo.unk88_buffer[i] = -1;
+
+	for (i = 0; i < sInfo.unkAC_2; i++) {
 		sInfo.unkB4_buffer[i] = -1;
 		sInfo.unkB8_buffer[i] = yaftl_alloc(sGeometry.pagesPerSublk<<2);
 		memset(sInfo.unkB8_buffer[i], 0xFF, sGeometry.pagesPerSublk<<2);
@@ -51,49 +48,23 @@ static uint32_t BTOC_Init()
 
 	bufzone_init(&sInfo.ftl_buffer2);
 
-	for(i = 0; i < sInfo.unk74_4; i++) {
-		sInfo.unk84_buffer[i] = bufzone_alloc(&sInfo.ftl_buffer2, sGeometry.bytesPerPage * sInfo.tocPagesPerBlock);
+	for (i = 0; i < sInfo.unk74_4; i++) {
+		sInfo.unk84_buffer[i] = bufzone_alloc(&sInfo.ftl_buffer2,
+				sGeometry.bytesPerPage * sInfo.tocPagesPerBlock);
 	}
 
-	if(FAILED(bufzone_finished_allocs(&sInfo.ftl_buffer2)))
-		return -1;
+	if (FAILED(bufzone_finished_allocs(&sInfo.ftl_buffer2)))
+		return ENOMEM;
 
-	for(i = 0; i < sInfo.unk74_4; i++) {
-		sInfo.unk84_buffer[i] = bufzone_rebase(&sInfo.ftl_buffer2, sInfo.unk84_buffer[i]);
+	for (i = 0; i < sInfo.unk74_4; i++) {
+		sInfo.unk84_buffer[i] = bufzone_rebase(&sInfo.ftl_buffer2,
+				sInfo.unk84_buffer[i]);
 	}
 
 	if (FAILED(bufzone_finished_rebases(&sInfo.ftl_buffer2)))
-		return -1;
+		return ENOMEM;
 
-	return 0;
-}
-
-static uint32_t* BTOC_Alloc(uint32_t _arg0)
-{
-	int32_t inited = 0x7FFFFFFF;
-	sInfo.unkB0_1 = (sInfo.unkB0_1 + 1) % sInfo.unkAC_2;
-	sInfo.unkB4_buffer[sInfo.unkB0_1] = _arg0;
-
-	memset(sInfo.unkB8_buffer[sInfo.unkB0_1], 0xFF, sGeometry.pagesPerSublk * sizeof(uint32_t));
-
-	sInfo.unk78_counter++;
-
-	uint32_t found = -1;
-	uint32_t i;
-	for (i = 0; i < sInfo.unk74_4; i++) {
-		if ((sInfo.unk80_3 & (1<<i)) && (sInfo.unk7C_byteMask & (1<<i)) && (inited > (int32_t)sInfo.unk8c_buffer[i])) {
-			found = i;
-			inited = sInfo.unk8c_buffer[i];
-		}
-	}
-
-	if(found == -1)
-		system_panic("yaftl: couldn't allocate a BTOC.\r\n");
-
-	sInfo.unk7C_byteMask &= ~(1<<found);
-	sInfo.unk88_buffer[found] = _arg0;
-	sInfo.unk8c_buffer[found] = sInfo.unk78_counter;
-	return sInfo.unk84_buffer[found];
+	return SUCCESS;
 }
 
 static void YAFTL_LoopThingy()
@@ -105,96 +76,6 @@ static void YAFTL_LoopThingy()
 		if(sInfo.unk88_buffer[i] == ~2)
 			sInfo.unk88_buffer[i] = sInfo.latestIndexBlk.blockNum;
 	}
-}
-
-static void YAFTL_setupCleanSpare(SpareData* _spare_ptr)
-{
-	_spare_ptr->usn = ++sInfo.maxIndexUsn;
-	_spare_ptr->type = PAGETYPE_FTL_CLEAN;
-}
-
-static error_t YAFTL_writeIndexTOC()
-{
-	int result;
-
-	YAFTL_setupCleanSpare(sInfo.spareBuffer7);
-
-	// Try to write the new index TOC.
-	result = vfl_write_single_page(vfl,
-			sInfo.ctrlBlockPageOffset + sInfo.ftlCxtPage, 
-			(uint8_t*)sInfo.latestIndexBlk.tocBuffer,
-			(uint8_t*)sInfo.spareBuffer7, 1);
-
-	if (FAILED(result)) {
-		// Must erase: first, erase the current FTL ctrl block.
-		vfl_erase_single_block(vfl, sInfo.FTLCtrlBlock[sInfo.selCtrlBlockIndex], 1);
-		sInfo.blockArray[sInfo.FTLCtrlBlock[sInfo.selCtrlBlockIndex]].eraseCount++;
-		sInfo.totalEraseCount++;
-		sInfo.blockArray[sInfo.FTLCtrlBlock[sInfo.selCtrlBlockIndex]].status = BLOCKSTATUS_FTLCTRL;
-
-		// Select the new FTL ctrl block.
-		++sInfo.selCtrlBlockIndex;
-		if (sInfo.selCtrlBlockIndex > 2)
-			sInfo.selCtrlBlockIndex = 0;
-
-		// Erase it.
-		sInfo.blockArray[sInfo.FTLCtrlBlock[sInfo.selCtrlBlockIndex]].status = BLOCKSTATUS_FTLCTRL_SEL;
-		vfl_erase_single_block(vfl, sInfo.FTLCtrlBlock[sInfo.selCtrlBlockIndex], 1);
-		sInfo.blockArray[sInfo.FTLCtrlBlock[sInfo.selCtrlBlockIndex]].eraseCount++;
-		sInfo.totalEraseCount++;
-		sInfo.ftlCxtPage = 0xFFFFFFFF;
-	}
-
-	return SUCCESS;
-}
-
-uint32_t YAFTL_writePage(uint32_t _page, uint8_t* _data_ptr, SpareData* _spare_ptr)
-{
-	int result;
-	uint32_t block = _page / sGeometry.pagesPerSublk;
-
-	if (sInfo.field_78)
-	{
-		YAFTL_writeIndexTOC();
-		sInfo.field_78 = 0;
-	}
-
-	result = vfl_write_single_page(vfl, _page, _data_ptr, (uint8_t*)_spare_ptr, 1);
-
-	if (FAILED(result)) {
-		bufferPrintf("YAFTL_writePage: We got write failure: page %d, block %d, block status %d.\r\n",
-			_page,
-			block,
-			sInfo.blockArray[block].status);
-
-		return ERROR_ARG;
-	}
-
-	return result;
-}
-
-static error_t YAFTL_readPage(uint32_t _page, uint8_t* _data_ptr, SpareData* _spare_ptr, uint32_t _disable_aes, uint32_t _empty_ok, uint32_t _scrub)
-{
-	error_t result;
-	int refreshPage = 0;
-	uint32_t block = _page / sGeometry.pagesPerSublk;
-
-	uint8_t* meta_ptr = (uint8_t*)(_spare_ptr ? _spare_ptr : sInfo.spareBuffer18);
-
-	result = vfl_read_single_page(vfl, _page, _data_ptr, meta_ptr, _empty_ok, &refreshPage, _disable_aes);
-
-	if (FAILED(result)) {
-		bufferPrintf("YAFTL_readPage: We got read failure: page %d, block %d, block status %d, scrub %d.\r\n",
-			_page,
-			block,
-			sInfo.blockArray[block].status,
-			_scrub);
-
-		return ERROR_ARG;
-	}
-
-	sInfo.blockArray[block].readCount++;
-	return result;
 }
 
 static uint32_t YAFTL_readCxtInfo(uint32_t _page, uint8_t* _ptr, uint8_t _extended, uint32_t *pSupported)
@@ -226,20 +107,20 @@ static uint32_t YAFTL_readCxtInfo(uint32_t _page, uint8_t* _ptr, uint8_t _extend
 	if (_extended) {
 		sInfo.tocPagesPerBlock = pCxt->tocPagesPerBlock;
 		sInfo.tocEntriesPerPage = pCxt->tocEntriesPerPage;
-		sInfo.unknCalculatedValue0 = pCxt->unknCalculatedValue0;
+		sInfo.numIBlocks = pCxt->numIBlocks;
 		sInfo.tocArrayLength = pCxt->tocArrayLength;
 		sInfo.totalPages = pCxt->totalPages;
-		sInfo.unkn_0x2A = pCxt->unkn_0x2A;
+		sInfo.numFreeCaches = pCxt->numFreeCaches;
 		sInfo.latestUserBlk.blockNum = pCxt->latestUserBlk;
 		sInfo.latestUserBlk.usedPages = pCxt->pagesUsedInLatestUserBlk;
 		sInfo.latestIndexBlk.blockNum = pCxt->latestIndexBlk;
-		sInfo.blockStats.field_4 = pCxt->blockStatsField4;
-		sInfo.blockStats.field_10 = pCxt->blockStatsField10;
+		sInfo.blockStats.numAvailable = pCxt->numAvailableBlocks;
+		sInfo.blockStats.numIAvailable = pCxt->numIAvailableBlocks;
 		sInfo.blockStats.numAllocated = pCxt->numAllocatedBlocks;
 		sInfo.blockStats.numIAllocated = pCxt->numIAllocatedBlocks;
 		sInfo.latestIndexBlk.usedPages = pCxt->pagesUsedInLatestIdxBlk;
 		sInfo.maxIndexUsn = pCxt->maxIndexUsn;
-		sInfo.unk184_0xA = pCxt->unk184_0xA;
+		sInfo.numCaches = pCxt->numCaches;
 		sInfo.unk188_0x63 = pCxt->unk188_0x63;
 
 		DebugPrintf("yaftl: reading latestUserBlk.tocBuffer\r\n");
@@ -409,29 +290,33 @@ static uint32_t YAFTL_readCxtInfo(uint32_t _page, uint8_t* _ptr, uint8_t _extend
 
 static uint32_t YAFTL_Init()
 {
-	if(yaftl_inited)
+	if (yaftl_inited)
 		system_panic("Oh shit, yaftl already initialized!\r\n");
 
-	memset(&sInfo, 0, sizeof(sInfo)); // 0x358
+	memset(&sInfo, 0, sizeof(sInfo));
 
 	sInfo.lastTOCPageRead = 0xFFFFFFFF;
 	sInfo.ftlCxtPage = 0xFFFFFFFF;
-	sInfo.unk184_0xA = 0xA;
+	sInfo.numCaches = 10;
 	sInfo.unk188_0x63 = 0x63;
 
 	uint16_t metaBytes, unkn20_1;
 	error_t error = 0;
 
-	error |= vfl_get_info(vfl, diPagesPerBlockTotalBanks, &sGeometry.pagesPerSublk, sizeof(sGeometry.pagesPerSublk));
-	error |= vfl_get_info(vfl, diSomeThingFromVFLCXT, &sGeometry.numBlocks, sizeof(sGeometry.numBlocks));
-	error |= vfl_get_info(vfl, diBytesPerPageFTL, &sGeometry.bytesPerPage, sizeof(sGeometry.bytesPerPage));
-	error |= vfl_get_info(vfl, diTotalBanks, &sGeometry.total_banks_ftl, sizeof(sGeometry.total_banks_ftl));
-
+	error |= vfl_get_info(vfl, diPagesPerBlockTotalBanks,
+			&sGeometry.pagesPerSublk, sizeof(sGeometry.pagesPerSublk));
+	error |= vfl_get_info(vfl, diSomeThingFromVFLCXT, &sGeometry.numBlocks,
+			sizeof(sGeometry.numBlocks));
+	error |= vfl_get_info(vfl, diBytesPerPageFTL, &sGeometry.bytesPerPage,
+			sizeof(sGeometry.bytesPerPage));
+	error |= vfl_get_info(vfl, diTotalBanks, &sGeometry.total_banks_ftl,
+			sizeof(sGeometry.total_banks_ftl));
 	error |= vfl_get_info(vfl, diMetaBytes0xC, &metaBytes, sizeof(metaBytes));
 	error |= vfl_get_info(vfl, diUnkn20_1, &unkn20_1, sizeof(unkn20_1));
-	sGeometry.spareDataSize = metaBytes * unkn20_1;
 
-	sGeometry.total_usable_pages = sGeometry.pagesPerSublk * sGeometry.numBlocks;
+	sGeometry.spareDataSize = metaBytes * unkn20_1;
+	sGeometry.total_usable_pages =
+		sGeometry.pagesPerSublk * sGeometry.numBlocks;
 
 	if (FAILED(error))
 		system_panic("yaftl: vfl get info failed!\r\n");
@@ -448,15 +333,19 @@ static uint32_t YAFTL_Init()
 	bufferPrintf("unkn20_1: %d\r\n", unkn20_1);
 	bufferPrintf("total_usable_pages: %d\r\n", sGeometry.total_usable_pages);
 
-	sInfo.tocPagesPerBlock = (sGeometry.pagesPerSublk * sizeof(uint32_t)) / sGeometry.bytesPerPage;
-	if (((sGeometry.pagesPerSublk * sizeof(uint32_t)) % sGeometry.bytesPerPage) != 0)
+	sInfo.tocPagesPerBlock = (sGeometry.pagesPerSublk * sizeof(uint32_t))
+		/ sGeometry.bytesPerPage;
+	if (((sGeometry.pagesPerSublk * sizeof(uint32_t)) % sGeometry.bytesPerPage)
+			!= 0) {
 		sInfo.tocPagesPerBlock++;
+	}
 
 	sInfo.tocEntriesPerPage = sGeometry.bytesPerPage / sizeof(uint32_t);
 	bufzone_init(&sInfo.zone);
 	sInfo.pageBuffer = bufzone_alloc(&sInfo.zone, sGeometry.bytesPerPage);
 	sInfo.tocPageBuffer = bufzone_alloc(&sInfo.zone, sGeometry.bytesPerPage);
-	sInfo.pageBuffer2 = bufzone_alloc(&sInfo.zone, sGeometry.bytesPerPage * sInfo.tocPagesPerBlock);
+	sInfo.pageBuffer2 = bufzone_alloc(&sInfo.zone, sGeometry.bytesPerPage
+			* sInfo.tocPagesPerBlock);
 	sInfo.spareBuffer3 = bufzone_alloc(&sInfo.zone, sizeof(SpareData));
 	sInfo.spareBuffer4 = bufzone_alloc(&sInfo.zone, sizeof(SpareData));
 	sInfo.spareBuffer5 = bufzone_alloc(&sInfo.zone, sizeof(SpareData));
@@ -473,8 +362,10 @@ static uint32_t YAFTL_Init()
 	sInfo.spareBuffer16 = bufzone_alloc(&sInfo.zone, sizeof(SpareData));
 	sInfo.spareBuffer17 = bufzone_alloc(&sInfo.zone, sizeof(SpareData));
 	sInfo.spareBuffer18 = bufzone_alloc(&sInfo.zone, sizeof(SpareData));
-	sInfo.spareBuffer19 = bufzone_alloc(&sInfo.zone, 32 * sGeometry.total_banks_ftl * sizeof(SpareData));
-	sInfo.buffer20 = bufzone_alloc(&sInfo.zone, sGeometry.pagesPerSublk * sizeof(SpareData));
+	sInfo.spareBuffer19 = bufzone_alloc(&sInfo.zone, 32
+			* sGeometry.total_banks_ftl * sizeof(SpareData));
+	sInfo.buffer20 = bufzone_alloc(&sInfo.zone, sGeometry.pagesPerSublk
+			* sizeof(SpareData));
 
 	if (FAILED(bufzone_finished_allocs(&sInfo.zone)))
 		system_panic("YAFTL_Init: bufzone_finished_allocs failed!");
@@ -504,35 +395,44 @@ static uint32_t YAFTL_Init()
 	if (FAILED(bufzone_finished_rebases(&sInfo.zone)))
 		return -1;
 
-	sInfo.unknCalculatedValue0 = CEIL_DIVIDE((sGeometry.pagesPerSublk - sInfo.tocPagesPerBlock) - (sGeometry.numBlocks - 8), (sGeometry.pagesPerSublk - sInfo.tocPagesPerBlock) * sInfo.tocEntriesPerPage) * 3;
+	// Number of index blocks?
+	sInfo.numIBlocks = CEIL_DIVIDE((sGeometry.pagesPerSublk -
+				sInfo.tocPagesPerBlock) - (sGeometry.numBlocks - 8),
+			(sGeometry.pagesPerSublk - sInfo.tocPagesPerBlock) *
+			sInfo.tocEntriesPerPage) * 3;
 
-	sInfo.unknCalculatedValue1 = sGeometry.numBlocks - sInfo.unknCalculatedValue0 - 3;
+	sInfo.unknCalculatedValue1 = sGeometry.numBlocks - sInfo.numIBlocks - 3;
 
-	sInfo.totalPages =
-		(sGeometry.numBlocks - 8) * (sGeometry.pagesPerSublk - sInfo.tocPagesPerBlock)
-		- sInfo.unknCalculatedValue0 * sGeometry.pagesPerSublk;
+	sInfo.totalPages = (sGeometry.numBlocks - 8)
+		* (sGeometry.pagesPerSublk - sInfo.tocPagesPerBlock)
+		- sInfo.numIBlocks * sGeometry.pagesPerSublk;
 
-	sInfo.tocArrayLength = CEIL_DIVIDE(sGeometry.pagesPerSublk * sGeometry.numBlocks * 4, sGeometry.bytesPerPage);
+	sInfo.tocArrayLength = CEIL_DIVIDE(sGeometry.pagesPerSublk
+			* sGeometry.numBlocks * sizeof(uint32_t), sGeometry.bytesPerPage);
 
 	sInfo.tocArray = yaftl_alloc(sInfo.tocArrayLength * sizeof(TOCStruct));
 	if (!sInfo.tocArray)
-		system_panic("No buffer.\r\n");
+		system_panic("YAFTL: failed to allocate tocArray\r\n");
 
 	sInfo.blockArray = yaftl_alloc(sGeometry.numBlocks * sizeof(BlockStruct));
 	if (!sInfo.blockArray)
-		system_panic("No buffer.\r\n");
+		system_panic("YAFTL: failed to allocate blockArray\r\n");
 
 	sInfo.unknBuffer3_ftl = yaftl_alloc(sGeometry.pagesPerSublk << 2);
 	if (!sInfo.unknBuffer3_ftl)
-		system_panic("No buffer.\r\n");
+		system_panic("YAFTL: failed to allocate unknBuffer3_ftl\r\n");
 
 	// Initialize number of pages in a context slot.
-	sInfo.nPagesTocPageIndices = CEIL_DIVIDE(sInfo.tocArrayLength * sizeof(sInfo.tocArray->indexPage), sGeometry.bytesPerPage);
-	sInfo.nPagesBlockStatuses = CEIL_DIVIDE(sGeometry.numBlocks * sizeof(sInfo.blockArray->status), sGeometry.bytesPerPage);
-	sInfo.nPagesBlockReadCounts = CEIL_DIVIDE(sGeometry.numBlocks * sizeof(sInfo.blockArray->readCount), sGeometry.bytesPerPage);
+	sInfo.nPagesTocPageIndices = CEIL_DIVIDE(sInfo.tocArrayLength
+			* sizeof(sInfo.tocArray->indexPage), sGeometry.bytesPerPage);
+	sInfo.nPagesBlockStatuses = CEIL_DIVIDE(sGeometry.numBlocks
+			* sizeof(sInfo.blockArray->status), sGeometry.bytesPerPage);
+	sInfo.nPagesBlockReadCounts = CEIL_DIVIDE(sGeometry.numBlocks
+			* sizeof(sInfo.blockArray->readCount), sGeometry.bytesPerPage);
 	sInfo.nPagesBlockValidPagesDNumbers = sInfo.nPagesBlockReadCounts;
 	sInfo.nPagesBlockValidPagesINumbers = sInfo.nPagesBlockReadCounts;
-	sInfo.nPagesBlockEraseCounts = CEIL_DIVIDE(sGeometry.numBlocks * sizeof(sInfo.blockArray->eraseCount), sGeometry.bytesPerPage);
+	sInfo.nPagesBlockEraseCounts = CEIL_DIVIDE(sGeometry.numBlocks
+			* sizeof(sInfo.blockArray->eraseCount), sGeometry.bytesPerPage);
 
 	sInfo.totalEraseCount = 0;
 	sInfo.field_78 = 0;
@@ -547,21 +447,30 @@ static uint32_t YAFTL_Init()
 		+ 2 * sInfo.tocPagesPerBlock
 		+ 2;
 
+	sInfo.ftlCxtUsn = 0;
+	sInfo.field_64 = 0;
+	sInfo.ftlCxtPage = 0xFFFFFFFF;
+
 	memset(&sInfo.blockStats, 0, sizeof(sInfo.blockStats));
+	// TODO: memset(&qword_806184D0, 0, 0x80);
+	
+	gcResetReadCache(&sInfo.readc);
 
-	// TODO: Some more initialization is done in the kernel version of yaFTL.
+	if (FAILED(gcInit()))
+		system_panic("YAFTL: GC initialization has failed\r\n");
 
-	if(BTOC_Init())
-		system_panic("yaftl: Actually (and before) it should free something, but,.. hey, we don't fuck up, do we?\r\n");
+	if (FAILED(BTOC_Init()))
+		system_panic("YAFTL: BTOC initialization has failed\r\n");
 
-	if (FAILED(L2V_Init(sInfo.totalPages, sGeometry.numBlocks, sGeometry.pagesPerSublk)))
-		system_panic("yaftl: L2V initialization has failed\r\n");
+	sInfo.latestUserBlk.tocBuffer = YAFTL_allocBTOC(~2);
+	sInfo.latestIndexBlk.tocBuffer = YAFTL_allocBTOC(~1);
 
-	sInfo.latestUserBlk.tocBuffer = BTOC_Alloc(~2);
-	sInfo.latestIndexBlk.tocBuffer = BTOC_Alloc(~1);
+	if (FAILED(L2V_Init(sInfo.totalPages, sGeometry.numBlocks,
+					sGeometry.pagesPerSublk))) {
+		system_panic("YAFTL: L2V initialization has failed\r\n");
+	}
 
-	yaftl_inited = 1;
-
+	yaftl_inited = TRUE;
 	return 0;
 }
 
@@ -569,9 +478,9 @@ static void YAFTL_SetupFreeAndAllocd()
 {
 	uint32_t i;
 
-	sInfo.blockStats.field_4 = 0;
+	sInfo.blockStats.numAvailable = 0;
 	sInfo.blockStats.numAllocated = 0;
-	sInfo.blockStats.field_10 = 0;
+	sInfo.blockStats.numIAvailable = 0;
 	sInfo.blockStats.numIAllocated = 0;
 	sInfo.blockStats.numFree = 0;
 
@@ -593,36 +502,19 @@ static void YAFTL_SetupFreeAndAllocd()
 		}
 	}
 
-	sInfo.blockStats.field_10 = sInfo.unknCalculatedValue0 - sInfo.blockStats.numIAllocated;
-	sInfo.blockStats.field_4 = sInfo.blockStats.numFree - sInfo.blockStats.field_10;
+	sInfo.blockStats.numIAvailable = sInfo.numIBlocks
+		- sInfo.blockStats.numIAllocated;
+
+	sInfo.blockStats.numAvailable = sInfo.blockStats.numFree
+		- sInfo.blockStats.numIAvailable;
 }
 
-static uint32_t findFreeTOCCache()
-{
-	uint32_t i;
-	for (i = 0; i < sInfo.unk184_0xA; i++) {
-		if (sInfo.tocCaches[i].state == CACHESTATE_FREE)
-			return i;
-	}
+/* Flush */
 
-	return 0xFFFF;
-}
+// TODO
+void YAFTL_Flush();
 
 /* Open & restore */
-
-void copyBTOC(uint32_t *dest, uint32_t *src, uint32_t maxVal)
-{
-	uint32_t i;
-	uint32_t val;
-
-	for (i = 0; i < (sInfo.tocPagesPerBlock * sGeometry.bytesPerPage) / sizeof(uint32_t); i++) {
-		val = src[i];
-		if (val >= maxVal)
-			val = 0xFFFFFFFF;
-
-		dest[i] = val;
-	}
-}
 
 static BlockListNode *addBlockToList(BlockListNode *listHead, uint32_t blockNumber, uint32_t usn)
 {
@@ -749,7 +641,8 @@ static uint32_t restoreIndexBlock(uint16_t blockNumber, uint8_t first)
 			// If this is the latest index block (i.e., the first in the list),
 			// update latestIndexBlk.tocBuffer, and maxIndexUsn.
 			sInfo.latestIndexBlk.usedPages = sGeometry.pagesPerSublk;
-			copyBTOC(sInfo.latestIndexBlk.tocBuffer, BTOCBuffer, sInfo.tocArrayLength);
+			YAFTL_copyBTOC(sInfo.latestIndexBlk.tocBuffer, BTOCBuffer,
+					sInfo.tocArrayLength);
 
 			if (spare->usn > sInfo.maxIndexUsn)
 				sInfo.maxIndexUsn = spare->usn;
@@ -834,7 +727,7 @@ static uint32_t restoreUserBlock(uint32_t blockNumber, uint32_t *bootBuffer, uin
 			0xFF,
 			(sGeometry.pagesPerSublk - sInfo.latestUserBlk.usedPages) * sizeof(uint32_t));
 
-		copyBTOC(buff, sInfo.latestUserBlk.tocBuffer, sInfo.totalPages);
+		YAFTL_copyBTOC(buff, sInfo.latestUserBlk.tocBuffer, sInfo.totalPages);
 
 		result = 0;
 		spare->type = 0x8;
@@ -905,7 +798,8 @@ static uint32_t restoreUserBlock(uint32_t blockNumber, uint32_t *bootBuffer, uin
 
 		if (firstBlock && !lpnOffset) {
 			sInfo.latestUserBlk.usedPages = sGeometry.pagesPerSublk;
-			copyBTOC(sInfo.latestUserBlk.tocBuffer, buff, sInfo.totalPages);
+			YAFTL_copyBTOC(sInfo.latestUserBlk.tocBuffer, buff,
+					sInfo.totalPages);
 		}
 
 		return 0;
@@ -1065,7 +959,7 @@ static uint32_t YAFTL_Restore(uint8_t ftlCtrlBlockPresent)
 		}
 	}
 
-	sInfo.unkn_0x2A = sInfo.unk184_0xA;
+	sInfo.numFreeCaches = sInfo.numCaches;
 
 	// Restore index blocks.
 	if (indexListHead) {
@@ -1170,7 +1064,7 @@ static uint32_t YAFTL_Restore(uint8_t ftlCtrlBlockPresent)
 							--sInfo.blockStats.numValidIPages;
 						}
 
-						cacheNum = findFreeTOCCache();
+						cacheNum = YAFTL_findFreeTOCCache();
 						if (cacheNum == 0xFFFF) {
 							free(bootBuffer);
 							free(blockLpns);
@@ -1365,10 +1259,10 @@ static uint32_t YAFTL_Open(uint32_t signature_bit)
 
 	if (some_val || signature_bit) {
 		restoreNeeded = 1;
-		sInfo.unk184_0xA *= 100;
+		sInfo.numCaches *= 100;
 	}
 
-	sInfo.tocCaches = yaftl_alloc(sInfo.unk184_0xA * sizeof(TOCCache));
+	sInfo.tocCaches = yaftl_alloc(sInfo.numCaches * sizeof(TOCCache));
 	if (!sInfo.tocCaches) {
 		bufferPrintf("yaftl: error allocating memory\r\n");
 		return -1;
@@ -1376,13 +1270,13 @@ static uint32_t YAFTL_Open(uint32_t signature_bit)
 
 	bufzone_init(&sInfo.segment_info_temp);
 
-	for (i = 0; i < sInfo.unk184_0xA; i++)
+	for (i = 0; i < sInfo.numCaches; i++)
 		sInfo.tocCaches[i].buffer = bufzone_alloc(&sInfo.segment_info_temp, sGeometry.bytesPerPage);
 
 	if (FAILED(bufzone_finished_allocs(&sInfo.segment_info_temp)))
 		return -1;
 
-	for (i = 0; i < sInfo.unk184_0xA; i++) {
+	for (i = 0; i < sInfo.numCaches; i++) {
 		sInfo.tocCaches[i].buffer = bufzone_rebase(&sInfo.segment_info_temp, sInfo.tocCaches[i].buffer);
 		sInfo.tocCaches[i].state = CACHESTATE_FREE;
 		sInfo.tocCaches[i].page = 0xFFFF;
@@ -1584,7 +1478,7 @@ static int YAFTL_Read(uint32_t lpn, uint32_t nPages, uint8_t* pBuf)
 				tocEntry = sInfo.tocCaches[tocCacheNum].buffer[(lpn + pagesRead) % sInfo.tocEntriesPerPage];
 			} else {
 				// TOC cache isn't valid, find whether we can cache the data.
-				if ((freeTOCCacheNum = findFreeTOCCache()) != 0xFFFF)
+				if ((freeTOCCacheNum = YAFTL_findFreeTOCCache()) != 0xFFFF)
 				{
 					// There's a free cache.
 					ret = YAFTL_readPage(
@@ -1595,7 +1489,7 @@ static int YAFTL_Read(uint32_t lpn, uint32_t nPages, uint8_t* pBuf)
 					if (ret != 0)
 						goto YAFTL_READ_RETURN;
 
-					sInfo.unkn_0x2A--;
+					sInfo.numFreeCaches--;
 					sInfo.tocCaches[freeTOCCacheNum].state = CACHESTATE_CLEAN;
 					sInfo.tocCaches[freeTOCCacheNum].useCount = 1;
 					sInfo.tocCaches[freeTOCCacheNum].page = tocPageNum;
@@ -1690,325 +1584,6 @@ YAFTL_READ_RETURN:
 
 /* Write */
 
-static void deallocBTOC(uint32_t* btoc)
-{
-	uint32_t i;
-
-	for (i = 0; i != sInfo.unk74_4; ++i) {
-		if (sInfo.unk84_buffer[i] == btoc) {
-			sInfo.unk7C_byteMask |= 1 << i;
-			return;
-		}
-	}
-
-	system_panic("YAFTL: couldn't deallocate BTOC %p\r\n", btoc);
-}
-
-static void allocateNewBlock(uint8_t isUserBlock)
-{
-	uint32_t bestBlk = 0xFFFFFFFF;
-	uint32_t minEraseCnt = 0xFFFFFFFF;
-	uint32_t currBlk;
-
-	++sInfo.field_DC[0];
-
-	if (isUserBlock)
-		sInfo.latestUserBlk.usn = sInfo.maxIndexUsn;
-	else
-		sInfo.latestIndexBlk.usn = sInfo.maxIndexUsn;
-
-	for (currBlk = 0; currBlk < sGeometry.numBlocks; ++currBlk) {
-		uint8_t status = sInfo.blockArray[currBlk].status;
-		uint8_t unkn5 = sInfo.blockArray[currBlk].unkn5;
-
-		// Skip non-free blocks -- we can't use them.
-		if (status != BLOCKSTATUS_FREE)
-			continue;
-
-		// Erase blocks which need it.
-		if ((isUserBlock && unkn5 == 2) || (!isUserBlock && unkn5 == 4)) {
-			if (sInfo.field_78) {
-				YAFTL_writeIndexTOC();
-				sInfo.field_78 = FALSE;
-			}
-
-			if (FAILED(vfl_erase_single_block(vfl, currBlk, TRUE))) {
-				system_panic(
-						"YAFTL: allocateNewBlock failed to erase block %d\r\n",
-						currBlk);
-			}
-
-			sInfo.blockArray[currBlk].unkn5 = 0;
-			++sInfo.blockArray[currBlk].eraseCount;
-			++sInfo.field_DC[3];
-			
-			if (sInfo.blockArray[currBlk].eraseCount > sInfo.maxBlockEraseCount)
-				sInfo.maxBlockEraseCount = sInfo.blockArray[currBlk].eraseCount;
-		}
-
-		if (unkn5 != 2 && unkn5 != 5) {
-			// Candidate found.
-			if (sInfo.blockArray[currBlk].eraseCount < minEraseCnt) {
-				if (sInfo.blockArray[currBlk].validPagesINo) {
-					system_panic("YAFTL: allocateNewBlock found an empty block"
-							" (%d) with validPagesINo != 0\r\n", currBlk);
-				}
-
-				if (sInfo.blockArray[currBlk].validPagesDNo) {
-					system_panic("YAFTL: allocateNewBlock found an empty block"
-							" (%d) with validPagesDNo != 0\r\n", currBlk);
-				}
-
-				minEraseCnt = sInfo.blockArray[currBlk].eraseCount;
-				bestBlk = currBlk;
-			}
-		}
-	}
-
-	if (bestBlk == 0xFFFFFFFF)
-		system_panic("YAFTL: allocateNewBlock is out of blocks\r\n");
-
-	if (isUserBlock) {
-		deallocBTOC(sInfo.latestUserBlk.tocBuffer);
-	} else {
-		deallocBTOC(sInfo.latestIndexBlk.tocBuffer);
-	}
-
-	if (sInfo.blockArray[bestBlk].unkn5 == 1) {
-		// Needs erasing.
-		if (sInfo.field_78) {
-			YAFTL_writeIndexTOC();
-			sInfo.field_78 = FALSE;
-		}
-
-		if (FAILED(vfl_erase_single_block(vfl, bestBlk, TRUE)))
-			return;
-
-		++sInfo.blockArray[bestBlk].eraseCount;
-		++sInfo.field_DC[3];
-		sInfo.blockArray[bestBlk].unkn5 = 0;
-	}
-
-	// Store the data about the new chosen block.
-	if (isUserBlock) {
-		sInfo.blockArray[sInfo.latestUserBlk.blockNum].status =
-			BLOCKSTATUS_ALLOCATED;
-
-		sInfo.latestUserBlk.blockNum = bestBlk;
-		sInfo.blockArray[bestBlk].status = BLOCKSTATUS_GC;
-		sInfo.latestUserBlk.usedPages = 0;
-		sInfo.latestUserBlk.tocBuffer = BTOC_Alloc(bestBlk);
-		memset(sInfo.latestUserBlk.tocBuffer, 0xFF, sInfo.tocPagesPerBlock *
-				sGeometry.bytesPerPage);
-
-		--sInfo.blockStats.field_4;
-		++sInfo.blockStats.numAllocated;
-	} else {
-		sInfo.blockArray[sInfo.latestIndexBlk.blockNum].status =
-			BLOCKSTATUS_I_ALLOCATED;
-
-		sInfo.latestIndexBlk.blockNum = bestBlk;
-		sInfo.blockArray[bestBlk].status = BLOCKSTATUS_I_GC;
-		sInfo.latestIndexBlk.usedPages = 0;
-		sInfo.latestIndexBlk.tocBuffer = BTOC_Alloc(bestBlk);
-		memset(sInfo.latestIndexBlk.tocBuffer, 0xFF, sInfo.tocPagesPerBlock *
-				sGeometry.bytesPerPage);
-
-		--sInfo.blockStats.field_10;
-		++sInfo.blockStats.numIAllocated;
-	}
-
-	--sInfo.blockStats.numFree;
-}
-
-static error_t closeLatestBlock(uint8_t isUserBlock)
-{
-	SpareData* spare = sInfo.spareBuffer12;
-	uint32_t usedPages;
-	uint32_t blockNum;
-	uint8_t* tocBuffer;
-	uint8_t i;
-
-	// FIXME: We must initialize sInfo.latest*Block.usn somewhere!
-	if (isUserBlock) {
-		spare->type = PAGETYPE_CLOSED;
-		spare->usn = sInfo.latestUserBlk.usn;
-
-		usedPages = sInfo.latestUserBlk.usedPages;
-		blockNum = sInfo.latestUserBlk.blockNum;
-		tocBuffer = (uint8_t*)sInfo.latestUserBlk.tocBuffer;
-	} else {
-		spare->type = PAGETYPE_CLOSED | PAGETYPE_INDEX;
-		spare->usn = sInfo.latestIndexBlk.usn;
-
-		usedPages = sInfo.latestIndexBlk.usedPages;
-		blockNum = sInfo.latestIndexBlk.blockNum;
-		tocBuffer = (uint8_t*)sInfo.latestIndexBlk.tocBuffer;
-	}
-
-	if (usedPages == sGeometry.pagesPerSublk - sInfo.tocPagesPerBlock) {
-		// Block is indeed full; close it.
-		uint32_t page = blockNum * sGeometry.pagesPerSublk + usedPages;
-
-		for (i = 0; i < sInfo.tocPagesPerBlock; ++i) {
-			error_t result = YAFTL_writePage(page,
-					&tocBuffer[sGeometry.bytesPerPage * i], spare);
-
-			if (FAILED(result))
-				return EINVAL;
-		}
-	}
-
-	return SUCCESS;
-}
-
-static int writeIndexPage(void* _pBuf, SpareData* _pSpare)
-{
-	uint32_t page;
-
-	while (TRUE) {
-		if (sInfo.latestIndexBlk.usedPages >= sGeometry.pagesPerSublk -
-				sInfo.tocPagesPerBlock) {
-			// Current index block is full, obtain a fresh one.
-			closeLatestBlock(FALSE);
-			allocateNewBlock(FALSE);
-
-			if (sInfo.latestIndexBlk.usedPages != 0) {
-				system_panic("YAFTL: writeIndexPage expected a fresh index "
-						"block, but %d of its pages are used\r\n",
-						sInfo.latestIndexBlk.usedPages);
-			}
-		}
-
-		page = sInfo.latestIndexBlk.blockNum * sGeometry.pagesPerSublk +
-			sInfo.latestIndexBlk.usedPages;
-
-		_pSpare->usn = sInfo.maxIndexUsn;
-		sInfo.latestIndexBlk.tocBuffer[sInfo.latestIndexBlk.usedPages] =
-			_pSpare->lpn;
-
-		if (YAFTL_writePage(page, (uint8_t*)_pBuf, _pSpare) == 0)
-			break;
-
-		gcListPushBack(&sInfo.gc.index.list, sInfo.latestIndexBlk.blockNum);
-		allocateNewBlock(FALSE);
-	}
-
-	++sInfo.blockArray[sInfo.latestIndexBlk.blockNum].validPagesINo;
-	++sInfo.blockStats.numValidIPages;
-	++sInfo.latestIndexBlk.usedPages;
-	sInfo.tocArray[_pSpare->lpn].indexPage = page;
-	return 0;
-}
-
-static void setupIndexSpare(SpareData* _pSpare, uint32_t _lpn)
-{
-	// TODO: Load field_A4 properly (i.e. in YAFTL_Open)!!!
-	if (sInfo.field_A4 != sInfo.latestIndexBlk.blockNum) {
-		sInfo.field_A4 = sInfo.latestIndexBlk.blockNum;
-		++sInfo.maxIndexUsn;
-	}
-
-	_pSpare->lpn = _lpn;
-	_pSpare->type = PAGETYPE_INDEX;
-	_pSpare->usn = sInfo.maxIndexUsn;
-}
-
-static uint32_t clearEntryInCache(uint16_t _cacheIdx)
-{
-	typedef struct {
-		uint16_t useCount;
-		uint16_t idx;
-	} bestcache_t;
-
-	bestcache_t bestDirty, bestClean;
-	uint32_t i;
-
-	if (_cacheIdx == 0xFFFF) {
-		// Any cache is okay.
-		bestDirty.useCount = 0xFFFF;
-		bestDirty.idx = 0xFFFF;
-		bestClean.useCount = 0xFFFF;
-		bestClean.idx = 0xFFFF;
-
-		for (i = 0; i < sInfo.unk184_0xA; ++i) {
-			TOCCache* cache = &sInfo.tocCaches[i];
-
-			if (cache->state == CACHESTATE_FREE) {
-				return i;
-			} else if (cache->state == CACHESTATE_DIRTY
-					&& cache->useCount < bestDirty.useCount) {
-				bestDirty.useCount = cache->useCount;
-				bestDirty.idx = i;
-			} else if (cache->state == CACHESTATE_CLEAN
-					&& cache->useCount < bestClean.useCount) {
-				bestClean.useCount = cache->useCount;
-				bestClean.idx = i;
-			}
-		}
-	} else {
-		// TODO
-		system_panic("YAFTL: clearEntryInCache by a specific cache isn't "
-				"implemented yet!\r\n");
-	}
-
-	if (bestClean.idx != 0xFFFF) {
-		// Clear this clean cache.
-		sInfo.tocArray[sInfo.tocCaches[bestClean.idx].page].cacheNum = 0xFFFF;
-		memset(sInfo.tocCaches[bestClean.idx].buffer, 0xFF,
-				sGeometry.bytesPerPage);
-
-		sInfo.tocCaches[bestClean.idx].state = CACHESTATE_FREE;
-		sInfo.tocCaches[bestClean.idx].useCount = 0;
-		++sInfo.unkn_0x2A;
-		return bestClean.idx;
-	}
-
-	if (bestDirty.idx != 0xFFFF) {
-		// Oh well. Let's clear this dirty cache.
-		SpareData* pSpare = sInfo.spareBuffer11;
-		uint32_t oldPage = sInfo.tocCaches[bestDirty.idx].page;
-		uint32_t oldIndexPage = sInfo.tocArray[oldPage].indexPage;
-
-		sInfo.tocArray[oldPage].cacheNum = 0xFFFF;
-		setupIndexSpare(pSpare, oldPage);
-
-		if (oldIndexPage != 0xFFFFFFFF) {
-			// Invalidate the index page.
-			uint32_t oldIndexBlock = oldIndexPage / sGeometry.pagesPerSublk;
-
-			if (sInfo.blockArray[oldIndexBlock].validPagesINo == 0) {
-				system_panic("YAFTL: clearEntryInCache tried to invalidate an "
-						"index page in block %d, but it has no index pages\r\n",
-						oldIndexBlock);
-			}
-
-			--sInfo.blockArray[oldIndexBlock].validPagesINo;
-			--sInfo.blockStats.numValidIPages;
-		}
-
-		// Write the dirty index page.
-		error_t result = writeIndexPage(sInfo.tocCaches[bestDirty.idx].buffer,
-				pSpare);
-
-		if (result) {
-			system_panic("YAFTL: clearEntryInCache failed to write dirty index"
-					" page in %p\r\n", sInfo.tocCaches[bestDirty.idx].buffer);
-		}
-
-		sInfo.tocArray[oldPage].cacheNum = 0xFFFF;
-		sInfo.tocCaches[bestDirty.idx].state = CACHESTATE_FREE;
-		sInfo.tocCaches[bestDirty.idx].useCount = 0;
-		memset(sInfo.tocCaches[bestDirty.idx].buffer, 0xFF,
-				sGeometry.bytesPerPage);
-
-		++sInfo.unkn_0x2A;
-		return bestDirty.idx;
-	}
-
-	return 0xFFFF;
-}
-
 static uint32_t* refreshTOCCaches(uint32_t _page, uint32_t* _pCacheEntry)
 {
 	SpareData* pSpare = sInfo.spareBuffer13;
@@ -2023,11 +1598,11 @@ static uint32_t* refreshTOCCaches(uint32_t _page, uint32_t* _pCacheEntry)
 		freeCacheSlot = cacheNum;
 	} else {
 		// Not cached. Retreive a free cache.
-		freeCacheSlot = findFreeTOCCache();
+		freeCacheSlot = YAFTL_findFreeTOCCache();
 
 		if (freeCacheSlot == 0xFFFF) {
 			// No free caches. Clear one and use it.
-			freeCacheSlot = clearEntryInCache(0xFFFF);
+			freeCacheSlot = YAFTL_clearEntryInCache(0xFFFF);
 
 			if (freeCacheSlot == 0xFFFF)
 				system_panic("YAFTL: refreshTOCCaches is out of caches\r\n");
@@ -2114,7 +1689,7 @@ static void invalidatePages(uint32_t _start, uint32_t _count)
 
 	// Collect garbage for each block which should be freed.
 	for (i = 0; i < blocksFreed; ++i)
-		YAFTL_GarbageCollection(-1, 1);
+		gcFreeBlock(0xFFFFFFFF, 1);
 }
 
 static void initUserSpareDatas(SpareData* _pSpare, uint32_t _page,
@@ -2167,10 +1742,10 @@ static int YAFTL_Write(uint32_t _pageStart, uint32_t _numPages, uint8_t* _pBuf)
 		uint32_t toWrite = try.numPages;
 		uint8_t* pBufOffset = try.pBuf;
 
-		sub_80606834(try.numPages);
+		gcPrepareToWrite(try.numPages);
 		
 		while (toWrite != 0) {
-			error_t result = SUCCESS;
+			error_t result;
 			uint32_t maxWritePages;
 			uint32_t physWriteLimit;
 			uint32_t* cache;
@@ -2179,8 +1754,8 @@ static int YAFTL_Write(uint32_t _pageStart, uint32_t _numPages, uint8_t* _pBuf)
 			// Check whether latest user block is full
 			if (sInfo.latestUserBlk.usedPages >= sGeometry.pagesPerSublk -
 					sInfo.tocPagesPerBlock) {
-				closeLatestBlock(TRUE);
-				allocateNewBlock(TRUE);
+				YAFTL_closeLatestBlock(TRUE);
+				YAFTL_allocateNewBlock(TRUE);
 
 				try.pageStart = currentPage;
 				try.numPages = toWrite;
@@ -2202,6 +1777,7 @@ static int YAFTL_Write(uint32_t _pageStart, uint32_t _numPages, uint8_t* _pBuf)
 			initUserSpareDatas(sInfo.spareBuffer19, currentPage, maxWritePages);
 
 			// TODO: Use VSVFL_writeMultiplePagesInVb.
+			result = SUCCESS;
 			for (i = 0; i < maxWritePages && !FAILED(result); ++i) {
 				uint32_t page = sInfo.latestUserBlk.blockNum
 					* sGeometry.pagesPerSublk + i;
@@ -2213,12 +1789,12 @@ static int YAFTL_Write(uint32_t _pageStart, uint32_t _numPages, uint8_t* _pBuf)
 			}
 
 			if (FAILED(result)) {
-				allocateNewBlock(TRUE);
+				YAFTL_allocateNewBlock(TRUE);
 				invalidatePages(try.pageStart, try.numPages);
 
 				if (sInfo.blockArray[sInfo.latestUserBlk.blockNum].status
 						!= BLOCKSTATUS_FREE) {
-					YAFTL_GarbageCollection(sInfo.latestUserBlk.blockNum, 1);
+					gcFreeBlock(sInfo.latestUserBlk.blockNum, TRUE);
 				}
 
 				break;
@@ -2318,16 +1894,15 @@ static error_t yaftl_read_mtd(mtd_t *_dev, void *_dest, uint64_t _off, int _amt)
 	return TRUE;
 }
 
-/*
-static error_t ftl_write_mtd(mtd_t *_dev, void *_src, uint32_t _off, int _amt)
+static error_t yaftl_write_mtd(mtd_t *_dev, void *_src, uint64_t _off, int _amt)
 {
-	int ret = ftl_write(_src, _off, _amt);
+	// TODO: EMF magic
+	int ret = YAFTL_Write(_off, _amt, _src);
 	if(FAILED(ret))
 		return ret;
 
 	return SUCCESS;
 }
-*/
 
 static int64_t yaftl_block_size(mtd_t *_dev)
 {
@@ -2341,7 +1916,7 @@ static mtd_t yaftl_mtd = {
 	},
 
 	.read = yaftl_read_mtd,
-	.write = NULL,
+	.write = yaftl_write_mtd,
 
 	.block_size = yaftl_block_size,
 

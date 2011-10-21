@@ -2,8 +2,9 @@ Import('*')
 
 ftl_yaftl_src = env.Localize([
 	'yaftl_mem.c',
-	'yaftl_gc.c',
+	'yaftl_common.c',
 	'yaftl.c',
+	'yaftl_gc.c',
 	'l2v.c',
 	])
 

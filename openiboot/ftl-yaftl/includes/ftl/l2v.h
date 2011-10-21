@@ -2,10 +2,14 @@
 #define FTL_L2V_H
 
 #include "openiboot.h"
+#include "ftl/yaftl_common.h"
 
-typedef struct _L2VNode {
-	struct _L2VNode* next;
-} L2VNode;
+#define L2V_VPN_SPECIAL	(0x1FF0002)
+#define L2V_VPN_MISS	(0x1FF0003)
+
+#define L2V_VPN_ISNORMAL(v)	((v) < L2V_VPN_SPECIAL)
+
+/* Types */
 
 typedef struct {
 	uint32_t numRoots;
@@ -21,7 +25,10 @@ typedef struct {
 	uint32_t nodeCount;
 } L2VDesc;
 
-// TODO: documentation
 error_t L2V_Init(uint32_t totalPages, uint32_t numBlocks, uint32_t pagesPerSublk);
+
+void L2V_Update(uint32_t _start, uint32_t _count, uint32_t _vpn);
+
+void L2V_Search(GCReadC* _c);
 
 #endif // FTL_L2V_H
