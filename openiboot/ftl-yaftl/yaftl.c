@@ -18,24 +18,24 @@ static uint32_t BTOC_Init()
 {
 	uint32_t i;
 
-	sInfo.unk74_4 = 4;
-	sInfo.unk78_counter = 0;
+	sInfo.numBtocCaches = 4;
+	sInfo.btocCurrUsn = 0;
 	sInfo.unkAC_2 = 2;
 	sInfo.unkB0_1 = 1;
 
-	sInfo.unk8c_buffer = yaftl_alloc(0x10);
-	sInfo.unk88_buffer = yaftl_alloc(sInfo.unk74_4 << 2);
-	sInfo.unk84_buffer = yaftl_alloc(sInfo.unk74_4 << 2);
+	sInfo.btocCacheUsn = yaftl_alloc(sInfo.numBtocCaches * sizeof(int32_t));
+	sInfo.btocCacheBlocks = yaftl_alloc(sInfo.numBtocCaches * sizeof(int32_t));
+	sInfo.btocCaches = yaftl_alloc(sInfo.numBtocCaches * sizeof(uint32_t*));
 	sInfo.unkB8_buffer = yaftl_alloc(sInfo.unkAC_2 << 2);
 	sInfo.unkB4_buffer = yaftl_alloc(sInfo.unkAC_2 << 2);
 
-	if (!sInfo.unk8c_buffer || !sInfo.unk8c_buffer || !sInfo.unk84_buffer
+	if (!sInfo.btocCacheUsn || !sInfo.btocCacheBlocks || !sInfo.btocCaches
 			|| !sInfo.unkB8_buffer || !sInfo.unkB4_buffer) {
 		return ENOMEM;
 	}
 
-	for (i = 0; i < sInfo.unk74_4; i++)
-		sInfo.unk88_buffer[i] = -1;
+	for (i = 0; i < sInfo.numBtocCaches; i++)
+		sInfo.btocCacheBlocks[i] = -1;
 
 	for (i = 0; i < sInfo.unkAC_2; i++) {
 		sInfo.unkB4_buffer[i] = -1;
@@ -43,38 +43,39 @@ static uint32_t BTOC_Init()
 		memset(sInfo.unkB8_buffer[i], 0xFF, sGeometry.pagesPerSublk<<2);
 	}
 
-	sInfo.unk7C_byteMask = (1 << sInfo.unk74_4) - 1;
+	sInfo.btocCacheMissing = (1 << sInfo.numBtocCaches) - 1;
 	sInfo.unk80_3 = 3;
 
-	bufzone_init(&sInfo.ftl_buffer2);
+	bufzone_init(&sInfo.btocCacheBufzone);
 
-	for (i = 0; i < sInfo.unk74_4; i++) {
-		sInfo.unk84_buffer[i] = bufzone_alloc(&sInfo.ftl_buffer2,
+	for (i = 0; i < sInfo.numBtocCaches; i++) {
+		sInfo.btocCaches[i] = bufzone_alloc(&sInfo.btocCacheBufzone,
 				sGeometry.bytesPerPage * sInfo.tocPagesPerBlock);
 	}
 
-	if (FAILED(bufzone_finished_allocs(&sInfo.ftl_buffer2)))
+	if (FAILED(bufzone_finished_allocs(&sInfo.btocCacheBufzone)))
 		return ENOMEM;
 
-	for (i = 0; i < sInfo.unk74_4; i++) {
-		sInfo.unk84_buffer[i] = bufzone_rebase(&sInfo.ftl_buffer2,
-				sInfo.unk84_buffer[i]);
+	for (i = 0; i < sInfo.numBtocCaches; i++) {
+		sInfo.btocCaches[i] = bufzone_rebase(&sInfo.btocCacheBufzone,
+				sInfo.btocCaches[i]);
 	}
 
-	if (FAILED(bufzone_finished_rebases(&sInfo.ftl_buffer2)))
+	if (FAILED(bufzone_finished_rebases(&sInfo.btocCacheBufzone)))
 		return ENOMEM;
 
 	return SUCCESS;
 }
 
-static void YAFTL_LoopThingy()
+static void updateBtocCache()
 {
 	uint32_t i;
-	for (i = 0; i < sInfo.unk74_4; i++) {
-		if(sInfo.unk88_buffer[i] == ~3)
-			sInfo.unk88_buffer[i] = sInfo.latestUserBlk.blockNum;
-		if(sInfo.unk88_buffer[i] == ~2)
-			sInfo.unk88_buffer[i] = sInfo.latestIndexBlk.blockNum;
+	for (i = 0; i < sInfo.numBtocCaches; ++i) {
+		if (sInfo.btocCacheBlocks[i] == -3)
+			sInfo.btocCacheBlocks[i] = sInfo.latestUserBlk.blockNum;
+
+		if (sInfo.btocCacheBlocks[i] == -2)
+			sInfo.btocCacheBlocks[i] = sInfo.latestIndexBlk.blockNum;
 	}
 }
 
@@ -474,7 +475,7 @@ static uint32_t YAFTL_Init()
 	return 0;
 }
 
-static void YAFTL_SetupFreeAndAllocd()
+static void initBlockStats()
 {
 	uint32_t i;
 
@@ -562,30 +563,6 @@ static BlockListNode *addBlockToList(BlockListNode *listHead, uint32_t blockNumb
 	return listHead;
 }
 
-static uint32_t readBTOCPages(uint32_t offset, uint32_t *data, SpareData *spare, uint8_t disable_aes, uint8_t scrub, uint32_t max)
-{
-	uint32_t i, j, result;
-	uint8_t *rawBuff = (uint8_t*)data;
-
-	// Read all the BTOC (block table of contents) pages.
-	for (i = 0; i < sInfo.tocPagesPerBlock; i++) {
-		result = YAFTL_readPage(offset + i,
-								&rawBuff[i * sGeometry.bytesPerPage],
-								spare, disable_aes, 1, scrub);
-
-		if (result)
-			return result;
-	}
-
-	// Validate the data.
-	for (j = 0; j < (sInfo.tocPagesPerBlock * sGeometry.bytesPerPage) / sizeof(uint32_t); j++) {
-		if (data[j] >= max)
-			data[j] = 0xFFFFFFFF;
-	}
-
-	return 0;
-}
-
 static uint32_t restoreIndexBlock(uint16_t blockNumber, uint8_t first)
 {
 	uint32_t i;
@@ -602,8 +579,9 @@ static uint32_t restoreIndexBlock(uint16_t blockNumber, uint8_t first)
 	}
 
 	// Read all the block-table-of-contents pages of this block.
-	result = readBTOCPages(blockOffset + sGeometry.pagesPerSublk - sInfo.tocPagesPerBlock,
-							BTOCBuffer, spare, 0, 0, sInfo.tocArrayLength);
+	result = YAFTL_readBTOCPages(blockOffset + sGeometry.pagesPerSublk
+			- sInfo.tocPagesPerBlock, BTOCBuffer, spare, 0, 0,
+			sInfo.tocArrayLength);
 
 	if (result > 1) {
 		// Read failed.
@@ -733,7 +711,8 @@ static uint32_t restoreUserBlock(uint32_t blockNumber, uint32_t *bootBuffer, uin
 		spare->type = 0x8;
 		readSucceeded = 1;
 	} else {
-		result = readBTOCPages(blockOffset + sGeometry.pagesPerSublk - sInfo.tocPagesPerBlock, buff, spare, 0, 0, sInfo.totalPages);
+		result = YAFTL_readBTOCPages(blockOffset + sGeometry.pagesPerSublk
+				- sInfo.tocPagesPerBlock, buff, spare, 0, 0, sInfo.totalPages);
 		if (result > 1) {
 			// Read failed.
 			sInfo.blockArray[blockNumber].unkn5 = 0x80;
@@ -1098,7 +1077,7 @@ static uint32_t YAFTL_Restore(uint8_t ftlCtrlBlockPresent)
 		free(bootBuffer);
 		free(blockLpns);
 
-		YAFTL_SetupFreeAndAllocd();
+		initBlockStats();
 
 		for (i = 0; i < sGeometry.numBlocks; i++) {
 			uint8_t status = sInfo.blockArray[i].status;
@@ -1117,13 +1096,13 @@ static uint32_t YAFTL_Restore(uint8_t ftlCtrlBlockPresent)
 
 		sInfo.latestUserBlk.usedPages = 0;
 		memset(sInfo.latestUserBlk.tocBuffer, 0xFF, sInfo.tocPagesPerBlock * sGeometry.bytesPerPage);
-		YAFTL_SetupFreeAndAllocd();
+		initBlockStats();
 	}
 
 	sInfo.blockStats.field_1C = 1;
 
 restore_final:
-	YAFTL_LoopThingy();
+	updateBtocCache();
 
 	if (sInfo.ftlCxtPage != 0xFFFFFFFF) {
 		sInfo.ftlCxtPage =
@@ -1308,8 +1287,8 @@ static uint32_t YAFTL_Open(uint32_t signature_bit)
 		}
 	}
 
-	YAFTL_SetupFreeAndAllocd();
-	YAFTL_LoopThingy();
+	initBlockStats();
+	updateBtocCache();
 
 	bufferPrintf("yaftl: successfully opened!\r\n");
 
@@ -1317,97 +1296,6 @@ static uint32_t YAFTL_Open(uint32_t signature_bit)
 }
 
 /* Read */
-
-static int YAFTL_readMultiPages(uint32_t* pagesArray, uint32_t nPages, uint8_t* dataBuffer, SpareData* metaBuffers, uint32_t disableAES, uint32_t scrub)
-{
-	uint32_t block, page, i, j;
-	int ret, succeeded, status = 0, unkn = 0;
-	int pagesToRead = nPages;
-
-	if (metaBuffers == NULL)
-		metaBuffers = sInfo.buffer20;
-
-	for (i = 0; pagesToRead > sGeometry.pagesPerSublk; i++) {
-		//ret = VFL_ReadScatteredPagesInVb(&buf[i * sGeometry.pagesPerSublk],sGeometry.pagesPerSublk, databuffer + i * sGeometry.pagesPerSublk * sGeometry.bytesPerPage, metabuf_array, &unkn, 0, a4, &status);
-		ret = 0; // For now. --Oranav
-
-		if (ret) {
-			if (status)
-				return 0;
-		} else {
-			//bufferPrintf("yaftl: _readMultiPages: We got read failure!!\r\n");
-			succeeded = 1;
-
-			for (j = 0; j < sGeometry.pagesPerSublk; j++) {
-				page = i * sGeometry.pagesPerSublk + j;
-				ret = YAFTL_readPage(
-						pagesArray[page],
-						&dataBuffer[page * sGeometry.bytesPerPage],
-						&metaBuffers[page],
-						disableAES,
-						1,
-						scrub);
-
-				if (ret)
-					 succeeded = 0;
-
-				status = ret;
-			}
-
-			if (!succeeded) {
-				bufferPrintf("yaftl: _readMultiPages: We weren't able to overcome read failure.\r\n");
-				return 0;
-			}
-
-			//bufferPrintf("yaftl:_readMultiPages: We were able to overcome read failure!!\r\n");
-		}
-
-		block = pagesArray[(i + 1) * sGeometry.pagesPerSublk] / sGeometry.pagesPerSublk;
-		sInfo.blockArray[block].readCount++;
-
-		pagesToRead -= sGeometry.pagesPerSublk;
-	}
-
-	if (pagesToRead == 0)
-		return 1;
-
-	block = pagesArray[i * sGeometry.pagesPerSublk] / sGeometry.pagesPerSublk;
-	sInfo.blockArray[block].readCount++;
-
-	unkn = 0;
-	// ret = VFL_ReadScatteredPagesInVb(&buf[i * sGeometry.pagesPerSublk], pagesToRead % sGeometry.pagesPerSublk, databuffer + i * sGeometry.pagesPerSublk * sGeometry.bytesPerPage, metabuf_array, &unkn, 0, a4, &status);
-	ret = 0; // For now. --Oranav
-
-	if (ret)
-		return !status;
-	else {
-		//bufferPrintf("yaftl:_readMultiPages: We got read failure!!\r\n");
-		succeeded = 1;
-
-		for (j = 0; j != pagesToRead; j++) {
-			page = i * sGeometry.pagesPerSublk + j;
-			ret = YAFTL_readPage(
-					pagesArray[page],
-					&dataBuffer[page * sGeometry.bytesPerPage],
-					&metaBuffers[page],
-					disableAES,
-					1,
-					scrub);
-
-			if (ret)
-				succeeded = 0;
-
-			status = ret;
-		}
-
-		if (!succeeded)
-			return 0;
-
-		//bufferPrintf("yaftl:_readMultiPages: We were able to overcome read failure!!\r\n");
-	}
-
-	return 1;
-}
 
 static int YAFTL_verifyMetaData(uint32_t lpnStart, SpareData* metaDatas, uint32_t nPages)
 {

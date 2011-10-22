@@ -39,6 +39,9 @@
 // Size of GCList
 #define GCLIST_MAX (16)
 
+// Constants
+#define INT_MAX (0x7FFFFFFF)
+
 /* Types */
 
 typedef struct {
@@ -157,14 +160,14 @@ typedef struct {
 	uint32_t maxIndexUsn; // 6C
 	uint32_t field_A4;
 	uint8_t field_78; // Heh, wtf?
-	uint32_t unk74_4;
-	uint32_t unk78_counter;
-	uint32_t unk7C_byteMask;
+	uint32_t numBtocCaches;
+	int32_t btocCurrUsn;
+	uint32_t btocCacheMissing; // A bitfield
 	uint32_t unk80_3;
-	uint32_t** unk84_buffer;
-	uint32_t* unk88_buffer;
-	uint32_t* unk8c_buffer;
-	bufzone_t ftl_buffer2;
+	uint32_t** btocCaches;
+	int32_t* btocCacheBlocks;
+	int32_t* btocCacheUsn;
+	bufzone_t btocCacheBufzone;
 	uint32_t unkAC_2;
 	uint32_t unkB0_1;
 	uint32_t* unkB4_buffer;
@@ -276,11 +279,17 @@ extern vfl_device_t* vfl;
 
 /* Functions */
 
+int YAFTL_readMultiPages(uint32_t* pagesArray, uint32_t nPages, uint8_t* dataBuffer, SpareData* metaBuffers, uint32_t disableAES, uint32_t scrub);
+
 void YAFTL_allocateNewBlock(uint8_t isUserBlock);
 
 error_t YAFTL_closeLatestBlock(uint8_t isUserBlock);
 
 uint32_t* YAFTL_allocBTOC(uint32_t _arg0);
+
+uint32_t* YAFTL_getBTOC(uint32_t _block);
+
+error_t YAFTL_readBTOCPages(uint32_t offset, uint32_t *data, SpareData *spare, uint8_t disable_aes, uint8_t scrub, uint32_t max);
 
 error_t YAFTL_readPage(uint32_t _page, uint8_t* _data_ptr, SpareData* _spare_ptr, uint32_t _disable_aes, uint32_t _empty_ok, uint32_t _scrub);
 
