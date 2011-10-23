@@ -1,7 +1,7 @@
 /*
  * util.h
  *
- * Copyright 2010 iDroid Project
+ * Copyright 2011 iDroid Project
  *
  * This file is part of iDroid. An android distribution for Apple products.
  * For more information, please visit http://www.idroidproject.org/.
@@ -263,6 +263,8 @@ int addToBuffer(const char* toBuffer, int len);
 printf_handler_t addPrintfHandler(printf_handler_t);
 void bufferPrint(const char* toBuffer);
 void bufferPrintf(const char* format, ...);
+void uartPrint(const char* toBuffer);
+void uartPrintf(const char* format, ...);
 void bufferFlush(char* destination, size_t length);
 char* getScrollback();
 size_t getScrollbackLen();

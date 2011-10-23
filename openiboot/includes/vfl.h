@@ -1,3 +1,26 @@
+/**
+ * vfl.h
+ *
+ * Copyright 2011 iDroid Project
+ *
+ * This file is part of iDroid. An android distribution for Apple products.
+ * For more information, please visit http://www.idroidproject.org/.
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; either version 3
+ * of the License, or (at your option) any later version.
+ * 
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ */
+
 #ifndef  VFL_H
 #define  VFL_H
 
@@ -56,7 +79,7 @@ typedef error_t (*vfl_read_single_page_t)(struct _vfl_device *, uint32_t _page, 
 		uint8_t *_sparebuffer, int _empty_ok, int *_refresh, uint32_t _disable_aes);
 
 typedef error_t (*vfl_write_single_page_t)(struct _vfl_device *, uint32_t _page, uint8_t *_buffer,
-		uint8_t *_sparebuffer);
+		uint8_t *_sparebuffer, int _scrub);
 
 typedef error_t (*vfl_erase_single_block_t)(struct _vfl_device *, uint32_t _block, int _replace_bad_block);
 
@@ -195,7 +218,7 @@ error_t vfl_read_single_page(vfl_device_t *_vfl, uint32_t _page, uint8_t* _buffe
  *
  * @ingroup VFL
  */
-error_t vfl_write_single_page(vfl_device_t *_vfl, uint32_t _page, uint8_t* _buffer, uint8_t* _spare);
+error_t vfl_write_single_page(vfl_device_t *_vfl, uint32_t _page, uint8_t* _buffer, uint8_t* _spare, int _scrub);
 
 /**
  * Erase a single block in the VFL.
