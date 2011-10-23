@@ -22,9 +22,7 @@
  */
 
 /**
- *	@file buttons.h
- *
- *	@brief Header file for OiB knowing if a button if being pushed.
+ *	@file Header file for OiB knowing if a button if being pushed.
  *
  */
 #ifndef BUTTONS_H

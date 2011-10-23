@@ -22,9 +22,7 @@
  */
 
 /**
- *	@file camera.h
- *
- *	@brief Header file for camera functions in OiB
+ *	@file Header file for camera functions in OiB
  *
  */
 #ifndef CAMERA_H

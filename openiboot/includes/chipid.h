@@ -21,6 +21,10 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
+/**
+ *  @file Header file for Chip identification
+ *
+ */
 #ifndef CHIPID_H
 #define CHIPID_H
 

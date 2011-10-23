@@ -22,9 +22,9 @@
  */
 
 /**
- *	@file bdev.h
+ *	@file Header file for OiB's Block Device system.
  *
- *	@bried Header file for OiB's Block Device system, this allows easy access to devices attached to OiB and contains structures for MBR, GPT and LwVM
+ *  This allows easy access to devices attached to OiB and contains structures for MBR, GPT and LwVM (Light Weight Volume Manager (Apple TV and iOS 5+))
  *
  */
 #ifndef  BDEV_H

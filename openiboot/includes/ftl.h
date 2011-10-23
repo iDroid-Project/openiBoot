@@ -21,13 +21,21 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
+/**
+ *  @file Header file for OiB's Flash Transition Layer
+ *
+ */
+
 #ifndef  FTL_H
 #define  FTL_H
 
 #include "mtd.h"
 #include "vfl.h"
 
-// FTL Device Prototypes
+/**
+ *  FTL Device Prototypes
+ *
+ */
 struct _ftl_device;
 
 typedef error_t (*ftl_device_open_t)(struct _ftl_device *, vfl_device_t *_vfl);
@@ -36,7 +44,10 @@ typedef void (*ftl_device_close_t)(struct _ftl_device *);
 typedef error_t (*ftl_read_single_page_t)(struct _ftl_device *, uint32_t _page, uint8_t *_buffer);
 typedef error_t (*ftl_write_single_page_t)(struct _ftl_device *, uint32_t _page, uint8_t *_buffer);
 
-// FTL Device Structure
+/**
+ *  FTL Device Structure
+ *
+ */
 typedef struct _ftl_device
 {
 	mtd_t mtd;
@@ -49,8 +60,10 @@ typedef struct _ftl_device
 
 } ftl_device_t;
 
-// FTL Device Functions
-
+/**
+ *  FTL Device Functions
+ *
+ */
 error_t ftl_init(ftl_device_t *_dev);
 void ftl_cleanup(ftl_device_t *_dev);
 

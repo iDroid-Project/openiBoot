@@ -22,10 +22,15 @@
  */
 
 /**
- *	@file nvram.h
+ *	@file This file defines NVRAM interface.
  *
- *	@brief Header file for NVRAM, including reading, writing and setup.
+ *  The NVRAM interfae is designed to represent the reading, writing
+ *  and setup of the NVRAM.
  *
+ *  This provides a way of getting the environment variables stored 
+ *  in the NVRAM on the device.
+ *
+ *  @defgroup NVRAM
  */
 
 #ifndef NVRAM_H
@@ -34,10 +39,14 @@
 #include "openiboot.h"
 /**
  *	Start value of NVRAM
+ *
+ *  @ingroup NVRAM
  */
 #define NVRAM_START 0xFC000
 /**
  *	Size of NVRAM
+ *
+ *  @ingroup NVRAM
  */
 #define NVRAM_SIZE 0x2000
 
@@ -63,33 +72,47 @@ typedef struct NVRamAtom {
 /**
  *	Environment variable structure
  *
+ *  The information returned for each variable retrieved from NVRAM
+ *
  *	@param name Name of Variable
  *
  *	@param value Value held by variable
  *
+ *  @ingroup NVRAM
  */
 typedef struct EnvironmentVar {
 	char* name;
 	char* value;
 	struct EnvironmentVar* next;
 } EnvironmentVar;
+
 /**
- * Setup the NVRAM to be read or written to, called by nor.c
+ * Setup the NVRAM to be read or written to, called by nor_init in nor.c
  *
+ *  Returns 0 on successful loading of both NVRAM banks and -1 if the 
+ *  device cannot be found or one of the banks cannot be loaded.
+ *
+ *  @ingroup NVRAM
  */
 int nvram_setup();
 
 /**
  *	List the variables stored in NVRAM
  *
+ *  @ingroup NVRAM
  */
 void nvram_listvars();
 
 /**
  *	Get a variable stored in NVRAM
  *
+ *  Returns the value of a variable retrieved from NVRAM to the buffer.
+ *
+ *  Returns variable on success, returns NULL on failure.
+ *
  *	@param name Title of variable stored in NVRAM
  *
+ *  @ingroup NVRAM
  */
 const char* nvram_getvar(const char* name);
 
@@ -100,12 +123,17 @@ const char* nvram_getvar(const char* name);
  *
  *	@param value Value to be written into NVRAM
  *
+ *  @ingroup NVRAM
  */
 void nvram_setvar(const char* name, const char* value);
 
 /**
  *	Save any temprorary variables to NVRAM
  *
+ *  Write the edited values of NVRAM from the newest bank to the oldest
+ *  bank, and setting up the oldest bank to become newest bank.
+ *
+ *  @ingroup NVRAM
  */
 void nvram_save();
 

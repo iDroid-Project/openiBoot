@@ -22,9 +22,7 @@
  */
 
 /**
- *	@file actions.h
- *
- *	@brief Header file for the 'actions' OiB can perform, this includes image loading, setting the boot entry, kernel loading, ramdisk loading and the chainloading of iBoot.
+ *	@file Header file for the 'actions' OiB can perform, this includes image loading, setting the boot entry, kernel loading, ramdisk loading and the chainloading of iBoot.
  *
  */
 #ifndef ACTIONS_H

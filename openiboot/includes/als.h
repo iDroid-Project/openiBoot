@@ -21,13 +21,40 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
+/**
+ *  @file Header file for Ambient Light Sensor
+ *
+ *  All the functionality of the Ambient Light Sensor is defined here.
+ *
+ */
 #ifndef ALS_H
 #define ALS_H
-
+/**
+ *  Setup the Ambient Light Sensor
+ *
+ *  Returns 0 on correct initialisation and -1 on incorrect initialisation.
+ *
+ */
 int als_setup();
+
+/**
+ *  Set the high light threshold value
+ *
+ */
 void als_sethighthreshold(unsigned int value);
+
+/**
+ *  Set the low light threshold value
+ *
+ */
 void als_setlowthreshold(unsigned int value);
+
+/**
+ *  Collect data from the Ambient Light Sensor
+ *
+ */
 unsigned int als_data();
+
 void als_setchannel(int channel);
 void als_enable_interrupt();
 void als_disable_interrupt();

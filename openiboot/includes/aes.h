@@ -22,9 +22,8 @@
  */
 
 /**
- *	@file aes.h
+ *	@file Header file for the AES function OiB performs.
  *
- *	@brief Header file for the AES function OiB performs.
  */
 #ifndef AES_H
 #define AES_H
