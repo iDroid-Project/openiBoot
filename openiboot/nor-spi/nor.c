@@ -203,6 +203,48 @@ static error_t nor_write_block_by_page(nor_device_t *_dev, uint32_t offset, uint
 	return SUCCESS;
 }
 
+// This writing method is only on some SST chips. It is very fast and should be used if available.
+static error_t nor_write_block_by_aai_word(nor_device_t *_dev, uint32_t offset, uint8_t *data)
+{
+	error_t ret;
+	int j;
+	uint8_t* command = malloc(6);
+
+	nor_write_enable(_dev);
+
+	// setup the aai pointer and send the first word
+	command[0] = NOR_SPI_AIPG;
+	command[1] = (offset >> 16) & 0xFF;
+	command[2] = (offset >> 8) & 0xFF;
+	command[3] = offset & 0xFF;
+	command[4] = data[0];
+	command[5] = data[1];
+
+	nor_spi_tx(_dev, command, sizeof(command));
+
+	// send each subsequent word one by one, aai (auto address increment) will automatically write to
+	// the next spot.
+	for (j = 2; j < _dev->block_size; j+=2)
+	{
+		ret = nor_wait_for_ready(_dev, 100);
+		if(FAILED(ret))
+		{
+			free(command);
+			return ret;
+		}
+	
+		command[0] = NOR_SPI_AIPG;
+		command[1] = data[j];
+		command[2] = data[j+1];
+		
+		nor_spi_tx(_dev, command, 3);
+	}
+	
+	nor_write_disable(_dev);
+
+	free(command);
+	return SUCCESS;
+}
 
 static void nor_disable_block_protect(nor_device_t *_dev)
 {
@@ -367,8 +409,7 @@ static error_t nor_setup_chip_info(nor_device_t *_dev)
 				break;
 			}
 
-			//TODO: this chip supports AAI, and will be much faster when implemented --kleemajo
-			_dev->block_write_function = &nor_write_block_by_byte;
+			_dev->block_write_function = &nor_write_block_by_aai_word;
 			_dev->block_size = 0x1000;
 			_dev->block_protect_bits = 0x3C;
 			_dev->page_size = 0x1;
