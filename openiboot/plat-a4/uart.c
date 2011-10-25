@@ -56,10 +56,11 @@ void uart_run(uint32_t _V) {
 		curUartCommandBuffer = UartCommandBuffer+read;
 		int i;
 		for (i = 0; i < strlen(UartCommandBuffer); i++) {
-			if (UartCommandBuffer[i] == '\n') {
+			if (UartCommandBuffer[i] == '\n' || UartCommandBuffer[i] == '\r') {
 				EnterCriticalSection();
 				char *safeCommand = malloc(i+1);
-				memcpy(safeCommand, UartCommandBuffer, i+1);
+				memset(safeCommand, 0, sizeof(safeCommand));
+				memcpy(safeCommand, UartCommandBuffer, i);
 				memset(UartCommandBuffer, 0, UartCommandBufferSize);
 				curUartCommandBuffer = UartCommandBuffer;
 				LeaveCriticalSection();
