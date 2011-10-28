@@ -304,6 +304,153 @@ static void gcSanityCheckValid(GCData* _data)
 	}
 }
 
+static void setupDataSpares(SpareData* _pSpare, size_t _count)
+{
+	uint32_t i;
+
+	if (sInfo.field_A4 != sInfo.latestIndexBlk.blockNum) {
+		sInfo.field_A4 = sInfo.latestIndexBlk.blockNum;
+		++sInfo.maxIndexUsn;
+	}
+
+	for (i = 0; i < _count; ++i) {
+		_pSpare[i].usn = sInfo.maxIndexUsn;
+		_pSpare[i].type = (_pSpare[i].type & PAGETYPE_MAGIC) | PAGETYPE_LBN;
+	}
+}
+
+static void sub_80606960(uint32_t _pageNum, uint32_t _page)
+{
+	int i = 0;
+	while (sInfo.unkAC_2 > i)
+	{
+		if (sInfo.unkB4_buffer[i] == _pageNum / sGeometry.pagesPerSublk)
+			sInfo.unkB8_buffer[i][_pageNum % sGeometry.pagesPerSublk] = _page;
+		++i;
+	}
+	return;
+}
+
+static int gcWriteDataPages(GCData* _data, uint8_t _scrub)
+{
+	uint32_t numPages = _data->curZoneSize;
+	uint32_t page = 0;
+
+	while (numPages != 0)
+	{
+		if (sInfo.latestUserBlk.usedPages < sGeometry.pagesPerSublk - sInfo.tocPagesPerBlock)
+		{
+			uint32_t pagesToWrite = sGeometry.pagesPerSublk - sInfo.tocPagesPerBlock - sInfo.latestUserBlk.usedPages;
+			if (numPages >= sGeometry.pagesPerSublk - sInfo.tocPagesPerBlock - sInfo.latestUserBlk.usedPages)
+				pagesToWrite = numPages;
+
+			setupDataSpares(&sInfo.gc.data.spareArray[page], pagesToWrite);
+
+			if (YAFTL_writeMultiPages(
+				LOWORD(sInfo.latestUserBlk),
+				sInfo.latestUserBlk.usedPages,
+				pagesToWrite,
+				sInfo.gc.data.pageBuffer2 + sGeometry.bytesPerPage * page,
+				&sInfo.gc.data.spareArray[page],
+				1) != 1)
+			{
+				gcListPushBack(&_data->list, _data->chosenBlock);
+				gcListPushBack(&_data->list, sInfo.latestUserBlk.blockNum);
+				YAFTL_allocateNewBlock(TRUE);
+				return ERROR_ARG;
+			}
+
+			uint32_t i = 0;
+			for (i = 0; i < pagesToWrite; ++i)
+			{
+				sInfo.userTOCBuffer[i + sInfo.latestUserBlk.usedPages] = sInfo.gc.data.spareArray[page + i].lpn;
+				sub_80606960(i + sInfo.latestUserBlk.usedPages + sInfo.latestUserBlk.blockNum * sGeometry.pagesPerSublk,
+					sInfo.gc.data.zone[page + i]);
+				sInfo.gc.data.zone[page + i] = i + sInfo.latestUserBlk.usedPages + sInfo.latestUserBlk.blockNum * sGeometry.pagesPerSublk;
+			}
+
+			sInfo.latestUserBlk.usedPages += pagesToWrite;
+			page += pagesToWrite;
+			numPages -= pagesToWrite;
+			if (numPages == 0)
+				break;
+
+			if (sInfo.latestUserBlk.usedPages + pageToWrite < sGeometry.pagesPerSublk - sInfo.tocPagesPerBlock)
+				continue;
+		}
+
+		YAFTL_closeLatestBlock(TRUE);
+		YAFTL_allocateNewBlock(TRUE);
+	}
+
+	for (i = 0; i < gc->curZoneSize; ++i)
+	{
+		L2V_Update(&sInfo.gc.data.spareArray[i], 1, &sInfo.gc.data.zone[i]);
+		indexPageNo = sInfo.gc.data.spareArray[i].lpn / sInfo.tocEntriesPerPage;
+
+		if (sInfo.tocArray[indexPageNo].indexPage == 0xFFFFFFFF && (cache = sInfo.tocArray[indexPageNo].cacheNum) == 0xFFFF)
+			system_panic("yaftl failed! \r\n");
+
+		if (sInfo.tocArray[indexPageNo].indexPage != 0xFFFFFFFF)
+		{
+			if ((cache = YAFTL_findFreeTOCCache()) == 0xFFFF && (cache = YAFTL_clearEntryInCache(0, 0xFFFF)) == 0xFFFF)
+				system_panic("failed to evict index page from cache!!\r\n");
+
+			ret = YAFTL_readPage(sInfo.tocArray[indexPageNo].indexPage, sInfo.tocCaches[cache].buffer, meta_ptr, 0, 1, _scrub);
+			if (ret)
+			{
+				if ( sInfo.field_78 == 1 )
+				{
+					YAFTL_writeIndexTOCBuffer();
+					sInfo.field_78 = 0;
+				}
+				panic("Index UECC Page 0x%08x Status 0x%08x!\r\n", sInfo.tocArray[indexPageNo].indexPage, ret);
+				return ret;
+			}
+
+			--sInfo.unkn_0x2A;
+			sInfo.tocCaches[cache].useCount = 0;
+		}
+
+		vpn = sInfo.tocCaches[cache].buffer[sInfo.gc.data.spareArray[i].lpn % sInfo.tocEntriesPerPage];
+		if ( vpn != -1 )
+		{
+			if ( sInfo.blockArray[vpn / sGeometry.pagesPerSublk].validPagesDNo == 0 )
+			{
+				bufferPrintf("yaFTL_WriteZoneData: miscalculated valid pages \r\n");
+				if ((uint8_t)sInfo.field_78 == 1)
+				{
+					YAFTL_writeIndexTOCBuffer();
+					sInfo.field_78 = 0;
+				}
+				return ERROR_ARG;
+			}
+			--sInfo.blockArray[vpn / sGeometry.pagesPerSublk].validPagesDNo;
+			--sInfo.blockStats.numValidDPages;
+			--qword_80618510;
+		}
+
+		sInfo.tocCaches[cache].buffer[sInfo.gc.data.spareArray[i].lpn % sInfo.tocEntriesPerPage] = sInfo.gc.data.zone[i];
+		++sInfo.blockArray[sInfo.gc.data.zone[i] / sGeometry.pagesPerSublk].validPagesDNo;
+		++sInfo.blockStats.numValidDPages;
+		++qword_80618510;
+		sInfo.tocCaches[cache].page = sInfo.gc.data.spareArray[i].lpn / sInfo.tocEntriesPerPage;
+		sInfo.tocArray[sInfo.gc.data.spareArray[i].lpn / sInfo.tocEntriesPerPage].cacheNum = cache;
+
+		pIndex = sInfo.tocArray[sInfo.gc.data.spareArray[i].lpn / sInfo.tocEntriesPerPage].indexPage;
+		if (pIndex != 0xFFFFFFFF)
+		{
+			--sInfo.blockArray[pIndex / sGeometry.pagesPerSublk].validPagesINo;
+			--sInfo.blockStats.numValidIPages;
+			--qword_80618518;
+			sInfo.tocArray[sInfo.gc.data.spareArray[i].lpn / sInfo.tocEntriesPerPage].indexPage = -1;
+		}
+
+		sInfo.tocCaches[cache].state = 1;
+		++sInfo.tocCaches[cache]->useCount;
+	}
+	return 0;
+}
 
 static int gcFreeDataPages(int32_t _numPages, uint8_t _scrub)
 {

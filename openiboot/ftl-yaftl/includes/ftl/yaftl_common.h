@@ -17,7 +17,7 @@
 #define PAGETYPE_CLOSED		(0x8)	// Closed (full) block
 #define PAGETYPE_LBN		(0x10)	// User data (also called lbn: maybe logical block number? lBlock 0 is system and lBlock 1 is user?)
 #define PAGETYPE_FTL_CLEAN	(0x20)	// FTL context (unmounted, clean)
-// 0x40: ?
+#define PAGETYPE_MAGIC		(0x40)
 #define PAGETYPE_VFL		(0x80)	// VFL context
 
 // Block status (as defined in the BlockStruct structure)
