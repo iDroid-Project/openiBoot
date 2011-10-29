@@ -43,6 +43,8 @@
  *
  * This is used by vfl_get_info to determine
  * which info to obtain.
+ *
+ *  @ingroup VFL
  */
 typedef enum _vfl_info
 {
@@ -60,6 +62,8 @@ typedef enum _vfl_info
  *
  * This is used to determine how the signature will
  * be read by vfl_detect.
+ *
+ *  @ingroup VFL
  */
 typedef enum _vfl_signature_style
 {
@@ -86,9 +90,6 @@ typedef error_t (*vfl_erase_single_block_t)(struct _vfl_device *, uint32_t _bloc
 typedef uint16_t *(*vfl_get_ftl_ctrl_block_t)(struct _vfl_device *);
 
 typedef error_t (*vfl_get_info_t)(struct _vfl_device *, vfl_info_t _item, void * _result, size_t _sz);
-
-
-// VFL Device Struct
 
 /**
  * The VFL device structure.

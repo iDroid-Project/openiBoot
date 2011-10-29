@@ -24,11 +24,11 @@
 /**
  *	@file This file defines NVRAM interface.
  *
- *  The NVRAM interfae is designed to represent the reading, writing
- *  and setup of the NVRAM.
+ *  The NVRAM (Non-volatile Random Access Memory) interface is designed to 
+ *  represent the reading, writing and setup of the NVRAM.
  *
- *  This provides a way of getting the environment variables stored 
- *  in the NVRAM on the device.
+ *  This provides a way of retrieving the values of environment variables 
+ *  stored in the NVRAM on the device.
  *
  *  @defgroup NVRAM
  */

@@ -12,7 +12,7 @@
  * VSVFL is the newer VFL implementation, which caters to
  * newer devices using VSVFL on their NAND.
  *
- * This includes devices from the iPhone 3GS onwards.
+ * This includes devices from the iPod Touch 2G onwards.
  */
 
 typedef struct _vfl_vsvfl_geometry
