@@ -3,6 +3,7 @@
 
 #include "openiboot.h"
 #include "util.h"
+#include "vfl.h"
 #include "ftl/yaftl_mem.h"
 
 /* Macros */
@@ -38,6 +39,9 @@
 
 // Size of GCList
 #define GCLIST_MAX (16)
+
+// Number of read counts which would trigger a refresh
+#define REFRESH_TRIGGER (10000)
 
 // Constants
 #define INT_MAX (0x7FFFFFFF)
@@ -151,15 +155,18 @@ typedef struct {
 	uint32_t totalPages; // 44
 	uint16_t tocArrayLength; // 48
 	uint16_t numFreeCaches; // 4A
-	uint32_t ftlCxtUsn;
-	uint32_t field_64;
+	uint16_t field_5C;
+	uint64_t ftlCxtUsn;
 	uint32_t selCtrlBlockIndex;
+	uint32_t field_6C;
 	uint8_t totalEraseCount;
+	uint32_t refreshNeeded;
 	BlockToUse latestUserBlk;
 	BlockToUse latestIndexBlk;
 	uint32_t maxIndexUsn; // 6C
-	uint32_t field_A4;
+	uint32_t lastWrittenBlock;
 	uint8_t field_78; // Heh, wtf?
+	uint8_t field_79;
 	uint32_t numBtocCaches;
 	int32_t btocCurrUsn;
 	uint32_t btocCacheMissing; // A bitfield
@@ -230,32 +237,54 @@ typedef struct {
 	uint16_t spareDataSize;
 	uint16_t total_banks_ftl;
 	uint32_t total_usable_pages;
-} NAND_GEOMETRY_FTL;
+} YAFTLGeometry;
 
 typedef struct {
 	char version[4]; // 0
 	uint32_t numIBlocks; // 4
 	uint32_t totalPages; // 8
 	uint32_t latestUserBlk; // C
-	uint32_t cxt_unkn0; // 10 // placeholder
+	uint32_t maxIndexUsn; // 10
 	uint32_t latestIndexBlk; // 14
-	uint32_t maxIndexUsn; // 18
+	uint32_t maxIndexUsn2; // 18
 	uint32_t numAvailableBlocks; // 1C
 	uint32_t numIAvailableBlocks; // 20
 	uint32_t numAllocatedBlocks; // 24
 	uint32_t numIAllocatedBlocks; // 28
 	uint32_t numCaches; // 2C
+	uint32_t field_30; // 30
 	uint32_t cxt_unkn1[10]; // placeholder
-	uint32_t field_58; // 58
 	uint16_t tocArrayLength; // 5C
 	uint16_t tocPagesPerBlock; // 5E
 	uint16_t tocEntriesPerPage; // 60
 	uint16_t numFreeCaches; // 62
+	uint16_t field_64; // 64
 	uint16_t pagesUsedInLatestUserBlk; // 66
 	uint16_t pagesUsedInLatestIdxBlk; // 68
-	uint32_t cxt_unkn2[11]; // placeholder
+	uint32_t cxt_unkn2[10]; // placeholder
+	uint16_t field_92; // 92
 	uint8_t unk188_0x63; // 94
-} __attribute__((packed)) YAFTL_CXT;
+	uint8_t totalEraseCount; // 95
+} __attribute__((packed)) YAFTLCxt;
+
+typedef struct {
+	uint64_t field_0;
+	uint64_t pagesRead;
+	uint64_t writes;
+	uint64_t reads;
+	uint64_t field_20;
+	uint64_t freeIndexOps; // Number of times gcFreeIndexPages was called
+	uint64_t field_30;
+	uint64_t field_38;
+	uint64_t dataPages;
+	uint64_t indexPages;
+	uint64_t freeBlocks;
+	uint64_t field_58;
+	uint64_t blocksRefreshed;
+	uint64_t wearLevels;
+	uint64_t flushes;
+	uint64_t refreshes;
+} __attribute__((packed)) YAFTLStats;
 
 typedef struct _BlockListNode {
 	uint32_t usn;
@@ -273,13 +302,18 @@ typedef struct {
 /* Externs */
 
 extern YAFTLInfo sInfo;
-extern NAND_GEOMETRY_FTL sGeometry;
+extern YAFTLGeometry sGeometry;
+extern YAFTLStats sStats;
 extern uint32_t yaftl_inited;
 extern vfl_device_t* vfl;
 
 /* Functions */
 
+void YAFTL_setupCleanSpare(SpareData* _spare_ptr);
+
 int YAFTL_readMultiPages(uint32_t* pagesArray, uint32_t nPages, uint8_t* dataBuffer, SpareData* metaBuffers, uint32_t disableAES, uint32_t scrub);
+
+int YAFTL_writeMultiPages(uint32_t _block, uint32_t _start, size_t _numPages, uint8_t* _pBuf, SpareData* _pSpare, uint8_t _scrub);
 
 void YAFTL_allocateNewBlock(uint8_t isUserBlock);
 

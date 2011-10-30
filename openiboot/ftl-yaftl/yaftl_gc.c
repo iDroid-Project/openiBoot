@@ -308,8 +308,8 @@ static void setupDataSpares(SpareData* _pSpare, size_t _count)
 {
 	uint32_t i;
 
-	if (sInfo.field_A4 != sInfo.latestIndexBlk.blockNum) {
-		sInfo.field_A4 = sInfo.latestIndexBlk.blockNum;
+	if (sInfo.lastWrittenBlock != sInfo.latestIndexBlk.blockNum) {
+		sInfo.lastWrittenBlock = sInfo.latestIndexBlk.blockNum;
 		++sInfo.maxIndexUsn;
 	}
 
@@ -319,40 +319,43 @@ static void setupDataSpares(SpareData* _pSpare, size_t _count)
 	}
 }
 
-static void sub_80606960(uint32_t _pageNum, uint32_t _page)
+static void sub_80606960(uint32_t _lpn, uint32_t _vpn)
 {
-	int i = 0;
-	while (sInfo.unkAC_2 > i)
-	{
-		if (sInfo.unkB4_buffer[i] == _pageNum / sGeometry.pagesPerSublk)
-			sInfo.unkB8_buffer[i][_pageNum % sGeometry.pagesPerSublk] = _page;
-		++i;
+	uint32_t i;
+
+	for (i = 0; i < sInfo.unkAC_2; ++i) {
+		if (sInfo.unkB4_buffer[i] == _lpn / sGeometry.pagesPerSublk)
+			sInfo.unkB8_buffer[i][_lpn % sGeometry.pagesPerSublk] = _vpn;
 	}
-	return;
 }
 
 static int gcWriteDataPages(GCData* _data, uint8_t _scrub)
 {
 	uint32_t numPages = _data->curZoneSize;
 	uint32_t page = 0;
+	uint32_t i;
+	error_t status;
+	SpareData* spare = sInfo.gcSpareBuffer;
 
-	while (numPages != 0)
-	{
-		if (sInfo.latestUserBlk.usedPages < sGeometry.pagesPerSublk - sInfo.tocPagesPerBlock)
-		{
-			uint32_t pagesToWrite = sGeometry.pagesPerSublk - sInfo.tocPagesPerBlock - sInfo.latestUserBlk.usedPages;
-			if (numPages >= sGeometry.pagesPerSublk - sInfo.tocPagesPerBlock - sInfo.latestUserBlk.usedPages)
-				pagesToWrite = numPages;
+	// Write each page.
+	while (numPages != 0) {
+		uint32_t userPages = sGeometry.pagesPerSublk - sInfo.tocPagesPerBlock;
+
+		if (sInfo.latestUserBlk.usedPages < userPages) {
+			// There's still room in our current block. Write in it.
+			uint32_t pagesToWrite = MIN(numPages,
+					userPages - sInfo.latestUserBlk.usedPages);
 
 			setupDataSpares(&sInfo.gc.data.spareArray[page], pagesToWrite);
 
+			// Write the pages.
 			if (YAFTL_writeMultiPages(
-				LOWORD(sInfo.latestUserBlk),
+				sInfo.latestUserBlk.blockNum,
 				sInfo.latestUserBlk.usedPages,
 				pagesToWrite,
-				sInfo.gc.data.pageBuffer2 + sGeometry.bytesPerPage * page,
+				&sInfo.gc.data.pageBuffer2[page * sGeometry.bytesPerPage],
 				&sInfo.gc.data.spareArray[page],
-				1) != 1)
+				TRUE) != 1)
 			{
 				gcListPushBack(&_data->list, _data->chosenBlock);
 				gcListPushBack(&_data->list, sInfo.latestUserBlk.blockNum);
@@ -360,13 +363,17 @@ static int gcWriteDataPages(GCData* _data, uint8_t _scrub)
 				return ERROR_ARG;
 			}
 
-			uint32_t i = 0;
-			for (i = 0; i < pagesToWrite; ++i)
-			{
-				sInfo.userTOCBuffer[i + sInfo.latestUserBlk.usedPages] = sInfo.gc.data.spareArray[page + i].lpn;
-				sub_80606960(i + sInfo.latestUserBlk.usedPages + sInfo.latestUserBlk.blockNum * sGeometry.pagesPerSublk,
+			// Update caches.
+			for (i = 0; i < pagesToWrite; ++i) {
+				uint32_t offsetInBlk = sInfo.latestUserBlk.usedPages + i;
+
+				sInfo.latestUserBlk.tocBuffer[offsetInBlk] =
+					sInfo.gc.data.spareArray[page + i].lpn;
+				sub_80606960(sInfo.latestUserBlk.blockNum
+					* sGeometry.pagesPerSublk + offsetInBlk,
 					sInfo.gc.data.zone[page + i]);
-				sInfo.gc.data.zone[page + i] = i + sInfo.latestUserBlk.usedPages + sInfo.latestUserBlk.blockNum * sGeometry.pagesPerSublk;
+				sInfo.gc.data.zone[page + i] = sInfo.latestUserBlk.blockNum
+					* sGeometry.pagesPerSublk + offsetInBlk;
 			}
 
 			sInfo.latestUserBlk.usedPages += pagesToWrite;
@@ -374,81 +381,105 @@ static int gcWriteDataPages(GCData* _data, uint8_t _scrub)
 			numPages -= pagesToWrite;
 			if (numPages == 0)
 				break;
-
-			if (sInfo.latestUserBlk.usedPages + pageToWrite < sGeometry.pagesPerSublk - sInfo.tocPagesPerBlock)
-				continue;
 		}
 
-		YAFTL_closeLatestBlock(TRUE);
-		YAFTL_allocateNewBlock(TRUE);
+		if (sInfo.latestUserBlk.usedPages >= userPages) {
+			// Block is filled up. Get a new one.
+			YAFTL_closeLatestBlock(TRUE);
+			YAFTL_allocateNewBlock(TRUE);
+		}
 	}
 
-	for (i = 0; i < gc->curZoneSize; ++i)
+	// Update the TOC cache for each page.
+	for (i = 0; i < _data->curZoneSize; ++i)
 	{
-		L2V_Update(&sInfo.gc.data.spareArray[i], 1, &sInfo.gc.data.zone[i]);
+		uint32_t indexPageNo;
+		TOCStruct* toc;
+		uint32_t cache;
+		uint32_t tocEntry;
+		uint32_t vpn;
+
+		L2V_Update(sInfo.gc.data.spareArray[i].lpn, 1, sInfo.gc.data.zone[i]);
+
 		indexPageNo = sInfo.gc.data.spareArray[i].lpn / sInfo.tocEntriesPerPage;
+		tocEntry = sInfo.gc.data.spareArray[i].lpn % sInfo.tocEntriesPerPage;
+		toc = &sInfo.tocArray[indexPageNo];
+		cache = toc->cacheNum;
 
-		if (sInfo.tocArray[indexPageNo].indexPage == 0xFFFFFFFF && (cache = sInfo.tocArray[indexPageNo].cacheNum) == 0xFFFF)
-			system_panic("yaftl failed! \r\n");
+		if (toc->indexPage == 0xFFFFFFFF && cache == 0xFFFF) {
+			system_panic("YAFTL: gcWriteDataPages failed to find TOC %d\r\n",
+				indexPageNo);
+		}
 
-		if (sInfo.tocArray[indexPageNo].indexPage != 0xFFFFFFFF)
-		{
-			if ((cache = YAFTL_findFreeTOCCache()) == 0xFFFF && (cache = YAFTL_clearEntryInCache(0, 0xFFFF)) == 0xFFFF)
-				system_panic("failed to evict index page from cache!!\r\n");
+		if (cache == 0xFFFF) {
+			// Need to find a new cache.
+			cache = YAFTL_findFreeTOCCache();
 
-			ret = YAFTL_readPage(sInfo.tocArray[indexPageNo].indexPage, sInfo.tocCaches[cache].buffer, meta_ptr, 0, 1, _scrub);
-			if (ret)
-			{
-				if ( sInfo.field_78 == 1 )
-				{
-					YAFTL_writeIndexTOCBuffer();
-					sInfo.field_78 = 0;
+			if (cache == 0xFFFF)
+				cache = YAFTL_clearEntryInCache(0xFFFF);
+
+			if (cache == 0xFFFF)
+				system_panic("YAFTL: failed to find a TOC cache\r\n");
+
+			status = YAFTL_readPage(
+				toc->indexPage, (uint8_t*)sInfo.tocCaches[cache].buffer, spare,
+				FALSE, TRUE, _scrub);
+
+			if (status) {
+				if (sInfo.field_78) {
+					YAFTL_writeIndexTOC();
+					sInfo.field_78 = FALSE;
 				}
-				panic("Index UECC Page 0x%08x Status 0x%08x!\r\n", sInfo.tocArray[indexPageNo].indexPage, ret);
-				return ret;
+
+				system_panic("YAFTL: uecc toc page 0x%08x status 0x%08x\r\n",
+					toc->indexPage, status);
+				return status;
 			}
 
-			--sInfo.unkn_0x2A;
+			--sInfo.numFreeCaches;
 			sInfo.tocCaches[cache].useCount = 0;
 		}
 
-		vpn = sInfo.tocCaches[cache].buffer[sInfo.gc.data.spareArray[i].lpn % sInfo.tocEntriesPerPage];
-		if ( vpn != -1 )
-		{
-			if ( sInfo.blockArray[vpn / sGeometry.pagesPerSublk].validPagesDNo == 0 )
-			{
-				bufferPrintf("yaFTL_WriteZoneData: miscalculated valid pages \r\n");
-				if ((uint8_t)sInfo.field_78 == 1)
-				{
-					YAFTL_writeIndexTOCBuffer();
-					sInfo.field_78 = 0;
+		vpn = sInfo.tocCaches[cache].buffer[tocEntry];
+
+		if (vpn != 0xFFFFFFFF) {
+			uint32_t blk = vpn / sGeometry.pagesPerSublk;
+
+			if (sInfo.blockArray[blk].validPagesDNo == 0) {
+				if (sInfo.field_78) {
+					YAFTL_writeIndexTOC();
+					sInfo.field_78 = FALSE;
 				}
-				return ERROR_ARG;
+
+				system_panic("YAFTL: gcWriteDataPages tried to move a page from"
+					" a block with no valid data pages %d\r\n", blk);
 			}
-			--sInfo.blockArray[vpn / sGeometry.pagesPerSublk].validPagesDNo;
+
+			--sInfo.blockArray[blk].validPagesDNo;
 			--sInfo.blockStats.numValidDPages;
-			--qword_80618510;
+			--sStats.dataPages;
 		}
 
-		sInfo.tocCaches[cache].buffer[sInfo.gc.data.spareArray[i].lpn % sInfo.tocEntriesPerPage] = sInfo.gc.data.zone[i];
-		++sInfo.blockArray[sInfo.gc.data.zone[i] / sGeometry.pagesPerSublk].validPagesDNo;
+		sInfo.tocCaches[cache].buffer[tocEntry] = sInfo.gc.data.zone[i];
+		++sInfo.blockArray[sInfo.gc.data.zone[i] / sGeometry.pagesPerSublk]
+			.validPagesDNo;
 		++sInfo.blockStats.numValidDPages;
-		++qword_80618510;
-		sInfo.tocCaches[cache].page = sInfo.gc.data.spareArray[i].lpn / sInfo.tocEntriesPerPage;
-		sInfo.tocArray[sInfo.gc.data.spareArray[i].lpn / sInfo.tocEntriesPerPage].cacheNum = cache;
+		++sStats.dataPages;
+		sInfo.tocCaches[cache].page = indexPageNo;
+		toc->cacheNum = cache;
 
-		pIndex = sInfo.tocArray[sInfo.gc.data.spareArray[i].lpn / sInfo.tocEntriesPerPage].indexPage;
-		if (pIndex != 0xFFFFFFFF)
-		{
-			--sInfo.blockArray[pIndex / sGeometry.pagesPerSublk].validPagesINo;
+		if (toc->indexPage != 0xFFFFFFFF) {
+			--sInfo.blockArray[toc->indexPage / sGeometry.pagesPerSublk]
+				.validPagesINo;
 			--sInfo.blockStats.numValidIPages;
-			--qword_80618518;
-			sInfo.tocArray[sInfo.gc.data.spareArray[i].lpn / sInfo.tocEntriesPerPage].indexPage = -1;
+			--sStats.indexPages;
+			toc->indexPage = 0xFFFFFFFF;
 		}
 
-		sInfo.tocCaches[cache].state = 1;
-		++sInfo.tocCaches[cache]->useCount;
+		sInfo.tocCaches[cache].state = CACHESTATE_DIRTY;
+		++sInfo.tocCaches[cache].useCount;
 	}
+
 	return 0;
 }
 
@@ -459,6 +490,7 @@ static int gcFreeDataPages(int32_t _numPages, uint8_t _scrub)
 			while (sInfo.blockStats.numIAvailable <= 1)
 				gcFreeIndexPages(0xFFFFFFFF, _scrub);
 
+			++sStats.field_20;
 			gcChooseBlock(&sInfo.gc.data, BLOCKSTATUS_ALLOCATED);
 			if (sInfo.gc.data.totalValidPages != 0) {
 				sInfo.gc.data.btocIdx = 0;
@@ -471,6 +503,7 @@ static int gcFreeDataPages(int32_t _numPages, uint8_t _scrub)
 				sInfo.gc.data.state = 1;
 				return 0;
 			} else {
+				++sStats.field_30;
 				sInfo.gc.data.state = 2;
 			}
 		} else if (sInfo.gc.data.state == 1) {
@@ -627,6 +660,7 @@ static int gcFreeDataPages(int32_t _numPages, uint8_t _scrub)
 			++sInfo.blockStats.numFree;
 			++sInfo.blockStats.numAvailable;
 			--sInfo.blockStats.numAllocated;
+			++sStats.freeBlocks;
 
 			sInfo.gc.data.state = 0;
 			if (sInfo.gc.data.list.head == sInfo.gc.data.list.tail)
@@ -650,8 +684,8 @@ static void setupIndexSpares(SpareData* _pSpare, size_t _count)
 {
 	uint32_t i;
 	
-	if (sInfo.field_A4 != sInfo.latestIndexBlk.blockNum) {
-		sInfo.field_A4 = sInfo.latestIndexBlk.blockNum;
+	if (sInfo.lastWrittenBlock != sInfo.latestIndexBlk.blockNum) {
+		sInfo.lastWrittenBlock = sInfo.latestIndexBlk.blockNum;
 		++sInfo.maxIndexUsn;
 	}
 
@@ -700,6 +734,7 @@ static error_t gcWriteIndexPages(GCData* _data)
 			
 			sInfo.blockArray[block].validPagesINo += toWrite;
 			sInfo.blockStats.numValidIPages += toWrite;
+			sStats.indexPages += toWrite;
 			sInfo.latestIndexBlk.usedPages += toWrite;
 			pageOffset += toWrite;
 			leftToWrite -= toWrite;
@@ -857,11 +892,33 @@ void gcFreeBlock(uint32_t _block, uint8_t _scrub)
 	}
 }
 
+void gcPrepareToWrite(uint32_t _numPages)
+{
+	uint32_t numBlocks = _numPages
+		/ (sGeometry.pagesPerSublk - sInfo.tocPagesPerBlock);
+
+	sInfo.gc.data.victim = 0xFFFFFFFF;
+
+	while (sInfo.blockStats.numAvailable <= numBlocks + 5) {
+		if (sInfo.blockStats.numIAvailable <= 1)
+			gcFreeIndexPages(0xFFFFFFFF, TRUE);
+
+		gcFreeBlock(0xFFFFFFFF, TRUE);
+	}
+
+	if (sInfo.blockStats.numAvailable <= numBlocks + 10
+		|| sInfo.gc.data.state != 0)
+	{
+		gcFreeDataPages(_numPages, TRUE);
+	}
+}
+
 void gcFreeIndexPages(uint32_t _victim, uint8_t _scrub)
 {
 	uint32_t i;
 
 	sInfo.gc.index.victim = _victim;
+	++sStats.freeIndexOps;
 
 	while (TRUE) {
 		uint8_t failure = FALSE;
@@ -870,7 +927,9 @@ void gcFreeIndexPages(uint32_t _victim, uint8_t _scrub)
 		gcChooseBlock(&sInfo.gc.index, BLOCKSTATUS_I_ALLOCATED);
 		block = sInfo.gc.index.chosenBlock;
 
-		if (sInfo.gc.index.totalValidPages > 0) {
+		if (sInfo.gc.index.totalValidPages == 0) {
+			++sStats.field_38;
+		} else {
 			gcPopulateBTOC(&sInfo.gc.index, _scrub, sInfo.tocArrayLength);
 			sInfo.gc.index.numInvalidatedPages = 0;
 			sInfo.gc.index.curZoneSize = 0;
@@ -909,6 +968,7 @@ void gcFreeIndexPages(uint32_t _victim, uint8_t _scrub)
 
 							--sInfo.blockArray[block].validPagesINo;
 							--sInfo.blockStats.numValidIPages;
+							--sStats.indexPages;
 							++sInfo.gc.index.numInvalidatedPages;
 							toc->indexPage = 0xFFFFFFFF;
 						}
@@ -952,6 +1012,7 @@ void gcFreeIndexPages(uint32_t _victim, uint8_t _scrub)
 
 					--sInfo.blockArray[block].validPagesINo;
 					--sInfo.blockStats.numValidIPages;
+					--sStats.indexPages;
 					++sInfo.gc.index.numInvalidatedPages;
 					continue;
 				}
@@ -980,6 +1041,7 @@ void gcFreeIndexPages(uint32_t _victim, uint8_t _scrub)
 						sInfo.gc.index.curZoneSize;
 					sInfo.blockStats.numValidIPages -=
 						sInfo.gc.index.curZoneSize;
+					sStats.indexPages -= sInfo.gc.index.curZoneSize;
 					sInfo.gc.index.numInvalidatedPages +=
 						sInfo.gc.index.curZoneSize;
 					sInfo.gc.index.curZoneSize = 0;
@@ -1003,6 +1065,7 @@ void gcFreeIndexPages(uint32_t _victim, uint8_t _scrub)
 				sInfo.blockStats.numValidIPages -= sInfo.gc.index.curZoneSize;
 				sInfo.blockArray[block].validPagesINo -=
 					sInfo.gc.index.curZoneSize;
+				sStats.indexPages -= sInfo.gc.index.curZoneSize;
 				sInfo.gc.index.numInvalidatedPages +=
 					sInfo.gc.index.curZoneSize;
 			}
@@ -1017,9 +1080,21 @@ void gcFreeIndexPages(uint32_t _victim, uint8_t _scrub)
 			++sInfo.blockStats.numFree;
 			++sInfo.blockStats.numIAvailable;
 			--sInfo.blockStats.numIAllocated;
+			++sStats.freeBlocks;
 
 			if (sInfo.gc.index.list.head == sInfo.gc.index.list.tail)
 				return;
 		}
 	}
+}
+
+void gcPrepareToFlush()
+{
+	uint32_t i;
+
+	while (sInfo.numIBlocks < sInfo.blockStats.numIAllocated + 2)
+		gcFreeIndexPages(0xFFFFFFFF, TRUE);
+
+	for (i = 0; i < sInfo.numCaches; ++i)
+		YAFTL_clearEntryInCache(i);
 }

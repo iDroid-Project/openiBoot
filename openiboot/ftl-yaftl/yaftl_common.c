@@ -5,7 +5,8 @@
 #include "ftl/yaftl_gc.h"
 
 YAFTLInfo sInfo;
-NAND_GEOMETRY_FTL sGeometry;
+YAFTLGeometry sGeometry;
+YAFTLStats sStats;
 uint32_t yaftl_inited = 0;
 vfl_device_t* vfl = 0;
 
@@ -27,9 +28,9 @@ static void deallocBTOC(uint32_t* btoc)
 
 static void setupIndexSpare(SpareData* _pSpare, uint32_t _lpn)
 {
-	// TODO: Load field_A4 properly (i.e. in YAFTL_Open)!!!
-	if (sInfo.field_A4 != sInfo.latestIndexBlk.blockNum) {
-		sInfo.field_A4 = sInfo.latestIndexBlk.blockNum;
+	// TODO: Load lastWrittenBlock properly (i.e. in YAFTL_Open)!!!
+	if (sInfo.lastWrittenBlock != sInfo.latestIndexBlk.blockNum) {
+		sInfo.lastWrittenBlock = sInfo.latestIndexBlk.blockNum;
 		++sInfo.maxIndexUsn;
 	}
 
@@ -72,18 +73,19 @@ static int writeIndexPage(void* _pBuf, SpareData* _pSpare)
 
 	++sInfo.blockArray[sInfo.latestIndexBlk.blockNum].validPagesINo;
 	++sInfo.blockStats.numValidIPages;
+	++sStats.indexPages;
 	++sInfo.latestIndexBlk.usedPages;
 	sInfo.tocArray[_pSpare->lpn].indexPage = page;
 	return 0;
 }
 
-static void setupCleanSpare(SpareData* _spare_ptr)
+/* Externals */
+
+void YAFTL_setupCleanSpare(SpareData* _spare_ptr)
 {
 	_spare_ptr->usn = ++sInfo.maxIndexUsn;
 	_spare_ptr->type = PAGETYPE_FTL_CLEAN;
 }
-
-/* Externals */
 
 int YAFTL_readMultiPages(uint32_t* pagesArray, uint32_t nPages, uint8_t* dataBuffer, SpareData* metaBuffers, uint32_t disableAES, uint32_t scrub)
 {
@@ -175,6 +177,36 @@ int YAFTL_readMultiPages(uint32_t* pagesArray, uint32_t nPages, uint8_t* dataBuf
 	}
 
 	return 1;
+}
+
+int YAFTL_writeMultiPages(uint32_t _block, uint32_t _start, size_t _numPages, uint8_t* _pBuf, SpareData* _pSpare, uint8_t _scrub)
+{
+	error_t result;
+	uint32_t i;
+
+	if (sInfo.field_78) {
+		YAFTL_writeIndexTOC();
+		sInfo.field_78 = FALSE;
+	}
+
+	for (i = 0; i < _numPages; ++i) {
+		result = vfl_write_single_page(
+			vfl,
+			_block * sGeometry.pagesPerSublk + _start + i,
+			_pBuf,
+			(uint8_t*)_pSpare,
+			_scrub);
+
+		if (FAILED(result)) {
+			bufferPrintf("YAFTL: writeMultiPages got write failure: block %d, "
+					"page %d, result %08x, block status %d\r\n", _block,
+					_start + i, result, sInfo.blockArray[_block].status);
+
+			return 1;
+		}
+	}
+
+	return 0;
 }
 
 void YAFTL_allocateNewBlock(uint8_t isUserBlock)
@@ -292,6 +324,7 @@ void YAFTL_allocateNewBlock(uint8_t isUserBlock)
 	}
 
 	--sInfo.blockStats.numFree;
+	--sStats.freeBlocks;
 }
 
 error_t YAFTL_closeLatestBlock(uint8_t isUserBlock)
@@ -416,7 +449,8 @@ error_t YAFTL_readPage(uint32_t _page, uint8_t* _data_ptr, SpareData* _spare_ptr
 
 	uint8_t* meta_ptr = (uint8_t*)(_spare_ptr ? _spare_ptr : sInfo.spareBuffer18);
 
-	result = vfl_read_single_page(vfl, _page, _data_ptr, meta_ptr, _empty_ok, &refreshPage, _disable_aes);
+	result = vfl_read_single_page(vfl, _page, _data_ptr, meta_ptr, _empty_ok,
+		&refreshPage, _disable_aes);
 
 	if (FAILED(result)) {
 		bufferPrintf("YAFTL_readPage: We got read failure: page %d, block %d, block status %d, scrub %d.\r\n",
@@ -429,12 +463,29 @@ error_t YAFTL_readPage(uint32_t _page, uint8_t* _data_ptr, SpareData* _spare_ptr
 	}
 
 	sInfo.blockArray[block].readCount++;
+
+	if (sInfo.blockArray[block].readCount > REFRESH_TRIGGER) {
+		sInfo.refreshNeeded = TRUE;
+
+		if (!refreshPage)
+			return result;
+	} else {
+		if (!refreshPage)
+			return result;
+
+		sInfo.refreshNeeded = TRUE;
+	}
+
+	bufferPrintf("YAFTL: refresh triggered at page %d\r\n", _page);
+	++sStats.refreshes;
+	sInfo.blockArray[block].readCount = REFRESH_TRIGGER + 1;
+
 	return result;
 }
 
 uint32_t YAFTL_writePage(uint32_t _page, uint8_t* _data_ptr, SpareData* _spare_ptr)
 {
-	int result;
+	error_t result;
 	uint32_t block = _page / sGeometry.pagesPerSublk;
 
 	if (sInfo.field_78)
@@ -454,14 +505,14 @@ uint32_t YAFTL_writePage(uint32_t _page, uint8_t* _data_ptr, SpareData* _spare_p
 		return ERROR_ARG;
 	}
 
-	return result;
+	return 0;
 }
 
 error_t YAFTL_writeIndexTOC()
 {
 	int result;
 
-	setupCleanSpare(sInfo.spareBuffer7);
+	YAFTL_setupCleanSpare(sInfo.spareBuffer7);
 
 	// Try to write the new index TOC.
 	result = vfl_write_single_page(vfl,
@@ -575,6 +626,7 @@ uint32_t YAFTL_clearEntryInCache(uint16_t _cacheIdx)
 
 			--sInfo.blockArray[oldIndexBlock].validPagesINo;
 			--sInfo.blockStats.numValidIPages;
+			--sStats.indexPages;
 		}
 
 		// Write the dirty index page.

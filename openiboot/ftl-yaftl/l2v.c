@@ -47,6 +47,91 @@ error_t L2V_Init(uint32_t totalPages, uint32_t numBlocks, uint32_t pagesPerSublk
 	return SUCCESS;
 }
 
+void L2V_Open()
+{
+	uint32_t tocIndex = 0;
+	uint32_t gcIndex = 0;
+	uint32_t i;
+	uint8_t* pageBuffer = sInfo.gc.index.pageBuffer2;
+	SpareData* spareArray = sInfo.gc.index.spareArray;
+
+	while (tocIndex < sInfo.tocArrayLength && L2V.nodeCount > 128) {
+		// Update the GC zone.
+		gcIndex = 0;
+		while (gcIndex < sInfo.gcPages && tocIndex < sInfo.tocArrayLength) {
+			if (sInfo.tocArray[tocIndex].indexPage != 0xFFFFFFFF)
+				sInfo.gc.index.zone[gcIndex++] = indexPage;
+
+			++tocIndex;
+		}
+
+		if (YAFTL_readMultiPages(sInfo.gc.index.zone, gcIndex, pageBuffer,
+				spareArray, FALSE, FALSE) != 1)
+		{
+			// Manually read each page.
+			for (i = 0; i < gcIndex; ++i) {
+				if (YAFTL_readPage(sInfo.gc.index.zone[i],
+						&pageBuffer[i * sGeometry.bytesPerPage],
+						&spareArray[i], FALSE, TRUE, FALSE) != 0)
+				{
+					spareArray[i].lpn = 0xFFFFFFFF;
+				}
+			}
+		}
+
+		// Update L2V with the read data.
+		for (i = 0; i < gcIndex && L2V.nodeCount > 128) {
+			if (spareArray[i].type & PAGETYPE_INDEX
+				&& spareArray[i].lpn < sInfo.tocArrayLength)
+			{
+				L2V_UpdateFromTOC(spareArray[i].lpn,
+					(uint32_t*)&pageBuffer[i * sGeometry.bytesPerPage]);
+			}
+		}
+	}
+}
+
+void L2V_UpdateFromTOC(uint32_t _tocIdx, uint32_t* _tocBuffer)
+{
+	uint32_t i;
+	uint32_t entry = 0xFFFFFFFF;
+	uint32_t count = 0;
+	uint32_t lpn = _tocIdx * sInfo.tocEntriesPerPage;
+	uint32_t firstLpn = 0xFFFFFFFF;
+
+	for (i = 0; i < sInfo.tocEntriesPerPage && L2V.nodeCount > 128; ++i, ++lpn)
+	{
+		if (count == 0) {
+			// This should be the first LPN.
+			entry = _tocBuffer[i];
+			firstLpn = lpn;
+			++count;
+			continue;
+		}
+
+		if (entry == 0xFFFFFFFF) {
+			if (tocBuffer[i] == 0xFFFFFFFF) {
+				// We're still in a row, because both indices are invalid.
+				++count;
+				continue;
+			}
+
+			// Bummer, we lost our row.
+			entry = L2V_VPN_SPECIAL;
+		} else if (entry + count == tocBuffer[i]) {
+			// Yay! still a row.
+			++count;
+			continue;
+		}
+
+		// Row is done: update L2V, and start a new one.
+		L2V_Update(firstLpn, count, entry);
+		entry = tocBuffer[i];
+		firstLpn = lpn;
+		count = 1;
+	}
+}
+
 static void L2V_SetFirstNode(L2VNode* node)
 {
 	if (node < &L2V.Pool[0] || node > &L2V.Pool[0x10000])

@@ -27,7 +27,11 @@ typedef struct {
 
 error_t L2V_Init(uint32_t totalPages, uint32_t numBlocks, uint32_t pagesPerSublk);
 
+void L2V_Open();
+
 void L2V_Update(uint32_t _start, uint32_t _count, uint32_t _vpn);
+
+void L2V_UpdateFromTOC(uint32_t _tocIdx, uint32_t* _tocBuffer);
 
 void L2V_Search(GCReadC* _c);
 
