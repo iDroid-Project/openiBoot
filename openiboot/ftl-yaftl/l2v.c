@@ -60,7 +60,7 @@ void L2V_Open()
 		gcIndex = 0;
 		while (gcIndex < sInfo.gcPages && tocIndex < sInfo.tocArrayLength) {
 			if (sInfo.tocArray[tocIndex].indexPage != 0xFFFFFFFF)
-				sInfo.gc.index.zone[gcIndex++] = indexPage;
+				sInfo.gc.index.zone[gcIndex++] = sInfo.tocArray[tocIndex].indexPage;
 
 			++tocIndex;
 		}
@@ -80,7 +80,7 @@ void L2V_Open()
 		}
 
 		// Update L2V with the read data.
-		for (i = 0; i < gcIndex && L2V.nodeCount > 128) {
+		for (i = 0; i < gcIndex && L2V.nodeCount > 128; i++) {
 			if (spareArray[i].type & PAGETYPE_INDEX
 				&& spareArray[i].lpn < sInfo.tocArrayLength)
 			{
@@ -110,7 +110,7 @@ void L2V_UpdateFromTOC(uint32_t _tocIdx, uint32_t* _tocBuffer)
 		}
 
 		if (entry == 0xFFFFFFFF) {
-			if (tocBuffer[i] == 0xFFFFFFFF) {
+			if (_tocBuffer[i] == 0xFFFFFFFF) {
 				// We're still in a row, because both indices are invalid.
 				++count;
 				continue;
@@ -118,7 +118,7 @@ void L2V_UpdateFromTOC(uint32_t _tocIdx, uint32_t* _tocBuffer)
 
 			// Bummer, we lost our row.
 			entry = L2V_VPN_SPECIAL;
-		} else if (entry + count == tocBuffer[i]) {
+		} else if (entry + count == _tocBuffer[i]) {
 			// Yay! still a row.
 			++count;
 			continue;
@@ -126,7 +126,7 @@ void L2V_UpdateFromTOC(uint32_t _tocIdx, uint32_t* _tocBuffer)
 
 		// Row is done: update L2V, and start a new one.
 		L2V_Update(firstLpn, count, entry);
-		entry = tocBuffer[i];
+		entry = _tocBuffer[i];
 		firstLpn = lpn;
 		count = 1;
 	}

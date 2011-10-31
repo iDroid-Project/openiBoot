@@ -643,7 +643,7 @@ void YAFTL_Flush()
 		oldBlks[i] = sInfo.FTLCtrlBlock[i];
 
 	// Replace all the blocks.
-	while (block < sGeometry.numBlocks && found < 3) {
+	for (block = 0; block < sGeometry.numBlocks && found < 3; block++) {
 		// Must be a free block, with much better erase count.
 		if (!sInfo.blockArray[block].status == BLOCKSTATUS_FREE
 			|| sInfo.blockArray[block].eraseCount + 50 >=
@@ -712,7 +712,7 @@ static int setStatisticsFromCxt(void *_cxt)
 
 static uint32_t YAFTL_readCxtInfo(uint32_t _page, uint8_t* _ptr, uint8_t _extended, uint32_t *pSupported)
 {
-	uint32_t pageToRead;
+	uint32_t pageToRead = 0;
 	uint32_t i = 0, j = 0;
 	uint16_t* _ptr16 = (uint16_t*)_ptr;
 	uint32_t* _ptr32 = (uint32_t*)_ptr;

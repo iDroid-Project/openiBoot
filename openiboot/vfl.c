@@ -92,6 +92,14 @@ error_t vfl_erase_single_block(vfl_device_t *_vfl, uint32_t _block, int _replace
 	return _vfl->erase_single_block(_vfl, _block, _replace_bad_block);
 }
 
+error_t vfl_write_context(vfl_device_t *_vfl, uint16_t *_control_block)
+{
+	if(!_vfl->write_context)
+		return ENOENT;
+
+	return _vfl->write_context(_vfl, _control_block);
+}
+
 uint16_t *vfl_get_ftl_ctrl_block(vfl_device_t *_vfl)
 {
 	if(!_vfl->get_ftl_ctrl_block) {

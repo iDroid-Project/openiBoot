@@ -60,6 +60,8 @@ typedef error_t (*vfl_write_single_page_t)(struct _vfl_device *, uint32_t _page,
 
 typedef error_t (*vfl_erase_single_block_t)(struct _vfl_device *, uint32_t _block, int _replace_bad_block);
 
+typedef error_t (*vfl_write_context_t)(struct _vfl_device *, uint16_t *_control_block);
+
 typedef uint16_t *(*vfl_get_ftl_ctrl_block_t)(struct _vfl_device *);
 
 typedef error_t (*vfl_get_info_t)(struct _vfl_device *, vfl_info_t _item, void * _result, size_t _sz);
@@ -87,6 +89,7 @@ typedef struct _vfl_device
 	vfl_read_single_page_t read_single_page; /**< Used by vfl_read_single_page(). */
 	vfl_write_single_page_t write_single_page; /**< Used by vfl_write_single_page(). */
 	vfl_erase_single_block_t erase_single_block; /**< Used by vfl_erase_single_block(). */
+	vfl_write_context_t write_context; /**< Used by vfl_write_context(). */
 
 	vfl_get_ftl_ctrl_block_t get_ftl_ctrl_block; /**< Used by vfl_get_ftl_ctrl_block(). */
 
@@ -211,6 +214,17 @@ error_t vfl_write_single_page(vfl_device_t *_vfl, uint32_t _page, uint8_t* _buff
  * @ingroup VFL
  */
 error_t vfl_erase_single_block(vfl_device_t *_vfl, uint32_t _block, int _replace_bad_block);
+
+/**
+ * Write a new VFL Context.
+ *
+ * @param _vfl the VFL device to write the context on.
+ * @param _control_block pointer to the control block array.
+ * @return Whether an error occured.
+ *
+ * @ingroup VFL
+ */
+error_t vfl_write_context(vfl_device_t *_vfl, uint16_t *_control_block);
 
 /**
  * Get the FTL control blocks buffer.

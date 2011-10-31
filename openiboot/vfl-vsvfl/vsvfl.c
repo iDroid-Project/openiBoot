@@ -427,6 +427,29 @@ static error_t vsvfl_write_vfl_cxt_to_flash(vfl_vsvfl_device_t *_vfl, uint32_t _
 		return SUCCESS;
 }
 
+static error_t vfl_vsvfl_write_context(vfl_device_t *_vfl, uint16_t *_control_block)
+{
+	vfl_vsvfl_device_t *vfl = CONTAINER_OF(vfl_vsvfl_device_t, vfl, _vfl);
+	uint32_t ce = vfl->current_version % vfl->geometry.num_ce;
+	uint32_t i;
+
+	// check and update cxt of each CE
+	for(i = 0; i < vfl->geometry.num_ce; i++) {
+		if(vfl_check_checksum(vfl, i) == FALSE)
+			system_panic("vsvfl: VFLCxt has bad checksum.\r\n");
+		memmove(vfl->contexts[i].control_block, _control_block, 6);
+		vfl_gen_checksum(vfl, i);
+	}
+
+	// write cxt on the ce with the oldest cxt
+	if(FAILED(vsvfl_store_vfl_cxt(vfl, ce))) {
+		bufferPrintf("vsvfl: context write fail!\r\n");
+		return EIO;
+	}
+
+	return 0;
+}
+
 static error_t vsvfl_store_vfl_cxt(vfl_vsvfl_device_t *_vfl, uint32_t _ce) {
 	if(_ce >= _vfl->geometry.num_ce)
 		system_panic("vfl: Can't store VFLCxt on non-existent CE\r\n");
@@ -1078,6 +1101,8 @@ error_t vfl_vsvfl_device_init(vfl_vsvfl_device_t *_vfl)
 	_vfl->vfl.write_single_page = vfl_vsvfl_write_single_page;
 
 	_vfl->vfl.erase_single_block = vfl_vsvfl_erase_single_block;
+
+	_vfl->vfl.write_context = vfl_vsvfl_write_context;
 
 	_vfl->vfl.get_ftl_ctrl_block = VFL_get_FTLCtrlBlock;
 
