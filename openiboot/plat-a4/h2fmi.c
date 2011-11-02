@@ -2400,10 +2400,10 @@ uint32_t h2fmi_write_single_page(uint32_t _ce, uint32_t _page, uint8_t* _data, u
 
 	if(h2fmi_aes_enabled == 0)
 		flag = 0;
-		
+
 	h2fmi_setup_aes(fmi, flag, 1, (uint32_t)_data);
-	
-	if((ret = h2fmi_write_multi(fmi, 1, &h2fmi_map[_ce].chip, &_page, &dataSegmentInfo, &metaSegmentInfo, &status, 0)) == 0) 
+
+	if((ret = h2fmi_write_multi(fmi, 1, &h2fmi_map[_ce].chip, &_page, &dataSegmentInfo, &metaSegmentInfo, &status, 0)) == 0)
 	{	
 		fmi->failure_details.overall_status = 0x80000015;
 		return ret;
@@ -3356,6 +3356,23 @@ static void cmd_ftl_read(int argc, char** argv)
 	bufferPrintf("ftl: Command completed with result 0x%08x.\r\n", ret);
 }
 COMMAND("ftl_read", "FTL read single page", cmd_ftl_read);
+
+static void cmd_ftl_write(int argc, char** argv)
+{
+	if(argc < 3)
+	{
+		bufferPrintf("Usage: %s [page] [data]\r\n", argv[0]);
+		return;
+	}
+
+	uint32_t page = parseNumber(argv[1]);
+	uint32_t data = parseNumber(argv[2]);
+
+	uint32_t ret = ftl_write_single_page(h2fmi_ftl_device, page, (uint8_t*)data);
+
+	bufferPrintf("ftl: Command completed with result 0x%08x.\r\n", ret);
+}
+COMMAND("ftl_write", "FTL write single page", cmd_ftl_write);
 
 static void cmd_emf_enable(int argc, char** argv)
 {

@@ -117,7 +117,7 @@ typedef struct {
 	uint32_t next_nOfs;
 	uint32_t nodeSize;
 	uint32_t field_20;
-	uint32_t field_24;
+	L2VNode* field_24;
 } GCReadC;
 
 typedef struct {

@@ -2370,11 +2370,22 @@ error_t ftl_yaftl_read_single_page(ftl_device_t *_ftl, uint32_t _page, uint8_t *
 		return SUCCESS;
 }
 
+error_t ftl_yaftl_write_single_page(ftl_device_t *_ftl, uint32_t _page, uint8_t *_buffer)
+{
+	error_t ret = YAFTL_Write(_page, 1, _buffer);
+
+	if(FAILED(ret))
+		return ret;
+	else
+		return SUCCESS;
+}
+
 error_t ftl_yaftl_device_init(ftl_yaftl_device_t *_ftl)
 {
 	memset(_ftl, 0, sizeof(*_ftl));
 
 	_ftl->ftl.read_single_page = ftl_yaftl_read_single_page;
+	_ftl->ftl.write_single_page = ftl_yaftl_write_single_page;
 
 	_ftl->ftl.open = ftl_yaftl_open;
 
