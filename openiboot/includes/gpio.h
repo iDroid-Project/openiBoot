@@ -74,11 +74,11 @@ int gpio_pin_state(int port);
 /**
  *  Modify a GPIO Port
  *  
- *  0 = Use as input
- *  1 = Use as output
- *  2 = Clear putput
- *  3 = Set output
- *  4 = Reset
+ *  0 = Use as input\n
+ *  1 = Use as output\n
+ *  2 = Clear putput\n
+ *  3 = Set output\n
+ *  4 = Reset\n
  *  5-7 = ?
  * 
  *  @param port The pin to modify
