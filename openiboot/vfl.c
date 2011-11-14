@@ -134,7 +134,7 @@ error_t vfl_detect(vfl_device_t **_vfl, nand_device_t *_nand, vfl_signature_styl
 		return ret;
 
 
-	// Starting from iOS5 there's a change in behaviour at chipid_get_nand_epich().
+	// Starting from iOS5 there's a change in behaviour at chipid_get_nand_epoch().
 	if((!chipid_get_nand_epoch() && sigbuf[0] != '1' && sigbuf[0] != '2') || sigbuf[3] != 'C'
 			|| sigbuf[1] > '1' || sigbuf[2] > '1'
 			 || sigbuf[4] > 6)

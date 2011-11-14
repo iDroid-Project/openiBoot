@@ -1,44 +1,52 @@
-#include "openiboot.h"
-#include "arm/arm.h"
-#include "hardware/s5l8720.h"
-#include "uart.h"
-#include "usb.h"
-#include "mmu.h"
-#include "clock.h"
-#include "timer.h"
-#include "event.h"
-#include "miu.h"
-#include "power.h"
-#include "interrupt.h"
-#include "gpio.h"
-#include "dma.h"
-#include "spi.h"
-#include "i2c.h"
+/**
+ * s5l8720.c
+ *
+ * Copyright 2011 iDroid Project
+ *
+ * This file is part of iDroid. An android distribution for Apple products.
+ * For more information, please visit http://www.idroidproject.org/.
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; either version 3
+ * of the License, or (at your option) any later version.
+ * 
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ */
+
 #include "aes.h"
-#include "lcd.h"
-#include "tasks.h"
-#include "images.h"
-#include "syscfg.h"
-#include "nvram.h"
-#include "accel.h"
-#include "sdio.h"
-#include "wlan.h"
-#include "camera.h"
-#include "util.h"
-#include "commands.h"
+#include "arm/arm.h"
+#include "clock.h"
+#include "dma.h"
+#include "event.h"
 #include "framebuffer.h"
-#include "menu.h"
-#include "pmu.h"
-#include "hfs/bdev.h"
-#include "hfs/fs.h"
-#include "scripting.h"
-#include "actions.h"
+#include "gpio.h"
+#include "i2c.h"
+#include "lcd.h"
+#include "miu.h"
+#include "mmu.h"
+#include "openiboot.h"
+#include "power.h"
+#include "spi.h"
+#include "tasks.h"
+#include "timer.h"
+#include "uart.h"
 #include "wdt.h"
 
-#include "buttons.h"
+#ifdef DEBUG
+#else
 
-//TODO: remove
+	// TODO: remove
 #include "actions.h"
+#include "buttons.h"
+#include "images.h"
 #include "mtd.h"
 void load_iboot() {
 	framebuffer_clear();
@@ -58,7 +66,7 @@ void load_iboot() {
 	chainload((uint32_t)imageData);
 }
 
-//TODO: remove
+	// TODO: remove
 static TaskDescriptor iboot_loader_task;
 void iboot_loader_run(void) {
 	uint64_t startTime = timer_get_system_microtime();
@@ -96,6 +104,7 @@ void iboot_loader_run(void) {
 		task_yield();
 	}
 }
+#endif
 
 void platform_init()
 {
@@ -106,12 +115,10 @@ void platform_init()
 	// Basic prerequisites for everything else
 	miu_setup();
 	power_setup();
-
 	clock_setup();
 
 	// Need interrupts for everything afterwards
 	interrupt_setup();
-	
 	gpio_setup();
 
 	// For scheduling/sleeping niceties
@@ -122,9 +129,7 @@ void platform_init()
 	// Other devices
 	uart_setup();
 	i2c_setup();
-
 	dma_setup();
-
 	spi_setup();
 
 	LeaveCriticalSection();
@@ -136,11 +141,13 @@ void platform_init()
 	framebuffer_setdisplaytext(TRUE);
 	lcd_set_backlight_level(186);
 
-//	audiohw_init();
-	
-	//TODO: remove
+	// audiohw_init();
+#ifdef DEBUG
+#else
+	// TODO: remove
 	task_init(&iboot_loader_task, "iboot loader", TASK_DEFAULT_STACK_SIZE);
 	task_start(&iboot_loader_task, &iboot_loader_run, NULL);
+#endif
 }
 
 void platform_shutdown()

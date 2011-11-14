@@ -1,4 +1,4 @@
-/*
+/**
  * actions.c - OpeniBoot Actions
  *
  * Copyright 2010 iDroid Project

@@ -1,34 +1,44 @@
-#include "openiboot.h"
+/**
+ * a4.c
+ *
+ * Copyright 2011 iDroid Project
+ *
+ * This file is part of iDroid. An android distribution for Apple products.
+ * For more information, please visit http://www.idroidproject.org/.
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; either version 3
+ * of the License, or (at your option) any later version.
+ * 
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ */
+
+#include "aes.h"
 #include "arm/arm.h"
-#include "hardware/a4.h"
-#include "uart.h"
-#include "usb.h"
-#include "mmu.h"
 #include "clock.h"
-#include "timer.h"
-#include "event.h"
-#include "miu.h"
-#include "power.h"
-#include "interrupt.h"
-#include "gpio.h"
 #include "dma.h"
-#include "spi.h"
+#include "event.h"
+#include "framebuffer.h"
+#include "gpio.h"
 #include "i2c.h"
 #include "lcd.h"
+#include "miu.h"
+#include "mmu.h"
+#include "openiboot.h"
+#include "power.h"
+#include "spi.h"
 #include "tasks.h"
-#include "images.h"
-#include "syscfg.h"
-#include "nvram.h"
-#include "aes.h"
-#include "accel.h"
-#include "util.h"
-#include "commands.h"
-#include "framebuffer.h"
-#include "menu.h"
-#include "hfs/bdev.h"
-#include "hfs/fs.h"
-#include "scripting.h"
-#include "actions.h"
+#include "timer.h"
+#include "uart.h"
+#include "wdt.h"
 
 void platform_init()
 {

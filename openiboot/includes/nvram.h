@@ -22,13 +22,15 @@
  */
 
 /**
- *	@file This file defines NVRAM interface.
+ *	@file 
  *
- *  The NVRAM interfae is designed to represent the reading, writing
- *  and setup of the NVRAM.
+ *  This file defines NVRAM interface.
  *
- *  This provides a way of getting the environment variables stored 
- *  in the NVRAM on the device.
+ *  The NVRAM (Non-volatile Random Access Memory) interface is designed to 
+ *  represent the reading, writing and setup of the NVRAM.
+ *
+ *  This provides a way of retrieving the values of environment variables 
+ *  stored in the NVRAM on the device.
  *
  *  @defgroup NVRAM
  */
@@ -37,12 +39,14 @@
 #define NVRAM_H
 
 #include "openiboot.h"
+
 /**
  *	Start value of NVRAM
  *
  *  @ingroup NVRAM
  */
 #define NVRAM_START 0xFC000
+
 /**
  *	Size of NVRAM
  *

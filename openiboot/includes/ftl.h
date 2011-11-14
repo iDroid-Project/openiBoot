@@ -22,7 +22,7 @@
  */
 
 /**
- *  @file Header file for OiB's Flash Transition Layer
+ *  @file Header file for OiB's Flash Translation Layer
  *
  */
 

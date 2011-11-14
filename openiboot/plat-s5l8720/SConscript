@@ -41,7 +41,6 @@ plat_s5l8720_src = arch_arm_src + env.Localize([
 	'clock.c',
 	'dma.c',
 	'event.c',
-#	'ftl.c',
 	'gpio.c',
 	'i2c.c',
 	'interrupt.c',

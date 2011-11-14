@@ -37,8 +37,6 @@ typedef struct _vfl_vfl_geometry
 
 struct _vfl_vfl_context;
 
-// VFL-VFL Device Struct
-
 /**
  * The VFL-VFL device structure.
  *

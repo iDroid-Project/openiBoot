@@ -1,11 +1,34 @@
-#include "openiboot.h"
+/**
+ * als-ISL29003.c
+ *
+ * Copyright 2011 iDroid Project
+ *
+ * This file is part of iDroid. An android distribution for Apple products.
+ * For more information, please visit http://www.idroidproject.org/.
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; either version 3
+ * of the License, or (at your option) any later version.
+ * 
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ */
+
 #include "als.h"
+#include "gpio.h"
 #include "hardware/als.h"
 #include "i2c.h"
-#include "timer.h"
 #include "multitouch.h"
+#include "openiboot.h"
+#include "timer.h"
 #include "util.h"
-#include "gpio.h"
 
 #define COMMAND 0x0
 #define CONTROL 0x1
@@ -97,17 +120,17 @@ static void als_int(uint32_t token)
 	als_clearint();
 }
 
-void als_setlowthreshold(uint16_t value)
+void als_setlowthreshold(unsigned int value)
 {
 	als_writeb(INTTHRESHHIGH, value);
 }
 
-void als_sethighthreshold(uint16_t value)
+void als_sethighthreshold(unsigned int value)
 {
 	als_writeb(INTTHRESHLOW, value);
 }
 
-uint16_t als_data()
+unsigned int als_data()
 {
 	return als_readw(SENSORLOW);
 }
