@@ -123,7 +123,7 @@ void platform_init()
 	uart_setup();
 	i2c_setup();
 
-//	dma_setup();
+	dma_setup();
 
 	spi_setup();
 
@@ -145,7 +145,7 @@ void platform_init()
 
 void platform_shutdown()
 {
-	//dma_shutdown();
+	dma_shutdown();
 	wdt_disable();
 	arm_disable_caches();
 	mmu_disable();

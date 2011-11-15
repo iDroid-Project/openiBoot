@@ -97,17 +97,17 @@ static void als_int(uint32_t token)
 	als_clearint();
 }
 
-void als_setlowthreshold(uint16_t value)
+void als_setlowthreshold(unsigned int value)
 {
 	als_writeb(INTTHRESHHIGH, value);
 }
 
-void als_sethighthreshold(uint16_t value)
+void als_sethighthreshold(unsigned int value)
 {
 	als_writeb(INTTHRESHLOW, value);
 }
 
-uint16_t als_data()
+unsigned int als_data()
 {
 	return als_readw(SENSORLOW);
 }
