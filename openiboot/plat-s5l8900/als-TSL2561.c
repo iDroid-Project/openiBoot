@@ -120,12 +120,12 @@ static void als_int(uint32_t token)
 	als_clearint();
 }
 
-void als_setlowthreshold(uint16_t value)
+void als_setlowthreshold(unsigned int value)
 {
 	als_writew(THRESHLOWLOW, value);
 }
 
-void als_sethighthreshold(uint16_t value)
+void als_sethighthreshold(unsigned int value)
 {
 	als_writew(THRESHHIGHLOW, value);
 }
@@ -140,7 +140,7 @@ static uint16_t als_data1()
 	return als_readw(DATA1LOW);
 }
 
-uint16_t als_data()
+unsigned int als_data()
 {
 	return use_channel == 0 ? als_data0() : als_data1();
 }
