@@ -31,7 +31,7 @@ void nand_device_init(nand_device_t *_nand)
 
 	device_init(&_nand->device);
 	_nand->device.fourcc = FOURCC('N', 'A', 'N', 'D');
-        _nand->device.name = 'NAND';
+        _nand->device.name = "NAND";
 
 	device_register(&_nand->device);
 }
