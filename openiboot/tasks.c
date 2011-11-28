@@ -32,8 +32,8 @@
 static TaskDescriptor bootstrapTask;
 static TaskDescriptor irqTask;
 
-TaskDescriptor *IRQTask = NULL;
-TaskDescriptor *IRQBackupTask = NULL;
+static TaskDescriptor *IRQTask = NULL;
+static TaskDescriptor *IRQBackupTask = NULL;
 
 static void task_add_after(TaskDescriptor *_a, TaskDescriptor *_b)
 {
@@ -120,22 +120,6 @@ void task_destroy(TaskDescriptor *_td)
 {
 	if(_td->storage)
 		free(_td->storage);
-}
-
-void task_run(void (*_fn)(void*), void *_arg)
-{
-	LeaveCriticalSection();
-
-	//bufferPrintf("tasks: New task started %s. 0x%08x(0x%08x).\r\n",
-	//		CurrentRunning->taskName, _fn, _arg);
-
-	_fn(_arg);
-
-	//bufferPrintf("tasks: Task ending %s. 0x%08x(0x%08x).\r\n",
-	//		CurrentRunning->taskName, _fn, _arg);
-
-	EnterCriticalSection();
-	task_stop();
 }
 
 error_t task_start(TaskDescriptor *_td, void *_fn, void *_arg)
@@ -246,7 +230,7 @@ void tasks_run()
 	}
 }
 
-void task_wake_event(Event *_evt, void *_obj)
+static void task_wake_event(Event *_evt, void *_obj)
 {
 	TaskDescriptor *task = _obj;
 	//bufferPrintf("tasks: Resuming sleeping task %p.\n", task);
@@ -294,7 +278,7 @@ error_t task_sleep(int _ms)
 	return SUCCESS;
 }
 
-void task_suspend()
+static void task_suspend()
 {
 	EnterCriticalSection();
 
