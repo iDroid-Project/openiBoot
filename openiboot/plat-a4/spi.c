@@ -86,7 +86,7 @@ void spi_set_baud(int _bus, int _baud, SPIWordSize _wordSize, int _isMaster, int
 	spi->wordSize = wordSize;
 	SET_REG(spi->registers->control, 0);
 
-	spi->config = (_isMaster)? 0x18 : 0;
+	spi->config = (_isMaster)? 0x18 : 0; // ENSCK | MASTER
 	uint32_t freq = clock_get_frequency(spi->clockSource == NCLK? FrequencyBaseFixed: FrequencyBasePeripheral);
 	uint32_t div = 1;
 
@@ -96,7 +96,7 @@ void spi_set_baud(int _bus, int _baud, SPIWordSize _wordSize, int _isMaster, int
 	spi->config |= (cpha << 1)
 			| (cpol << 2)
 			| (wordSize << SPISETUP_WORDSIZE_SHIFT)
-			| (0x20); // or 0x40, (but this never arises in iBoot).
+			| (0x20); // or 0x40, (but this never arises in iBoot). // 0x20 <-- INT / 0x40 <-- DMA
 
 	if(spi->clockSource == NCLK)
 		spi->config |= SPISETUP_CLOCKSOURCE;
