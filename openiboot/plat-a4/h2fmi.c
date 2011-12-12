@@ -2490,8 +2490,8 @@ static int h2fmi_erase_blocks(h2fmi_struct_t *_fmi, uint32_t num_blocks, uint16_
 				SET_REG(H2FMI_UNKREG6(_fmi), 0xB);
 
 				_fmi->pages_done++;
-				index++;
 				loc_array[chip_array[index]] = 1;
+				index++;
 			}
 			while (index < num_blocks);
 		}
@@ -2582,7 +2582,7 @@ static int h2fmi_erase_single_block(uint16_t _ce, uint16_t _block)
 
 	ret = h2fmi_erase_blocks(fmi, 1, &chip, &_block, &status);
 
-	if (ret)
+	if (SUCCEEDED(ret))
 		return 0;
 
 	if (status)

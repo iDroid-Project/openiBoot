@@ -519,8 +519,7 @@ static error_t vsvfl_replace_bad_block(vfl_vsvfl_device_t *_vfl, uint32_t _ce, u
 		vBank++;
 	}
 
-	//XXX Wait, what?! Check the middle part. -- Bluerise
-	/*uint16_t drbc[16]; // dynamic replaced block count - I have no fucking idea
+	uint16_t drbc[16]; // dynamic replaced block count
 	for (i = 0; i < _vfl->geometry.banks_per_ce; i++) {
 		drbc[i] = i;
 	}
@@ -545,7 +544,7 @@ static error_t vsvfl_replace_bad_block(vfl_vsvfl_device_t *_vfl, uint32_t _ce, u
 			}
 			i++;
 		}
-	}*/
+	}
 	system_panic("vsvfl_replace_bad_block: Failed to replace block\r\n");
 	return EIO;
 }
