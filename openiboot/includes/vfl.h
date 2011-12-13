@@ -1,3 +1,26 @@
+/**
+ * vfl.h
+ *
+ * Copyright 2011 iDroid Project
+ *
+ * This file is part of iDroid. An android distribution for Apple products.
+ * For more information, please visit http://www.idroidproject.org/.
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; either version 3
+ * of the License, or (at your option) any later version.
+ * 
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ */
+
 #ifndef  VFL_H
 #define  VFL_H
 
@@ -20,6 +43,8 @@
  *
  * This is used by vfl_get_info to determine
  * which info to obtain.
+ *
+ *  @ingroup VFL
  */
 typedef enum _vfl_info
 {
@@ -37,6 +62,8 @@ typedef enum _vfl_info
  *
  * This is used to determine how the signature will
  * be read by vfl_detect.
+ *
+ *  @ingroup VFL
  */
 typedef enum _vfl_signature_style
 {
@@ -63,9 +90,6 @@ typedef error_t (*vfl_erase_single_block_t)(struct _vfl_device *, uint32_t _bloc
 typedef uint16_t *(*vfl_get_ftl_ctrl_block_t)(struct _vfl_device *);
 
 typedef error_t (*vfl_get_info_t)(struct _vfl_device *, vfl_info_t _item, void * _result, size_t _sz);
-
-
-// VFL Device Struct
 
 /**
  * The VFL device structure.
