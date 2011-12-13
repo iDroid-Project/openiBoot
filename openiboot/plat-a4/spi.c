@@ -300,9 +300,12 @@ static void spi_irq_handler(uint32_t i)
 			if(avail > left)
 				avail = left;
 
-			spi_txdata(spi, spi->txBuffer, spi->txDone, spi->txDone + avail);
+			if(avail > 0)
+			{
+				spi_txdata(spi, spi->txBuffer, spi->txDone, spi->txDone + avail);
+				spi->txDone += avail;
+			}
 
-			spi->txDone += avail;
 			if(spi->txDone >= spi->txLength)
 			{
 				spi->txBuffer = NULL;
@@ -327,8 +330,6 @@ static void spi_irq_handler(uint32_t i)
 				spi_rxdata(spi, spi->rxBuffer, spi->rxDone, spi->rxDone + avail);
 				spi->rxDone += avail;
 			}
-
-			spi->rxDone += avail;
 
 			if(spi->rxDone >= spi->rxLength)
 			{
