@@ -3217,7 +3217,7 @@ void h2fmi_init()
 }
 MODULE_INIT(h2fmi_init);
 
-void cmd_nand_read(int argc, char** argv)
+static void cmd_nand_read(int argc, char** argv)
 {
 	if(argc < 8)
 	{
@@ -3241,7 +3241,7 @@ void cmd_nand_read(int argc, char** argv)
 }
 COMMAND("nand_read", "H2FMI NAND read single page", cmd_nand_read);
 
-void cmd_nand_write(int argc, char** argv)
+static void cmd_nand_write(int argc, char** argv)
 {
 	if(argc < 6)
 	{
@@ -3262,7 +3262,7 @@ void cmd_nand_write(int argc, char** argv)
 }
 COMMAND("nand_write", "H2FMI NAND write single page", cmd_nand_write);
 
-void cmd_nand_write_bootpage(int argc, char** argv)
+static void cmd_nand_write_bootpage(int argc, char** argv)
 {
 	if(argc < 4)
 	{
@@ -3280,7 +3280,7 @@ void cmd_nand_write_bootpage(int argc, char** argv)
 }
 COMMAND("nand_write_bootpage", "H2FMI NAND write single bootpage", cmd_nand_write_bootpage);
 
-void cmd_nand_erase(int argc, char** argv)
+static void cmd_nand_erase(int argc, char** argv)
 {
 	bufferPrintf("Disabled for now.\r\n");
 	return;
@@ -3321,7 +3321,7 @@ static void cmd_vfl_read(int argc, char** argv)
 }
 COMMAND("vfl_read", "VFL read single page", cmd_vfl_read);
 
-void cmd_vfl_erase(int argc, char** argv)
+static void cmd_vfl_erase(int argc, char** argv)
 {
 	bufferPrintf("Disabled for now.\r\n");
 	return;
