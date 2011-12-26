@@ -23,7 +23,6 @@
 #include "util.h"
 #include "commands.h"
 #include "framebuffer.h"
-#include "menu.h"
 #include "hfs/bdev.h"
 #include "hfs/fs.h"
 #include "scripting.h"
