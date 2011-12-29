@@ -26,7 +26,7 @@
 
 #include "openiboot.h"
 
-typedef void (*OPIBCommandRoutine)(int argc, char** argv);
+typedef int (*OPIBCommandRoutine)(int argc, char** argv);
 
 typedef struct OPIBCommand {
 	char* name;

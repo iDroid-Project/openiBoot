@@ -136,13 +136,13 @@ error_t device_set_info(device_t *_dev, device_info_t _item, void *_val, size_t 
 	return ENOENT;
 }
 
-static void cmd_device_list(int _argc, char **_argv)
+static int cmd_device_list(int _argc, char **_argv)
 {
 	LinkedList *ptr = device_list.next;
 	if(ptr == &device_list)
 	{
 		bufferPrintf("devices: No devices registered.\n");
-		return;
+		return -1;
 	}
 
 	bufferPrintf("devices: Listing devices:\n");
@@ -154,5 +154,7 @@ static void cmd_device_list(int _argc, char **_argv)
 
 		ptr = ptr->next;
 	}
+
+	return 0;
 }
 COMMAND("devices", "List all registered devices.", cmd_device_list);

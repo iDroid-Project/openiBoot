@@ -216,12 +216,14 @@ void gpio_interrupt_disable(uint32_t interrupt)
 	SET_REG(ic_reg, bit);
 }
 
-static void cmd_test_gpioic(int _argc, char **_argv)
+static int cmd_test_gpioic(int _argc, char **_argv)
 {
 	uint32_t num = parseNumber(_argv[1]);
 	uint32_t flags = parseNumber(_argv[2]);
 	gpio_register_interrupt(num, flags & 1, (flags >> 1) & 1, (flags >> 2) & 1, NULL, 0);
 	gpio_interrupt_enable(((num >> 8) * 8) + (num & 0x7));
+
+	return 0;
 };
 COMMAND("test_gpioic", "Test GPIOIC", cmd_test_gpioic);
 
