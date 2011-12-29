@@ -41,7 +41,6 @@ static error_t cmd_audiohw_pause(int argc, char** argv)
 {
 	audiohw_pause();
 	bufferPrintf("Paused.\r\n");
-
 	return SUCCESS;
 }
 COMMAND("audiohw_pause", "pause playback", cmd_audiohw_pause);
@@ -50,7 +49,6 @@ static error_t cmd_audiohw_resume(int argc, char** argv)
 {
 	audiohw_resume();
 	bufferPrintf("Resumed.\r\n");
-
 	return SUCCESS;
 }
 COMMAND("audiohw_resume", "resume playback", cmd_audiohw_resume);

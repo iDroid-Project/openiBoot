@@ -427,6 +427,8 @@ static error_t cmd_text(int argc, char** argv)
 		bufferPrintf("Unrecognized option: %s\r\n", argv[1]);
 		return EINVAL;
 	}
+
+	return 0;
 }
 COMMAND("text", "turns text display on or off", cmd_text);
 

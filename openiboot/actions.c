@@ -716,6 +716,7 @@ static error_t cmd_setup_auto(int argc, char **argv)
 COMMAND("auto", "Set current boot entry to boot fallback bootloader.\n", cmd_setup_auto);
 
 static error_t cmd_setup_kernel(int argc, char **argv)
+
 {
 	if(argc <= 1)
 	{
@@ -739,6 +740,7 @@ static error_t cmd_setup_kernel(int argc, char **argv)
 		setup_kernel(argv[1], argv[2]);
 	else {
 		bufferPrintf("Usage: %s [kernel] [command line]\n", argv[0]);
+<<<<<<< HEAD
 		return EINVAL;
 	}
 
@@ -747,6 +749,16 @@ static error_t cmd_setup_kernel(int argc, char **argv)
 COMMAND("kernel", "Set the kernel of the current boot entry.", cmd_setup_kernel);
 
 static error_t cmd_setup_initrd(int argc, char **argv)
+=======
+		return -1;
+	}
+
+	return 0;
+}
+COMMAND("kernel", "Set the kernel of the current boot entry.", cmd_setup_kernel);
+
+static int cmd_setup_initrd(int argc, char **argv)
+>>>>>>> 5068fb9... Make all the OIB commands return result.
 {
 	if(argc <= 1)
 	{
@@ -761,6 +773,7 @@ static error_t cmd_setup_initrd(int argc, char **argv)
 		setup_initrd(argv[1]);
 	else {
 		bufferPrintf("Usage: %s [initrd]\n", argv[0]);
+<<<<<<< HEAD
 		return EINVAL;
 	}
 
@@ -773,21 +786,47 @@ static error_t cmd_setup_image(int argc, char **argv)
 	if(argc != 2) {
 		bufferPrintf("Usage: %s [image]\n", argv[0]);
 		return EINVAL;
+=======
+		return -1;
+	}
+
+	return 0;
+}
+COMMAND("initrd", "Set the ramdisk for the current boot entry.", cmd_setup_initrd);
+
+static int cmd_setup_image(int argc, char **argv)
+{
+	if(argc != 2) {
+		bufferPrintf("Usage: %s [image]\n", argv[0]);
+		return -1;
+>>>>>>> 5068fb9... Make all the OIB commands return result.
 	}
 	else
 		setup_image(argv[1]);
 
+<<<<<<< HEAD
 	return SUCCESS;
 }
 COMMAND("image", "Set the image to chainload for the current boot entry.", cmd_setup_image);
 
 static error_t cmd_setup_machine(int argc, char **argv)
+=======
+	return 0;
+}
+COMMAND("image", "Set the image to chainload for the current boot entry.", cmd_setup_image);
+
+static int cmd_setup_machine(int argc, char **argv)
+>>>>>>> 5068fb9... Make all the OIB commands return result.
 {
 	if(argc != 2)
 	{
 		bufferPrintf("Usage: %s machine_id\n", argv[0]);
 		bufferPrintf("Current machine ID: %d.\r\n", currentEntry->machine);
+<<<<<<< HEAD
 		return EINVAL;
+=======
+		return -1;
+>>>>>>> 5068fb9... Make all the OIB commands return result.
 	}
 
 	uint32_t num;
@@ -800,6 +839,7 @@ static error_t cmd_setup_machine(int argc, char **argv)
 
 	currentEntry->machine = num;
 
+<<<<<<< HEAD
 	return SUCCESS;
 }
 COMMAND("machine_id", "Select a machine ID for booting the linux kernel.", cmd_setup_machine);
@@ -817,6 +857,26 @@ static error_t cmd_setup_boot(int argc, char **argv)
 COMMAND("boot", "Boot the current boot entry.", cmd_setup_boot);
 
 static error_t cmd_go(int argc, char** argv)
+=======
+	return 0;
+}
+COMMAND("machine_id", "Select a machine ID for booting the linux kernel.", cmd_setup_machine);
+
+static int cmd_setup_boot(int argc, char **argv)
+{
+	if(argc > 1) {
+		bufferPrintf("Usage: %s\n", argv[0]);
+		return -1;
+	}
+	else
+		setup_boot();
+
+	return 0;
+}
+COMMAND("boot", "Boot the current boot entry.", cmd_setup_boot);
+
+static int cmd_go(int argc, char** argv)
+>>>>>>> 5068fb9... Make all the OIB commands return result.
 {
 	uint32_t address;
 
@@ -833,6 +893,7 @@ static error_t cmd_go(int argc, char** argv)
 
 	udelay(100000);
 
+<<<<<<< HEAD
 	return chainload(address);
 }
 COMMAND("go", "jump to a specified address (interrupts disabled)", cmd_go);
@@ -842,6 +903,19 @@ static error_t cmd_jump(int argc, char** argv)
 	if(argc < 2) {
 		bufferPrintf("Usage: %s <address>\r\n", argv[0]);
 		return EINVAL;
+=======
+	chainload(address);
+
+	return 0;
+}
+COMMAND("go", "jump to a specified address (interrupts disabled)", cmd_go);
+
+static int cmd_jump(int argc, char** argv)
+{
+	if(argc < 2) {
+		bufferPrintf("Usage: %s <address>\r\n", argv[0]);
+		return -1;
+>>>>>>> 5068fb9... Make all the OIB commands return result.
 	}
 
 	uint32_t address = parseNumber(argv[1]);
@@ -850,6 +924,10 @@ static error_t cmd_jump(int argc, char** argv)
 
 	CallArm(address);
 
+<<<<<<< HEAD
 	return SUCCESS;
+=======
+	return 0;
+>>>>>>> 5068fb9... Make all the OIB commands return result.
 }
 COMMAND("jump", "jump to a specified address (interrupts enabled)", cmd_jump);
