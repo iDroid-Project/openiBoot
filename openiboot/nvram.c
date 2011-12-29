@@ -284,11 +284,11 @@ static EnvironmentVar* loadEnvironment(NVRamAtom* atoms) {
 	return toRet;
 }
 
-int nvram_setup()
+error_t nvram_setup()
 {
 	mtd_t *dev = nvram_device();
 	if(!dev)
-		return -1;
+		return ENOENT;
 
 	mtd_prepare(dev);
 
@@ -312,7 +312,7 @@ int nvram_setup()
 
 	if(!bank1Atoms && !bank2Atoms) {
 		bufferPrintf("Could not load either bank1 nor bank2 nvram!\r\n");
-		return -1;
+		return EIO;
 	}
 
 	NVRamAtom* ckDataAtom1 = findAtom(bank1Atoms, "nvram");
@@ -338,29 +338,36 @@ int nvram_setup()
 
 	variables = loadEnvironment(newestBank);
 
-	return 0;
+	return SUCCESS;
 }
 
-void cmd_printenv(int argc, char** argv) {
+static error_t cmd_printenv(int argc, char** argv)
+{
 	nvram_listvars();
+	return SUCCESS;
 }
 COMMAND("printenv", "list the environment variables in nvram", cmd_printenv);
 
-void cmd_setenv(int argc, char** argv) {
+static error_t cmd_setenv(int argc, char** argv)
+{
 	if(argc < 3) {
 		bufferPrintf("Usage: %s <name> <value>\r\n", argv[0]);
-		return;
+		return EINVAL;
 	}
 
 	nvram_setvar(argv[1], argv[2]);
 	bufferPrintf("Set %s = %s\r\n", argv[1], argv[2]);
+
+	return SUCCESS;
 }
 COMMAND("setenv", "sets an environment variable", cmd_setenv);
 
-void cmd_saveenv(int argc, char** argv) {
+static error_t cmd_saveenv(int argc, char** argv)
+{
 	bufferPrintf("Saving environment, this may take awhile...\r\n");
 	nvram_save();
 	bufferPrintf("Environment saved\r\n");
+	return SUCCESS;
 }
 COMMAND("saveenv", "saves the environment variables in nvram", cmd_saveenv);
 

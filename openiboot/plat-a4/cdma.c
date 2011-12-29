@@ -692,7 +692,7 @@ uint32_t aes_crypto_cmd(uint32_t _encrypt, void *_inBuf, void *_outBuf, uint32_t
 	return 0;
 }
 
-static void cmd_cdma_aes(int argc, char** argv)
+static error_t cmd_cdma_aes(int argc, char** argv)
 {
 	uint8_t* key = NULL;
 	uint32_t keyLength;
@@ -702,7 +702,7 @@ static void cmd_cdma_aes(int argc, char** argv)
 
 	if(argc < 6) {
 		bufferPrintf("Usage: %s [enc/dec] [inBuf] [outBuf] [size] [gid/uid/key] [iv]\r\n", argv[0]);
-		return;
+		return EINVAL;
 	}
 
 	uint32_t *inBuf = (uint32_t*)parseNumber(argv[2]);
@@ -761,5 +761,7 @@ return_free:
 
 	if (iv)
 		free(iv);
+
+	return SUCCESS;
 }
 COMMAND("cdma_aes", "use hw crypto on a buffer", cmd_cdma_aes);

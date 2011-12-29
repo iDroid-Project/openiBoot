@@ -377,17 +377,18 @@ void hfs_ls(Volume* volume, const char* path) {
 	free(record);
 }
 
-void fs_cmd_ls(int argc, char** argv) {
+static error_t cmd_fs_ls(int argc, char** argv)
+{
 	if(argc < 3) {
 		bufferPrintf("usage: %s <device> <partition> [<directory>]\r\n", argv[0]);
-		return;
+		return EINVAL;
 	}
 
 	bdevfs_device_t *dev = bdevfs_open(parseNumber(argv[1]), parseNumber(argv[2]));
 	if(!dev)
 	{
 		bufferPrintf("fs: Failed to open partition.\r\n");
-		return;
+		return EIO;
 	}
 
 	if(argc > 3)
@@ -396,23 +397,27 @@ void fs_cmd_ls(int argc, char** argv) {
 		hfs_ls(dev->volume, "/");
 
 	bdevfs_close(dev);
-}
-COMMAND("fs_ls", "list files and folders", fs_cmd_ls);
 
-void fs_cmd_cat(int argc, char** argv) {
+	return 0;
+}
+COMMAND("fs_ls", "list files and folders", cmd_fs_ls);
+
+static error_t cmd_fs_cat(int argc, char** argv)
+{
 	if(argc < 4) {
 		bufferPrintf("usage: %s <device> <partition> <file>\r\n", argv[0]);
-		return;
+		return EINVAL;
 	}
 
 	bdevfs_device_t *dev = bdevfs_open(parseNumber(argv[1]), parseNumber(argv[2]));
 	if(!dev)
 	{
 		bufferPrintf("fs: Failed to open partition.\r\n");
-		return;
+		return EIO;
 	}
 
 	HFSPlusCatalogRecord *record = getRecordFromPath(argv[3], dev->volume, NULL, NULL);
+	error_t ret = SUCCESS;
 
 	if(record != NULL)
 	{
@@ -438,24 +443,32 @@ void fs_cmd_cat(int argc, char** argv) {
 			free(buffer);
 		}
 		else
+		{
 			bufferPrintf("Not a file, record type: %x\r\n", record->recordType);
+			ret = EINVAL;
+		}
 	}
 	else
+	{
 		bufferPrintf("No such file or directory\r\n");
+		ret = ENOENT;
+	}
 	
 	free(record);
 	bdevfs_close(dev);
+	return ret;
 }
-COMMAND("fs_cat", "display a file", fs_cmd_cat);
+COMMAND("fs_cat", "display a file", cmd_fs_cat);
 
-int fs_extract(int device, int partition, const char* file, void* location) {
-	int ret;
+error_t fs_extract(int device, int partition, const char* file, void* location)
+{
+	error_t ret;
 
 	bdevfs_device_t *dev = bdevfs_open(device, partition);
 	if(!dev)
 	{
 		bufferPrintf("fs: Cannot open partition hd%d,%d.\r\n", device, partition);
-		return -1;
+		return EINVAL;
 	}
 
 	HFSPlusCatalogRecord* record = getRecordFromPath(file, dev->volume, NULL, NULL);
@@ -471,40 +484,40 @@ int fs_extract(int device, int partition, const char* file, void* location) {
 			ret = size;
 		}
 		else
-			ret = -1;
+			ret = EINVAL;
 	}
 	else
-		ret = -1;
+		ret = ENOENT;
 
 	free(record);
 	bdevfs_close(dev);
-
 	return ret;
 }
 
-void fs_cmd_extract(int argc, char** argv)
+static error_t cmd_fs_extract(int argc, char** argv)
 {
 	if(argc < 5)
 	{
 		bufferPrintf("usage: %s <device> <partition> <file> <location>\r\n", argv[0]);
-		return;
+		return EINVAL;
 	}
 
-	fs_extract(parseNumber(argv[1]), parseNumber(argv[2]), argv[3], (void*)parseNumber(argv[4]));
+	return fs_extract(parseNumber(argv[1]), parseNumber(argv[2]), argv[3], (void*)parseNumber(argv[4]));
 }
-COMMAND("fs_extract", "extract a file into memory", fs_cmd_extract);
+COMMAND("fs_extract", "extract a file into memory", cmd_fs_extract);
 
-void fs_cmd_add(int argc, char** argv)
+static error_t cmd_fs_add(int argc, char** argv)
 {
 	if(argc < 6)
 	{
 		bufferPrintf("usage: %s <device> <partition> <file> <location> <size>\r\n", argv[0]);
-		return;
+		return EINVAL;
 	}
 
 	bdevfs_device_t *dev = bdevfs_open(parseNumber(argv[1]), parseNumber(argv[2]));
 	uint32_t address = parseNumber(argv[4]);
 	uint32_t size = parseNumber(argv[5]);
+	error_t ret = SUCCESS;
 
 	if(add_hfs(dev->volume, (uint8_t*) address, size, argv[3]))
 	{
@@ -513,14 +526,16 @@ void fs_cmd_add(int argc, char** argv)
 	else
 	{
 		bufferPrintf("add_hfs failed for %s!\r\n", argv[3]);
+		ret = EIO;
 	}
 
 	if(block_device_sync(dev->handle) < 0)
 		bufferPrintf("FS sync error!\r\n");
 
 	bdevfs_close(dev);
+	return ret;
 }
-COMMAND("fs_add", "store a file from memory", fs_cmd_add);
+COMMAND("fs_add", "store a file from memory", cmd_fs_add);
 
 ExtentList* fs_get_extents(int device, int partition, const char* fileName) {
 	unsigned int partitionStart;

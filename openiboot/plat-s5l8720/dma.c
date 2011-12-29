@@ -367,11 +367,11 @@ static void dispatchRequest(volatile DMARequest *request, int controller, int ch
 		request->handler(1, controller, channel);
 }
 
-
-void cmd_dma(int argc, char** argv) {
+static int cmd_dma(int argc, char** argv)
+{
 	if(argc < 4) {
 		bufferPrintf("Usage: %s <source> <dest> <size>\r\n", argv[0]);
-		return;
+		return -1;
 	}
 
 	uint32_t source = parseNumber(argv[1]);
@@ -383,5 +383,7 @@ void cmd_dma(int argc, char** argv) {
 	bufferPrintf("dma_request: %d\r\n", dma_request(DMA_MEMORY, 4, 8, DMA_MEMORY, 4, 8, &controller, &channel, NULL));
 	bufferPrintf("dma_perform(controller: %d, channel %d): %d\r\n", controller, channel, dma_perform(source, dest, size, FALSE, &controller, &channel));
 	bufferPrintf("dma_finish(controller: %d, channel %d): %d\r\n", controller, channel, dma_finish(controller, channel, 500));
+
+	return 0;
 }
 COMMAND("dma", "perform a DMA transfer", cmd_dma);

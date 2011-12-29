@@ -66,6 +66,6 @@ void setup_auto();
 void setup_kernel(const char *kernel, const char *args);
 void setup_initrd(const char *initrd);
 void setup_image(const char *image);
-int setup_boot();
+error_t setup_boot();
 
 #endif

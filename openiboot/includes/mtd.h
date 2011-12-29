@@ -82,6 +82,6 @@ int64_t mtd_block_size(mtd_t *_mtd);
 error_t mtd_read(mtd_t *_mtd, void *_dest, uint64_t _off, int _sz);
 error_t mtd_write(mtd_t *_mtd, void *_src, uint64_t _off, int _sz);
 
-void mtd_list_devices();
+int mtd_list_devices();
 
 #endif //MTD_H

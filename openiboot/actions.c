@@ -177,7 +177,8 @@ struct atag {
 	} u;
 };
 
-void chainload(uint32_t address) {
+error_t chainload(uint32_t address) __attribute__((noreturn))
+{
 	EnterCriticalSection();
 
 #ifndef MALLOC_NO_WDT
@@ -189,16 +190,15 @@ void chainload(uint32_t address) {
 	CallArm(address);
 }
 
-int chainload_image(char* name)
+error_t chainload_image(char* name)
 {
 	Image* image = images_get(fourcc(name));
 	if(image == NULL)
-		return -1;
+		return ENOENT;
 
 	void* imageData;
 	images_read(image, &imageData);
-	chainload((uint32_t)imageData);
-	return 0;
+	return chainload((uint32_t)imageData);
 }
 
 #define tag_next(t)     ((struct atag *)((uint32_t *)(t) + (t)->hdr.size))
@@ -411,41 +411,41 @@ static void setup_tags(struct atag* parameters, const char* commandLine)
 	setup_end_tag();                    /* end of tags */
 }
 
-static int load_multitouch_images()
+static error_t load_multitouch_images()
 {
 #ifdef CONFIG_IPHONE_2G
-        Image* image = images_get(fourcc("mtza"));
-        if (image == NULL) {
-            return 0;
-        }
-        void* aspeedData;
-        size_t aspeedLength = images_read(image, &aspeedData);
-        
-        image = images_get(fourcc("mtzm"));
-        if(image == NULL) {
-            return 0;
-        }
-        
-        void* mainData;
-        size_t mainLength = images_read(image, &mainData);
-        
-        multitouch_setup(aspeedData, aspeedLength, mainData,mainLength);
-        free(aspeedData);
-        free(mainData);
+	Image* image = images_get(fourcc("mtza"));
+	if (image == NULL)
+		return ENOENT;
+
+	void* aspeedData;
+	size_t aspeedLength = images_read(image, &aspeedData);
+	
+	image = images_get(fourcc("mtzm"));
+	if(image == NULL)
+		return ENOENT;
+	
+	void* mainData;
+	size_t mainLength = images_read(image, &mainData);
+	
+	multitouch_setup(aspeedData, aspeedLength, mainData,mainLength);
+	free(aspeedData);
+	free(mainData);
 #endif
 
 #if defined(CONFIG_IPHONE_3G) || defined(CONFIG_IPOD_TOUCH_1G)
-        Image* image = images_get(fourcc("mtz2"));
-        if(image == NULL) {
-            return 0;
-        }
-        void* imageData;
-        size_t length = images_read(image, &imageData);
-        
-        multitouch_setup(imageData, length);
-        free(imageData);
+	Image* image = images_get(fourcc("mtz2"));
+	if(image == NULL)
+		return ENOENT;
+
+	void* imageData;
+	size_t length = images_read(image, &imageData);
+	
+	multitouch_setup(imageData, length);
+	free(imageData);
 #endif
-    return 1;
+
+    return SUCCESS;
 }
 
 void boot_linux(const char* args, uint32_t mach_type) {
@@ -608,7 +608,7 @@ void setup_image(const char *image)
 	currentEntry->path = strdup(image);
 }
 
-int setup_boot()
+error_t setup_boot()
 {
 	switch(currentEntry->type)
 	{
@@ -618,7 +618,7 @@ int setup_boot()
 		// boot ibot.
 		if(chainload_image("ibox") != 0)
 			return chainload_image("ibot");
-		return 0;
+		return SUCCESS;
 
 	case kBootImage:
 		return chainload_image(currentEntry->path);
@@ -628,7 +628,7 @@ int setup_boot()
 			if(currentEntry->kernel == NULL)
 			{
 				bufferPrintf("setup: Can't boot linux without a kernel!\n");
-				return -1;
+				return EINVAL;
 			}
 
 			uint32_t size;
@@ -636,7 +636,7 @@ int setup_boot()
 			if(data == NULL)
 			{
 				bufferPrintf("setup: Failed to load kernel!\n");
-				return -1;
+				return EINVAL;
 			}
 
 			bufferPrintf("setup: Loaded kernel at 0x%08x.\n", data);
@@ -649,7 +649,7 @@ int setup_boot()
 				if(data == NULL)
 				{
 					bufferPrintf("setup: Failed to load ramdisk.\n");
-					return -1;
+					return EINVAL;
 				}
 
 				bufferPrintf("setup: Loaded ramdisk at 0x%08x.\n", data);
@@ -662,49 +662,60 @@ int setup_boot()
 			else
 				boot_linux(currentEntry->path, currentEntry->machine);
 
-			return 0;
+			return SUCCESS;
 		}
 
 	case kBootChainload:
 		{
 			uint32_t addr = parseNumber(currentEntry->path);
-			chainload(addr);
-			return 0;
+			return chainload(addr);
 		}
 	}
 
 	bufferPrintf("setup: Invalid boot entry selected.\n");
-	return -1;
+	return EINVAL;
 }
 
-static void cmd_setup_title(int argc, char **argv)
+static error_t cmd_setup_title(int argc, char **argv)
 {
 	if(argc != 2)
+	{
 		bufferPrintf("Usage: %s [title]\n", argv[0]);
-	else
+		return EINVAL;
+	} else
 		setup_title(argv[1]);
+
+	return SUCCESS;
 }
 COMMAND("title", "Select a boot entry by title.", cmd_setup_title);
 
-static void cmd_setup_default(int argc, char **argv)
+static error_t cmd_setup_default(int argc, char **argv)
 {
 	if(argc > 1)
+	{
 		bufferPrintf("Usage: %s\n", argv[0]);
-	else
+		return EINVAL;
+	} else
 		defaultEntry = setup_current();
+
+	return SUCCESS;
 }
 COMMAND("default", "Set the current entry as the default.", cmd_setup_default);
 
-static void cmd_setup_auto(int argc, char **argv)
+static error_t cmd_setup_auto(int argc, char **argv)
 {
 	if(argc > 1)
+	{
 		bufferPrintf("Usage: %s\n", argv[0]);
-	else
+		return EINVAL;
+	} else
 		setup_auto();
+
+	return SUCCESS;
 }
 COMMAND("auto", "Set current boot entry to boot fallback bootloader.\n", cmd_setup_auto);
 
-static void cmd_setup_kernel(int argc, char **argv)
+static error_t cmd_setup_kernel(int argc, char **argv)
 {
 	if(argc <= 1)
 	{
@@ -726,12 +737,16 @@ static void cmd_setup_kernel(int argc, char **argv)
 	}
 	else if(argc == 3)
 		setup_kernel(argv[1], argv[2]);
-	else
+	else {
 		bufferPrintf("Usage: %s [kernel] [command line]\n", argv[0]);
+		return EINVAL;
+	}
+
+	return SUCCESS;
 }
 COMMAND("kernel", "Set the kernel of the current boot entry.", cmd_setup_kernel);
 
-static void cmd_setup_initrd(int argc, char **argv)
+static error_t cmd_setup_initrd(int argc, char **argv)
 {
 	if(argc <= 1)
 	{
@@ -744,27 +759,35 @@ static void cmd_setup_initrd(int argc, char **argv)
 	}
 	else if(argc == 2)
 		setup_initrd(argv[1]);
-	else
+	else {
 		bufferPrintf("Usage: %s [initrd]\n", argv[0]);
+		return EINVAL;
+	}
+
+	return SUCCESS;
 }
 COMMAND("initrd", "Set the ramdisk for the current boot entry.", cmd_setup_initrd);
 
-static void cmd_setup_image(int argc, char **argv)
+static error_t cmd_setup_image(int argc, char **argv)
 {
-	if(argc != 2)
+	if(argc != 2) {
 		bufferPrintf("Usage: %s [image]\n", argv[0]);
+		return EINVAL;
+	}
 	else
 		setup_image(argv[1]);
+
+	return SUCCESS;
 }
 COMMAND("image", "Set the image to chainload for the current boot entry.", cmd_setup_image);
 
-static void cmd_setup_machine(int argc, char **argv)
+static error_t cmd_setup_machine(int argc, char **argv)
 {
 	if(argc != 2)
 	{
 		bufferPrintf("Usage: %s machine_id\n", argv[0]);
 		bufferPrintf("Current machine ID: %d.\r\n", currentEntry->machine);
-		return;
+		return EINVAL;
 	}
 
 	uint32_t num;
@@ -776,19 +799,25 @@ static void cmd_setup_machine(int argc, char **argv)
 		num = parseNumber(argv[1]);
 
 	currentEntry->machine = num;
+
+	return SUCCESS;
 }
 COMMAND("machine_id", "Select a machine ID for booting the linux kernel.", cmd_setup_machine);
 
-static void cmd_setup_boot(int argc, char **argv)
+static error_t cmd_setup_boot(int argc, char **argv)
 {
 	if(argc > 1)
+	{
 		bufferPrintf("Usage: %s\n", argv[0]);
+		return EINVAL;
+	}
 	else
-		setup_boot();
+		return setup_boot();
 }
 COMMAND("boot", "Boot the current boot entry.", cmd_setup_boot);
 
-void cmd_go(int argc, char** argv) {
+static error_t cmd_go(int argc, char** argv)
+{
 	uint32_t address;
 
 	if(argc < 2) {
@@ -804,14 +833,15 @@ void cmd_go(int argc, char** argv) {
 
 	udelay(100000);
 
-	chainload(address);
+	return chainload(address);
 }
 COMMAND("go", "jump to a specified address (interrupts disabled)", cmd_go);
 
-void cmd_jump(int argc, char** argv) {
+static error_t cmd_jump(int argc, char** argv)
+{
 	if(argc < 2) {
 		bufferPrintf("Usage: %s <address>\r\n", argv[0]);
-		return;
+		return EINVAL;
 	}
 
 	uint32_t address = parseNumber(argv[1]);
@@ -819,5 +849,7 @@ void cmd_jump(int argc, char** argv) {
 	udelay(100000);
 
 	CallArm(address);
+
+	return SUCCESS;
 }
 COMMAND("jump", "jump to a specified address (interrupts enabled)", cmd_jump);

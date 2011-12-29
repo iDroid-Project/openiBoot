@@ -26,7 +26,7 @@
 
 #include "openiboot.h"
 
-typedef void (*OPIBCommandRoutine)(int argc, char** argv);
+typedef error_t (*OPIBCommandRoutine)(int argc, char** argv);
 
 typedef struct OPIBCommand {
 	char* name;
@@ -46,6 +46,6 @@ int command_run(int argc, char **argv);
 		.description = _desc, \
 		.routine = &_fn, \
 	}; \
-	OPIBCommand *_fn##_structptr __attribute__((section(".commands"))) = &_fn##_struct;
+	static OPIBCommand *_fn##_structptr __attribute__((section(".commands"))) = &_fn##_struct;
 
 #endif
