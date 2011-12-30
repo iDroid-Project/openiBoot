@@ -168,8 +168,10 @@ void syscfg_list()
 	}
 }
 
-void cmd_syscfg_list(int argc, char **argv)
+static error_t cmd_syscfg_list(int argc, char **argv)
 {
 	syscfg_list();
+
+	return 0;
 }
 COMMAND("syscfg_list", "List all syscfg entries.", cmd_syscfg_list);

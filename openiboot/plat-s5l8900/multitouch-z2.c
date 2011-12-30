@@ -1061,27 +1061,29 @@ int multitouch_ispoint_inside_region(uint16_t x, uint16_t y, int w, int h)
     return FALSE;
 }
 
-void cmd_multitouch_setup(int argc, char** argv)
+static error_t cmd_multitouch_setup(int argc, char** argv)
 {
 	if(argc < 3)
 	{
 		bufferPrintf("%s <constructed fw> <constructed fw len>\r\n", argv[0]);
-		return;
+		return -1;
 	}
 
 	uint8_t* constructedFW = (uint8_t*) parseNumber(argv[1]);
 	uint32_t constructedFWLen = parseNumber(argv[2]);
 
 	multitouch_setup(constructedFW, constructedFWLen);
+
+	return 0;
 }
 COMMAND("multitouch_setup", "set up the multitouch chip", cmd_multitouch_setup);
 
-void cmd_multitouch_fw_install(int argc, char** argv)
+static error_t cmd_multitouch_fw_install(int argc, char** argv)
 {
     if(argc < 3)
     {
         bufferPrintf("%s <constructed fw> <constructed fw len>\r\n", argv[0]);
-        return;
+        return -1;
     }
     
 	// TODO: This is TOTALLY UNTESTED. Please test it someone, anyone. -- Ricky26
@@ -1090,10 +1092,15 @@ void cmd_multitouch_fw_install(int argc, char** argv)
     uint32_t fwLen = parseNumber(argv[2]);
 	images_install(fwData, fwLen, fourcc("mtz2"), fourcc("mtz2"));
     bufferPrintf("Zephyr2 firmware installed.\r\n");
+
+	return 0;
 }
 COMMAND("multitouch_fw_install", "install multitouch firmware", cmd_multitouch_fw_install);
 
-void cmd_multitouch_fw_uninstall(int argc, char** argv) {
+static error_t cmd_multitouch_fw_uninstall(int argc, char** argv)
+{
 	images_uninstall(fourcc("mtz2"), fourcc("mtz2"));
+
+	return 0;
 }
 COMMAND("multitouch_fw_uninstall","uninstall multitouch firmware", cmd_multitouch_fw_uninstall);

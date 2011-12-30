@@ -65,11 +65,14 @@ int accel_get_z()
 	return (signed char)(accel_get_reg(ACCEL_OUTZ));
 }
 
-void cmd_accel(int argc, char** argv) {
+static error_t cmd_accel(int argc, char** argv)
+{
 	int x = accel_get_x();
 	int y = accel_get_y();
 	int z = accel_get_z();
 	
 	bufferPrintf("x: %d, y: %d, z: %d\r\n", x, y, z);
+
+	return 0;
 }
 COMMAND("accel", "display accelerometer data", cmd_accel);

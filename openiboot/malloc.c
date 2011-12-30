@@ -29,8 +29,11 @@
 #include "wdt.h"
 #include "arm/arm.h"
 
-void cmd_malloc_stats(int argc, char** argv) {
+static error_t cmd_malloc_stats(int argc, char** argv)
+{
 	malloc_stats();
+
+	return 0;
 }
 COMMAND("malloc_stats", "display malloc stats", cmd_malloc_stats);
 

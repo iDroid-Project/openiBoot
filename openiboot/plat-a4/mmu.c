@@ -96,7 +96,7 @@ uint32_t get_physical_address(uint32_t address) {
 	return (address &~ MMU_SECTION_MASK) | pbase;
 }
 
-static void cmd_mmu_dump(int argc, char **argv)
+static error_t cmd_mmu_dump(int argc, char **argv)
 {
 	int i;
 	uint32_t lastValid=0, last=0;
@@ -130,5 +130,7 @@ static void cmd_mmu_dump(int argc, char **argv)
 			last = to;
 		}
 	}
+
+	return 0;
 }
 COMMAND("mmu_dump", "Dump current MMU mappings.", cmd_mmu_dump);
