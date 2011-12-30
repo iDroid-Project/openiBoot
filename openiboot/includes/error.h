@@ -24,6 +24,14 @@
 #ifndef  ERROR_H
 #define  ERROR_H
 
+/**
+ *  @file
+ *
+ *  This file defines errors OiB can return.
+ *
+ *  @defgroup Error
+ */
+
 #define ERROR_BIT			(0x80000000)
 #define ERROR(x)			((x) | ERROR_BIT)
 #define ERROR_CODE(x)		((x) &~ ERROR_BIT)
@@ -36,14 +44,22 @@
 #define CHAIN_FAIL(x)			do { error_t __val = (x); if(FAILED(__val)) { return __val; } } while(0)
 #define CHAIN_FAIL_STORE(x, y)	do { if(SUCCEEDED(x)) { x = (y); } } while(0)
 
+/**
+ *  The error type enumeration.
+ *
+ *  This is the different kinds of errors OiB can return upon execution
+ *  of a function.
+ *
+ *  @ingroup Error
+ */
 enum
 {
-	SUCCESS = 0,
-	EINVAL = ERROR(1),
-	EIO = ERROR(2),
-	ENOENT = ERROR(3),
-	ENOMEM = ERROR(4),
-	ETIMEDOUT = ERROR(5),
+	SUCCESS = 0,                /* Success */
+	EINVAL = ERROR(1),          /* Invalid argument */
+	EIO = ERROR(2),             /* I/O Error */
+	ENOENT = ERROR(3),          /* No such file */
+	ENOMEM = ERROR(4),          /* Out of Memory */
+	ETIMEDOUT = ERROR(5),       /* Timed out */
 };
 
 typedef uint32_t error_t;
