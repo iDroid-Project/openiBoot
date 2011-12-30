@@ -728,11 +728,9 @@ void sdio_init()
 	sdio_setup();
 }
 
-static int cmd_sdio_setup(int argc, char** argv)
+static void cmd_sdio_setup(int argc, char** argv)
 {
 	sdio_setup();
 	bufferPrintf("sdio setup done\r\n");
-
-	return 0;
 }
 COMMAND("sdio_setup", "SDIO setup", cmd_sdio_setup);

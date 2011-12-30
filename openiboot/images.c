@@ -910,12 +910,11 @@ int images_verify(Image* image) {
 }
 
 #if !defined(CONFIG_A4)
-static int cmd_install(int argc, char** argv)
-{
+void cmd_install(int argc, char** argv) {
 	if((argc > 2 && argc < 4) || argc > 4)
 	{
 		bufferPrintf("Usage: %s <address> <len>\n", argv[0]);
-		return -1;
+		return;
 	}
 
 	if(argc == 4)
@@ -930,33 +929,24 @@ static int cmd_install(int argc, char** argv)
 		bufferPrintf("Starting Install/Upgrade...\r\n");
 		images_install(&_start, (uint32_t)&OpenIBootEnd - (uint32_t)&_start, fourcc("ibot"), fourcc("ibox"));  
 	}
-
-	return 0;
 }
 COMMAND("install", "install openiboot onto the device", cmd_install);
 
-static int cmd_uninstall(int argc, char** argv)
-{
+void cmd_uninstall(int argc, char** argv) {
 	images_uninstall(fourcc("ibot"), fourcc("ibox"));
-
-	return 0;
 }
 COMMAND("uninstall", "uninstall openiboot from the device", cmd_uninstall);
 #endif
 
-static int cmd_images_list(int argc, char** argv)
-{
+void cmd_images_list(int argc, char** argv) {
 	images_list();
-
-	return 0;
 }
 COMMAND("images_list", "list the images available on NOR", cmd_images_list);
 
-static int cmd_images_read(int argc, char** argv)
-{
+void cmd_images_read(int argc, char** argv) {
 	if(argc < 3) {
 		bufferPrintf("Usage: %s <type> <address>\r\n", argv[0]);
-		return -1;
+		return;
 	}
 
 	Image* image = images_get(fourcc(argv[1]));
@@ -966,16 +956,13 @@ static int cmd_images_read(int argc, char** argv)
 	memcpy((void*)address, imageData, length);
 	free(imageData);
 	bufferPrintf("Read %d of %s to 0x%x - 0x%x\r\n", length, argv[1], address, address + length);
-
-	return 0;
 }
 COMMAND("images_read", "read an image on NOR", cmd_images_read);
 
-static int cmd_images_install(int argc, char** argv)
-{
+void cmd_images_install(int argc, char** argv) {
 	if(argc < 4) {
 		bufferPrintf("Usage: %s <tag> <address> <len>\r\n", argv[0]);
-		return -1;
+		return;
 	}
 
 	uint32_t tag = fourcc(argv[1]);
@@ -985,24 +972,19 @@ static int cmd_images_install(int argc, char** argv)
 	bufferPrintf("Installing image %s to 0x%08x:%d.\n", argv[1], address, len);
 	images_install((void*)address, len, tag, tag);
 	bufferPrintf("Done.\r\n");
-
-	return 0;
 }
 COMMAND("images_install", "install a boot image", cmd_images_install);
 
-static int cmd_images_uninstall(int argc, char** argv)
-{
+void cmd_images_uninstall(int argc, char** argv) {
 	if(argc < 4) {
 		bufferPrintf("Usage: %s <tag>\r\n", argv[0]);
-		return -1;
+		return;
 	}
 
 	uint32_t tag = fourcc(argv[1]);
 	bufferPrintf("Uninstalling image %s.\n", argv[1]);
 	images_uninstall(tag, tag);
 	bufferPrintf("Done.\r\n");
-
-	return 0;
 }
 COMMAND("images_uninstall", "uninstall a boot image", cmd_images_uninstall);
 

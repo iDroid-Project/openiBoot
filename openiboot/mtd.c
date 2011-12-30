@@ -255,7 +255,7 @@ error_t mtd_write(mtd_t *_mtd, void *_src, uint64_t _off, int _sz)
 	return _mtd->write(_mtd, _src, _off, _sz);
 }
 
-int mtd_list_devices()
+void mtd_list_devices()
 {
 	mtd_t *mtd = NULL;
 	int i = 0;
@@ -266,22 +266,20 @@ int mtd_list_devices()
 		bufferPrintf("mtd:    Device #%d '%s'.\n", i, mtd->device.name);
 		i++;
 	}
-
-	return 0;
 }
 
-static int cmd_mtd_list(int argc, char **argv)
+void cmd_mtd_list(int argc, char **argv)
 {
-	return mtd_list_devices();
+	mtd_list_devices();
 }
 COMMAND("mtd_list", "List all MTD devices.", cmd_mtd_list);
 
-static int cmd_mtd_read(int argc, char **argv)
+void cmd_mtd_read(int argc, char **argv)
 {
 	if(argc != 5)
 	{
 		bufferPrintf("Usage: %s [device] [destination] [offset] [size].\n", argv[0]);
-		return -1;
+		return;
 	}
 	
 	int idx = parseNumber(argv[1]);
@@ -294,7 +292,7 @@ static int cmd_mtd_read(int argc, char **argv)
 	if(!dev)
 	{
 		bufferPrintf("Invalid MTD index.\n");
-		return -2;
+		return;
 	}
 
 	bufferPrintf("OK, we are going to read from device '%s'\r\n", dev->device.name);
@@ -306,17 +304,15 @@ static int cmd_mtd_read(int argc, char **argv)
 	mtd_prepare(dev);
 	mtd_read(dev, dest, offset, len);
 	mtd_finish(dev);
-
-	return 0;
 }
 COMMAND("mtd_read", "Read from a MTD device.", cmd_mtd_read);
 
-static int cmd_mtd_write(int argc, char **argv)
+void cmd_mtd_write(int argc, char **argv)
 {
 	if(argc != 5)
 	{
 		bufferPrintf("Usage: %s [device] [source] [offset] [size].\n", argv[0]);
-		return -1;
+		return;
 	}
 	
 	int idx = parseNumber(argv[1]);
@@ -329,7 +325,7 @@ static int cmd_mtd_write(int argc, char **argv)
 	if(!dev)
 	{
 		bufferPrintf("Invalid MTD index.\n");
-		return -2;
+		return;
 	}
 
 	bufferPrintf("OK, we are going to write to device '%s'\r\n", dev->device.name);
@@ -341,7 +337,5 @@ static int cmd_mtd_write(int argc, char **argv)
 	mtd_prepare(dev);
 	mtd_write(dev, src, offset, len);
 	mtd_finish(dev);
-
-	return 0;
 }
 COMMAND("mtd_write", "Write to a MTD device.", cmd_mtd_write);

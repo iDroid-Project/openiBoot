@@ -199,32 +199,26 @@ void gpio_pulldown_configure(int port, GPIOPDSetting setting)
 	}
 }
 
-static int cmd_gpio_pinstate(int argc, char** argv)
-{
+void cmd_gpio_pinstate(int argc, char** argv) {
 	if(argc < 2) {
 		bufferPrintf("Usage: %s <port>\r\n", argv[0]);
-		return -1;
+		return;
 	}
 
 	uint32_t port = parseNumber(argv[1]);
 	bufferPrintf("Pin 0x%x state: 0x%x\r\n", port, gpio_pin_state(port));
-
-	return 0;
 }
 COMMAND("gpio_pinstate", "get the state of a GPIO pin", cmd_gpio_pinstate);
 
-static int cmd_gpio_out(int argc, char** argv)
-{
+void cmd_gpio_out(int argc, char** argv) {
 	if(argc < 3) {
 		bufferPrintf("Usage: %s <port> [0|1]\r\n", argv[0]);
-		return -1;
+		return;
 	}
 
 	uint32_t port = parseNumber(argv[1]);
 	uint32_t value = parseNumber(argv[2]);
 	bufferPrintf("Pin 0x%x value: %d\r\n", port, value);
     gpio_pin_output(port,value);
-
-	return 0;
 }
 COMMAND("gpio_out", "set the state of a GPIO pin", cmd_gpio_out);

@@ -173,13 +173,11 @@ void clock_gate_many(uint64_t _gates, OnOff _val)
 	}
 }
 
-static int cmd_enable_all_clocks(int argc, char **argv)
+static void cmd_enable_all_clocks(int argc, char **argv)
 {
 	int i;
 	for(i = 0; i <= CLOCK_GATE_MAX; i++)
 		clock_gate_switch(i, ON);
-
-	return 0;
 }
 COMMAND("enable_all_clocks", "Enable all clock-gates, for debugging.",
 		cmd_enable_all_clocks);
@@ -452,7 +450,7 @@ void set_CPU_clockconfig(uint32_t _mode)
 	SET_REG(CLOCK_CPUFREQ, (GET_REG(CLOCK_CPUFREQ) & 0xFFFFE0E0) | clock_freq_multiplier | (setting << 8));
 }
 
-static int cmd_frequencies(int argc, char **argv)
+static void cmd_frequencies(int argc, char **argv)
 {
 	int i;
 	for(i = 0; i < NUM_PLL; i++)
@@ -460,7 +458,5 @@ static int cmd_frequencies(int argc, char **argv)
 
 	for(i = 0; i < 55; i++)
 		bufferPrintf("clocks: clock %d %u.\n", i, CalculatedFrequencyTable[i]);
-
-	return 0;
 }
 COMMAND("frequencies", "Print clock frequencies.", cmd_frequencies);

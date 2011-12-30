@@ -63,11 +63,11 @@ void vibrator_off() {
 	timer_init(VibratorTimer, 0, 1, 0, 0, FALSE, FALSE, FALSE, FALSE, FALSE);
 }
 
-static int cmd_vibrator_loop(int argc, char** argv)
+void cmd_vibrator_loop(int argc, char** argv)
 {
 	if(argc < 3) {
 		bufferPrintf("Usage: %s <frequency 1-12000000> <duty time in percent> <time vibrator on in ms>\r\n", argv[0]);
-		return -1;
+		return;
 	}
 
 	int frequency = parseNumber(argv[1]);
@@ -77,16 +77,14 @@ static int cmd_vibrator_loop(int argc, char** argv)
 	bufferPrintf("Turning on vibrator at frequency %d with %d percent duty time for %d microseconds.\r\n", frequency, period, time);
 
 	vibrator_loop(frequency, period, time);
-
-	return 0;
 }
 COMMAND("vibrator_loop", "turn the vibrator on in a loop", cmd_vibrator_loop);
 
-static int cmd_vibrator_once(int argc, char** argv)
+void cmd_vibrator_once(int argc, char** argv)
 {
 	if(argc < 2) {
 		bufferPrintf("Usage: %s <duration in ms>\r\n", argv[0]);
-		return -1;
+		return;
 	}
 
 	int time = parseNumber(argv[1]) * 1000;
@@ -94,17 +92,13 @@ static int cmd_vibrator_once(int argc, char** argv)
 	bufferPrintf("Turning on vibrator for %d microseconds.\r\n", time);
 
 	vibrator_once(time);
-
-	return 0;
 }
 COMMAND("vibrator_once", "vibrate once", cmd_vibrator_once);
 
-static int cmd_vibrator_off(int argc, char** argv)
+void cmd_vibrator_off(int argc, char** argv)
 {
 	bufferPrintf("Turning off vibrator.\r\n");
 
 	vibrator_off();
-
-	return 0;
 }
 COMMAND("vibrator_off", "turn the vibrator off", cmd_vibrator_off);

@@ -341,35 +341,26 @@ int nvram_setup()
 	return 0;
 }
 
-static int cmd_printenv(int argc, char** argv)
-{
+void cmd_printenv(int argc, char** argv) {
 	nvram_listvars();
-
-	return 0;
 }
 COMMAND("printenv", "list the environment variables in nvram", cmd_printenv);
 
-static int cmd_setenv(int argc, char** argv)
-{
+void cmd_setenv(int argc, char** argv) {
 	if(argc < 3) {
 		bufferPrintf("Usage: %s <name> <value>\r\n", argv[0]);
-		return -1;
+		return;
 	}
 
 	nvram_setvar(argv[1], argv[2]);
 	bufferPrintf("Set %s = %s\r\n", argv[1], argv[2]);
-
-	return 0;
 }
 COMMAND("setenv", "sets an environment variable", cmd_setenv);
 
-static int cmd_saveenv(int argc, char** argv)
-{
+void cmd_saveenv(int argc, char** argv) {
 	bufferPrintf("Saving environment, this may take awhile...\r\n");
 	nvram_save();
 	bufferPrintf("Environment saved\r\n");
-
-	return 0;
 }
 COMMAND("saveenv", "saves the environment variables in nvram", cmd_saveenv);
 

@@ -725,12 +725,12 @@ int multitouch_ispoint_inside_region(uint16_t x, uint16_t y, int w, int h)
     return FALSE;
 }
 
-static int cmd_multitouch_setup(int argc, char** argv)
+void cmd_multitouch_setup(int argc, char** argv)
 {
 	if(argc < 5)
 	{
 		bufferPrintf("%s <a-speed fw> <a-speed fw len> <main fw> <main fw len>\r\n", argv[0]);
-		return -1;
+		return;
 	}
 
 	uint8_t* aspeedFW = (uint8_t*) parseNumber(argv[1]);
@@ -739,17 +739,15 @@ static int cmd_multitouch_setup(int argc, char** argv)
 	uint32_t mainFWLen = parseNumber(argv[4]);
 
 	multitouch_setup(aspeedFW, aspeedFWLen, mainFW, mainFWLen);
-
-	return 0;
 }
 COMMAND("multitouch_setup", "set up the multitouch chip", cmd_multitouch_setup);	
 
-static int cmd_multitouch_fw_install(int argc, char** argv)
+void cmd_multitouch_fw_install(int argc, char** argv)
 {
     if(argc < 5)
     {
         bufferPrintf("%s <a-speed fw> <a-speed fw len> <main fw> <main fw len>\r\n", argv[0]);
-        return -1;
+        return;
     }
     
     uint8_t* aspeedFW = (uint8_t*) parseNumber(argv[1]);
@@ -764,7 +762,7 @@ static int cmd_multitouch_fw_install(int argc, char** argv)
     //write aspeed first
     if(offset >= 0xfc000 || (offset + aspeedFWLen + mainFWLen) >= 0xfc000) {
         bufferPrintf("**ABORTED** Image of size %d at 0x%x would overflow NOR!\r\n", aspeedFWLen+mainFWLen, offset);
-        return -2;
+        return;
     }    
     
     bufferPrintf("Writing aspeed 0x%x - 0x%x to 0x%x...\r\n", aspeedFW, aspeedFW + aspeedFWLen, offset);
@@ -776,16 +774,11 @@ static int cmd_multitouch_fw_install(int argc, char** argv)
 	images_install(mainFW, mainFWLen, fourcc("mtzm"), fourcc("mtzm"));
     
     bufferPrintf("Zephyr firmware installed.\r\n");
-
-	return 0;
 }
 COMMAND("multitouch_fw_install", "install multitouch firmware", cmd_multitouch_fw_install);
 
-static int cmd_multitouch_fw_uninstall(int argc, char** argv)
-{
+void cmd_multitouch_fw_uninstall(int argc, char** argv) {
 	images_uninstall(fourcc("mtza"), fourcc("mtza"));
 	images_uninstall(fourcc("mtzm"), fourcc("mtzm"));
-
-	return 0;
 }
 COMMAND("multitouch_fw_uninstall","uninstall multitouch firmware", cmd_multitouch_fw_uninstall);

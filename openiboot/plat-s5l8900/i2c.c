@@ -255,11 +255,10 @@ static void do_i2c(I2CInfo* i2c) {
 	}
 }
 
-static int cmd_iic_read(int argc, char** argv)
-{
+void cmd_iic_read(int argc, char** argv) {
 	if(argc < 4) {
 		bufferPrintf("usage: %s <bus> <address> <register>\n", argv[0]);
-		return -1;
+		return;
 	}
 
 
@@ -273,16 +272,13 @@ static int cmd_iic_read(int argc, char** argv)
 	int error = i2c_rx(bus, address, registers, 1, out, 1);
 	
 	bufferPrintf("result: %d, error: %d\r\n", (int) out[0], error);
-
-	return 0;
 }
 COMMAND("iic_read", "read a IIC register", cmd_iic_read);
 
-static int cmd_iic_write(int argc, char** argv)
-{
+void cmd_iic_write(int argc, char** argv) {
 	if(argc < 5) {
 		bufferPrintf("usage: %s <bus> <address> <register> <value>\r\n", argv[0]);
-		return -1;
+		return;
 	}
 
 	uint8_t buffer[2];
@@ -294,7 +290,5 @@ static int cmd_iic_write(int argc, char** argv)
 	int error = i2c_tx(bus, address, buffer, 2);
 	
 	bufferPrintf("result: %d\r\n", error);
-
-	return 0;
 }
 COMMAND("iic_write", "write a IIC register", cmd_iic_write);

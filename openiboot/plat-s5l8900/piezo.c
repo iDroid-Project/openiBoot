@@ -293,11 +293,10 @@ void piezo_play(const char* command)
 	}
 }
 
-static int cmd_piezo_buzz(int argc, char** argv)
-{
+void cmd_piezo_buzz(int argc, char** argv) {
 	if(argc < 2) {
 		bufferPrintf("Usage: %s <frequency in hertz> [duration in milliseconds]\r\n", argv[0]);
-		return -1;
+		return;
 	}
 
 	int frequency = parseNumber(argv[1]);
@@ -311,16 +310,13 @@ static int cmd_piezo_buzz(int argc, char** argv)
 	piezo_buzz(frequency, duration);
 
 	bufferPrintf("%d hz for %u microseconds: done.\r\n", frequency, duration);
-
-	return 0;
 }
 COMMAND("buzz", "use the piezo buzzer", cmd_piezo_buzz);
 
-static int cmd_piezo_play(int argc, char** argv)
-{
+void cmd_piezo_play(int argc, char** argv) {
 	if(argc < 2) {
 		bufferPrintf("Usage: %s <frequency in hertz> [duration in milliseconds]\r\n", argv[0]);
-		return -1;
+		return;
 	}
 
 	bufferPrintf("playing string \"%s\"\r\n", argv[1]);
@@ -329,6 +325,5 @@ static int cmd_piezo_play(int argc, char** argv)
 
 	bufferPrintf("done\r\n");
 
-	return 0;
 }
 COMMAND("play", "play notes using piezo bytes", cmd_piezo_play);

@@ -882,11 +882,10 @@ int nand_read_alternate_ecc(int bank, int page, uint8_t* buffer) {
 	return 0;
 }
 
-static int cmd_nand_read(int argc, char** argv)
-{
+void cmd_nand_read(int argc, char** argv) {
 	if(argc < 4) {
 		bufferPrintf("Usage: %s <address> <bank> <page> [pages]\r\n", argv[0]);
-		return -1;
+		return;
 	}
 
 	uint32_t address = parseNumber(argv[1]);
@@ -910,31 +909,27 @@ static int cmd_nand_read(int argc, char** argv)
 		address += Data->bytesPerPage;
 	}
 
-	return 0;
+	bufferPrintf("done!\r\n");
 }
 COMMAND("nand_read", "read a page of NAND into RAM", cmd_nand_read);
 
-static int cmd_nand_ecc(int argc, char** argv)
-{
+void cmd_nand_ecc(int argc, char** argv) {
 	if(argc < 3) {
 		bufferPrintf("Usage: %s <data> <ecc>\r\n", argv[0]);
-		return -1;
+		return;
 	}
 
 	uint32_t address = parseNumber(argv[1]);
 	uint32_t ecc = parseNumber(argv[2]);
 
 	bufferPrintf("nand_calculate_ecc(%x, %x) = %d\r\n", address, ecc, nand_calculate_ecc((uint8_t*) address, (uint8_t*) ecc));
-
-	return 0;
 }
 COMMAND("nand_ecc", "hardware ECC a page", cmd_nand_ecc);
 
-static int cmd_nand_write(int argc, char** argv)
-{
+void cmd_nand_write(int argc, char** argv) {
 	if(argc < 6) {
 		bufferPrintf("Usage: %s <data> <spare> <bank> <page> <ecc>\r\n", argv[0]);
-		return -1;
+		return;
 	}
 
 	uint32_t address = parseNumber(argv[1]);
@@ -944,16 +939,13 @@ static int cmd_nand_write(int argc, char** argv)
 	uint32_t ecc = parseNumber(argv[5]);
 
 	bufferPrintf("nand_write(%d, %d, %x, %x, %d) = %d\r\n", bank, page, address, spare, ecc, nand_write(bank, page, (uint8_t*) address, (uint8_t*) spare, ecc));
-
-	return 0;
 }
 COMMAND("nand_write", "write a page of NAND", cmd_nand_write);
 
-static int cmd_nand_read_spare(int argc, char** argv)
-{
+void cmd_nand_read_spare(int argc, char** argv) {
 	if(argc < 4) {
 		bufferPrintf("Usage: %s <address> <bank> <page> [pages]\r\n", argv[0]);
-		return -1;
+		return;
 	}
 
 	uint32_t address = parseNumber(argv[1]);
@@ -977,15 +969,15 @@ static int cmd_nand_read_spare(int argc, char** argv)
 		address += Data->bytesPerSpare;
 	}
 
-	return 0;
+	bufferPrintf("done!\r\n");
 }
 COMMAND("nand_read_spare", "read a page of NAND's spare into RAM", cmd_nand_read_spare);
 
-static int cmd_nand_erase(int argc, char** argv)
+void cmd_nand_erase(int argc, char** argv)
 {
 	if(argc < 3) {
 		bufferPrintf("Usage: %s <bank> <block> -- You probably don't want to do this.\r\n", argv[0]);
-		return -1;
+		return;
 	}
 
 	uint32_t bank = parseNumber(argv[1]);
@@ -993,15 +985,10 @@ static int cmd_nand_erase(int argc, char** argv)
 
 	bufferPrintf("Erasing bank %d, block %d...\r\n", bank, block);
 	bufferPrintf("nand_erase: %d\r\n", nand_erase(bank, block));
-
-	return 0;
 }
 COMMAND("nand_erase", "erase a NAND block", cmd_nand_erase);
 
-static int cmd_nand_status(int agc, char** argv)
-{
+void cmd_nand_status(int agc, char** argv) {
 	bufferPrintf("nand status: %x\r\n", nand_read_status());
-
-	return 0;
 }
 COMMAND("nand_status", "read NAND status", cmd_nand_status);

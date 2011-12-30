@@ -275,24 +275,17 @@ int pmu_get_battery_voltage() {
 	return (pmu_get_reg(PMU_VOLTAGE_HIGH_REG) << 8) | pmu_get_reg(PMU_VOLTAGE_LOW_REG);
 }
 
-static int cmd_poweroff(int argc, char** argv)
-{
+void cmd_poweroff(int argc, char** argv) {
 	pmu_poweroff();
-
-	return 0;
 }
 COMMAND("poweroff", "power off the device", cmd_poweroff);
 
-static int cmd_pmu_voltage(int argc, char** argv)
-{
+void cmd_pmu_voltage(int argc, char** argv) {
 	bufferPrintf("battery voltage: %d mV\r\n", pmu_get_battery_voltage());
-
-	return 0;
 }
 COMMAND("pmu_voltage", "get the battery voltage", cmd_pmu_voltage);
 
-static int cmd_pmu_powersupply(int argc, char** argv)
-{
+void cmd_pmu_powersupply(int argc, char** argv) {
 	PowerSupplyType power = pmu_get_power_supply();
 	bufferPrintf("power supply type: ");
 	switch(power) {
@@ -325,13 +318,10 @@ static int cmd_pmu_powersupply(int argc, char** argv)
 			break;
 	}
 	bufferPrintf("\r\n");
-
-	return 0;
 }
 COMMAND("pmu_powersupply", "get the power supply type", cmd_pmu_powersupply);
 
-static int cmd_pmu_nvram(int argc, char** argv)
-{
+void cmd_pmu_nvram(int argc, char** argv) {
 	uint8_t reg;
 
 	pmu_get_gpmem_reg(PMU_IBOOTSTATE, &reg);
@@ -344,7 +334,5 @@ static int cmd_pmu_nvram(int argc, char** argv)
 	bufferPrintf("3: [iBootErrorCount] %02x\r\n", reg);
 	pmu_get_gpmem_reg(PMU_IBOOTERRORSTAGE, &reg);
 	bufferPrintf("4: [iBootErrorStage] %02x\r\n", reg);
-
-	return 0;
 }
 COMMAND("pmu_nvram", "list powernvram registers", cmd_pmu_nvram);

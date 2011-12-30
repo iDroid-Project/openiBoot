@@ -74,143 +74,115 @@ int command_run(int argc, char **argv)
 	while((cmd = command_get_next(&cmdIt)))
 	{
 		if(strcmp(argv[0], cmd->name) == 0) {
-			return cmd->routine(argc, argv);
+			cmd->routine(argc, argv);
+			return 0;
 		}
 	}
 
-	return -2;
+	return -1;
 }
 
-static int cmd_help(int argc, char** argv)
+void cmd_help(int argc, char** argv)
 {
 	OIBCommandIterator it = NULL;
 	OPIBCommand *cmd;
 	while((cmd = command_get_next(&it)))
         bufferPrintf("%-20s%s\r\n", cmd->name, cmd->description);
-
-	return 0;
 }
 COMMAND("help", "list the available commands", cmd_help);
 
-static int cmd_reboot(int argc, char** argv)
-{
+void cmd_reboot(int argc, char** argv) {
 	Reboot();
-
-	return 0;
 }
 COMMAND("reboot", "reboot the device", cmd_reboot);
 
-static int cmd_md(int argc, char** argv)
-{
+void cmd_md(int argc, char** argv) {
 	if(argc < 3) {
 		bufferPrintf("Usage: %s <address> <len>\r\n", argv[0]);
-		return -1;
+		return;
 	}
 
 	uint32_t address = parseNumber(argv[1]);
 	uint32_t len = parseNumber(argv[2]);
 	bufferPrintf("dumping memory 0x%x - 0x%x\r\n", address, address + len);
 	buffer_dump_memory(address, len);
-
-	return 0;
 }
 COMMAND("md", "display a block of memory as 32-bit integers", cmd_md);
 
-static int cmd_hexdump(int argc, char** argv)
-{
+void cmd_hexdump(int argc, char** argv) {
 	if(argc < 3) {
 		bufferPrintf("Usage: %s <address> <len>\r\n", argv[0]);
-		return -1;
+		return;
 	}
 
 	uint32_t address = parseNumber(argv[1]);
 	uint32_t len = parseNumber(argv[2]);
 	bufferPrintf("dumping memory 0x%x - 0x%x\r\n", address, address + len);
 	hexdump((void*)address, len);
-
-	return 0;
 }
 COMMAND("hexdump", "display a block of memory like 'hexdump -C'", cmd_hexdump);
 
-static int cmd_cat(int argc, char** argv)
-{
+void cmd_cat(int argc, char** argv) {
 	if(argc < 3) {
 		bufferPrintf("Usage: %s <address> <len>\r\n", argv[0]);
-		return -1;
+		return;
 	}
 
 	uint32_t address = parseNumber(argv[1]);
 	uint32_t len = parseNumber(argv[2]);
 	addToBuffer((char*) address, len);
-
-	return 0;
 }
 COMMAND("cat", "dumps a block of memory", cmd_cat);
 
-static int cmd_mwb(int argc, char** argv)
-{
+void cmd_mwb(int argc, char** argv) {
 	if(argc < 3) {
 		bufferPrintf("Usage: %s <address> <data>\r\n", argv[0]);
-		return -1;
+		return;
 	}
 
 	uint8_t* address = (uint8_t*) parseNumber(argv[1]);
 	uint8_t data = parseNumber(argv[2]);
 	*address = data;
 	bufferPrintf("Written to 0x%x to 0x%x\r\n", (uint8_t)data, address);
-
-	return 0;
 }
 COMMAND("mwb", "write a byte into a memory address", cmd_mwb);
 
-static int cmd_mws(int argc, char** argv)
-{
+void cmd_mws(int argc, char** argv) {
 	if(argc < 3) {
 		bufferPrintf("Usage: %s <address> <string>\r\n", argv[0]);
-		return -1;
+		return;
 	}
 
 	char* address = (char*) parseNumber(argv[1]);
 	strcpy(address, argv[2]);
 	bufferPrintf("Written %s to 0x%x\r\n", argv[2], address);
-
-	return 0;
 }
 COMMAND("mws", "write a string into a memory address", cmd_mws);
 
-static int cmd_mw(int argc, char** argv)
-{
+void cmd_mw(int argc, char** argv) {
 	if(argc < 3) {
 		bufferPrintf("Usage: %s <address> <data>\r\n", argv[0]);
-		return -1;
+		return;
 	}
 
 	uint32_t* address = (uint32_t*) parseNumber(argv[1]);
 	uint32_t data = parseNumber(argv[2]);
 	*address = data;
 	bufferPrintf("Written to 0x%x to 0x%x\r\n", data, address);
-
-	return 0;
 }
 COMMAND("mw", "write a 32-bit dword into a memory address", cmd_mw);
 
-static int cmd_echo(int argc, char** argv)
-{
+void cmd_echo(int argc, char** argv) {
 	int i;
 	for(i = 1; i < argc; i++) {
 		bufferPrintf("%s ", argv[i]);
 	}
 	bufferPrintf("\r\n");
-
-	return 0;
 }
 COMMAND("echo", "echo back a line", cmd_echo);
 
-static int cmd_version(int argc, char** argv)
-{
+void cmd_version(int argc, char** argv) {
 	bufferPrintf("%s\r\n", OPENIBOOT_VERSION_STR);
-
-	return 0;
 }
 COMMAND("version", "display the version string", cmd_version);
 
