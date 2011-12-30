@@ -195,32 +195,44 @@ static void als_clearint()
 	i2c_tx(ALS_I2C, ALS_ADDR, &buf, sizeof(buf)); 
 }
 
-void cmd_als(int argc, char** argv) {
+static error_t cmd_als(int argc, char** argv)
+{
 	bufferPrintf("data = %d\r\n", als_data());
+
+	return 0;
 }
 COMMAND("als", "display ambient light sensor data", cmd_als);
 
-void cmd_als_channel(int argc, char** argv) {
+static error_t cmd_als_channel(int argc, char** argv)
+{
 	if(argc < 2)
 	{
 		bufferPrintf("usage: %s <channel>\r\n", argv[0]);
-		return;
+		return -1;
 	}
 
 	int channel = parseNumber(argv[1]);
 	bufferPrintf("Setting als channel to %d\r\n", channel);
 	als_setchannel(channel);
+
+	return 0;
 }
 COMMAND("als_channel", "set channel to get ALS data from", cmd_als_channel);
 
-void cmd_als_en(int argc, char** argv) {
+static error_t cmd_als_en(int argc, char** argv)
+{
 	bufferPrintf("Enabling ALS interrupt.\r\n");
 	als_enable_interrupt();
+
+	return 0;
 }
 COMMAND("als_en", "enable continuous reporting of ALS data", cmd_als_en);
 
-void cmd_als_dis(int argc, char** argv) {
+static error_t cmd_als_dis(int argc, char** argv)
+{
 	bufferPrintf("Disabling ALS interrupt.\r\n");
 	als_disable_interrupt();
+
+	return 0;
 }
 COMMAND("als_dis", "disable continuous reporting of ALS data", cmd_als_dis);

@@ -3217,12 +3217,12 @@ void h2fmi_init()
 }
 MODULE_INIT(h2fmi_init);
 
-static void cmd_nand_read(int argc, char** argv)
+static error_t cmd_nand_read(int argc, char** argv)
 {
 	if(argc < 8)
 	{
 		bufferPrintf("Usage: %s [ce] [page] [data] [metadata] [buf1] [buf2] [disable_aes]\r\n", argv[0]);
-		return;
+		return -1;
 	}
 	
 	uint32_t ce = parseNumber(argv[1]);
@@ -3233,20 +3233,18 @@ static void cmd_nand_read(int argc, char** argv)
 	uint32_t buf2 = parseNumber(argv[6]);
 	uint32_t flag = parseNumber(argv[7]);
 
-	uint32_t ret = h2fmi_read_single_page(ce, page,
+	return h2fmi_read_single_page(ce, page,
 			(uint8_t*)data, (uint8_t*)meta, (uint8_t*)buf1, (uint8_t*)buf2,
 			flag);
-
-	bufferPrintf("fmi: Command completed with result 0x%08x.\r\n", ret);
 }
 COMMAND("nand_read", "H2FMI NAND read single page", cmd_nand_read);
 
-static void cmd_nand_write(int argc, char** argv)
+static error_t cmd_nand_write(int argc, char** argv)
 {
 	if(argc < 6)
 	{
 		bufferPrintf("Usage: %s [ce] [page] [data] [metadata] [disable_aes]\r\n", argv[0]);
-		return;
+		return -1;
 	}
 	
 	uint32_t ce = parseNumber(argv[1]);
@@ -3255,57 +3253,50 @@ static void cmd_nand_write(int argc, char** argv)
 	uint32_t meta = parseNumber(argv[4]);
 	uint32_t flag = parseNumber(argv[5]);
 
-	uint32_t ret = h2fmi_write_single_page(ce, page,
-			(uint8_t*)data, (uint8_t*)meta, flag);
-
-	bufferPrintf("fmi: Command completed with result 0x%08x.\r\n", ret);
+	return h2fmi_write_single_page(ce, page, (uint8_t*)data, (uint8_t*)meta, flag);
 }
 COMMAND("nand_write", "H2FMI NAND write single page", cmd_nand_write);
 
-static void cmd_nand_write_bootpage(int argc, char** argv)
+static error_t cmd_nand_write_bootpage(int argc, char** argv)
 {
 	if(argc < 4)
 	{
 		bufferPrintf("Usage: %s [ce] [page] [data]\r\n", argv[0]);
-		return;
+		return -1;
 	}
 	
 	uint32_t ce = parseNumber(argv[1]);
 	uint32_t page = parseNumber(argv[2]);
 	uint32_t data = parseNumber(argv[3]);
 
-	uint32_t ret = h2fmi_write_bootpage(ce, page, (uint8_t*)data);
-
-	bufferPrintf("fmi: Command completed with result 0x%08x.\r\n", ret);
+	return h2fmi_write_bootpage(ce, page, (uint8_t*)data);
 }
 COMMAND("nand_write_bootpage", "H2FMI NAND write single bootpage", cmd_nand_write_bootpage);
 
-static void cmd_nand_erase(int argc, char** argv)
+static error_t cmd_nand_erase(int argc, char** argv)
 {
 	bufferPrintf("Disabled for now.\r\n");
-	return;
+	return 0;
 	
 	if(argc < 3)
 	{
 		bufferPrintf("Usage: %s [ce] [block]\r\n", argv[0]);
-		return;
+		return -1;
 	}
 	
 	uint32_t ce = parseNumber(argv[1]);
 	uint32_t block = parseNumber(argv[2]);
 
-	uint32_t ret = h2fmi_erase_single_block((uint16_t)ce, (uint16_t)block);
-
-	bufferPrintf("fmi: Command completed with result 0x%08x.\r\n", ret);
+	return h2fmi_erase_single_block((uint16_t)ce, (uint16_t)block);
 }
 COMMAND("nand_erase", "H2FMI NAND erase single block", cmd_nand_erase);
 
-static void cmd_vfl_read(int argc, char** argv)
+static error_t cmd_vfl_read(int argc, char** argv)
 {
 	if(argc < 6)
 	{
 		bufferPrintf("Usage: %s [page] [data] [metadata] [empty_ok] [disable_aes]\r\n", argv[0]);
-		return;
+		return -1;
 	}
 
 	uint32_t page = parseNumber(argv[1]);
@@ -3314,58 +3305,54 @@ static void cmd_vfl_read(int argc, char** argv)
 	uint32_t empty_ok = parseNumber(argv[4]);
 	uint32_t disable_aes = parseNumber(argv[5]);
 
-	uint32_t ret = vfl_read_single_page(h2fmi_vfl_device, page,
+	return vfl_read_single_page(h2fmi_vfl_device, page,
 			(uint8_t*)data, (uint8_t*)meta, empty_ok, NULL, disable_aes);
-
-	bufferPrintf("vfl: Command completed with result 0x%08x.\r\n", ret);
 }
 COMMAND("vfl_read", "VFL read single page", cmd_vfl_read);
 
-static void cmd_vfl_erase(int argc, char** argv)
+static error_t cmd_vfl_erase(int argc, char** argv)
 {
 	bufferPrintf("Disabled for now.\r\n");
-	return;
+	return 0;
 
 	if (argc < 3) {
 		bufferPrintf("Usage: %s [block] [replace if bad]\r\n", argv[0]);
-		return;
+		return -1;
 	}
 
 	uint32_t block = parseNumber(argv[1]);
 	uint32_t replace = parseNumber(argv[2]);
 
-	uint32_t ret = vfl_erase_single_block(h2fmi_vfl_device, block, replace);
-
-	bufferPrintf("vfl: Command completed with result 0x%08x.\r\n", ret);
+	return vfl_erase_single_block(h2fmi_vfl_device, block, replace);
 }
 COMMAND("vfl_erase", "VFL erase single block", cmd_vfl_erase);
 
-static void cmd_ftl_read(int argc, char** argv)
+static error_t cmd_ftl_read(int argc, char** argv)
 {
 	if(argc < 3)
 	{
 		bufferPrintf("Usage: %s [page] [data]\r\n", argv[0]);
-		return;
+		return -1;
 	}
 
 	uint32_t page = parseNumber(argv[1]);
 	uint32_t data = parseNumber(argv[2]);
 
-	uint32_t ret = ftl_read_single_page(h2fmi_ftl_device, page, (uint8_t*)data);
-
-	bufferPrintf("ftl: Command completed with result 0x%08x.\r\n", ret);
+	return ftl_read_single_page(h2fmi_ftl_device, page, (uint8_t*)data);
 }
 COMMAND("ftl_read", "FTL read single page", cmd_ftl_read);
 
-static void cmd_emf_enable(int argc, char** argv)
+static error_t cmd_emf_enable(int argc, char** argv)
 {
 	if(argc < 2)
 	{
 		bufferPrintf("Usage: %s [enable]", argv[0]);
-		return;
+		return -1;
 	}
 
 	h2fmi_set_emf(parseNumber(argv[1]), 0);
 	bufferPrintf("h2fmi: set emf setting\r\n");
+
+	return 0;
 }
 COMMAND("emf_enable", "EMF enable", cmd_emf_enable);

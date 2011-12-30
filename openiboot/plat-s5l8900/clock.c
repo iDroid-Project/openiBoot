@@ -283,7 +283,8 @@ void clock_set_sdiv(int sdiv) {
 	}
 }
 
-void cmd_frequency(int argc, char** argv) {
+static error_t cmd_frequency(int argc, char** argv)
+{
 	bufferPrintf("Clock frequency: %d Hz\r\n", clock_get_frequency(FrequencyBaseClock));
 	bufferPrintf("Memory frequency: %d Hz\r\n", clock_get_frequency(FrequencyBaseMemory));
 	bufferPrintf("Bus frequency: %d Hz\r\n", clock_get_frequency(FrequencyBaseBus));
@@ -292,5 +293,7 @@ void cmd_frequency(int argc, char** argv) {
 	bufferPrintf("Display frequency: %d Hz\r\n", clock_get_frequency(FrequencyBaseDisplay));
 	bufferPrintf("Fixed frequency: %d Hz\r\n", clock_get_frequency(FrequencyBaseFixed));
 	bufferPrintf("Timebase frequency: %d Hz\r\n", clock_get_frequency(FrequencyBaseTimebase));
+
+	return 0;
 }
 COMMAND("frequency", "display clock frequencies", cmd_frequency);

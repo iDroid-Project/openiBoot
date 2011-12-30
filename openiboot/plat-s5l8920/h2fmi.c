@@ -2126,12 +2126,12 @@ void h2fmi_init()
 }
 MODULE_INIT(h2fmi_init);
 
-void cmd_nand_read(int argc, char** argv)
+static error_t cmd_nand_read(int argc, char** argv)
 {
 	if(argc < 8)
 	{
 		bufferPrintf("Usage: %s [ce] [page] [data] [metadata] [buf1] [buf2] [flag]\r\n", argv[0]);
-		return;
+		return -1;
 	}
 	
 	uint32_t ce = parseNumber(argv[1]);
@@ -2142,20 +2142,18 @@ void cmd_nand_read(int argc, char** argv)
 	uint32_t buf2 = parseNumber(argv[6]);
 	uint32_t flag = parseNumber(argv[7]);
 
-	uint32_t ret = h2fmi_read_single_page(ce, page,
+	return h2fmi_read_single_page(ce, page,
 			(uint8_t*)data, (uint8_t*)meta, (uint8_t*)buf1, (uint8_t*)buf2,
 			flag);
-
-	bufferPrintf("fmi: Command completed with result 0x%08x.\r\n", ret);
 }
 COMMAND("nand_read", "H2FMI NAND read single page", cmd_nand_read);
 
-static void cmd_vfl_read(int argc, char** argv)
+static error_t cmd_vfl_read(int argc, char** argv)
 {
 	if(argc < 6)
 	{
 		bufferPrintf("Usage: %s [page] [data] [metadata] [empty_ok] [disable_aes]\r\n", argv[0]);
-		return;
+		return -1;
 	}
 
 	uint32_t page = parseNumber(argv[1]);
@@ -2164,26 +2162,22 @@ static void cmd_vfl_read(int argc, char** argv)
 	uint32_t empty_ok = parseNumber(argv[4]);
 	uint32_t disable_aes = parseNumber(argv[5]);
 
-	uint32_t ret = vfl_read_single_page(h2fmi_vfl_device, page,
+	return vfl_read_single_page(h2fmi_vfl_device, page,
 			(uint8_t*)data, (uint8_t*)meta, empty_ok, NULL, disable_aes);
-
-	bufferPrintf("vfl: Command completed with result 0x%08x.\r\n", ret);
 }
 COMMAND("vfl_read", "VFL read single page", cmd_vfl_read);
 
-static void cmd_ftl_read(int argc, char** argv)
+static error_t cmd_ftl_read(int argc, char** argv)
 {
 	if(argc < 3)
 	{
 		bufferPrintf("Usage: %s [page] [data]\r\n", argv[0]);
-		return;
+		return -1;
 	}
 
 	uint32_t page = parseNumber(argv[1]);
 	uint32_t data = parseNumber(argv[2]);
 
-	uint32_t ret = ftl_read_single_page(h2fmi_ftl_device, page, (uint8_t*)data);
-
-	bufferPrintf("ftl: Command completed with result 0x%08x.\r\n", ret);
+	return ftl_read_single_page(h2fmi_ftl_device, page, (uint8_t*)data);
 }
 COMMAND("ftl_read", "FTL read single page", cmd_ftl_read);

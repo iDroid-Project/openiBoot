@@ -146,7 +146,7 @@ return_free:
 		free(buff);
 }
 
-static void cmd_aes(int argc, char** argv)
+static error_t cmd_aes(int argc, char** argv)
 {
 	uint8_t* key = NULL;
 	uint8_t* iv = NULL;
@@ -160,7 +160,7 @@ static void cmd_aes(int argc, char** argv)
 
 	if(argc < 4) {
 		bufferPrintf("Usage: %s <enc/dec> <gid/uid/key> [data] [iv]\r\n", argv[0]);
-		return;
+		return -1;
 	}
 
 	if(strcmp(argv[2], "gid") == 0)
@@ -233,5 +233,7 @@ return_free:
 
 	if (buff)
 		free(buff);
+
+	return 0;
 }
 COMMAND("aes", "use the hardware crypto engine", cmd_aes);
