@@ -677,34 +677,43 @@ int setup_boot()
 	return -1;
 }
 
-static void cmd_setup_title(int argc, char **argv)
+static error_t cmd_setup_title(int argc, char **argv)
 {
-	if(argc != 2)
+	if(argc != 2) {
 		bufferPrintf("Usage: %s [title]\n", argv[0]);
-	else
+		return -1;
+	} else
 		setup_title(argv[1]);
+
+	return 0;
 }
 COMMAND("title", "Select a boot entry by title.", cmd_setup_title);
 
-static void cmd_setup_default(int argc, char **argv)
+static error_t cmd_setup_default(int argc, char **argv)
 {
-	if(argc > 1)
+	if(argc > 1) {
 		bufferPrintf("Usage: %s\n", argv[0]);
-	else
+		return -1;
+	} else
 		defaultEntry = setup_current();
+
+	return 0;
 }
 COMMAND("default", "Set the current entry as the default.", cmd_setup_default);
 
-static void cmd_setup_auto(int argc, char **argv)
+static error_t cmd_setup_auto(int argc, char **argv)
 {
-	if(argc > 1)
+	if(argc > 1) {
 		bufferPrintf("Usage: %s\n", argv[0]);
-	else
+		return -1;
+	} else
 		setup_auto();
+
+	return 0;
 }
 COMMAND("auto", "Set current boot entry to boot fallback bootloader.\n", cmd_setup_auto);
 
-static void cmd_setup_kernel(int argc, char **argv)
+static error_t cmd_setup_kernel(int argc, char **argv)
 {
 	if(argc <= 1)
 	{
@@ -726,12 +735,16 @@ static void cmd_setup_kernel(int argc, char **argv)
 	}
 	else if(argc == 3)
 		setup_kernel(argv[1], argv[2]);
-	else
+	else {
 		bufferPrintf("Usage: %s [kernel] [command line]\n", argv[0]);
+		return -1;
+	}
+
+	return 0;
 }
 COMMAND("kernel", "Set the kernel of the current boot entry.", cmd_setup_kernel);
 
-static void cmd_setup_initrd(int argc, char **argv)
+static error_t cmd_setup_initrd(int argc, char **argv)
 {
 	if(argc <= 1)
 	{
@@ -744,27 +757,35 @@ static void cmd_setup_initrd(int argc, char **argv)
 	}
 	else if(argc == 2)
 		setup_initrd(argv[1]);
-	else
+	else {
 		bufferPrintf("Usage: %s [initrd]\n", argv[0]);
+		return -1;
+	}
+
+	return 0;
 }
 COMMAND("initrd", "Set the ramdisk for the current boot entry.", cmd_setup_initrd);
 
-static void cmd_setup_image(int argc, char **argv)
+static error_t cmd_setup_image(int argc, char **argv)
 {
-	if(argc != 2)
+	if(argc != 2) {
 		bufferPrintf("Usage: %s [image]\n", argv[0]);
+		return -1;
+	}
 	else
 		setup_image(argv[1]);
+
+	return 0;
 }
 COMMAND("image", "Set the image to chainload for the current boot entry.", cmd_setup_image);
 
-static void cmd_setup_machine(int argc, char **argv)
+static error_t cmd_setup_machine(int argc, char **argv)
 {
 	if(argc != 2)
 	{
 		bufferPrintf("Usage: %s machine_id\n", argv[0]);
 		bufferPrintf("Current machine ID: %d.\r\n", currentEntry->machine);
-		return;
+		return -1;
 	}
 
 	uint32_t num;
@@ -776,19 +797,26 @@ static void cmd_setup_machine(int argc, char **argv)
 		num = parseNumber(argv[1]);
 
 	currentEntry->machine = num;
+
+	return 0;
 }
 COMMAND("machine_id", "Select a machine ID for booting the linux kernel.", cmd_setup_machine);
 
-static void cmd_setup_boot(int argc, char **argv)
+static error_t cmd_setup_boot(int argc, char **argv)
 {
-	if(argc > 1)
+	if(argc > 1) {
 		bufferPrintf("Usage: %s\n", argv[0]);
+		return -1;
+	}
 	else
 		setup_boot();
+
+	return 0;
 }
 COMMAND("boot", "Boot the current boot entry.", cmd_setup_boot);
 
-void cmd_go(int argc, char** argv) {
+static error_t cmd_go(int argc, char** argv)
+{
 	uint32_t address;
 
 	if(argc < 2) {
@@ -805,13 +833,16 @@ void cmd_go(int argc, char** argv) {
 	udelay(100000);
 
 	chainload(address);
+
+	return 0;
 }
 COMMAND("go", "jump to a specified address (interrupts disabled)", cmd_go);
 
-void cmd_jump(int argc, char** argv) {
+static error_t cmd_jump(int argc, char** argv)
+{
 	if(argc < 2) {
 		bufferPrintf("Usage: %s <address>\r\n", argv[0]);
-		return;
+		return -1;
 	}
 
 	uint32_t address = parseNumber(argv[1]);
@@ -819,5 +850,7 @@ void cmd_jump(int argc, char** argv) {
 	udelay(100000);
 
 	CallArm(address);
+
+	return 0;
 }
 COMMAND("jump", "jump to a specified address (interrupts enabled)", cmd_jump);

@@ -441,7 +441,8 @@ int pmu_gpio(int gpio, int is_output, int value)
 */
 }
 
-void cmd_time(int argc, char** argv) {
+static error_t cmd_time(int argc, char** argv)
+{
 	int day;
 	int month;
 	int year;
@@ -453,20 +454,29 @@ void cmd_time(int argc, char** argv) {
 	bufferPrintf("Current time: %02d:%02d:%02d, %s %02d/%02d/%02d GMT\r\n", hour, minute, second, get_dayofweek_str(day_of_week), month, day, year);
 	//bufferPrintf("Current time: %02d:%02d:%02d, %s %02d/%02d/20%02d\r\n", pmu_get_hours(), pmu_get_minutes(), pmu_get_seconds(), pmu_get_dayofweek_str(), pmu_get_month(), pmu_get_day(), pmu_get_year());
 	//bufferPrintf("Current time: %llu\n", pmu_get_epoch());
+
+	return 0;
 }
 COMMAND("time", "display the current time according to the RTC", cmd_time);
 
-void cmd_poweroff(int argc, char** argv) {
+static error_t cmd_poweroff(int argc, char** argv)
+{
 	pmu_poweroff();
+
+	return 0;
 }
 COMMAND("poweroff", "power off the device", cmd_poweroff);
 
-void cmd_pmu_voltage(int argc, char** argv) {
+static error_t cmd_pmu_voltage(int argc, char** argv)
+{
 	bufferPrintf("battery voltage: %d mV\r\n", pmu_get_battery_voltage());
+
+	return 0;
 }
 COMMAND("pmu_voltage", "get the battery voltage", cmd_pmu_voltage);
 
-void cmd_pmu_powersupply(int argc, char** argv) {
+static error_t cmd_pmu_powersupply(int argc, char** argv)
+{
 	PowerSupplyType power = pmu_get_power_supply();
 	bufferPrintf("power supply type: ");
 	switch(power) {
@@ -499,13 +509,16 @@ void cmd_pmu_powersupply(int argc, char** argv) {
 			break;
 	}
 	bufferPrintf("\r\n");
+
+	return 0;
 }
 COMMAND("pmu_powersupply", "get the power supply type", cmd_pmu_powersupply);
 
-void cmd_pmu_charge(int argc, char** argv) {
+static error_t cmd_pmu_charge(int argc, char** argv)
+{
 	if(argc < 2) {
 		bufferPrintf("Usage: %s <on|off>\r\n", argv[0]);
-		return;
+		return -1;
 	}
 
 	if(strcmp(argv[1], "on") == 0) {
@@ -516,12 +529,15 @@ void cmd_pmu_charge(int argc, char** argv) {
 		bufferPrintf("Charger off\r\n");
 	} else {
 		bufferPrintf("Usage: %s <on|off>\r\n", argv[0]);
-		return;
+		return -1;
 	}
+
+	return 0;
 }
 COMMAND("pmu_charge", "turn on and off the power charger", cmd_pmu_charge);
 
-void cmd_pmu_nvram(int argc, char** argv) {
+static error_t cmd_pmu_nvram(int argc, char** argv)
+{
 	uint8_t reg;
 
 	pmu_get_gpmem_reg(PMU_IBOOTSTATE, &reg);
@@ -534,5 +550,7 @@ void cmd_pmu_nvram(int argc, char** argv) {
 	bufferPrintf("3: [iBootErrorCount] %02x\r\n", reg);
 	pmu_get_gpmem_reg(PMU_IBOOTERRORSTAGE, &reg);
 	bufferPrintf("4: [iBootErrorStage] %02x\r\n", reg);
+
+	return 0;
 }
 COMMAND("pmu_nvram", "list powernvram registers", cmd_pmu_nvram);
