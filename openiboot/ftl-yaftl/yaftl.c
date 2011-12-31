@@ -327,8 +327,6 @@ static int writeCxtInfo(uint32_t _page, void* _buf)
 	uint16_t* buf16 = (uint16_t*)_buf;
 	uint32_t* buf32 = (uint32_t*)_buf;
 
-	system_panic("yaftl: writeCxtInfo isn't ready\r\n");
-
 	if (sInfo.field_78)
 		return 0;
 
