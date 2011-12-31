@@ -817,6 +817,8 @@ static error_t vfl_vsvfl_open(vfl_device_t *_vfl, nand_device_t *_nand)
 	vfl->pageBuffer = (uint32_t*) malloc(vfl->geometry.pages_per_block * sizeof(uint32_t));
 	vfl->chipBuffer = (uint16_t*) malloc(vfl->geometry.pages_per_block * sizeof(uint16_t));
 	vfl->blockBuffer = (uint16_t*) malloc(vfl->geometry.banks_total * sizeof(uint16_t));
+	vfl->stats = malloc(sizeof(VSVFLStats));
+	memset(vfl->stats, 0, sizeof(VSVFLStats));
 
 	uint32_t ce = 0;
 	for(ce = 0; ce < vfl->geometry.num_ce; ce++) {
@@ -1084,6 +1086,14 @@ static nand_device_t *vfl_vsvfl_get_device(vfl_device_t *_vfl)
 	return vfl->device;
 }
 
+static void* *vfl_vsvfl_get_stats(vfl_device_t *_vfl, uint32_t *size)
+{
+	vfl_vsvfl_device_t *vfl = CONTAINER_OF(vfl_vsvfl_device_t, vfl, _vfl);
+	if(size)
+		*size = sizeof(VSVFLStats);
+	return (void*)vfl->stats;
+}
+
 error_t vfl_vsvfl_device_init(vfl_vsvfl_device_t *_vfl)
 {
 	memset(_vfl, 0, sizeof(*_vfl));
@@ -1094,6 +1104,7 @@ error_t vfl_vsvfl_device_init(vfl_vsvfl_device_t *_vfl)
 	_vfl->vfl.open = vfl_vsvfl_open;
 
 	_vfl->vfl.get_device = vfl_vsvfl_get_device;
+	_vfl->vfl.get_stats = vfl_vsvfl_get_stats;
 
 	_vfl->vfl.read_single_page = vfl_vsvfl_read_single_page;
 

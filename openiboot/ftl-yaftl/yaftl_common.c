@@ -4,6 +4,7 @@
 #include "ftl/yaftl_common.h"
 #include "ftl/yaftl_gc.h"
 
+FTLStats sFTLStats;
 YAFTLInfo sInfo;
 YAFTLGeometry sGeometry;
 YAFTLStats sStats;

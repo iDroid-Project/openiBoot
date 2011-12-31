@@ -85,6 +85,7 @@ static uint32_t YAFTL_Init()
 		system_panic("Oh shit, yaftl already initialized!\r\n");
 
 	memset(&sInfo, 0, sizeof(sInfo));
+	memset(&sFTLStats, 0, sizeof(sFTLStats));
 
 	sInfo.lastTOCPageRead = 0xFFFFFFFF;
 	sInfo.ftlCxtPage = 0xFFFFFFFF;
@@ -339,22 +340,22 @@ static int writeCxtInfo(uint32_t _page, void* _buf)
 	cxt->numIBlocks = sInfo.numIBlocks;
 	cxt->totalPages = sInfo.totalPages;
 	cxt->tocArrayLength = sInfo.tocArrayLength;
-    cxt->numFreeCaches = sInfo.numFreeCaches;
-    cxt->field_64 = sInfo.field_5C;
-    cxt->latestUserBlk = sInfo.latestUserBlk.blockNum;
-    cxt->maxIndexUsn = sInfo.maxIndexUsn;
-    cxt->pagesUsedInLatestUserBlk = sInfo.latestUserBlk.usedPages;
-    cxt->numAvailableBlocks = sInfo.blockStats.numAvailable;
-    cxt->latestIndexBlk = sInfo.latestIndexBlk.blockNum;
-    cxt->maxIndexUsn2 = sInfo.maxIndexUsn;
-    cxt->pagesUsedInLatestIdxBlk = sInfo.latestIndexBlk.usedPages;
-    cxt->numIAvailableBlocks = sInfo.blockStats.numIAvailable;
-    cxt->numAllocatedBlocks = sInfo.blockStats.numAllocated;
-    cxt->numIAllocatedBlocks = sInfo.blockStats.numIAllocated;
-    cxt->numCaches = sInfo.numCaches;
-    cxt->unk188_0x63 = sInfo.unk188_0x63;
-    cxt->totalEraseCount = sInfo.totalEraseCount;
-    cxt->field_30 = sInfo.field_6C;
+	cxt->numFreeCaches = sInfo.numFreeCaches;
+	cxt->field_64 = sInfo.field_5C;
+	cxt->latestUserBlk = sInfo.latestUserBlk.blockNum;
+	cxt->maxIndexUsn = sInfo.maxIndexUsn;
+	cxt->pagesUsedInLatestUserBlk = sInfo.latestUserBlk.usedPages;
+	cxt->numAvailableBlocks = sInfo.blockStats.numAvailable;
+	cxt->latestIndexBlk = sInfo.latestIndexBlk.blockNum;
+	cxt->maxIndexUsn2 = sInfo.maxIndexUsn;
+	cxt->pagesUsedInLatestIdxBlk = sInfo.latestIndexBlk.usedPages;
+	cxt->numIAvailableBlocks = sInfo.blockStats.numIAvailable;
+	cxt->numAllocatedBlocks = sInfo.blockStats.numAllocated;
+	cxt->numIAllocatedBlocks = sInfo.blockStats.numIAllocated;
+	cxt->numCaches = sInfo.numCaches;
+	cxt->unk188_0x63 = sInfo.unk188_0x63;
+	cxt->totalEraseCount = sInfo.totalEraseCount;
+	cxt->field_30 = sInfo.field_6C;
 
 	pageToWrite = _page;
 
@@ -385,10 +386,14 @@ static int writeCxtInfo(uint32_t _page, void* _buf)
 	pageToWrite += sInfo.tocPagesPerBlock;
 
 	// Write statistics
+	uint32_t vSize = 0;
+	void* sVSVFLStats = vfl->get_stats(vfl, &vSize);
+
 	temp = 0x10003;
 	memset(_buf, 0, sGeometry.bytesPerPage);
 	memcpy(_buf, &sStats, sizeof(sStats));
-	// TODO: Load VSVFL statistics etc
+	memcpy(_buf + 0x200, &sVSVFLStats, vSize);
+	memcpy(_buf + 0x400, &sFTLStats, sizeof(sFTLStats));
 	memcpy(&buf8[sGeometry.bytesPerPage - 4], &temp, 4);
 	ret = YAFTL_writePage(pageToWrite, _buf, spare);
 	if (ret != 0)
@@ -704,8 +709,15 @@ FLUSH_QUICK:
 
 static int setStatisticsFromCxt(void *_cxt)
 {
+	int statBlockSize;
+	statBlockSize = 0x200;
+
+	uint32_t vSize = 0;
+	void* sVSVFLStats = vfl->get_stats(vfl, &vSize);
+
 	copyQwords((uint64_t*)_cxt, (uint64_t*)&sStats, sizeof(sStats));
-	// TODO: Load VSVFL stats etc, like the original driver does.
+	copyQwords((uint64_t*)(_cxt + statBlockSize), (uint64_t*)sVSVFLStats, vSize);// size = 0x58
+	copyQwords((uint64_t*)(_cxt + 2 * statBlockSize), (uint64_t*)&sFTLStats, sizeof(sFTLStats)); // size = 0x1C0
 
 	return 1;
 }

@@ -286,6 +286,10 @@ typedef struct {
 	uint64_t refreshes;
 } __attribute__((packed)) YAFTLStats;
 
+typedef struct {
+	uint8_t idx[0x1C0];
+} __attribute__((packed)) FTLStats;
+
 typedef struct _BlockListNode {
 	uint32_t usn;
 	uint16_t blockNumber;
@@ -301,6 +305,7 @@ typedef struct {
 
 /* Externs */
 
+extern FTLStats sFTLStats;
 extern YAFTLInfo sInfo;
 extern YAFTLGeometry sGeometry;
 extern YAFTLStats sStats;

@@ -79,6 +79,8 @@ typedef void (*vfl_close_t)(struct _vfl_device *);
 
 typedef nand_device_t *(*vfl_get_device_t)(struct _vfl_device *);
 
+typedef void* *(*vfl_get_stats_t)(struct _vfl_device *, uint32_t *size);
+
 typedef error_t (*vfl_read_single_page_t)(struct _vfl_device *, uint32_t _page, uint8_t *_buffer,
 		uint8_t *_sparebuffer, int _empty_ok, int *_refresh, uint32_t _disable_aes);
 
@@ -109,6 +111,7 @@ typedef struct _vfl_device
 	vfl_close_t close; /**< Used by vfl_close(). */
 
 	vfl_get_device_t get_device; /**< Used by vfl_get_device(). */
+	vfl_get_stats_t get_stats; /**< Used by vfl_get_stats (). */
 
 	vfl_read_single_page_t read_single_page; /**< Used by vfl_read_single_page(). */
 	vfl_write_single_page_t write_single_page; /**< Used by vfl_write_single_page(). */
@@ -185,6 +188,15 @@ void vfl_close(vfl_device_t *_vfl);
  * @ingroup VFL
  */
 nand_device_t *vfl_get_device(vfl_device_t *_vfl);
+
+/**
+ * Get the statistics associated with this VFL device.
+ *
+ * @return The statistics associated with this VFL device.
+ *
+ * @ingroup VFL
+ */
+void* *vfl_get_stats(vfl_device_t *_vfl, uint32_t *size);
 
 /**
  * Read a single page from the VFL.

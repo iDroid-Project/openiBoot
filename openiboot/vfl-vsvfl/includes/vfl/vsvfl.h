@@ -45,6 +45,21 @@ typedef struct _vfl_vsvfl_geometry
 struct _vfl_vsvfl_context;
 struct _vfl_vsvfl_device;
 
+typedef struct VSVFLStats {
+	uint64_t counter0;
+	uint64_t counter1;
+	uint64_t counter2;
+	uint64_t counter3;
+	uint64_t counter4;
+	uint64_t counter5;
+	uint64_t counter6;
+	uint64_t counter7;
+	uint64_t counter8;
+	uint64_t counter9;
+	uint64_t counter10;
+	uint64_t counter11;
+} __attribute__((packed)) VSVFLStats;
+
 // VSVFL conversion functions prototypes
 typedef void (*vsvfl_virtual_to_physical_t)(struct _vfl_vsvfl_device *_vfl, uint32_t _vBank, uint32_t _vPage, uint32_t *_pCE, uint32_t *_pPage);
 
@@ -73,6 +88,8 @@ typedef struct _vfl_vsvfl_device
 
 	vsvfl_virtual_to_physical_t virtual_to_physical;
 	vsvfl_physical_to_virtual_t physical_to_virtual;
+
+	VSVFLStats *stats;
 } vfl_vsvfl_device_t;
 
 // VFL-VFL Functions
