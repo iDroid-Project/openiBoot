@@ -158,6 +158,7 @@ void L2V_Search(GCReadC* _c)
 {
 	// for now
 	_c->vpn = L2V_VPN_MISS;
+	_c->span++;
 	return;
 
 	uint32_t nodeSize;

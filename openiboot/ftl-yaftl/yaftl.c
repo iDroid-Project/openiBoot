@@ -2213,7 +2213,8 @@ static int YAFTL_Write(uint32_t _pageStart, uint32_t _numPages, uint8_t* _pBuf)
 			result = SUCCESS;
 			for (i = 0; i < maxWritePages && !FAILED(result); ++i) {
 				uint32_t page = sInfo.latestUserBlk.blockNum
-					* sGeometry.pagesPerSublk + i;
+					* sGeometry.pagesPerSublk
+					+ sInfo.latestUserBlk.usedPages + i;
 
 				// FIXME: Should we really use sGeometry.bytesPerPage???
 				result = vfl_write_single_page(vfl, page,
