@@ -34,9 +34,9 @@ int radio_setup()
 	
 	gpio_custom_io(0x606, 2);
 	
-	pmu_write_unk(2, 1, 0);
+	pmu_setup_gpio(2, 1, 0);
 	udelay(100000);
-	pmu_write_unk(2, 1, 1);
+	pmu_setup_gpio(2, 1, 1);
 
 	gpio_pin_output(0x102, 0);
 	udelay(50000);

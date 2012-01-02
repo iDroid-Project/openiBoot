@@ -1,7 +1,6 @@
 #include "openiboot.h"
 #include "commands.h"
 #include "util.h"
-#include "accel.h"
 #include "i2c.h"
 #include "hardware/accel.h"
 
