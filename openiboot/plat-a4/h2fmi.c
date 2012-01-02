@@ -1627,34 +1627,34 @@ static int h2fmi_write_set_ce(h2fmi_struct_t *_fmi)
 {
 	_fmi->current_chip = _fmi->chips[_fmi->current_page_index];
 	h2fmi_enable_chip(_fmi, _fmi->chips[_fmi->current_page_index]);
-	
+
 	if (!(_fmi->chips_done_mask & (1 << _fmi->current_chip)))
 		return 1;
-		
+
 	h2fmi_another_function(_fmi);
 	_fmi->chips_done_mask = _fmi->chips_done_mask & ~(1 << _fmi->current_chip);
 	return 0;
 }
 
-static void h2fmi_enable_set_address_pio_write(h2fmi_struct_t* _fmi, uint32_t page) {
-	
+static void h2fmi_enable_set_address_pio_write(h2fmi_struct_t* _fmi, uint32_t page)
+{
 	h2fmi_set_address_inner(_fmi, page);
-	
+
 	if((_fmi->current_mode != H2FMI_STATE_IDLE) && ((_fmi->write_setting == 1) || _fmi->write_setting == 5))
 	{
-    	if(_fmi->current_page_index & 1)
-      		SET_REG(H2FMI_UNKREG4(_fmi), 0x81);
-    	else
-      		SET_REG(H2FMI_UNKREG4(_fmi), 0x80);
-  	}
-  	else
+		if(_fmi->current_page_index & 1)
+			SET_REG(H2FMI_UNKREG4(_fmi), 0x81);
+		else
+			SET_REG(H2FMI_UNKREG4(_fmi), 0x80);
+	}
+	else
 	{
-    	SET_REG(H2FMI_UNKREG4(_fmi), 0x80);
- 	}
- 	
- 	SET_REG(H2FMI_UNKREG5(_fmi), 0x9);
- 	while((GET_REG(H2FMI_UNKREG6(_fmi)) & 0x9) != 0x9);
- 	
+	SET_REG(H2FMI_UNKREG4(_fmi), 0x80);
+	}
+
+	SET_REG(H2FMI_UNKREG5(_fmi), 0x9);
+	while((GET_REG(H2FMI_UNKREG6(_fmi)) & 0x9) != 0x9);
+
 	SET_REG(H2FMI_UNKREG6(_fmi), 0x9);
 }
 
@@ -1662,15 +1662,15 @@ static void h2fmi_write_set_page(h2fmi_struct_t *_fmi)
 {
 	_fmi->chips_done_mask = _fmi->chips_done_mask | (1 << _fmi->current_chip);
 	_fmi->current_page = _fmi->pages[_fmi->current_page_index];
-	
+
 	h2fmi_enable_set_address_pio_write(_fmi, _fmi->current_page);
-	
+
 	SET_REG(H2FMI_UNK10(_fmi), 2);
 	SET_REG(H2FMI_UNK4(_fmi), 5);
-	
+
 	_fmi->last_action_time = timer_get_system_microtime();
 	_fmi->pages_done++;
-	
+
 	h2fmi_set_pio_write(_fmi);
 }
 
@@ -1683,10 +1683,10 @@ static void h2fmi_get_current_chip(h2fmi_struct_t *_fmi, uint8_t value)
 static uint32_t h2fmi_get_current_writable_CE_state(h2fmi_struct_t *_fmi)
 {
 	uint32_t val = h2fmi_function_2(_fmi);
-	
+
 	if((GET_REG(H2FMI_UNK448(_fmi)) & 0x80) != 0x80)
 		system_panic("h2fmi write failed to get CE state!\r\n");
-	
+
 	return val;
 }
 
@@ -1695,7 +1695,7 @@ static uint32_t h2fmi_write_complete_handler(h2fmi_struct_t *_fmi)
 	h2fmi_hw_reg_int_init(_fmi);
 	h2fmi_disable_bus(_fmi);
 	return 0;
-}	
+}
 
 static uint32_t h2fmi_write_state_4_handler(h2fmi_struct_t* _fmi)
 {
@@ -1705,35 +1705,35 @@ static uint32_t h2fmi_write_state_4_handler(h2fmi_struct_t* _fmi)
 		_fmi->state.write_state = H2FMI_WRITE_DONE;
 		return 0;
 	}
-	
+
 	uint32_t chip_pos = 0;
 	while (!(_fmi->chips_done_mask & (1 << chip_pos)))
 		chip_pos++;
-		
+
 	h2fmi_enable_chip(_fmi, chip_pos);
 	if ((_fmi->write_setting - 4) <= 1)
 		_fmi->current_page_index++;
 		
 	_fmi->current_chip = chip_pos;
-	
+
 	h2fmi_another_function(_fmi);
 	_fmi->last_action_time = timer_get_system_microtime();
 	_fmi->state.write_state = H2FMI_WRITE_5;
 
 	return 0;
-}	
+}
 
 static uint32_t h2fmi_write_state_5_handler(h2fmi_struct_t *_fmi)
 {
 	uint32_t ret;
 	uint32_t value;
 	uint8_t bValue;
-	
+
 	if((ret = h2fmi_get_current_writable_CE_state(_fmi)) != 2)
 	{
 		if(ret)
 			return 0;
-		
+	
 		h2fmi_get_current_chip(_fmi, (uint8_t)ret);		
 		_fmi->state.write_state = H2FMI_WRITE_5;
 		_fmi->chips_done_mask = _fmi->chips_done_mask & ~(1 << _fmi->current_chip);
@@ -1742,38 +1742,38 @@ static uint32_t h2fmi_write_state_5_handler(h2fmi_struct_t *_fmi)
 	else
 	{
 		h2fmi_hw_reg_int_init(_fmi);
-		
+
 		value = GET_REG(H2FMI_UNK448(_fmi)) & 0x1;
 		bValue = (GET_REG(H2FMI_UNK448(_fmi)) & 0x1);
-		
+
 		if(!value)
 		{
 			_fmi->current_status = 0;
 			h2fmi_get_current_chip(_fmi, bValue);
 		}
-		
+
 		SET_REG(H2FMI_UNKREG5(_fmi), 0);
-		
+
 		uint32_t chip_pos = 0;
 		while (!(_fmi->chips_done_mask & (1 << chip_pos)))
 			chip_pos++;
-		
+
 		if ((_fmi->write_setting - 4) <= 1)
 			_fmi->chips_done_mask = _fmi->chips_done_mask & (1 << chip_pos);
-		
+
 		if (_fmi->field_98 == 0)
 			_fmi->field_98 = 1;
 		else
 			_fmi->chips_done_mask = _fmi->chips_done_mask & ~(1 << chip_pos);
-			
+
 		_fmi->current_page_index++;
 		_fmi->current_chip = chip_pos;
 	}
-	
+
 	_fmi->state.write_state = H2FMI_WRITE_4;
-	
+
 	h2fmi_write_state_4_handler(_fmi);
-	
+
 	return 0;
 }
 
@@ -1781,55 +1781,55 @@ static uint32_t h2fmi_write_state_2_handler(h2fmi_struct_t *_fmi)
 {
 	uint32_t ret = h2fmi_get_current_writable_CE_state(_fmi);
 	uint32_t value;
-	
+
 	if(ret != 2)
 	{
 		if(!ret)
 			return 0;
-		
+
 		_fmi->state.write_state = H2FMI_WRITE_5;
 		_fmi->chips_done_mask = _fmi->chips_done_mask & ~(1 << _fmi->current_chip);
 		_fmi->current_status = ret;
 	}
-	
+
 	else
 	{
 		h2fmi_hw_reg_int_init(_fmi);
-		
+
 		if (_fmi->write_setting == 2)
 			value = (GET_REG(H2FMI_UNK448(_fmi)) & 0x1F); // add UNK448 for 0x40048
 		else
 			value = (GET_REG(H2FMI_UNK448(_fmi)) & 0x1);
-		
+
 		SET_REG(H2FMI_UNKREG5(_fmi), 0);
-		
+
 		ret = GET_REG(H2FMI_UNK448(_fmi)) & 0xFF;
-		
+
 		if (value == 0)
 		{
 			_fmi->state.write_state = H2FMI_WRITE_3;
 			h2fmi_write_set_page(_fmi);
 			return 0;
 		}
-		
+
 		_fmi->current_status = 0;
 		_fmi->state.write_state = H2FMI_WRITE_4;
 	}
-	
+
 	h2fmi_get_current_chip(_fmi, ret);
 	return h2fmi_write_state_4_handler(_fmi);
-}	
-			
+}
+
 static uint32_t h2fmi_write_state_3_handler(h2fmi_struct_t* _fmi)
-{	
+{
 	uint32_t setting;
 	_fmi->unkn_regvalue = GET_REG(H2FMI_UNKC(_fmi));
-	
+
 	if((setting = GET_REG(H2FMI_UNKC(_fmi)) & 2) != 0)
 	{
 		h2fmi_hw_reg_int_init(_fmi);
 		h2fmi_tx_pio_ready(_fmi);
-		
+
 		_fmi->current_page_index++;
 		if (_fmi->current_page_index >= _fmi->num_pages)
 		{
@@ -1862,8 +1862,8 @@ static uint32_t h2fmi_write_state_3_handler(h2fmi_struct_t* _fmi)
 
 	return 0;
 }
-			
-		
+
+
 static uint32_t h2fmi_write_state_1_handler(h2fmi_struct_t* _fmi)
 {
 	if (!h2fmi_write_set_ce(_fmi))
@@ -1885,10 +1885,10 @@ static uint32_t h2fmi_write_idle_handler(h2fmi_struct_t* _fmi)
 	_fmi->current_status = 1;
 	_fmi->chips_done_mask = 0;   // create chips_done_mask
 	_fmi->field_98 = 0;  // create field_98
-	
+
 	h2fmi_some_read_timing_thing(_fmi);  // rename this to h2fmi_some_rw_timing_thing
 	h2fmi_rw_large_page(_fmi);
-	
+
 	_fmi->state.write_state = H2FMI_WRITE_1;
 
 	return h2fmi_write_state_1_handler(_fmi);
@@ -1933,14 +1933,14 @@ static int h2fmi_write_multi(h2fmi_struct_t *_fmi, uint16_t _num_pages, uint16_t
 		DMASegmentInfo *_data_segments, DMASegmentInfo *_meta_segments, uint32_t *status, uint8_t setting)
 {
 	uint32_t reg_value;
-	
-	if (_fmi->current_mode != 0) 
-	    system_panic("h2fmi_write_multi: tried to write whilst other action in progress.\r\n");
-	
+
+	if (_fmi->current_mode != 0)
+		system_panic("h2fmi_write_multi: tried to write whilst other action in progress.\r\n");
+
 	reg_value = GET_REG(H2FMI_UNKREG1(_fmi));
-	
+
 	EnterCriticalSection();
-	
+
 	_fmi->chips = _chips;
 	_fmi->pages = _pages;
 	_fmi->data_segments = _data_segments;
@@ -1954,7 +1954,7 @@ static int h2fmi_write_multi(h2fmi_struct_t *_fmi, uint16_t _num_pages, uint16_t
 	_fmi->current_mode = 2;
 	_fmi->state.state = H2FMI_STATE_WRITE;
 	_fmi->state.write_state = H2FMI_WRITE_IDLE;
-	
+
 	LeaveCriticalSection();
 
 	while(_fmi->state.write_state != H2FMI_WRITE_DONE)
@@ -1965,7 +1965,7 @@ static int h2fmi_write_multi(h2fmi_struct_t *_fmi, uint16_t _num_pages, uint16_t
 
 		task_yield();
 	}
-	
+
 	if(_fmi->current_status != 0)
 	{
 		if(h2fmi_dma_wait(_fmi->dma0, 2000000) != 0
@@ -1978,18 +1978,17 @@ static int h2fmi_write_multi(h2fmi_struct_t *_fmi, uint16_t _num_pages, uint16_t
 
 	h2fmi_dma_cancel(_fmi->dma0);
 	h2fmi_dma_cancel(_fmi->dma1);
-	
+
 	SET_REG(H2FMI_UNKREG1(_fmi), reg_value);
 	_fmi->current_mode = 0;
 	_fmi->state.state = H2FMI_STATE_IDLE;
-	
+
 	if(_fmi->page_ecc_output != NULL)
 		*status = _fmi->current_status != 0 ? 0 : 1;
-	
+
 	return (_fmi->current_status);
-	
 }
-		 			
+
 static void h2fmi_aes_handler_1(uint32_t _param, uint32_t _segment, uint32_t* _iv)
 {
 	//bufferPrintf("fmi: aes_handler_1.\r\n");
