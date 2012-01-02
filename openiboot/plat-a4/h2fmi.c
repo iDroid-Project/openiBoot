@@ -555,6 +555,7 @@ static void h2fmi_set_pio_write(h2fmi_struct_t* _fmi)
 			break;
 		default:
 			SET_REG(H2FMI_UNKREG4(_fmi), 0x10 << (1 << 3));
+			break;
 		}
 	} else
 		SET_REG(H2FMI_UNKREG4(_fmi), 0x10 << (1 << 3));
@@ -2391,7 +2392,14 @@ uint32_t h2fmi_write_single_page(uint32_t _ce, uint32_t _page, uint8_t* _data, u
 	};
 
 	if(_meta)
-		_meta[0] = 0;
+	{
+		if(h2fmi_data_whitening_enabled)
+		{
+			uint32_t i;
+			for(i = 0; i < 3; i++)
+				((uint32_t*)_meta)[i] ^= h2fmi_hash_table[(i + _page) % ARRAY_SIZE(h2fmi_hash_table)];
+		}
+	}
 
 	uint32_t flag = (1 - aes);
 	if(flag > 1)
@@ -3281,9 +3289,6 @@ COMMAND("nand_write_bootpage", "H2FMI NAND write single bootpage", cmd_nand_writ
 
 static void cmd_nand_erase(int argc, char** argv)
 {
-	bufferPrintf("Disabled for now.\r\n");
-	return;
-
 	if(argc < 3)
 	{
 		bufferPrintf("Usage: %s [ce] [block]\r\n", argv[0]);
