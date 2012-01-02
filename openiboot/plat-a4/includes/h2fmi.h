@@ -115,7 +115,6 @@ typedef struct _h2fmi_struct
 	uint32_t field_80;
 	uint32_t chips_done_mask; // 88 in IOP
 	uint32_t field_98; // 98 in IOP
-	uint32_t field_100;
 	uint32_t write_setting; // 110
 	uint16_t *chips;
 	uint32_t *pages;

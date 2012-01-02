@@ -29,6 +29,7 @@
 #include "hfs/fs.h"
 #include "scripting.h"
 #include "actions.h"
+#include "pmu.h"
 
 void platform_init()
 {
@@ -68,6 +69,9 @@ void platform_init()
 		framebuffer_setdisplaytext(TRUE);
 		lcd_set_backlight_level(1500);
 	}
+
+	pmu_setup_gpio(0, 1, 1);
+	pmu_setup_ldo(10, 1800, 0, 1);
 }
 
 void platform_shutdown()

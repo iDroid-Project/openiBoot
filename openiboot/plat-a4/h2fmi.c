@@ -564,7 +564,7 @@ static void h2fmi_set_pio_write(h2fmi_struct_t* _fmi)
 static void h2fmi_rw_bootpage_ready(h2fmi_struct_t* _fmi)
 {
 	SET_REG(H2FMI_PAGE_SIZE(_fmi), 0xF0);
-	SET_REG(H2FMI_UNKREGUNK40(_fmi), 0x20001);
+	SET_REG(H2FMI_UNKREG15(_fmi), 0x20001);
 }
 
 static int h2fmi_tx_wait_page_done(h2fmi_struct_t* _fmi)
@@ -586,21 +586,21 @@ static void h2fmi_inner_function(h2fmi_struct_t *_fmi, uint8_t _a, uint8_t _b)
 	uint32_t val;
 	if(_fmi->state.state == H2FMI_STATE_WRITE)
 	{
-		if(_fmi->field_100 == 4)
+		if(_fmi->write_setting == 4)
 		{
 			if(_fmi->current_page_index & 1)
 				val = 0xF2;
 			else
 				val = 0xF1;
 		}
-		else if(_fmi->field_100 == 5)
+		else if(_fmi->write_setting == 5)
 		{
 			if(_fmi->current_page_index & 2)
 				val = 0xF2;
 			else
 				val = 0xF1;
 		}
-		else if(_fmi->field_100 == 2)
+		else if(_fmi->write_setting == 2)
 		{
 			val = 0x71;
 		}
@@ -679,7 +679,7 @@ static int h2fmi_tx_bootpage_pio(h2fmi_struct_t* _fmi, uint16_t chip, uint32_t p
 
 		if (h2fmi_tx_wait_page_done(_fmi)) {
 			bufferPrintf("h2fmi_tx_wait_page_done: fail !!\r\n");
-			return (0x8000001C);
+			return (ETIMEDOUT);
 		}
 	}
 
@@ -1167,7 +1167,7 @@ static uint32_t h2fmi_read_complete_handler(h2fmi_struct_t *_fmi)
 static void h2fmi_set_ecc_bits(h2fmi_struct_t *_fmi, uint32_t _a)
 {
 	SET_REG(H2FMI_PAGE_SIZE(_fmi), _fmi->page_size);
-	SET_REG(H2FMI_UNKREGUNK40(_fmi), _fmi->unk40);
+	SET_REG(H2FMI_UNKREG15(_fmi), _fmi->unk40);
 	SET_REG(H2FMI_ECC_BITS(_fmi), ((_a & 0x1F) << 8) | 0x20000);
 }
 
@@ -1428,7 +1428,7 @@ static uint32_t h2fmi_read_state_3_handler(h2fmi_struct_t *_fmi)
 		if(timer_get_system_microtime() - _fmi->last_action_time > _fmi->time_interval)
 		{
 			_fmi->current_status = 0;
-			_fmi->failure_details.overall_status = 0x8000001C;
+			_fmi->failure_details.overall_status = ETIMEDOUT;
 			_fmi->state.read_state = H2FMI_READ_DONE;
 			return h2fmi_read_complete_handler(_fmi);
 		}
@@ -1712,7 +1712,7 @@ static uint32_t h2fmi_write_state_4_handler(h2fmi_struct_t* _fmi)
 		chip_pos++;
 
 	h2fmi_enable_chip(_fmi, chip_pos);
-	if ((_fmi->write_setting - 4) <= 1)
+	if ((_fmi->write_setting - 4) <= 1) // 4 or 5
 		_fmi->current_page_index++;
 
 	_fmi->current_chip = chip_pos;
@@ -3063,7 +3063,7 @@ void h2fmi_init()
 
 			if(ecc_bits > 8)
 			{
-				int8_t z = (((uint64_t)ecc_bits << 3) * 0x66666667) >> 34;
+				int8_t z = (((uint64_t)ecc_bits << 3) * 0x66666667) >> 34; // * (8/10)
 				fmi->ecc_tag = z;
 			}
 			else
@@ -3071,6 +3071,7 @@ void h2fmi_init()
 
 			fmi->page_size = ((fmi->ecc_bits & 0x1F) << 3) | 5;
 			fmi->unk40 = fmi->bbt_format | 0x40000 | ((fmi->ecc_bytes & 0x3F) << 25) | ((fmi->ecc_bytes & 0x3F) << 19);
+			bufferPrintf("fmi: eccfmt=0x%08x, pagefmt=0x%08x.\n", fmi->page_size, fmi->unk40);
 		}
 	}
 
@@ -3183,6 +3184,7 @@ void h2fmi_init()
 			//bufferPrintf("fmi: bus %d, new tval = 0x%08x\r\n", fmi->bus_num, tVal);
 			fmi->timing_register_cache_408 = tVal;
 			SET_REG(H2FMI_UNKREG1(fmi), tVal);
+			bufferPrintf("fmi: tVal 0x%08x.\n", tVal);
 		}
 	}
 
@@ -3248,7 +3250,45 @@ static void cmd_nand_read(int argc, char** argv)
 }
 COMMAND("nand_read", "H2FMI NAND read single page", cmd_nand_read);
 
-static void cmd_nand_write(int argc, char** argv)
+void cmd_nand_dump(int argc, char ** argv)
+{
+	if(argc < 5)
+	{
+		bufferPrintf("Usage: %s [ce] [page] [end_page] [data]\r\n", argv[0]);
+		return;
+	}
+	
+	uint32_t page_size = h2fmi_geometry.bbt_format << 10;
+	uint32_t spare_size = h2fmi_geometry.meta_per_logical_page;
+	uint32_t total_size = page_size + spare_size + 1;
+	uint32_t ce = parseNumber(argv[1]);
+	uint32_t start = parseNumber(argv[2]);
+	uint32_t end = parseNumber(argv[3]);
+	uint8_t *ptr = (uint8_t*)parseNumber(argv[4]);
+
+	if(end < start)
+		return;
+
+	uint32_t i;
+	
+	for(i = start; i < end; i++)
+	{
+		uint32_t ret = h2fmi_read_single_page(ce, i,
+				ptr + 1, ptr + page_size + 1, NULL, NULL, 1);
+		if(ret == ENOENT)
+		{
+			*ptr = '0';
+			memset(ptr+1, 0, total_size-1);
+		}
+		else
+			*ptr = '1';
+
+		ptr += total_size;
+	}
+}
+COMMAND("nand_dump", "Dump NAND", cmd_nand_dump);
+
+void cmd_nand_write(int argc, char** argv)
 {
 	if(argc < 6)
 	{
