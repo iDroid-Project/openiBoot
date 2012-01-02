@@ -3404,7 +3404,7 @@ COMMAND("ftl_read", "FTL read single page", cmd_ftl_read);
 static void cmd_ftl_write(int argc, char** argv)
 {
 	bufferPrintf("Dont be silly - this isnt safe!\r\n");
-	return 0;
+	return;
 
 	if(argc < 3)
 	{
