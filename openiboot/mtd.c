@@ -284,14 +284,18 @@ void cmd_mtd_read(int argc, char **argv)
 	
 	int idx = parseNumber(argv[1]);
 	mtd_t *dev = mtd_find(NULL);
-	while(idx > 0 && dev != NULL)
+	while(idx > 0 && dev != NULL) {
 		dev = mtd_find(dev);
+		idx--;
+	}
 
 	if(!dev)
 	{
 		bufferPrintf("Invalid MTD index.\n");
 		return;
 	}
+
+	bufferPrintf("OK, we are going to read from device '%s'\r\n", dev->device.name);
 
 	void *dest = (void*)parseNumber(argv[2]);
 	uint32_t offset = parseNumber(argv[3]);
@@ -313,14 +317,18 @@ void cmd_mtd_write(int argc, char **argv)
 	
 	int idx = parseNumber(argv[1]);
 	mtd_t *dev = mtd_find(NULL);
-	while(idx > 0 && dev != NULL)
+	while(idx > 0 && dev != NULL) {
 		dev = mtd_find(dev);
+		idx--;
+	}
 
 	if(!dev)
 	{
 		bufferPrintf("Invalid MTD index.\n");
 		return;
 	}
+
+	bufferPrintf("OK, we are going to write to device '%s'\r\n", dev->device.name);
 
 	void *src = (void*)parseNumber(argv[2]);
 	uint32_t offset = parseNumber(argv[3]);
