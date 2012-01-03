@@ -46,14 +46,14 @@ int UartHasInit;
 
 uint32_t UartCommandBufferSize = 256;
 char* UartCommandBuffer;
-char* curUartCommandBuffer;
+uint32_t UartCommandBufferRead = 0;
 
 static TaskDescriptor uart_task;
 
 void uart_run(uint32_t _V) {
 	while(1) {
-		uint32_t read = uart_read(_V, curUartCommandBuffer, UartCommandBufferSize-strlen(UartCommandBuffer), 10000);
-		curUartCommandBuffer = UartCommandBuffer+read;
+		uint32_t read = uart_read(_V, UartCommandBuffer+UartCommandBufferRead, UartCommandBufferSize-UartCommandBufferRead, 10000);
+		UartCommandBufferRead += read;
 		int i;
 		for (i = 0; i < strlen(UartCommandBuffer); i++) {
 			if (UartCommandBuffer[i] == '\n' || UartCommandBuffer[i] == '\r') {
@@ -62,7 +62,7 @@ void uart_run(uint32_t _V) {
 				memset(safeCommand, 0, sizeof(safeCommand));
 				memcpy(safeCommand, UartCommandBuffer, i);
 				memset(UartCommandBuffer, 0, UartCommandBufferSize);
-				curUartCommandBuffer = UartCommandBuffer;
+				UartCommandBufferRead = 0;
 				LeaveCriticalSection();
 				int argc;
 				char** argv = command_parse(safeCommand, &argc);
@@ -77,7 +77,7 @@ void uart_run(uint32_t _V) {
 		EnterCriticalSection();
 		if (strlen(UartCommandBuffer) == UartCommandBufferSize) {
 			memset(UartCommandBuffer, 0, UartCommandBufferSize);
-			curUartCommandBuffer = UartCommandBuffer;
+			UartCommandBufferRead = 0;
 		}
 		LeaveCriticalSection();
 		task_sleep(500);
@@ -132,7 +132,6 @@ int uart_setup() {
 
 	UartCommandBuffer = malloc(UartCommandBufferSize);
 	memset(UartCommandBuffer, 0, UartCommandBufferSize);
-	curUartCommandBuffer = UartCommandBuffer;
 
 	for(i = 0; i < NUM_UARTS; i++) {
 		clock_gate_switch(UART_CLOCKGATE+i, ON);
