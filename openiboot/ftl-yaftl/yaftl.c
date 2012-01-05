@@ -390,7 +390,7 @@ static int writeCxtInfo(uint32_t _page, void* _buf)
 	temp = 0x10003;
 	memset(_buf, 0, sGeometry.bytesPerPage);
 	memcpy(_buf, &sStats, sizeof(sStats));
-	memcpy(_buf + 0x200, &sVSVFLStats, vSize);
+	memcpy(_buf + 0x200, sVSVFLStats, vSize);
 	memcpy(_buf + 0x400, &sFTLStats, sizeof(sFTLStats));
 	memcpy(&buf8[sGeometry.bytesPerPage - 4], &temp, 4);
 	ret = YAFTL_writePage(pageToWrite, _buf, spare);
