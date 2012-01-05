@@ -2408,6 +2408,9 @@ uint32_t h2fmi_write_single_page(uint32_t _ce, uint32_t _page, uint8_t* _data, u
 	if(h2fmi_aes_enabled == 0)
 		flag = 0;
 
+	DataCacheOperation(3, (uint32_t)_data, ROUND_UP(fmi->bytes_per_page, 64));
+	DataCacheOperation(3, (uint32_t)_meta, ROUND_UP(fmi->meta_per_logical_page, 64));
+
 	h2fmi_setup_aes(fmi, flag, 1, (uint32_t)_data);
 
 	if((ret = h2fmi_write_multi(fmi, 1, &h2fmi_map[_ce].chip, &_page, &dataSegmentInfo, &metaSegmentInfo, &status, 0)) == 0)
