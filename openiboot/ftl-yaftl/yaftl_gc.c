@@ -26,7 +26,7 @@ static void gcPopulateBTOC(GCData* _data, uint8_t _scrub, uint32_t _max)
 	error_t result = YAFTL_readBTOCPages(page, _data->btoc, pSpare, FALSE,
 			_scrub, _max);
 
-	if (FAILED(result) || !(pSpare->type & PAGETYPE_CLOSED)) {
+	if (result || !(pSpare->type & PAGETYPE_CLOSED)) {
 		// Must read each page individually.
 		uint32_t i;
 
@@ -940,6 +940,10 @@ void gcFreeIndexPages(uint32_t _victim, uint8_t _scrub)
 					&& sInfo.gc.index.numInvalidatedPages <
 					sInfo.gc.index.totalValidPages; ++i) {
 				uint32_t btocEntry = sInfo.gc.index.btoc[i];
+
+				if(btocEntry == 0xFFFFFFFF)
+					continue;
+
 				TOCStruct* toc = &sInfo.tocArray[btocEntry];
 				TOCCache* tocCache = NULL;
 
