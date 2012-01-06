@@ -588,10 +588,22 @@ uint32_t YAFTL_clearEntryInCache(uint16_t _cacheIdx)
 			}
 		}
 	} else {
-		// TODO
-		system_panic("YAFTL: clearEntryInCache by a specific cache isn't "
-				"implemented yet!\r\n");
-		return 0; // Avoid warnings
+		bestClean.idx = 0xFFFF;
+		bestDirty.idx = 0xFFFF;
+		TOCCache* cache = &sInfo.tocCaches[_cacheIdx];
+		if (cache->state == CACHESTATE_FREE) {
+			return _cacheIdx;
+		} else if (cache->state == CACHESTATE_CLEAN) {
+			if (cache->useCount == 0xFFFF)
+				bestClean.idx = 0xFFFF;
+			else
+				bestClean.idx = _cacheIdx;
+		} else if (cache->state == CACHESTATE_DIRTY) {
+			if (cache->useCount == 0xFFFF)
+				bestDirty.idx = 0xFFFF;
+			else
+				bestDirty.idx = _cacheIdx;
+		}
 	}
 
 	if (bestClean.idx != 0xFFFF) {
