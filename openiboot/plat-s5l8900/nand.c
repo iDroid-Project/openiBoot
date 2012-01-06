@@ -988,6 +988,23 @@ void cmd_nand_erase(int argc, char** argv)
 }
 COMMAND("nand_erase", "erase a NAND block", cmd_nand_erase);
 
+void cmd_nand_wipe(int argc, char** argv)
+{
+	if(argc < 2) {
+		bufferPrintf("Usage: %s <verification> -- You probably don't want to do this, "
+			"pass an argument else.\r\n", argv[0]);
+	}
+
+	int i, j;
+	for (i = 0; i < Geometry.banksTotal; i++)
+	{
+		for (j = 0; j < Geometry.blocksPerBank; j++) {
+			nand_erase(i, j);
+		}
+	}
+}
+COMMAND("nand_wipe", "wipe the whole NAND", cmd_nand_wipe);
+
 void cmd_nand_status(int agc, char** argv) {
 	bufferPrintf("nand status: %x\r\n", nand_read_status());
 }
