@@ -355,7 +355,7 @@ static int gcWriteDataPages(GCData* _data, uint8_t _scrub)
 				pagesToWrite,
 				&sInfo.gc.data.pageBuffer2[page * sGeometry.bytesPerPage],
 				&sInfo.gc.data.spareArray[page],
-				TRUE) != 1)
+				TRUE))
 			{
 				gcListPushBack(&_data->list, _data->chosenBlock);
 				gcListPushBack(&_data->list, sInfo.latestUserBlk.blockNum);
@@ -715,7 +715,7 @@ static error_t gcWriteIndexPages(GCData* _data)
 
 			setupIndexSpares(&spareArray[pageOffset], toWrite);
 			if (YAFTL_writeMultiPages(block, sInfo.latestIndexBlk.usedPages,
-						toWrite, buffer, &spareArray[pageOffset], FALSE) != 1) {
+						toWrite, buffer, &spareArray[pageOffset], FALSE)) {
 				// Write failure.
 				gcListPushBack(&_data->list, _data->chosenBlock);
 				gcListPushBack(&_data->list, block);
