@@ -548,14 +548,14 @@ static int gcFreeDataPages(int32_t _numPages, uint8_t _scrub)
 				if (btocEntry != 0xFFFFFFFF) {
 					if (sInfo.gc.data.read_c.span == 0 ||
 							sInfo.gc.data.read_c.pageIndex != btocEntry) {
-						uint32_t vpn = sInfo.gc.data.read_c.vpn;
-
 						sInfo.gc.data.read_c.pageIndex = btocEntry;
 						L2V_Search(&sInfo.gc.data.read_c);
 						if (sInfo.gc.data.read_c.span == 0) {
 							system_panic("YAFTL: gcFreeDataPages has called "
 									"L2V_Search but span is still 0\r\n");
 						}
+
+						uint32_t vpn = sInfo.gc.data.read_c.vpn;
 
 						++sInfo.gc.data.read_c.pageIndex;
 						--sInfo.gc.data.read_c.span;
