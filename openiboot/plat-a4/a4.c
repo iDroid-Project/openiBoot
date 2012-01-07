@@ -18,7 +18,7 @@
 #include "timer.h"
 #include "uart.h"
 #include "wdt.h"
-#include "wmcodec.h"
+#include "audiocodec.h"
 
 void platform_init()
 {

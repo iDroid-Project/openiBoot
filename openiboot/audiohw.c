@@ -23,7 +23,7 @@
 
 #include "openiboot.h"
 #include "commands.h"
-#include "wmcodec.h"
+#include "audiocodec.h"
 #include "util.h"
 
 MODULE_INIT_BOOT(audiohw_init);

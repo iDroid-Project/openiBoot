@@ -7,7 +7,7 @@
 #include "hardware/radio.h"
 #include "uart.h"
 #include "pmu.h"
-#include "wmcodec.h"
+#include "audiocodec.h"
 
 #ifdef RADIO_HIGH_IS_ZERO
 #define RADIO_ON OFF

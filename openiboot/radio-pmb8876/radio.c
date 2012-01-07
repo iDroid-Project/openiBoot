@@ -7,7 +7,7 @@
 #include "hardware/radio.h"
 #include "uart.h"
 #include "pmu.h"
-#include "wmcodec.h"
+#include "audiocodec.h"
 
 // For the +XDRV stuff, it's usually device,function,arg1,arg2,arg3,...
 // device 4 seems to be the vibrator, device 0 seems to be the speakers,

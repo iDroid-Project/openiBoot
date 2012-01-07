@@ -18,9 +18,9 @@
  ****************************************************************************/
 
 #include "i2c.h"
-#include "wmcodec.h"
+#include "audiocodec.h"
 #include "hardware/i2s.h"
-#include "hardware/wmcodec.h"
+#include "hardware/audiocodec.h"
 #include "clock.h"
 #include "dma.h"
 #include "util.h"

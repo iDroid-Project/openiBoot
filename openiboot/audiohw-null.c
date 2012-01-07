@@ -22,7 +22,7 @@
  */
 
 #include "openiboot.h"
-#include "wmcodec.h"
+#include "audiocodec.h"
 
 void audiohw_init()
 {
