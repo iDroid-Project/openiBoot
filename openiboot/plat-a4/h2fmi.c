@@ -2378,9 +2378,28 @@ uint32_t h2fmi_write_single_page(uint32_t _ce, uint32_t _page, uint8_t* _data, u
 {
 	int ret;
 	uint32_t status = 0;
+	uint8_t* wbuf = NULL;
 
 	uint32_t bus = h2fmi_map[_ce].bus;
 	h2fmi_struct_t *fmi = h2fmi_busses[bus];
+
+	if(_meta)
+	{
+		if(h2fmi_data_whitening_enabled)
+		{
+			// workaround for when this function is called multiple times with the same spare buffer
+			// or relies on its consistency.
+			wbuf = malloc(0x12);
+			if(wbuf) {
+				memcpy(wbuf, _meta, 0x12);
+				_meta = wbuf;
+			}
+
+			uint32_t i;
+			for(i = 0; i < 3; i++)
+				((uint32_t*)_meta)[i] ^= h2fmi_hash_table[(i + _page) % ARRAY_SIZE(h2fmi_hash_table)];
+		}
+	}
 
 	DMASegmentInfo dataSegmentInfo = {
 		.ptr  = (uint32_t)_data,
@@ -2390,16 +2409,6 @@ uint32_t h2fmi_write_single_page(uint32_t _ce, uint32_t _page, uint8_t* _data, u
 		.ptr  = (uint32_t)_meta,
 		.size = fmi->ecc_bytes
 	};
-
-	if(_meta)
-	{
-		if(h2fmi_data_whitening_enabled)
-		{
-			uint32_t i;
-			for(i = 0; i < 3; i++)
-				((uint32_t*)_meta)[i] ^= h2fmi_hash_table[(i + _page) % ARRAY_SIZE(h2fmi_hash_table)];
-		}
-	}
 
 	uint32_t flag = (1 - aes);
 	if(flag > 1)
@@ -2413,7 +2422,12 @@ uint32_t h2fmi_write_single_page(uint32_t _ce, uint32_t _page, uint8_t* _data, u
 
 	h2fmi_setup_aes(fmi, flag, 1, (uint32_t)_data);
 
-	if((ret = h2fmi_write_multi(fmi, 1, &h2fmi_map[_ce].chip, &_page, &dataSegmentInfo, &metaSegmentInfo, &status, 0)) == 0)
+	ret = h2fmi_write_multi(fmi, 1, &h2fmi_map[_ce].chip, &_page, &dataSegmentInfo, &metaSegmentInfo, &status, 0);
+
+	if(wbuf)
+		free(wbuf);
+
+	if(ret == 0)
 	{
 		fmi->failure_details.overall_status = 0x80000015;
 		return ret;
