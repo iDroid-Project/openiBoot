@@ -513,6 +513,8 @@ error_t YAFTL_writeIndexTOC()
 {
 	int result;
 
+	bufferPrintf("WARNING - You NEED to call ftl_flush before rebooting. - WARNING\r\n");
+
 	YAFTL_setupCleanSpare(sInfo.spareBuffer7);
 
 	// Try to write the new index TOC.

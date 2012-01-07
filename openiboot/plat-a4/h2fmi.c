@@ -3406,9 +3406,6 @@ COMMAND("ftl_read", "FTL read single page", cmd_ftl_read);
 
 static void cmd_ftl_write(int argc, char** argv)
 {
-	bufferPrintf("Dont be silly - this isnt safe!\r\n");
-	return;
-
 	if(argc < 3)
 	{
 		bufferPrintf("Usage: %s [page] [data]\r\n", argv[0]);
@@ -3423,6 +3420,14 @@ static void cmd_ftl_write(int argc, char** argv)
 	bufferPrintf("ftl: Command completed with result 0x%08x.\r\n", ret);
 }
 COMMAND("ftl_write", "FTL write single page", cmd_ftl_write);
+
+extern void YAFTL_Flush();
+static void cmd_ftl_flush(int argc, char** argv)
+{
+	YAFTL_Flush();
+	bufferPrintf("ftl: Command completed.\r\n");
+}
+COMMAND("ftl_flush", "FTL flush", cmd_ftl_flush);
 
 static void cmd_emf_enable(int argc, char** argv)
 {

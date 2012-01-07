@@ -1689,10 +1689,11 @@ static uint32_t YAFTL_Open(uint32_t signature_bit)
 						&versionSupported) != 0)
 				{
 					some_val = 5;
+					sInfo.field_78 = 0;
 				} else {
 					some_val = 0;
+					sInfo.field_78 = 1;
 				}
-				sInfo.field_78 = 0;
 				break;
 			}
 
