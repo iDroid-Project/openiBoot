@@ -2357,6 +2357,22 @@ static error_t yaftl_write_mtd(mtd_t *_dev, void *_src, uint64_t _off, int _amt)
 			pageOffset = 0;
 			curLoc += (block_size - pageOffset);
 			toWrite -= (block_size - pageOffset);
+		} else if (pageOffset) {
+			memset(tBuffer, 0, block_size);
+			ret = YAFTL_Read(curPage, 1, tBuffer);
+			if(FAILED(ret)) {
+				free(tBuffer);
+				return FALSE;
+			}
+			memcpy(tBuffer + pageOffset, curLoc, toWrite);
+			ret = YAFTL_Write(curPage, 1, tBuffer);
+			if(FAILED(ret)) {
+				free(tBuffer);
+				return FALSE;
+			}
+			pageOffset = 0;
+			curLoc += toWrite;
+			toWrite = 0;
 		} else if (toWrite >= block_size) {
 			memcpy(tBuffer, curLoc, block_size);
 			ret = YAFTL_Write(curPage, 1, tBuffer);
