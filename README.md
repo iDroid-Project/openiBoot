@@ -17,6 +17,14 @@ iDroid Project openiBoot
 
 NOTE: Version 0.3 and above will not boot iDroid 2.6.32 series kernels without additional parameters being passed to the kernel.
 
+Warnung
+---------------------------------------------------
+IT IS STRONGLY ADVISED THAT YOU DO NOT ATTEMPT TO RUN NAND WRITE FUNCTIONS IN THE A4 VERSION AT THIS POINT IN TIME.
+
+DOING SO WILL INEVITABLY CAUSE YOU TO NEED TO RESTORE YOUR DEVICE, MAY LEAVE PERMANENT NAND BLOCK DAMAGE AND MAY ALSO CAUSE GREMLINS TO CRAWL OUT OF YOUR ARSE.
+
+(If you read this warning properly, really unless you know wtf you are looking at - leave it alone until we stablise it)
+
 Compiling
 ---------------------------------------------------
 **Build an ARM toolchain (this only needs to be done once - for subsequent builds this step can be omitted unless there has been a toolchain update):**
