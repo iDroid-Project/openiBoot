@@ -2330,8 +2330,6 @@ static error_t yaftl_read_mtd(mtd_t *_dev, void *_dest, uint64_t _off, int _amt)
 
 static error_t yaftl_write_mtd(mtd_t *_dev, void *_src, uint64_t _off, int _amt)
 {
-	// FIXME
-	return FALSE;
 	// TODO: EMF magic
 	uint8_t* curLoc = (uint8_t*) _src;
 	uint32_t block_size = sInfo.bytesPerPage;
@@ -2341,8 +2339,8 @@ static error_t yaftl_write_mtd(mtd_t *_dev, void *_src, uint64_t _off, int _amt)
 	uint8_t* tBuffer = (uint8_t*) malloc(block_size);
 	while(toWrite > 0) {
 		uint32_t ret;
+		memset(tBuffer, 0, block_size);
 		if(pageOffset && toWrite > block_size) {
-			memset(tBuffer, 0, block_size);
 			ret = YAFTL_Read(curPage, 1, tBuffer);
 			if(FAILED(ret)) {
 				free(tBuffer);
@@ -2358,7 +2356,6 @@ static error_t yaftl_write_mtd(mtd_t *_dev, void *_src, uint64_t _off, int _amt)
 			curLoc += (block_size - pageOffset);
 			toWrite -= (block_size - pageOffset);
 		} else if (pageOffset) {
-			memset(tBuffer, 0, block_size);
 			ret = YAFTL_Read(curPage, 1, tBuffer);
 			if(FAILED(ret)) {
 				free(tBuffer);
@@ -2383,7 +2380,6 @@ static error_t yaftl_write_mtd(mtd_t *_dev, void *_src, uint64_t _off, int _amt)
 			curLoc += block_size;
 			toWrite -= block_size;
 		} else {
-			memset(tBuffer, 0, block_size);
 			ret = YAFTL_Read(curPage, 1, tBuffer);
 			if(FAILED(ret)) {
 				free(tBuffer);
