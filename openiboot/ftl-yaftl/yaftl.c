@@ -513,7 +513,7 @@ static int flushQuick()
 	if (sInfo.field_78)
 		return 0;
 
-	while (block < sGeometry.numBlocks) {
+	for (block = 0; block < sGeometry.numBlocks; block++) {
 		if (sInfo.blockArray[block].status == BLOCKSTATUS_FREE
 			&& sInfo.blockArray[block].unkn5 != 0)
 		{
