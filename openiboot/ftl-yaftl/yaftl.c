@@ -1869,7 +1869,7 @@ static int YAFTL_Read(uint32_t lpn, uint32_t nPages, uint8_t* pBuf)
 							(uint8_t*)sInfo.tocCaches[freeTOCCacheNum].buffer,
 							0, 0, 1, 1);
 
-					if (ret != 0)
+					if (FAILED(ret))
 						goto YAFTL_READ_RETURN;
 
 					L2V_UpdateFromTOC(tocPageNum,
@@ -1885,10 +1885,11 @@ static int YAFTL_Read(uint32_t lpn, uint32_t nPages, uint8_t* pBuf)
 					// No free cache. Is this the last TOC page we read?
 					if (sInfo.lastTOCPageRead != tocPageNum) {
 						// No, it isn't. Read it.
-						if (YAFTL_readPage(
+						ret = YAFTL_readPage(
 								sInfo.tocArray[tocPageNum].indexPage,
 								(uint8_t*)sInfo.tocPageBuffer,
-								0, 0, 1, 1) != 0)
+								0, 0, 1, 1);
+						if(FAILED(ret))
 							goto YAFTL_READ_RETURN;
 
 						sInfo.lastTOCPageRead = tocPageNum;
@@ -2288,137 +2289,6 @@ static int YAFTL_Write(uint32_t _pageStart, uint32_t _numPages, uint8_t* _pBuf)
 	return 0;
 }
 
-/* MTD */
-
-static error_t yaftl_read_mtd(mtd_t *_dev, void *_dest, uint64_t _off, int _amt)
-{
-	uint32_t emf = h2fmi_get_emf();
-	uint8_t* curLoc = (uint8_t*) _dest;
-	uint32_t block_size = sInfo.bytesPerPage;
-	int curPage = _off / block_size;
-	int toRead = _amt;
-	int pageOffset = _off - (curPage * block_size);
-	uint8_t* tBuffer = (uint8_t*) malloc(block_size);
-	while(toRead > 0) {
-		if((&_dev->bdev
-				&& (_dev->bdev.part_mode == partitioning_gpt || _dev->bdev.part_mode == partitioning_lwvm)
-					&& _dev->bdev.handle->pIdx == 1)
-				|| emf) {
-			h2fmi_set_emf(1, curPage);
-		}
-		else
-			h2fmi_set_emf(0, 0);
-		uint32_t ret = YAFTL_Read(curPage, 1, tBuffer);
-		if(FAILED(ret)) {
-			h2fmi_set_emf(0, 0);
-			free(tBuffer);
-			return FALSE;
-		}
-
-		int read = (((block_size-pageOffset) > toRead) ? toRead : block_size-pageOffset);
-		memcpy(curLoc, tBuffer + pageOffset, read);
-		curLoc += read;
-		toRead -= read;
-		pageOffset = 0;
-		curPage++;
-	}
-
-	h2fmi_set_emf(0, 0);
-	free(tBuffer);
-	return TRUE;
-}
-
-static error_t yaftl_write_mtd(mtd_t *_dev, void *_src, uint64_t _off, int _amt)
-{
-	// TODO: EMF magic
-	uint8_t* curLoc = (uint8_t*) _src;
-	uint32_t block_size = sInfo.bytesPerPage;
-	int curPage = _off / block_size;
-	int toWrite = _amt;
-	int pageOffset = _off - (curPage * block_size);
-	uint8_t* tBuffer = (uint8_t*) malloc(block_size);
-	while(toWrite > 0) {
-		uint32_t ret;
-		memset(tBuffer, 0, block_size);
-		if(pageOffset && toWrite > block_size) {
-			ret = YAFTL_Read(curPage, 1, tBuffer);
-			if(FAILED(ret)) {
-				free(tBuffer);
-				return FALSE;
-			}
-			memcpy(tBuffer + pageOffset, curLoc, block_size - pageOffset);
-			ret = YAFTL_Write(curPage, 1, tBuffer);
-			if(FAILED(ret)) {
-				free(tBuffer);
-				return FALSE;
-			}
-			pageOffset = 0;
-			curLoc += (block_size - pageOffset);
-			toWrite -= (block_size - pageOffset);
-		} else if (pageOffset) {
-			ret = YAFTL_Read(curPage, 1, tBuffer);
-			if(FAILED(ret)) {
-				free(tBuffer);
-				return FALSE;
-			}
-			memcpy(tBuffer + pageOffset, curLoc, toWrite);
-			ret = YAFTL_Write(curPage, 1, tBuffer);
-			if(FAILED(ret)) {
-				free(tBuffer);
-				return FALSE;
-			}
-			pageOffset = 0;
-			curLoc += toWrite;
-			toWrite = 0;
-		} else if (toWrite >= block_size) {
-			memcpy(tBuffer, curLoc, block_size);
-			ret = YAFTL_Write(curPage, 1, tBuffer);
-			if(FAILED(ret)) {
-				free(tBuffer);
-				return FALSE;
-			}
-			curLoc += block_size;
-			toWrite -= block_size;
-		} else {
-			ret = YAFTL_Read(curPage, 1, tBuffer);
-			if(FAILED(ret)) {
-				free(tBuffer);
-				return FALSE;
-			}
-			memcpy(tBuffer, curLoc, toWrite);
-			ret = YAFTL_Write(curPage, 1, tBuffer);
-			if(FAILED(ret)) {
-				free(tBuffer);
-				return FALSE;
-			}
-			curLoc += toWrite;
-			toWrite = 0;
-		}
-		curPage++;
-	}
-
-	free(tBuffer);
-	return TRUE;
-}
-
-static int64_t yaftl_block_size(mtd_t *_dev)
-{
-	return sInfo.bytesPerPage;
-}
-
-static mtd_t yaftl_mtd = {
-	.device = {
-		.fourcc = FOURCC('Y', 'F', 'T', 'L'),
-		.name = "Apple YAFTL Layer",
-	},
-
-	.read = yaftl_read_mtd,
-	.write = yaftl_write_mtd,
-
-	.block_size = yaftl_block_size,
-
-	.usage = mtd_filesystem,
-};
 
 error_t ftl_yaftl_open(ftl_device_t *_ftl, vfl_device_t *_vfl)
 {
@@ -2429,35 +2299,50 @@ error_t ftl_yaftl_open(ftl_device_t *_ftl, vfl_device_t *_vfl)
 	if(FAILED(YAFTL_Open(0)))
 		return EIO;
 
-	if(!mtd_init(&yaftl_mtd))
-		mtd_register(&yaftl_mtd);
+	_ftl->block_size = sInfo.bytesPerPage;
 
 	return SUCCESS;
 }
 
 error_t ftl_yaftl_read_single_page(ftl_device_t *_ftl, uint32_t _page, uint8_t *_buffer)
 {
-	error_t ret = YAFTL_Read(_page, 1, _buffer);
-
-	if(FAILED(ret))
-		return ret;
+	uint32_t emf = h2fmi_get_emf();
+	if((&_ftl->mtd.bdev
+			&& (_ftl->mtd.bdev.part_mode == partitioning_gpt || _ftl->mtd.bdev.part_mode == partitioning_lwvm)
+				&& _ftl->mtd.bdev.handle->pIdx == 1)
+			|| emf) {
+		h2fmi_set_emf(1, _page);
+	}
 	else
-		return SUCCESS;
+		h2fmi_set_emf(0, 0);
+
+	error_t ret = YAFTL_Read(_page, 1, _buffer);
+	h2fmi_set_emf(0, 0);
+	return ret;
 }
 
 error_t ftl_yaftl_write_single_page(ftl_device_t *_ftl, uint32_t _page, uint8_t *_buffer)
 {
-	error_t ret = YAFTL_Write(_page, 1, _buffer);
-
-	if(FAILED(ret))
-		return ret;
+	uint32_t emf = h2fmi_get_emf();
+	if((&_ftl->mtd.bdev
+			&& (_ftl->mtd.bdev.part_mode == partitioning_gpt || _ftl->mtd.bdev.part_mode == partitioning_lwvm)
+				&& _ftl->mtd.bdev.handle->pIdx == 1)
+			|| emf) {
+		h2fmi_set_emf(1, _page);
+	}
 	else
-		return SUCCESS;
+		h2fmi_set_emf(0, 0);
+
+	error_t ret = YAFTL_Write(_page, 1, _buffer);
+	h2fmi_set_emf(0, 0);
+	return ret;
 }
 
 error_t ftl_yaftl_device_init(ftl_yaftl_device_t *_ftl)
 {
-	memset(_ftl, 0, sizeof(*_ftl));
+	error_t ret = ftl_init(&_ftl->ftl);
+	if(FAILED(ret))
+		return ret;
 
 	_ftl->ftl.read_single_page = ftl_yaftl_read_single_page;
 	_ftl->ftl.write_single_page = ftl_yaftl_write_single_page;

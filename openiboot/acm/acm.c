@@ -121,7 +121,7 @@ static void acm_parse(int32_t _amt)
 		else if(ret != 0)
 			bufferPrintf("ACM: Done: %s. Returned: 0x%x.\n", acm_recv_buffer, ret);
 		else
-			bufferPrintf("ACM: Done: %s.", acm_recv_buffer);
+			bufferPrintf("ACM: Done: %s.\n", acm_recv_buffer);
 	}
 
 	free(argv);

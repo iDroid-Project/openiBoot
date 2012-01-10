@@ -51,6 +51,8 @@ typedef error_t (*ftl_write_single_page_t)(struct _ftl_device *, uint32_t _page,
 typedef struct _ftl_device
 {
 	mtd_t mtd;
+	
+	size_t block_size;
 
 	ftl_device_open_t open;
 	ftl_device_close_t close;

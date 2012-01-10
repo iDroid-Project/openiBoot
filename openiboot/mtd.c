@@ -304,10 +304,10 @@ static error_t cmd_mtd_read(int argc, char **argv)
 	int len = parseNumber(argv[4]);
 
 	mtd_prepare(dev);
-	mtd_read(dev, dest, offset, len);
+	error_t ret = mtd_read(dev, dest, offset, len);
 	mtd_finish(dev);
 
-	return 0;
+	return ret;
 }
 COMMAND("mtd_read", "Read from a MTD device.", cmd_mtd_read);
 
@@ -339,9 +339,9 @@ static error_t cmd_mtd_write(int argc, char **argv)
 	int len = parseNumber(argv[4]);
 
 	mtd_prepare(dev);
-	mtd_write(dev, src, offset, len);
+	error_t ret = mtd_write(dev, src, offset, len);
 	mtd_finish(dev);
 
-	return 0;
+	return ret;
 }
 COMMAND("mtd_write", "Write to a MTD device.", cmd_mtd_write);
