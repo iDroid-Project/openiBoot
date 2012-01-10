@@ -488,7 +488,7 @@ void pinot_quiesce() {
 	return;
 }
 
-static void cmd_clcd_dump(int _argc, char **_argv)
+static error_t cmd_clcd_dump(int _argc, char **_argv)
 {
 	bufferPrintf("DisplayPipe dump:\n");
 
@@ -512,6 +512,8 @@ static void cmd_clcd_dump(int _argc, char **_argv)
 
 	bufferPrintf("MIPI DSIM dump:\n");
 	dump_memory(MIPI_DSIM, 0x60);
+
+	return 0;
 }
 COMMAND("clcd_dump", "Dump the CLCD registers to the screen.", cmd_clcd_dump);
 
@@ -792,14 +794,16 @@ void lcd_set_backlight_level(int level) {
 }
 #endif
 
-void cmd_backlight(int argc, char** argv) {
+static error_t cmd_backlight(int argc, char** argv)
+{
 	if(argc < 2) {
 		bufferPrintf("Usage: %s <0-%d>\r\n", argv[0], LCD_MAX_BACKLIGHT);
-		return;
+		return EINVAL;
 	}
 
 	uint32_t level = parseNumber(argv[1]);
 	lcd_set_backlight_level(level);
 	bufferPrintf("backlight set to %d\r\n", level);
+	return SUCCESS;
 }
 COMMAND("backlight", "set the backlight level", cmd_backlight);

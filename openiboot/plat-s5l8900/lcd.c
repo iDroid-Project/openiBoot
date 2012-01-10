@@ -1307,14 +1307,17 @@ void lcd_set_backlight_level(int level) {
 	}
 }
 
-void cmd_backlight(int argc, char** argv) {
+static error_t cmd_backlight(int argc, char** argv)
+{
 	if(argc < 2) {
 		bufferPrintf("Usage: %s <0-45>\r\n", argv[0]);
-		return;
+		return -1;
 	}
 
 	uint32_t level = parseNumber(argv[1]);
 	lcd_set_backlight_level(level);
 	bufferPrintf("backlight set to %d\r\n", level);
+
+	return 0;
 }
 COMMAND("backlight", "set the backlight level", cmd_backlight);

@@ -63,126 +63,156 @@ char **command_parse(char *str, int *argc)
 	return tokenize(str, argc);	
 }
 
-int command_run(int argc, char **argv)
+error_t command_run(int argc, char **argv)
 {
 	OIBCommandIterator cmdIt = NULL;
 	OPIBCommand *cmd;
 
-	if(*argv[0] == 0)
-		return 0; // Hack to prevent empty lines erroring out.
+	if(argc < 1) // No command to run.
+		return SUCCESS;
 
 	while((cmd = command_get_next(&cmdIt)))
 	{
-		if(strcmp(argv[0], cmd->name) == 0) {
-			cmd->routine(argc, argv);
-			return 0;
-		}
+		if(strcmp(argv[0], cmd->name) == 0)
+			return cmd->routine(argc, argv);
 	}
 
-	return -1;
+	return ENOENT;
 }
 
-void cmd_help(int argc, char** argv)
+static error_t cmd_help(int argc, char** argv)
 {
 	OIBCommandIterator it = NULL;
 	OPIBCommand *cmd;
 	while((cmd = command_get_next(&it)))
         bufferPrintf("%-20s%s\r\n", cmd->name, cmd->description);
+
+	return SUCCESS;
 }
 COMMAND("help", "list the available commands", cmd_help);
 
-void cmd_reboot(int argc, char** argv) {
+static error_t cmd_reboot(int argc, char** argv)
+{
 	Reboot();
+	return SUCCESS;
 }
 COMMAND("reboot", "reboot the device", cmd_reboot);
 
-void cmd_md(int argc, char** argv) {
-	if(argc < 3) {
+static error_t cmd_md(int argc, char** argv)
+{
+	if(argc < 3)
+	{
 		bufferPrintf("Usage: %s <address> <len>\r\n", argv[0]);
-		return;
+		return EINVAL;
 	}
 
 	uint32_t address = parseNumber(argv[1]);
 	uint32_t len = parseNumber(argv[2]);
 	bufferPrintf("dumping memory 0x%x - 0x%x\r\n", address, address + len);
 	buffer_dump_memory(address, len);
+
+	return SUCCESS;
 }
 COMMAND("md", "display a block of memory as 32-bit integers", cmd_md);
 
-void cmd_hexdump(int argc, char** argv) {
-	if(argc < 3) {
+static error_t cmd_hexdump(int argc, char** argv)
+{
+	if(argc < 3)
+	{
 		bufferPrintf("Usage: %s <address> <len>\r\n", argv[0]);
-		return;
+		return EINVAL;
 	}
 
 	uint32_t address = parseNumber(argv[1]);
 	uint32_t len = parseNumber(argv[2]);
 	bufferPrintf("dumping memory 0x%x - 0x%x\r\n", address, address + len);
 	hexdump((void*)address, len);
+
+	return SUCCESS;
 }
 COMMAND("hexdump", "display a block of memory like 'hexdump -C'", cmd_hexdump);
 
-void cmd_cat(int argc, char** argv) {
-	if(argc < 3) {
+static error_t cmd_cat(int argc, char** argv)
+{
+	if(argc < 3)
+	{
 		bufferPrintf("Usage: %s <address> <len>\r\n", argv[0]);
-		return;
+		return EINVAL;
 	}
 
 	uint32_t address = parseNumber(argv[1]);
 	uint32_t len = parseNumber(argv[2]);
 	addToBuffer((char*) address, len);
+
+	return SUCCESS;
 }
 COMMAND("cat", "dumps a block of memory", cmd_cat);
 
-void cmd_mwb(int argc, char** argv) {
-	if(argc < 3) {
+static error_t cmd_mwb(int argc, char** argv)
+{
+	if(argc < 3)
+	{
 		bufferPrintf("Usage: %s <address> <data>\r\n", argv[0]);
-		return;
+		return EINVAL;
 	}
 
 	uint8_t* address = (uint8_t*) parseNumber(argv[1]);
 	uint8_t data = parseNumber(argv[2]);
 	*address = data;
 	bufferPrintf("Written to 0x%x to 0x%x\r\n", (uint8_t)data, address);
+
+	return SUCCESS;
 }
 COMMAND("mwb", "write a byte into a memory address", cmd_mwb);
 
-void cmd_mws(int argc, char** argv) {
-	if(argc < 3) {
+static error_t cmd_mws(int argc, char** argv)
+{
+	if(argc < 3)
+	{
 		bufferPrintf("Usage: %s <address> <string>\r\n", argv[0]);
-		return;
+		return EINVAL;
 	}
 
 	char* address = (char*) parseNumber(argv[1]);
 	strcpy(address, argv[2]);
 	bufferPrintf("Written %s to 0x%x\r\n", argv[2], address);
+
+	return SUCCESS;
 }
 COMMAND("mws", "write a string into a memory address", cmd_mws);
 
-void cmd_mw(int argc, char** argv) {
-	if(argc < 3) {
+static error_t cmd_mw(int argc, char** argv)
+{
+	if(argc < 3)
+	{
 		bufferPrintf("Usage: %s <address> <data>\r\n", argv[0]);
-		return;
+		return EINVAL;
 	}
 
 	uint32_t* address = (uint32_t*) parseNumber(argv[1]);
 	uint32_t data = parseNumber(argv[2]);
 	*address = data;
 	bufferPrintf("Written to 0x%x to 0x%x\r\n", data, address);
+
+	return SUCCESS;
 }
 COMMAND("mw", "write a 32-bit dword into a memory address", cmd_mw);
 
-void cmd_echo(int argc, char** argv) {
+static error_t cmd_echo(int argc, char** argv)
+{
 	int i;
-	for(i = 1; i < argc; i++) {
+	for(i = 1; i < argc; i++)
 		bufferPrintf("%s ", argv[i]);
-	}
+	
 	bufferPrintf("\r\n");
+	return SUCCESS;
 }
 COMMAND("echo", "echo back a line", cmd_echo);
 
-void cmd_version(int argc, char** argv) {
+static error_t cmd_version(int argc, char** argv)
+{
 	bufferPrintf("%s\r\n", OPENIBOOT_VERSION_STR);
+	return SUCCESS;
 }
 COMMAND("version", "display the version string", cmd_version);
 

@@ -3308,10 +3308,11 @@ static void ftl_init()
 }
 MODULE_INIT(ftl_init);
 
-void cmd_vfl_read(int argc, char** argv) {
+static error_t cmd_vfl_read(int argc, char** argv)
+{
 	if(argc < 3) {
 		bufferPrintf("Usage: %s <address> <page>\r\n", argv[0]);
-		return;
+		return -1;
 	}
 
 	uint32_t address = parseNumber(argv[1]);
@@ -3319,15 +3320,18 @@ void cmd_vfl_read(int argc, char** argv) {
 
 	bufferPrintf("Reading virtual page %d into 0x%x\r\n", page, address);
 	bufferPrintf("VFL_read: %x\r\n", VFL_Read(page, (uint8_t*) address, NULL, TRUE, NULL));
+
+	return 0;
 }
 COMMAND("vfl_read", "read a page of VFL into RAM", cmd_vfl_read);
 
-void cmd_vfl_erase(int argc, char** argv) {
+static error_t cmd_vfl_erase(int argc, char** argv)
+{
 	int count;
 
 	if(argc < 2) {
 		bufferPrintf("Usage: %s <block> [count]\r\n", argv[0]);
-		return;
+		return -1;
 	}
 
 	if(argc < 3) {
@@ -3342,13 +3346,16 @@ void cmd_vfl_erase(int argc, char** argv) {
 	for(; block < (firstBlock + count); block++) {
 		bufferPrintf("VFL_Erase(%d): %x\r\n", block, VFL_Erase(block));
 	}
+
+	return 0;
 }
 COMMAND("vfl_erase", "erase a block of VFL", cmd_vfl_erase);
 
-void cmd_ftl_read(int argc, char** argv) {
+static error_t cmd_ftl_read(int argc, char** argv)
+{
 	if(argc < 4) {
 		bufferPrintf("Usage: %s <address> <lpn> <pages>\r\n", argv[0]);
-		return;
+		return -1;
 	}
 
 	uint32_t address = parseNumber(argv[1]);
@@ -3357,22 +3364,28 @@ void cmd_ftl_read(int argc, char** argv) {
 
 	bufferPrintf("Reading %d pages, starting at %d into 0x%x\r\n", pages, page, address);
 	bufferPrintf("FTL_read: %x\r\n", FTL_Read(page, pages, (uint8_t*) address));
+
+	return 0;
 }
 COMMAND("ftl_read", "read a page of FTL into RAM", cmd_ftl_read);
 
-void cmd_ftl_sync(int argc, char** argv) {
+static error_t cmd_ftl_sync(int argc, char** argv)
+{
 	bufferPrintf("Syncing FTL...\r\n");
 	if(ftl_sync())
 		bufferPrintf("Success!\r\n");
 	else
 		bufferPrintf("Error.\r\n");
+
+	return 0;
 }
 COMMAND("ftl_sync", "commit the current FTL context", cmd_ftl_sync);
 
-void cmd_bdev_read(int argc, char** argv) {
+static error_t cmd_bdev_read(int argc, char** argv)
+{
 	if(argc < 4) {
 		bufferPrintf("Usage: %s <address> <offset> <bytes>\r\n", argv[0]);
-		return;
+		return -1;
 	}
 
 	uint32_t address = parseNumber(argv[1]);
@@ -3381,10 +3394,15 @@ void cmd_bdev_read(int argc, char** argv) {
 
 	bufferPrintf("Reading %d bytes, starting at %d into 0x%x\r\n", bytes, offset, address);
 	bufferPrintf("ftl_read: %x\r\n", ftl_read((uint8_t*) address, offset, bytes));
+
+	return 0;
 }
 COMMAND("bdev_read", "read bytes from a NAND block device", cmd_bdev_read);
 
-void cmd_ftl_mapping(int argc, char** argv) {
+static error_t cmd_ftl_mapping(int argc, char** argv)
+{
 	ftl_printdata();
+
+	return 0;
 }
 COMMAND("ftl_mapping", "print FTL mapping information", cmd_ftl_mapping);

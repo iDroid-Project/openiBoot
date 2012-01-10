@@ -209,7 +209,7 @@ static void doAES(int operation, void *buffer0, void *buffer1, void *buffer2, in
 	SET_REG(AES + GO, 1);
 }
 
-void cmd_aes(int argc, char** argv)
+static error_t cmd_aes(int argc, char** argv)
 {
 	AESKeyType keyType;
 
@@ -224,7 +224,7 @@ void cmd_aes(int argc, char** argv)
 	if(argc < 4)
 	{
 		bufferPrintf("Usage: %s <enc/dec> <gid/uid/key> [data] [iv]\r\n", argv[0]);
-		return;
+		return -1;
 	}
 
 	if(strcmp(argv[2], "gid") == 0)
@@ -273,6 +273,8 @@ void cmd_aes(int argc, char** argv)
 
 	if(key)
 		free(key);
+
+	return 0;
 }
 COMMAND("aes", "use the hardware crypto engine", cmd_aes);
 

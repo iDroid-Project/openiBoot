@@ -314,69 +314,107 @@ void bytesToHex(const uint8_t* buffer, int bytes) {
 	}
 }
 
-char** tokenize(char* commandline, int* argc) {
-	char* pos;
-	char** arguments;
-	int curArg = 1;
-	int inQuote = FALSE;
-	int inEscape = FALSE;
+char** tokenize(char* commandline, int* argc)
+{
+	char *read = commandline, *write = commandline;
+	char** arguments = NULL;
+	int args = 0; // Args processed so far
+	int alloced = 0; // Space in array
+	int inQuote = FALSE; // ""
+	int inArg = FALSE;
+	int forceArg = FALSE;
 
-	pos = commandline;
-	arguments = (char**) malloc(sizeof(char*) * 10);
-	arguments[0] = commandline;
-	while(*commandline != '\0') {
-		if(pos != commandline)
+	while(*read)
+	{
+		if(*read == '"')
 		{
-			*pos = *commandline;
-		}
+			read++;
 
-		if(inEscape)
-		{
-			switch(*pos)
+			if(!inQuote)
 			{
+				inQuote = TRUE;
+				forceArg = TRUE;
+			}
+			else
+			{
+				inQuote = FALSE;
+				continue;
+			}
+		}
+		else if(*read == '\\')
+		{
+			read++;
+			if(*read)
+			{
+				switch(*read)
+				{
 				case 'n':
-					*pos = '\n';
+					*write = '\n';
 					break;
 
 				case 'r':
-					*pos = '\r';
+					*write = '\r';
 					break;
 
 				case '0':
-					*pos = 0;
+					*write = 0;
 					break;
+
+				default:
+					if(read != write)
+						*write = *read;
+					break;
+				}
+
+				write++;
+				read++;
+				continue;
+			}
+		}
+		else if(!inQuote &&
+				(*read == ' '
+				 || *read == '\t'
+				 || *read == '\r'
+				 || *read == '\n'))
+		{
+			if(inArg)
+			{
+				*write = 0;
+				write++;
+
+				inArg = FALSE;
 			}
 
-			inEscape = FALSE;
+			read++;
+			continue;
 		}
-		else if(*commandline == '\"') {
-		       	if(inQuote) {
-				inQuote = FALSE;
-				*pos = '\0';
-			} else {
-				inQuote = TRUE;
+
+		if(!inArg)
+		{
+			if(args >= alloced)
+			{
+				alloced += 10;
+				arguments = realloc(arguments, sizeof(char*)*alloced);
 			}
-		} else if(*commandline == ' ' && inQuote == FALSE) {
-			*pos = '\0';
-			arguments[curArg] = pos + 1;
-			if(*(commandline + 1) == '\"')
-				arguments[curArg]++;
 
-			curArg++;
-		} else if(*commandline == '\r' || *commandline =='\n') {
-			*pos = '\0';
-			break;
-		} else if(*commandline == '\\') {
-			pos--;
-			inEscape = TRUE;
+			arguments[args] = write;
+			args++;
+
+			inArg = TRUE;
 		}
 
-		commandline++;
-		pos++;
+		if(!forceArg)
+		{
+			if(read != write)
+				*write = *read;
+
+			read++;
+			write++;
+		}
+		else forceArg = FALSE;
 	}
 
-	*argc = curArg;
-
+	*argc = args;
 	return arguments;
 }
 

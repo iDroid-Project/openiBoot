@@ -26,6 +26,10 @@ ifeq ($(PLATFORM),IPT4G)
 	TARGET = ipt_4g_openiboot.bin
 endif
 
+ifeq ($(PLATFORM),ATV2G)
+	TARGET = atv_2g_openiboot.bin
+endif
+
 all:
 	scons $(TARGET)
 

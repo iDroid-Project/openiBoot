@@ -214,12 +214,12 @@ error_t clock_setup()
 	return SUCCESS;
 }
 
-void cmd_frequencies(int argc, char **argv)
+static error_t cmd_frequencies(int argc, char **argv)
 {
 	if(argc > 1)
 	{
 		bufferPrintf("Usage: %s\n", argv[0]);
-		return;
+		return -1;
 	}
 
 	int i;
@@ -231,5 +231,7 @@ void cmd_frequencies(int argc, char **argv)
 	bufferPrintf("clock: CPU clocked at %d.\n", clock_frequencies[CLOCK_CPU]);
 	bufferPrintf("clock: Bus clocked at %d.\n", clock_frequencies[CLOCK_BUS]);
 	bufferPrintf("clock: Memory clocked at %d.\n", clock_frequencies[CLOCK_MEMORY]);
+
+	return 0;
 }
 COMMAND("frequencies", "Display the clock frequencies of the device.", cmd_frequencies);

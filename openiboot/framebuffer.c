@@ -403,28 +403,40 @@ void framebuffer_draw_rect_hgradient(int starting, int ending, int x, int y, int
 	}
 }
 
-void cmd_text(int argc, char** argv) {
+static error_t cmd_text(int argc, char** argv)
+{
 	if(argc < 2) {
 		bufferPrintf("Usage: %s <on|off>\r\n", argv[0]);
-		return;
+		return EINVAL;
 	}
 
-	if(strcmp(argv[1], "on") == 0) {
+	if(strcmp(argv[1], "on") == 0)
+	{
 		framebuffer_setdisplaytext(ON);
 		bufferPrintf("Text display ON\r\n");
-	} else if(strcmp(argv[1], "off") == 0) {
+		return SUCCESS;
+	}
+	else if(strcmp(argv[1], "off") == 0)
+	{
 		framebuffer_setdisplaytext(OFF);
 		bufferPrintf("Text display OFF\r\n");
-	} else {
-		bufferPrintf("Unrecognized option: %s\r\n", argv[1]);
+		return SUCCESS;
 	}
+	else
+	{
+		bufferPrintf("Unrecognized option: %s\r\n", argv[1]);
+		return EINVAL;
+	}
+
+	return 0;
 }
 COMMAND("text", "turns text display on or off", cmd_text);
 
-void cmd_bgcolor(int argc, char** argv) {
+static error_t cmd_bgcolor(int argc, char** argv)
+{
 	if(argc < 4) {
 		bufferPrintf("Usage: %s <red> <green> <blue>\r\n", argv[0]);
-		return;
+		return EINVAL;
 	}
 
 	uint8_t red = parseNumber(argv[1]);
@@ -432,10 +444,14 @@ void cmd_bgcolor(int argc, char** argv) {
 	uint8_t blue = parseNumber(argv[3]);
 
 	lcd_fill((red << 16) | (green << 8) | blue);
+
+	return SUCCESS;
 }
 COMMAND("bgcolor", "fill the framebuffer with a color", cmd_bgcolor);
 
-void cmd_clear(int argc, char** argv) {
+static error_t cmd_clear(int argc, char** argv)
+{
 	framebuffer_clear();
+	return SUCCESS;
 }
 COMMAND("clear", "clears the screen", cmd_clear);

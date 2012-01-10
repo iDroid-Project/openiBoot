@@ -115,10 +115,13 @@ static void acm_parse(int32_t _amt)
 	else
 	{
 		bufferPrintf("ACM: Starting %s\n", acm_recv_buffer);
-		if(command_run(argc, argv) == 0)
-			bufferPrintf("ACM: Done: %s\n", acm_recv_buffer);
+		int ret = command_run(argc, argv);
+		if(FAILED(ret))
+			bufferPrintf("ACM: Done: %s. Error: %s (0x%x).\n", acm_recv_buffer, strerr(ret), ret);
+		else if(ret != 0)
+			bufferPrintf("ACM: Done: %s. Returned: 0x%x.\n", acm_recv_buffer, ret);
 		else
-			bufferPrintf("ACM: Unknown command: %s\n", argv[0]);
+			bufferPrintf("ACM: Done: %s.\n", acm_recv_buffer);
 	}
 
 	free(argv);

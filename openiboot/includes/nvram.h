@@ -98,7 +98,7 @@ typedef struct EnvironmentVar {
  *
  *  @ingroup NVRAM
  */
-int nvram_setup();
+error_t nvram_setup();
 
 /**
  *	List the variables stored in NVRAM
