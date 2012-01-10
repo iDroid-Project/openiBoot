@@ -67,8 +67,6 @@ error_t command_run(int argc, char **argv)
 {
 	OIBCommandIterator cmdIt = NULL;
 	OPIBCommand *cmd;
-	size_t len;
-	int i;
 
 	if(argc < 1) // No command to run.
 		return SUCCESS;

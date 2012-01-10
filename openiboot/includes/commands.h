@@ -46,6 +46,6 @@ error_t command_run(int argc, char **argv);
 		.description = _desc, \
 		.routine = &_fn, \
 	}; \
-	static OPIBCommand *_fn##_structptr __attribute__((section(".commands"))) = &_fn##_struct;
+	OPIBCommand *_fn##_structptr __attribute__((section(".commands"))) = &_fn##_struct;
 
 #endif

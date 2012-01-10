@@ -177,7 +177,7 @@ struct atag {
 	} u;
 };
 
-error_t chainload(uint32_t address) __attribute__((noreturn))
+error_t chainload(uint32_t address)
 {
 	EnterCriticalSection();
 
@@ -188,6 +188,7 @@ error_t chainload(uint32_t address) __attribute__((noreturn))
 	arm_disable_caches();
 	mmu_disable();
 	CallArm(address);
+	return SUCCESS;
 }
 
 error_t chainload_image(char* name)

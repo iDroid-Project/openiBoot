@@ -50,8 +50,8 @@ typedef struct _BootEntry
 	LinkedList list_ptr;
 } BootEntry;
 
-void chainload(uint32_t address);
-int chainload_image(char *name);
+error_t chainload(uint32_t address);
+error_t chainload_image(char *name);
 void set_kernel(void* location, int size);
 void set_ramdisk(void* location, int size);
 void boot_linux(const char* args, uint32_t mach_id);
