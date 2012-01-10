@@ -1869,7 +1869,7 @@ static int YAFTL_Read(uint32_t lpn, uint32_t nPages, uint8_t* pBuf)
 							(uint8_t*)sInfo.tocCaches[freeTOCCacheNum].buffer,
 							0, 0, 1, 1);
 
-					if (FAILED(ret))
+					if (ret)
 						goto YAFTL_READ_RETURN;
 
 					L2V_UpdateFromTOC(tocPageNum,
@@ -1889,7 +1889,7 @@ static int YAFTL_Read(uint32_t lpn, uint32_t nPages, uint8_t* pBuf)
 								sInfo.tocArray[tocPageNum].indexPage,
 								(uint8_t*)sInfo.tocPageBuffer,
 								0, 0, 1, 1);
-						if(FAILED(ret))
+						if(ret)
 							goto YAFTL_READ_RETURN;
 
 						sInfo.lastTOCPageRead = tocPageNum;
