@@ -255,7 +255,7 @@ error_t mtd_write(mtd_t *_mtd, void *_src, uint64_t _off, int _sz)
 	return _mtd->write(_mtd, _src, _off, _sz);
 }
 
-int mtd_list_devices()
+error_t mtd_list_devices()
 {
 	mtd_t *mtd = NULL;
 	int i = 0;

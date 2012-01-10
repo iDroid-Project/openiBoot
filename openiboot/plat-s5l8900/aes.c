@@ -209,7 +209,7 @@ static void doAES(int operation, void *buffer0, void *buffer1, void *buffer2, in
 	SET_REG(AES + GO, 1);
 }
 
-static int cmd_aes(int argc, char** argv)
+static error_t cmd_aes(int argc, char** argv)
 {
 	AESKeyType keyType;
 

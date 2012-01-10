@@ -445,13 +445,13 @@ static error_t cmd_bgcolor(int argc, char** argv)
 
 	lcd_fill((red << 16) | (green << 8) | blue);
 
-	return 0;
+	return SUCCESS;
 }
 COMMAND("bgcolor", "fill the framebuffer with a color", cmd_bgcolor);
 
 static error_t cmd_clear(int argc, char** argv)
 {
 	framebuffer_clear();
-	return 0;
+	return SUCCESS;
 }
 COMMAND("clear", "clears the screen", cmd_clear);

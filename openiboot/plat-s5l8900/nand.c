@@ -882,7 +882,7 @@ int nand_read_alternate_ecc(int bank, int page, uint8_t* buffer) {
 	return 0;
 }
 
-static int cmd_nand_read(int argc, char** argv)
+static error_t cmd_nand_read(int argc, char** argv)
 {
 	if(argc < 4) {
 		bufferPrintf("Usage: %s <address> <bank> <page> [pages]\r\n", argv[0]);
@@ -914,7 +914,7 @@ static int cmd_nand_read(int argc, char** argv)
 }
 COMMAND("nand_read", "read a page of NAND into RAM", cmd_nand_read);
 
-static int cmd_nand_ecc(int argc, char** argv)
+static error_t cmd_nand_ecc(int argc, char** argv)
 {
 	if(argc < 3) {
 		bufferPrintf("Usage: %s <data> <ecc>\r\n", argv[0]);
@@ -930,7 +930,7 @@ static int cmd_nand_ecc(int argc, char** argv)
 }
 COMMAND("nand_ecc", "hardware ECC a page", cmd_nand_ecc);
 
-static int cmd_nand_write(int argc, char** argv)
+static error_t cmd_nand_write(int argc, char** argv)
 {
 	if(argc < 6) {
 		bufferPrintf("Usage: %s <data> <spare> <bank> <page> <ecc>\r\n", argv[0]);
@@ -949,7 +949,7 @@ static int cmd_nand_write(int argc, char** argv)
 }
 COMMAND("nand_write", "write a page of NAND", cmd_nand_write);
 
-static int cmd_nand_read_spare(int argc, char** argv)
+static error_t cmd_nand_read_spare(int argc, char** argv)
 {
 	if(argc < 4) {
 		bufferPrintf("Usage: %s <address> <bank> <page> [pages]\r\n", argv[0]);
@@ -981,7 +981,7 @@ static int cmd_nand_read_spare(int argc, char** argv)
 }
 COMMAND("nand_read_spare", "read a page of NAND's spare into RAM", cmd_nand_read_spare);
 
-static int cmd_nand_erase(int argc, char** argv)
+static error_t cmd_nand_erase(int argc, char** argv)
 {
 	if(argc < 3) {
 		bufferPrintf("Usage: %s <bank> <block> -- You probably don't want to do this.\r\n", argv[0]);
@@ -998,11 +998,12 @@ static int cmd_nand_erase(int argc, char** argv)
 }
 COMMAND("nand_erase", "erase a NAND block", cmd_nand_erase);
 
-void cmd_nand_wipe(int argc, char** argv)
+static error_t cmd_nand_wipe(int argc, char** argv)
 {
 	if(argc < 2) {
 		bufferPrintf("Usage: %s <verification> -- You probably don't want to do this, "
 			"pass an argument else.\r\n", argv[0]);
+		return EINVAL;
 	}
 
 	int i, j;
@@ -1012,10 +1013,12 @@ void cmd_nand_wipe(int argc, char** argv)
 			nand_erase(i, j);
 		}
 	}
+
+	return SUCCESS;
 }
 COMMAND("nand_wipe", "wipe the whole NAND", cmd_nand_wipe);
 
-static int cmd_nand_status(int agc, char** argv)
+static error_t cmd_nand_status(int agc, char** argv)
 {
 	bufferPrintf("nand status: %x\r\n", nand_read_status());
 	return 0;

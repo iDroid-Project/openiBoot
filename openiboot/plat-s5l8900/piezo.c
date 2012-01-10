@@ -293,7 +293,7 @@ void piezo_play(const char* command)
 	}
 }
 
-static int cmd_piezo_buzz(int argc, char** argv)
+static error_t cmd_piezo_buzz(int argc, char** argv)
 {
 	if(argc < 2) {
 		bufferPrintf("Usage: %s <frequency in hertz> [duration in milliseconds]\r\n", argv[0]);
@@ -316,7 +316,7 @@ static int cmd_piezo_buzz(int argc, char** argv)
 }
 COMMAND("buzz", "use the piezo buzzer", cmd_piezo_buzz);
 
-static int cmd_piezo_play(int argc, char** argv)
+static error_t cmd_piezo_play(int argc, char** argv)
 {
 	if(argc < 2) {
 		bufferPrintf("Usage: %s <frequency in hertz> [duration in milliseconds]\r\n", argv[0]);

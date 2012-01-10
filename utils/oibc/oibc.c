@@ -80,7 +80,6 @@ int close_device(struct libusb_device_handle* handle) {
 }
 
 FILE* outputFile = NULL;
-volatile size_t readAmt = 0;
 volatile size_t currReadAmt = 0;
 
 static int silent = 0;
@@ -326,9 +325,6 @@ int getFile(char *commandBuffer)
         return 1;
     }
 
-	while(readAmt)
-		sleep(50);
-    
     *sizeLoc = '\0';
     sizeLoc++;
     
@@ -354,7 +350,6 @@ int getFile(char *commandBuffer)
     
     sendBuffer(toSendBuffer, strlen(toSendBuffer));
     outputFile = file;
-    readAmt = toRead;
     
     return 0;
 }

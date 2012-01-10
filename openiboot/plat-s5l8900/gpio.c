@@ -200,7 +200,7 @@ void gpio_pulldown_configure(int port, GPIOPDSetting setting)
 	}
 }
 
-static int cmd_gpio_pinstate(int argc, char** argv)
+static error_t cmd_gpio_pinstate(int argc, char** argv)
 {
 	if(argc < 2) {
 		bufferPrintf("Usage: %s <port>\r\n", argv[0]);
@@ -214,7 +214,7 @@ static int cmd_gpio_pinstate(int argc, char** argv)
 }
 COMMAND("gpio_pinstate", "get the state of a GPIO pin", cmd_gpio_pinstate);
 
-static int cmd_gpio_out(int argc, char** argv)
+static error_t cmd_gpio_out(int argc, char** argv)
 {
 	if(argc < 3) {
 		bufferPrintf("Usage: %s <port> [0|1]\r\n", argv[0]);

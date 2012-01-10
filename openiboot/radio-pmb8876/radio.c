@@ -550,7 +550,7 @@ void speaker_vol(int vol)
 	radio_cmd(buf, 10);
 }
 
-static int cmd_radio_send(int argc, char** argv)
+static error_t cmd_radio_send(int argc, char** argv)
 {
 	if(argc < 2) {
 		bufferPrintf("Usage: %s <command>\r\n", argv[0]);
@@ -578,7 +578,7 @@ static int cmd_radio_send(int argc, char** argv)
 }
 COMMAND("radio_send", "send a command to the baseband", cmd_radio_send);
 
-static int cmd_radio_nvram_list(int argc, char** argv)
+static error_t cmd_radio_nvram_list(int argc, char** argv)
 {
 	radio_nvram_list();
 
@@ -586,7 +586,7 @@ static int cmd_radio_nvram_list(int argc, char** argv)
 }
 COMMAND("radio_nvram_list", "list entries in baseband NVRAM", cmd_radio_nvram_list);
 
-static int cmd_radio_register(int argc, char** argv)
+static error_t cmd_radio_register(int argc, char** argv)
 {
 	bufferPrintf("Registering with cellular network...\r\n");
 	if(radio_register(10 * 1000) != 0)
@@ -596,7 +596,7 @@ static int cmd_radio_register(int argc, char** argv)
 }
 COMMAND("radio_register", "register with a cellular network", cmd_radio_register);
 
-static int cmd_radio_call(int argc, char** argv)
+static error_t cmd_radio_call(int argc, char** argv)
 {
 	if(argc < 2) {
 		bufferPrintf("Usage: %s <phone number>\r\n", argv[0]);
@@ -611,7 +611,7 @@ static int cmd_radio_call(int argc, char** argv)
 }
 COMMAND("radio_call", "make a call", cmd_radio_call);
 
-static int cmd_radio_hangup(int argc, char** argv)
+static error_t cmd_radio_hangup(int argc, char** argv)
 {
 	radio_hangup(argv[1]);
 

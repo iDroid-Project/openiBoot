@@ -970,7 +970,7 @@ void sdio_status()
 	bufferPrintf("OCR: 0x%x\r\n", GET_REG(SDIO + SDIO_RESP0) >> 7);
 }
 
-static int cmd_sdio_status(int argc, char** argv)
+static error_t cmd_sdio_status(int argc, char** argv)
 {
 	sdio_status();
 
@@ -978,7 +978,7 @@ static int cmd_sdio_status(int argc, char** argv)
 }
 COMMAND("sdio_status", "display sdio registers", cmd_sdio_status);
 
-static int cmd_sdio_setup(int argc, char** argv)
+static error_t cmd_sdio_setup(int argc, char** argv)
 {
 	sdio_setup();
 

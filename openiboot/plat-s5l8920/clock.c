@@ -214,7 +214,7 @@ error_t clock_setup()
 	return SUCCESS;
 }
 
-static int cmd_frequencies(int argc, char **argv)
+static error_t cmd_frequencies(int argc, char **argv)
 {
 	if(argc > 1)
 	{

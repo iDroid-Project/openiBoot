@@ -689,7 +689,7 @@ uint32_t aes_crypto_cmd(uint32_t _encrypt, void *_inBuf, void *_outBuf, uint32_t
 	return 0;
 }
 
-static int cmd_cdma_aes(int argc, char** argv)
+static error_t cmd_cdma_aes(int argc, char** argv)
 {
 	uint8_t* key = NULL;
 	uint32_t keyLength;

@@ -316,7 +316,7 @@ void display_init() {
 }
 MODULE_INIT(display_init);
 */
-static int cmd_mcu_setup(int argc, char** argv)
+static error_t cmd_mcu_setup(int argc, char** argv)
 {
 	bufferPrintf("setting up MCU\r\n");
 	return mcu_init();

@@ -283,7 +283,7 @@ void clock_set_sdiv(int sdiv) {
 	}
 }
 
-static int cmd_frequency(int argc, char** argv)
+static error_t cmd_frequency(int argc, char** argv)
 {
 	bufferPrintf("Clock frequency: %d Hz\r\n", clock_get_frequency(FrequencyBaseClock));
 	bufferPrintf("Memory frequency: %d Hz\r\n", clock_get_frequency(FrequencyBaseMemory));

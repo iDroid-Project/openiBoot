@@ -725,7 +725,7 @@ int multitouch_ispoint_inside_region(uint16_t x, uint16_t y, int w, int h)
     return FALSE;
 }
 
-static int cmd_multitouch_setup(int argc, char** argv)
+static error_t cmd_multitouch_setup(int argc, char** argv)
 {
 	if(argc < 5)
 	{
@@ -744,7 +744,7 @@ static int cmd_multitouch_setup(int argc, char** argv)
 }
 COMMAND("multitouch_setup", "set up the multitouch chip", cmd_multitouch_setup);	
 
-static int cmd_multitouch_fw_install(int argc, char** argv)
+static error_t cmd_multitouch_fw_install(int argc, char** argv)
 {
     if(argc < 5)
     {
@@ -781,7 +781,7 @@ static int cmd_multitouch_fw_install(int argc, char** argv)
 }
 COMMAND("multitouch_fw_install", "install multitouch firmware", cmd_multitouch_fw_install);
 
-static int cmd_multitouch_fw_uninstall(int argc, char** argv)
+static error_t cmd_multitouch_fw_uninstall(int argc, char** argv)
 {
 	images_uninstall(fourcc("mtza"), fourcc("mtza"));
 	images_uninstall(fourcc("mtzm"), fourcc("mtzm"));

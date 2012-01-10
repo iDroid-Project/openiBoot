@@ -255,7 +255,7 @@ static void do_i2c(I2CInfo* i2c) {
 	}
 }
 
-static int cmd_iic_read(int argc, char** argv)
+static error_t cmd_iic_read(int argc, char** argv)
 {
 	if(argc < 4) {
 		bufferPrintf("usage: %s <bus> <address> <register>\n", argv[0]);
@@ -278,7 +278,11 @@ static int cmd_iic_read(int argc, char** argv)
 }
 COMMAND("iic_read", "read a IIC register", cmd_iic_read);
 
+<<<<<<< HEAD
 static int cmd_iic_write(int argc, char** argv)
+=======
+static error_t cmd_iic_write(int argc, char** argv)
+>>>>>>> 9f45b440f6576259dda4c654169cee26050f7bac
 {
 	if(argc < 5) {
 		bufferPrintf("usage: %s <bus> <address> <register> <value>\r\n", argv[0]);

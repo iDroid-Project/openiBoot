@@ -3265,12 +3265,12 @@ static error_t cmd_nand_read(int argc, char** argv)
 }
 COMMAND("nand_read", "H2FMI NAND read single page", cmd_nand_read);
 
-void cmd_nand_dump(int argc, char ** argv)
+static error_t cmd_nand_dump(int argc, char ** argv)
 {
 	if(argc < 5)
 	{
 		bufferPrintf("Usage: %s [ce] [page] [end_page] [data]\r\n", argv[0]);
-		return;
+		return EINVAL;
 	}
 	
 	uint32_t page_size = h2fmi_geometry.bbt_format << 10;
@@ -3282,7 +3282,7 @@ void cmd_nand_dump(int argc, char ** argv)
 	uint8_t *ptr = (uint8_t*)parseNumber(argv[4]);
 
 	if(end < start)
-		return;
+		return EINVAL;
 
 	uint32_t i;
 	
@@ -3300,6 +3300,8 @@ void cmd_nand_dump(int argc, char ** argv)
 
 		ptr += total_size;
 	}
+
+	return SUCCESS;
 }
 COMMAND("nand_dump", "Dump NAND", cmd_nand_dump);
 
@@ -3403,12 +3405,12 @@ static error_t cmd_ftl_read(int argc, char** argv)
 }
 COMMAND("ftl_read", "FTL read single page", cmd_ftl_read);
 
-static void cmd_ftl_write(int argc, char** argv)
+static error_t cmd_ftl_write(int argc, char** argv)
 {
 	if(argc < 3)
 	{
 		bufferPrintf("Usage: %s [page] [data]\r\n", argv[0]);
-		return;
+		return EINVAL;
 	}
 
 	uint32_t page = parseNumber(argv[1]);
@@ -3417,14 +3419,18 @@ static void cmd_ftl_write(int argc, char** argv)
 	uint32_t ret = ftl_write_single_page(h2fmi_ftl_device, page, (uint8_t*)data);
 
 	bufferPrintf("ftl: Command completed with result 0x%08x.\r\n", ret);
+
+	return SUCCESS;
 }
 COMMAND("ftl_write", "FTL write single page", cmd_ftl_write);
 
 extern void YAFTL_Flush();
-static void cmd_ftl_flush(int argc, char** argv)
+static error_t cmd_ftl_flush(int argc, char** argv)
 {
 	YAFTL_Flush();
 	bufferPrintf("ftl: Command completed.\r\n");
+
+	return SUCCESS;
 }
 COMMAND("ftl_flush", "FTL flush", cmd_ftl_flush);
 

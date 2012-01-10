@@ -3308,7 +3308,7 @@ static void ftl_init()
 }
 MODULE_INIT(ftl_init);
 
-static int cmd_vfl_read(int argc, char** argv)
+static error_t cmd_vfl_read(int argc, char** argv)
 {
 	if(argc < 3) {
 		bufferPrintf("Usage: %s <address> <page>\r\n", argv[0]);
@@ -3325,7 +3325,7 @@ static int cmd_vfl_read(int argc, char** argv)
 }
 COMMAND("vfl_read", "read a page of VFL into RAM", cmd_vfl_read);
 
-static int cmd_vfl_erase(int argc, char** argv)
+static error_t cmd_vfl_erase(int argc, char** argv)
 {
 	int count;
 
@@ -3351,7 +3351,7 @@ static int cmd_vfl_erase(int argc, char** argv)
 }
 COMMAND("vfl_erase", "erase a block of VFL", cmd_vfl_erase);
 
-static int cmd_ftl_read(int argc, char** argv)
+static error_t cmd_ftl_read(int argc, char** argv)
 {
 	if(argc < 4) {
 		bufferPrintf("Usage: %s <address> <lpn> <pages>\r\n", argv[0]);
@@ -3369,7 +3369,7 @@ static int cmd_ftl_read(int argc, char** argv)
 }
 COMMAND("ftl_read", "read a page of FTL into RAM", cmd_ftl_read);
 
-static int cmd_ftl_sync(int argc, char** argv)
+static error_t cmd_ftl_sync(int argc, char** argv)
 {
 	bufferPrintf("Syncing FTL...\r\n");
 	if(ftl_sync())
@@ -3381,7 +3381,7 @@ static int cmd_ftl_sync(int argc, char** argv)
 }
 COMMAND("ftl_sync", "commit the current FTL context", cmd_ftl_sync);
 
-static int cmd_bdev_read(int argc, char** argv)
+static error_t cmd_bdev_read(int argc, char** argv)
 {
 	if(argc < 4) {
 		bufferPrintf("Usage: %s <address> <offset> <bytes>\r\n", argv[0]);
@@ -3399,7 +3399,7 @@ static int cmd_bdev_read(int argc, char** argv)
 }
 COMMAND("bdev_read", "read bytes from a NAND block device", cmd_bdev_read);
 
-static int cmd_ftl_mapping(int argc, char** argv)
+static error_t cmd_ftl_mapping(int argc, char** argv)
 {
 	ftl_printdata();
 

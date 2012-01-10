@@ -367,7 +367,7 @@ static void dispatchRequest(volatile DMARequest *request, int controller, int ch
 		request->handler(1, controller, channel);
 }
 
-static int cmd_dma(int argc, char** argv)
+static error_t cmd_dma(int argc, char** argv)
 {
 	if(argc < 4) {
 		bufferPrintf("Usage: %s <source> <dest> <size>\r\n", argv[0]);

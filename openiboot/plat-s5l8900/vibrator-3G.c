@@ -63,7 +63,7 @@ void vibrator_off() {
 	timer_init(VibratorTimer, 0, 1, 0, 0, FALSE, FALSE, FALSE, FALSE, FALSE);
 }
 
-static int cmd_vibrator_loop(int argc, char** argv)
+static error_t cmd_vibrator_loop(int argc, char** argv)
 {
 	if(argc < 3) {
 		bufferPrintf("Usage: %s <frequency 1-12000000> <duty time in percent> <time vibrator on in ms>\r\n", argv[0]);
@@ -82,7 +82,7 @@ static int cmd_vibrator_loop(int argc, char** argv)
 }
 COMMAND("vibrator_loop", "turn the vibrator on in a loop", cmd_vibrator_loop);
 
-static int cmd_vibrator_once(int argc, char** argv)
+static error_t cmd_vibrator_once(int argc, char** argv)
 {
 	if(argc < 2) {
 		bufferPrintf("Usage: %s <duration in ms>\r\n", argv[0]);
@@ -99,7 +99,7 @@ static int cmd_vibrator_once(int argc, char** argv)
 }
 COMMAND("vibrator_once", "vibrate once", cmd_vibrator_once);
 
-static int cmd_vibrator_off(int argc, char** argv)
+static error_t cmd_vibrator_off(int argc, char** argv)
 {
 	bufferPrintf("Turning off vibrator.\r\n");
 

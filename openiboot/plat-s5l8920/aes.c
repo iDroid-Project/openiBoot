@@ -146,7 +146,7 @@ return_free:
 		free(buff);
 }
 
-static int cmd_aes(int argc, char** argv)
+static error_t cmd_aes(int argc, char** argv)
 {
 	uint8_t* key = NULL;
 	uint8_t* iv = NULL;

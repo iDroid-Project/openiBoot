@@ -2126,7 +2126,7 @@ void h2fmi_init()
 }
 MODULE_INIT(h2fmi_init);
 
-static int cmd_nand_read(int argc, char** argv)
+static error_t cmd_nand_read(int argc, char** argv)
 {
 	if(argc < 8)
 	{
@@ -2148,7 +2148,7 @@ static int cmd_nand_read(int argc, char** argv)
 }
 COMMAND("nand_read", "H2FMI NAND read single page", cmd_nand_read);
 
-static int cmd_vfl_read(int argc, char** argv)
+static error_t cmd_vfl_read(int argc, char** argv)
 {
 	if(argc < 6)
 	{
@@ -2167,7 +2167,7 @@ static int cmd_vfl_read(int argc, char** argv)
 }
 COMMAND("vfl_read", "VFL read single page", cmd_vfl_read);
 
-static int cmd_ftl_read(int argc, char** argv)
+static error_t cmd_ftl_read(int argc, char** argv)
 {
 	if(argc < 3)
 	{

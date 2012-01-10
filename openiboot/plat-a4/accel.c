@@ -64,7 +64,7 @@ int accel_get_z()
 	return (signed char)(accel_get_reg(ACCEL_OUTZ));
 }
 
-static int cmd_accel(int argc, char** argv)
+static error_t cmd_accel(int argc, char** argv)
 {
 	int x = accel_get_x();
 	int y = accel_get_y();

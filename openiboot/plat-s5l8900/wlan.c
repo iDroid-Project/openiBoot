@@ -375,7 +375,7 @@ void wlan_init()
 }
 MODULE_INIT(wlan_init);
 
-static int cmd_wlan_prog_helper(int argc, char** argv)
+static error_t cmd_wlan_prog_helper(int argc, char** argv)
 {
 	if(argc < 3) {
 		bufferPrintf("Usage: %s <address> <len>\r\n", argv[0]);
@@ -391,7 +391,7 @@ static int cmd_wlan_prog_helper(int argc, char** argv)
 }
 COMMAND("wlan_prog_helper", "program wlan fw helper", cmd_wlan_prog_helper);
 
-static int cmd_wlan_prog_real(int argc, char** argv)
+static error_t cmd_wlan_prog_real(int argc, char** argv)
 {
 	if(argc < 3) {
 		bufferPrintf("Usage: %s <address> <len>\r\n", argv[0]);

@@ -86,7 +86,7 @@ int wdt_counter()
 	return count;
 }
 
-static int cmd_wdt(int argc, char** argv)
+static error_t cmd_wdt(int argc, char** argv)
 {
 	bufferPrintf("counter: %d\r\n", wdt_counter());
 

@@ -590,7 +590,7 @@ void lcd_set_backlight_level(int level) {
 }
 
 
-static int cmd_backlight(int argc, char** argv)
+static error_t cmd_backlight(int argc, char** argv)
 {
 	if(argc < 2) {
 		bufferPrintf("Usage: %s <0-%d>\r\n", argv[0], LCD_MAX_BACKLIGHT);
