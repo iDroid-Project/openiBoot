@@ -23,6 +23,7 @@
 
 #include "vfl.h"
 #include "ftl.h"
+#include "util.h"
 
 // FTL types
 #ifdef CONFIG_FTL_YAFTL
