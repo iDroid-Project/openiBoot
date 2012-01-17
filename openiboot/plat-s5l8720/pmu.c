@@ -458,36 +458,21 @@ static error_t cmd_time(int argc, char** argv)
 	return 0;
 }
 COMMAND("time", "display the current time according to the RTC", cmd_time);
-
-<<<<<<< HEAD
-static int cmd_poweroff(int argc, char** argv)
-=======
 static error_t cmd_poweroff(int argc, char** argv)
->>>>>>> 9f45b440f6576259dda4c654169cee26050f7bac
 {
 	pmu_poweroff();
 
 	return 0;
 }
 COMMAND("poweroff", "power off the device", cmd_poweroff);
-
-<<<<<<< HEAD
-static int cmd_pmu_voltage(int argc, char** argv)
-=======
 static error_t cmd_pmu_voltage(int argc, char** argv)
->>>>>>> 9f45b440f6576259dda4c654169cee26050f7bac
 {
 	bufferPrintf("battery voltage: %d mV\r\n", pmu_get_battery_voltage());
 
 	return 0;
 }
 COMMAND("pmu_voltage", "get the battery voltage", cmd_pmu_voltage);
-
-<<<<<<< HEAD
-static int cmd_pmu_powersupply(int argc, char** argv)
-=======
 static error_t cmd_pmu_powersupply(int argc, char** argv)
->>>>>>> 9f45b440f6576259dda4c654169cee26050f7bac
 {
 	PowerSupplyType power = pmu_get_power_supply();
 	bufferPrintf("power supply type: ");
@@ -525,12 +510,7 @@ static error_t cmd_pmu_powersupply(int argc, char** argv)
 	return 0;
 }
 COMMAND("pmu_powersupply", "get the power supply type", cmd_pmu_powersupply);
-
-<<<<<<< HEAD
-static int cmd_pmu_charge(int argc, char** argv)
-=======
 static error_t cmd_pmu_charge(int argc, char** argv)
->>>>>>> 9f45b440f6576259dda4c654169cee26050f7bac
 {
 	if(argc < 2) {
 		bufferPrintf("Usage: %s <on|off>\r\n", argv[0]);
@@ -551,12 +531,7 @@ static error_t cmd_pmu_charge(int argc, char** argv)
 	return 0;
 }
 COMMAND("pmu_charge", "turn on and off the power charger", cmd_pmu_charge);
-
-<<<<<<< HEAD
-static int cmd_pmu_nvram(int argc, char** argv)
-=======
 static error_t cmd_pmu_nvram(int argc, char** argv)
->>>>>>> 9f45b440f6576259dda4c654169cee26050f7bac
 {
 	uint8_t reg;
 
