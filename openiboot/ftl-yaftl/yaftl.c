@@ -1361,9 +1361,13 @@ static uint32_t YAFTL_Restore(uint8_t ftlCtrlBlockPresent)
 				break;
 		}
 
-		// If no readable page was found, skip this block.
-		if (result > 1)
+		// If no readable page was found, free this block.
+		if (result > 1) {
+			if(!vfl_erase_single_block(vfl, i, TRUE))
+				sInfo.blockArray[i].status = BLOCKSTATUS_FREE;
+			++sInfo.blockArray[i].eraseCount;
 			continue;
+		}
 
 		uint8_t type = sInfo.spareBuffer10->type;
 
@@ -1377,6 +1381,9 @@ static uint32_t YAFTL_Restore(uint8_t ftlCtrlBlockPresent)
 					system_panic("yaftl: out of memory.\r\n");
 			} else {
 				bufferPrintf("yaftl: warning - block %d doesn't belong to anything (type 0x%02x).\r\n", i, type);
+				if(!vfl_erase_single_block(vfl, i, TRUE))
+					sInfo.blockArray[i].status = BLOCKSTATUS_FREE;
+				++sInfo.blockArray[i].eraseCount;
 			}
 		} else {
 			sInfo.blockArray[i].status = BLOCKSTATUS_FREE;
@@ -1520,16 +1527,62 @@ static uint32_t YAFTL_Restore(uint8_t ftlCtrlBlockPresent)
 			}
 		}
 
+		if (!ftlCtrlBlockPresent) {
+			for (i = 0, j = 0; i < sGeometry.numBlocks && j <= 2; i++) {
+				if (sInfo.blockArray[i].status == BLOCKSTATUS_FREE) {
+					sInfo.blockArray[i].status = BLOCKSTATUS_FTLCTRL;
+					sInfo.FTLCtrlBlock[j++] = i;
+				}
+			}
+
+			vfl_write_context(vfl, sInfo.FTLCtrlBlock);
+		}
+
 		free(bootBuffer);
 		free(blockLpns);
 
 		initBlockStats();
+
+		++sStats.field_58;
+		sStats.freeBlocks = sInfo.blockStats.numAvailable + sInfo.blockStats.numIAvailable;
+		sStats.dataPages = sInfo.blockStats.numValidDPages;
+		sStats.indexPages = sInfo.blockStats.numValidIPages;
+
+		for (i = 0; i < sGeometry.numBlocks; i++) {
+			if (sInfo.blockStats.numAvailable <= 4 || sInfo.blockStats.numIAvailable <= 1)
+				break;
+
+			if (sInfo.blockArray[i].status == BLOCKSTATUS_ALLOCATED) {
+				if (!sInfo.blockArray[i].validPagesDNo && sInfo.blockStats.numAvailable <= 4) {
+					sInfo.blockArray[i].validPagesINo = 0;
+					gcFreeBlock(i, FALSE);
+				}
+			} else if (sInfo.blockArray[i].status == BLOCKSTATUS_I_ALLOCATED) {
+				if (!sInfo.blockArray[i].validPagesINo && sInfo.blockStats.numIAvailable <= 1) {
+					gcFreeIndexPages(i, FALSE);
+				}
+			}
+		}
+
+		gcFreeIndexPages(sInfo.latestIndexBlk.blockNum, 0);
+		sInfo.blockArray[sInfo.latestUserBlk.blockNum].validPagesINo = 0;
+		gcFreeBlock(sInfo.latestUserBlk.blockNum, 0);
+
+		while (sInfo.numIBlocks < sInfo.blockStats.numIAllocated + 2)
+			gcFreeIndexPages(0xFFFFFFFF, TRUE);
 
 		for (i = 0; i < sGeometry.numBlocks; i++) {
 			uint8_t status = sInfo.blockArray[i].status;
 
 			if (status == BLOCKSTATUS_ALLOCATED || status == BLOCKSTATUS_GC)
 				sInfo.blockArray[i].validPagesINo = 0;
+
+			if (status != BLOCKSTATUS_FREE && sInfo.blockArray[i].unkn5 == 0x80) {
+				if (status == BLOCKSTATUS_ALLOCATED || status == BLOCKSTATUS_GC)
+					gcFreeBlock(i, FALSE);
+				else
+					gcFreeIndexPages(i, FALSE);
+			}
 		}
 	} else {
 		// No user pages. Find a free block, and choose it to be the latest user page.
@@ -1542,7 +1595,24 @@ static uint32_t YAFTL_Restore(uint8_t ftlCtrlBlockPresent)
 
 		sInfo.latestUserBlk.usedPages = 0;
 		memset(sInfo.latestUserBlk.tocBuffer, 0xFF, sInfo.tocPagesPerBlock * sGeometry.bytesPerPage);
+
+		if (!ftlCtrlBlockPresent) {
+			for (i = 0, j = 0; i < sGeometry.numBlocks && j <= 2; i++) {
+				if (sInfo.blockArray[i].status == BLOCKSTATUS_FREE) {
+					sInfo.blockArray[i].status = BLOCKSTATUS_FTLCTRL;
+					sInfo.FTLCtrlBlock[j++] = i;
+				}
+			}
+
+			vfl_write_context(vfl, sInfo.FTLCtrlBlock);
+		}
+
 		initBlockStats();
+
+		++sStats.field_58;
+		sStats.freeBlocks = sInfo.blockStats.numAvailable + sInfo.blockStats.numIAvailable;
+		sStats.dataPages = 0;
+		sStats.indexPages = 0;
 	}
 
 	sInfo.blockStats.field_1C = 1;
@@ -1572,8 +1642,10 @@ restore_final:
 		}
 	}
 
-	sInfo.pagesAvailable = sInfo.unk188_0x63 * (sInfo.totalPages - 1) / 0x64u;
+	sInfo.pagesAvailable = sInfo.unk188_0x63 * (sInfo.totalPages - 1) / 0x64;
 	sInfo.bytesPerPage = sGeometry.bytesPerPage;
+
+	L2V_Open();
 
 	bufferPrintf("yaftl: restore done.\r\n");
 
