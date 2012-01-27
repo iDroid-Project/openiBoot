@@ -212,12 +212,7 @@ static error_t cmd_gpio_pinstate(int argc, char** argv)
 	return 0;
 }
 COMMAND("gpio_pinstate", "get the state of a GPIO pin", cmd_gpio_pinstate);
-
-<<<<<<< HEAD
-static int cmd_gpio_out(int argc, char** argv)
-=======
 static error_t cmd_gpio_out(int argc, char** argv)
->>>>>>> 9f45b440f6576259dda4c654169cee26050f7bac
 {
 	if(argc < 3) {
 		bufferPrintf("Usage: %s <port> [0|1]\r\n", argv[0]);
