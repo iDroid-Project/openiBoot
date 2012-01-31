@@ -186,7 +186,7 @@ static void* searchNode(BTree* tree, uint32_t root, BTKey* searchKey, int *exact
 	descriptor = readBTNodeDescriptor(root, tree);
 
 	if(descriptor == NULL)
-		return NULL;
+		return;
 
 	lastRecordDataOffset = 0;
 
@@ -225,7 +225,7 @@ static void* searchNode(BTree* tree, uint32_t root, BTKey* searchKey, int *exact
 
 	if(lastRecordDataOffset == 0) {
 		hfs_panic("BTree inconsistent!");
-		return NULL;
+		return;
 	}
 
 	if(descriptor->kind == kBTLeafNode) {        
@@ -255,7 +255,7 @@ static void* searchNode(BTree* tree, uint32_t root, BTKey* searchKey, int *exact
 			*exact = FALSE;
 
 		free(descriptor);
-		return NULL;
+		return;
 	}
 }
 
