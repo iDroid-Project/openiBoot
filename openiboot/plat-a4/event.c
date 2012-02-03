@@ -1,3 +1,6 @@
+/**
+ * @brief A4 Event timers/handlers
+ */
 #include "openiboot.h"
 #include "timer.h"
 #include "event.h"
