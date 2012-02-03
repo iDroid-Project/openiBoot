@@ -28,7 +28,11 @@ PATCH_NEWLIB_MAKEINFO="newlib-1.14.0-missing-makeinfo.patch"
 
 if [ -z "$IPHONELINUXDEV" ]; then
 	PREFIX=/usr/local
-	NEEDROOT=1
+	if uname | grep -iq "darwin"; then
+            NEEDROOT=0
+        else
+            NEEDROOT=1
+        fi
 else
 	PREFIX="$IPHONELINUXDEV"
 	NEEDROOT=0
