@@ -35,7 +35,7 @@ static void gcPopulateBTOC(GCData* _data, uint8_t _scrub, uint32_t _max)
 			result = YAFTL_readPage(page, _data->pageBuffer1, pSpare, FALSE,
 					TRUE, _scrub);
 
-			if (SUCCEEDED(result) && pSpare->lpn < _max)
+			if (!result && pSpare->lpn < _max)
 				_data->btoc[i] = pSpare->lpn;
 		}
 	}
