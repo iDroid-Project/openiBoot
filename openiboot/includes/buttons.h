@@ -1,4 +1,12 @@
 /**
+ *	@file 
+ *
+ *  Header file for OiB knowing if a button if being pushed.
+ *
+ *  @defgroup Buttons
+ */
+
+/**
  * buttons.h
  *
  * Copyright 2011 iDroid Project
@@ -21,10 +29,6 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-/**
- *	@file Header file for OiB knowing if a button if being pushed.
- *
- */
 #ifndef BUTTONS_H
 #define BUTTONS_H
 
@@ -35,6 +39,8 @@
  *	Check to see if a button is being pressed
  *
  *	Returns TRUE or FALSE
+ *
+ *  @ingroup Buttons
  */
 int buttons_is_pushed(int);
 

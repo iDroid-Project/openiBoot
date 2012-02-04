@@ -1,4 +1,15 @@
 /**
+ *  @file 
+ *
+ *  This file defines the GPIO Interface
+ *
+ *  The GPIO (General Purpose Input Output) interface is designed to represent 
+ *  the setup, direction, enabling/disabling, reading and writing of GPIO pins.
+ *
+ *  @defgroup GPIO
+ */
+
+/**
  * gpio.h
  *
  * Copyright 2011 iDroid Project
@@ -21,14 +32,6 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-/**
- *  @file This file defines the GPIO Interface
- *
- *  The GPIO (General Purpose Input Output) interface is designed to represent 
- *  the setup, direction, enabling/disabling, reading and writing of GPIO pins.
- *
- *  @defgroup GPIO
- */
 #ifndef GPIO_H
 #define GPIO_H
 
