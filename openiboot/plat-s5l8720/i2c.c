@@ -259,7 +259,7 @@ static error_t cmd_iic_read(int argc, char** argv)
 {
 	if(argc < 4) {
 		bufferPrintf("usage: %s <bus> <address> <register>\n", argv[0]);
-		return -1;
+		return EINVAL;
 	}
 
 
@@ -274,14 +274,15 @@ static error_t cmd_iic_read(int argc, char** argv)
 	
 	bufferPrintf("result: %d, error: %d\r\n", (int) out[0], error);
 
-	return 0;
+	return SUCCESS;
 }
 COMMAND("iic_read", "read a IIC register", cmd_iic_read);
+
 static error_t cmd_iic_write(int argc, char** argv)
 {
 	if(argc < 5) {
 		bufferPrintf("usage: %s <bus> <address> <register> <value>\r\n", argv[0]);
-		return -1;
+		return EINVAL;
 	}
 
 	uint8_t buffer[2];
@@ -294,6 +295,6 @@ static error_t cmd_iic_write(int argc, char** argv)
 	
 	bufferPrintf("result: %d\r\n", error);
 
-	return 0;
+	return SUCCESS;
 }
 COMMAND("iic_write", "write a IIC register", cmd_iic_write);

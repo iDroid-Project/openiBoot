@@ -513,7 +513,7 @@ static error_t cmd_clcd_dump(int _argc, char **_argv)
 	bufferPrintf("MIPI DSIM dump:\n");
 	dump_memory(MIPI_DSIM, 0x60);
 
-	return 0;
+	return SUCCESS;
 }
 COMMAND("clcd_dump", "Dump the CLCD registers to the screen.", cmd_clcd_dump);
 

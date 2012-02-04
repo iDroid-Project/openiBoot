@@ -179,7 +179,7 @@ static error_t cmd_enable_all_clocks(int argc, char **argv)
 	for(i = 0; i <= CLOCK_GATE_MAX; i++)
 		clock_gate_switch(i, ON);
 
-	return 0;
+	return SUCCESS;
 }
 COMMAND("enable_all_clocks", "Enable all clock-gates, for debugging.",
 		cmd_enable_all_clocks);
@@ -461,6 +461,6 @@ static error_t cmd_frequencies(int argc, char **argv)
 	for(i = 0; i < 55; i++)
 		bufferPrintf("clocks: clock %d %u.\n", i, CalculatedFrequencyTable[i]);
 
-	return 0;
+	return SUCCESS;
 }
 COMMAND("frequencies", "Print clock frequencies.", cmd_frequencies);

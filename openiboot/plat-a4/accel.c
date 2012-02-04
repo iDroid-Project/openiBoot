@@ -72,6 +72,6 @@ static error_t cmd_accel(int argc, char** argv)
 
 	bufferPrintf("x: %d, y: %d, z: %d\r\n", x, y, z);
 
-	return 0;
+	return SUCCESS;
 }
 COMMAND("accel", "display accelerometer data", cmd_accel);

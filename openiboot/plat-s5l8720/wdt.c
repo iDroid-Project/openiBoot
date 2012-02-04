@@ -90,6 +90,6 @@ static error_t cmd_wdt(int argc, char** argv)
 {
 	bufferPrintf("counter: %d\r\n", wdt_counter());
 
-	return 0;
+	return SUCCESS;
 }
 COMMAND("wdt", "display the current wdt stats", cmd_wdt);
