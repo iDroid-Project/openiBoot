@@ -1,4 +1,12 @@
 /**
+ *  @file
+ *
+ *  Header file for OpeniBoot's Watchdog Timer implementation.
+ *
+ *  @defgroup WDT
+ */
+
+/**
  * wdt.h
  *
  * Copyright 2011 iDroid Project
@@ -23,14 +31,6 @@
 
 #ifndef WDT_H
 #define WDT_H
-
-/**
- *  @file
- *
- *  This file defines the Watchdog Timer functions.
- *
- *  @defgroup WDT
- */
 
 #include "openiboot.h"
 

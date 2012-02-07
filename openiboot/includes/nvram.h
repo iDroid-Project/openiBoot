@@ -1,7 +1,7 @@
 /**
  *	@file 
  *
- *  This file defines NVRAM interface.
+ *  Header file for OpeniBoot's NVRAM interface.
  *
  *  The NVRAM (Non-volatile Random Access Memory) interface is designed to 
  *  represent the reading, writing and setup of the NVRAM.

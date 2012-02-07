@@ -1,7 +1,7 @@
 /**
  *  @file 
  *
- *  This file defines the GPIO Interface
+ *  Header file for OpeniBoot's GPIO interface.
  *
  *  The GPIO (General Purpose Input Output) interface is designed to represent 
  *  the setup, direction, enabling/disabling, reading and writing of GPIO pins.

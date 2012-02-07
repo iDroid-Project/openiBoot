@@ -1,7 +1,9 @@
 /**
  *  @file
  *
- *  This file defines errors OiB can return.
+ *  Header file for OpeniBoot's errors.
+ *
+ *  Errors so special we need a header file for them.
  *
  *  @defgroup Error
  */

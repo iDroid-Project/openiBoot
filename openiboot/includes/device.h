@@ -1,7 +1,7 @@
 /**
  * @file
  *
- * This file defines the device interface.
+ * Header file for OpeniBoot's device interface.
  *
  * The device interface is designed to represent
  * any kind of device that needs to be accessed in

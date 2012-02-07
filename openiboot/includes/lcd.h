@@ -1,4 +1,19 @@
 /**
+ *  @file 
+ *
+ *  Header file for OpeniBoot's LCD implementation.
+ *
+ *  This file defines LCD initialisation, shutdown and various control
+ *  inplementations including backlight control.
+ *
+ *  This is a way of displaying things on the LCD screen, if you don't know
+ *  what that is, please consider suicide it will save the world of your 
+ *  idiocy.
+ *
+ *  @defgroup LCD
+ */
+
+/**
  * lcd.h
  *
  * Copyright 2011 iDroid Project
@@ -19,19 +34,6 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
- */
-
-/**
- *  @file 
- *
- *  This file defines LCD initialisation, shutdown and various control
- *  inplementations including backlight control.
- *
- *  This is a way of displaying things on the LCD screen, if you don't know
- *  what that is, please consider suicide it will save the world of your 
- *  idiocy.
- *
- *  @defgroup LCD
  */
 
 #ifndef LCD_H

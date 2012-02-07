@@ -1,7 +1,9 @@
 /**
  *  @file 
  *
- *  Definies the functions for the Ambient Light Sensor (ALS)
+ *  Header file for the Ambient Light sensor (ALS)
+ *
+ *  Defines the setup and functionality of the Ambient Light Sensor.
  *
  *  @defgroup ALS
  */
