@@ -224,7 +224,7 @@ static error_t cmd_aes(int argc, char** argv)
 	if(argc < 4)
 	{
 		bufferPrintf("Usage: %s <enc/dec> <gid/uid/key> [data] [iv]\r\n", argv[0]);
-		return -1;
+		return EINVAL;
 	}
 
 	if(strcmp(argv[2], "gid") == 0)
@@ -274,7 +274,7 @@ static error_t cmd_aes(int argc, char** argv)
 	if(key)
 		free(key);
 
-	return 0;
+	return SUCCESS;
 }
 COMMAND("aes", "use the hardware crypto engine", cmd_aes);
 

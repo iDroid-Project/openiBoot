@@ -1,4 +1,15 @@
 /**
+ * @file
+ *
+ * Header file for OpeniBoot's VFL interface.
+ *
+ * Functions in this file are for manipulating a NAND device
+ * as a contiguous block of data.
+ *
+ * @defgroup VFL
+ */
+
+/**
  * vfl.h
  *
  * Copyright 2011 iDroid Project
@@ -26,17 +37,6 @@
 
 #include "openiboot.h"
 #include "nand.h"
-
-/**
- * @file
- *
- * This file contains the definition of the VFL interface.
- *
- * Functions in this file are to do with manipulating a NAND device
- * as a contiguous block of data.
- *
- * @defgroup VFL
- */
 
 /**
  * The VFL device info enumeration.

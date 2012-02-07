@@ -1,4 +1,12 @@
 /**
+ *  @file
+ *
+ *  Header file for OpeniBoot's Watchdog Timer implementation.
+ *
+ *  @defgroup WDT
+ */
+
+/**
  * wdt.h
  *
  * Copyright 2011 iDroid Project
@@ -26,9 +34,36 @@
 
 #include "openiboot.h"
 
+/**
+ *  Setup Watchdog Timer
+ *
+ *  @return Returns 0 on successful setup. Device will not function if unsuccessful.
+ *
+ *  @ingroup WDT
+ */
 int wdt_setup();
+
+/**
+ *  Check the Watchdog Timer's counter
+ *
+ *  @return The value of the counter.
+ *
+ *  @ingroup WDT
+ */
 int wdt_counter();
+
+/**
+ *  Enable Watchdog Timer
+ *
+ *  @ingroup WDT
+ */
 void wdt_enable();
+
+/**
+ *  Disable Watchdog Timer
+ *
+ *  @ingroup WDT
+ */
 void wdt_disable();
 
 #endif

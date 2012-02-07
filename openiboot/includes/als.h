@@ -1,4 +1,14 @@
 /**
+ *  @file 
+ *
+ *  Header file for the Ambient Light sensor (ALS)
+ *
+ *  Defines the setup and functionality of the Ambient Light Sensor.
+ *
+ *  @defgroup ALS
+ */
+
+/**
  * als.h
  *
  * Copyright 2011 iDroid Project
@@ -21,37 +31,36 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-/**
- *  @file Header file for Ambient Light Sensor
- *
- *  All the functionality of the Ambient Light Sensor is defined here.
- *
- */
 #ifndef ALS_H
 #define ALS_H
+
 /**
  *  Setup the Ambient Light Sensor
  *
  *  Returns 0 on correct initialisation and -1 on incorrect initialisation.
  *
+ *  @ingroup ALS
  */
 int als_setup();
 
 /**
  *  Set the high light threshold value
  *
+ *  @ingroup ALS
  */
 void als_sethighthreshold(unsigned int value);
 
 /**
  *  Set the low light threshold value
  *
+ *  @ingroup ALS
  */
 void als_setlowthreshold(unsigned int value);
 
 /**
  *  Collect data from the Ambient Light Sensor
  *
+ *  @ingroup ALS
  */
 unsigned int als_data();
 

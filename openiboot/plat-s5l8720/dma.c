@@ -371,7 +371,7 @@ static error_t cmd_dma(int argc, char** argv)
 {
 	if(argc < 4) {
 		bufferPrintf("Usage: %s <source> <dest> <size>\r\n", argv[0]);
-		return -1;
+		return EINVAL;
 	}
 
 	uint32_t source = parseNumber(argv[1]);
@@ -384,6 +384,6 @@ static error_t cmd_dma(int argc, char** argv)
 	bufferPrintf("dma_perform(controller: %d, channel %d): %d\r\n", controller, channel, dma_perform(source, dest, size, FALSE, &controller, &channel));
 	bufferPrintf("dma_finish(controller: %d, channel %d): %d\r\n", controller, channel, dma_finish(controller, channel, 500));
 
-	return 0;
+	return SUCCESS;
 }
 COMMAND("dma", "perform a DMA transfer", cmd_dma);

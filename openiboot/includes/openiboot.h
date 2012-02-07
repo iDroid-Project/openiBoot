@@ -1,4 +1,21 @@
 /**
+ * @file
+ *
+ * This is the main header file for OpeniBoot.
+ *
+ * A lot of functionality that is used frequently in OpeniBoot
+ * is defined here.
+ *
+ * @mainpage
+ *
+ * This is the documentation for OpeniBoot, which is generated
+ * from the OpeniBoot source code.
+ *
+ * To read the documentation for the various parts of OpeniBoot,
+ * please use the buttons above.
+ */
+
+/**
  * openiboot.h
  *
  * Copyright 2011 iDroid Project
@@ -23,23 +40,6 @@
 
 #ifndef OPENIBOOT_H
 #define OPENIBOOT_H
-
-/**
- * @file
- *
- * This is the main include for OpeniBoot.
- *
- * A lot of functionality that is used frequently in this
- * program is defined here.
- *
- * @mainpage
- *
- * This is the documentation for OpeniBoot, which is generated
- * from the OpeniBoot source code.
- *
- * To read the documentation for the various parts of OpeniBoot,
- * please use the buttons above.
- */
 
 #include <stddef.h> // size_t
 

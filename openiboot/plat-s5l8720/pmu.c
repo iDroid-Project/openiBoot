@@ -455,23 +455,26 @@ static error_t cmd_time(int argc, char** argv)
 	//bufferPrintf("Current time: %02d:%02d:%02d, %s %02d/%02d/20%02d\r\n", pmu_get_hours(), pmu_get_minutes(), pmu_get_seconds(), pmu_get_dayofweek_str(), pmu_get_month(), pmu_get_day(), pmu_get_year());
 	//bufferPrintf("Current time: %llu\n", pmu_get_epoch());
 
-	return 0;
+	return SUCCESS;
 }
 COMMAND("time", "display the current time according to the RTC", cmd_time);
+
 static error_t cmd_poweroff(int argc, char** argv)
 {
 	pmu_poweroff();
 
-	return 0;
+	return SUCCESS;
 }
 COMMAND("poweroff", "power off the device", cmd_poweroff);
+
 static error_t cmd_pmu_voltage(int argc, char** argv)
 {
 	bufferPrintf("battery voltage: %d mV\r\n", pmu_get_battery_voltage());
 
-	return 0;
+	return SUCCESS;
 }
 COMMAND("pmu_voltage", "get the battery voltage", cmd_pmu_voltage);
+
 static error_t cmd_pmu_powersupply(int argc, char** argv)
 {
 	PowerSupplyType power = pmu_get_power_supply();
@@ -507,14 +510,15 @@ static error_t cmd_pmu_powersupply(int argc, char** argv)
 	}
 	bufferPrintf("\r\n");
 
-	return 0;
+	return SUCCESS;
 }
 COMMAND("pmu_powersupply", "get the power supply type", cmd_pmu_powersupply);
+
 static error_t cmd_pmu_charge(int argc, char** argv)
 {
 	if(argc < 2) {
 		bufferPrintf("Usage: %s <on|off>\r\n", argv[0]);
-		return -1;
+		return EINVAL;
 	}
 
 	if(strcmp(argv[1], "on") == 0) {
@@ -525,12 +529,13 @@ static error_t cmd_pmu_charge(int argc, char** argv)
 		bufferPrintf("Charger off\r\n");
 	} else {
 		bufferPrintf("Usage: %s <on|off>\r\n", argv[0]);
-		return -1;
+		return EINVAL;
 	}
 
-	return 0;
+	return SUCCESS;
 }
 COMMAND("pmu_charge", "turn on and off the power charger", cmd_pmu_charge);
+
 static error_t cmd_pmu_nvram(int argc, char** argv)
 {
 	uint8_t reg;
@@ -546,6 +551,6 @@ static error_t cmd_pmu_nvram(int argc, char** argv)
 	pmu_get_gpmem_reg(PMU_IBOOTERRORSTAGE, &reg);
 	bufferPrintf("4: [iBootErrorStage] %02x\r\n", reg);
 
-	return 0;
+	return SUCCESS;
 }
 COMMAND("pmu_nvram", "list powernvram registers", cmd_pmu_nvram);
