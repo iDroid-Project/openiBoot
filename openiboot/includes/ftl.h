@@ -1,3 +1,12 @@
+
+/**
+ *  @file 
+ *
+ *  Header file for OiB's Flash Translation Layer
+ *
+ *  @defgroup FTL
+ */
+
 /**
  * ftl.h
  *
@@ -21,11 +30,6 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-/**
- *  @file Header file for OiB's Flash Translation Layer
- *
- */
-
 #ifndef  FTL_H
 #define  FTL_H
 
@@ -35,6 +39,7 @@
 /**
  *  FTL Device Prototypes
  *
+ *  @ingroup FTL
  */
 struct _ftl_device;
 
@@ -47,6 +52,7 @@ typedef error_t (*ftl_write_single_page_t)(struct _ftl_device *, uint32_t _page,
 /**
  *  FTL Device Structure
  *
+ *  @ingroup FTL
  */
 typedef struct _ftl_device
 {
@@ -65,6 +71,7 @@ typedef struct _ftl_device
 /**
  *  FTL Device Functions
  *
+ *  @ingroup FTL
  */
 error_t ftl_init(ftl_device_t *_dev);
 void ftl_cleanup(ftl_device_t *_dev);

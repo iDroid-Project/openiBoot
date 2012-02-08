@@ -1,4 +1,12 @@
 /**
+ *	@file 
+ *
+ *  Header file for camera functions in OiB
+ *
+ *  @defgroup Camera
+ */
+
+/**
  * actions.h
  *
  * Copyright 2011 iDroid Project
@@ -21,10 +29,6 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-/**
- *	@file Header file for camera functions in OiB
- *
- */
 #ifndef CAMERA_H
 #define CAMERA_H
 
@@ -34,6 +38,8 @@
  *	Note: The camera setup currently on recognises the existence of the camera and returns its model number
  *
  *	Returns 0 on successful setup.
+ *
+ *  @ingroup Camera
  */
 int camera_setup();
 

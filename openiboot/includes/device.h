@@ -1,4 +1,19 @@
 /**
+ * @file
+ *
+ * Header file for OpeniBoot's device interface.
+ *
+ * The device interface is designed to represent
+ * any kind of device that needs to be accessed in
+ * an abstract manor.
+ *
+ * It provides a way of getting information about a
+ * device and sending IO control messages to devices.
+ *
+ * @defgroup Device
+ */
+
+/**
  * device.h
  *
  * Copyright 2011 iDroid Project
@@ -25,21 +40,6 @@
 #define  DEVICE_H
 
 #include "openiboot.h"
-
-/**
- * @file
- *
- * This file defines the device interface.
- *
- * The device interface is designed to represent
- * any kind of device that needs to be accessed in
- * an abstract manor.
- *
- * It provides a way of getting information about a
- * device and sending IO control messages to devices.
- *
- * @defgroup Device
- */
 
 /**
  * This is the device information enumeration.

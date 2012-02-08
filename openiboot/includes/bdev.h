@@ -1,4 +1,13 @@
 /**
+ *	@file 
+ *
+ *  Header file for OiB's Block Device system.
+ *
+ *  This allows easy access to devices attached to OiB and contains structures 
+ *  for MBR, GPT and LwVM (Light Weight Volume Manager (Apple TV and iOS 5+))
+ */
+
+/**
  * bdev.h
  *
  * Copyright 2011 iDroid Project
@@ -21,12 +30,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-/**
- *	@file Header file for OiB's Block Device system.
- *
- *  This allows easy access to devices attached to OiB and contains structures for MBR, GPT and LwVM (Light Weight Volume Manager (Apple TV and iOS 5+))
- *
- */
+
 #ifndef  BDEV_H
 #define  BDEV_H
 

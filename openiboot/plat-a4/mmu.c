@@ -131,6 +131,6 @@ static error_t cmd_mmu_dump(int argc, char **argv)
 		}
 	}
 
-	return 0;
+	return SUCCESS;
 }
 COMMAND("mmu_dump", "Dump current MMU mappings.", cmd_mmu_dump);

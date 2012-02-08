@@ -1,3 +1,12 @@
+/*
+ *  @file 
+ *
+ *  Header file for clocks in OiB
+ *
+ *  Contains clock initialisation and configuration functions and clock data
+ *  structures.
+ */
+
 /**
  * clock.h
  *
@@ -21,12 +30,6 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-/*
- *  @file Header file for clocks in OiB
- *
- *  Contains clock initialisation and configuration functions and clock data structures.
- *
- */
 #ifndef CLOCK_H
 #define CLOCK_H
 

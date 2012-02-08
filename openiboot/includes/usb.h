@@ -1,4 +1,13 @@
 /**
+ *  @file
+ *
+ *  Header file for OpeniBoot's USB implementation.
+ *
+ *  Defines USB state, transfer, setup and all sorts.. I don't think anyone
+ *  actually understands it.. No one ever wants to fix it anyway.
+ */
+
+ /**
  * usb.h
  *
  * Copyright 2011 iDroid Project
