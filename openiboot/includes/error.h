@@ -1,4 +1,14 @@
 /**
+ *  @file
+ *
+ *  Header file for OpeniBoot's errors.
+ *
+ *  Errors so special we need a header file for them.
+ *
+ *  @defgroup Error
+ */
+
+/**
  * error.h
  *
  * Copyright 2011 iDroid Project
@@ -24,13 +34,7 @@
 #ifndef  ERROR_H
 #define  ERROR_H
 
-/**
- *  @file
- *
- *  This file defines errors OiB can return.
- *
- *  @defgroup Error
- */
+
 
 #define ERROR_BIT			(0x80000000)
 #define ERROR(x)			((x) | ERROR_BIT)

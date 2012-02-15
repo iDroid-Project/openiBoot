@@ -594,13 +594,13 @@ static error_t cmd_backlight(int argc, char** argv)
 {
 	if(argc < 2) {
 		bufferPrintf("Usage: %s <0-%d>\r\n", argv[0], LCD_MAX_BACKLIGHT);
-		return -1;
+		return EINVAL;
 	}
 
 	uint32_t level = parseNumber(argv[1]);
 	lcd_set_backlight_level(level);
 	bufferPrintf("backlight set to %d\r\n", level);
 
-	return 0;
+	return SUCCESS;
 }
 COMMAND("backlight", "set the backlight level", cmd_backlight);

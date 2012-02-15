@@ -289,6 +289,6 @@ static error_t cmd_frequency(int argc, char** argv)
 	bufferPrintf("Timebase frequency: %d Hz\r\n", clock_get_frequency(FrequencyBaseTimebase));
 	bufferPrintf("Usbphy frequency: %d Hz\r\n", clock_get_frequency(FrequencyBaseUsbPhy));
 
-	return 0;
+	return SUCCESS;
 }
 COMMAND("frequency", "display clock frequencies", cmd_frequency);

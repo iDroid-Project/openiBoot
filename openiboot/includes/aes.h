@@ -1,4 +1,10 @@
 /**
+ *	@file 
+ *
+ *  Header file for the AES function OiB performs.
+ */
+
+/**
  * aes.h
  *
  * Copyright 2011 iDroid Project
@@ -21,10 +27,6 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-/**
- *	@file Header file for the AES function OiB performs.
- *
- */
 #ifndef AES_H
 #define AES_H
 

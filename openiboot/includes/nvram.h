@@ -1,4 +1,18 @@
 /**
+ *	@file 
+ *
+ *  Header file for OpeniBoot's NVRAM interface.
+ *
+ *  The NVRAM (Non-volatile Random Access Memory) interface is designed to 
+ *  represent the reading, writing and setup of the NVRAM.
+ *
+ *  This provides a way of retrieving the values of environment variables 
+ *  stored in the NVRAM on the device.
+ *
+ *  @defgroup NVRAM
+ */
+
+/**
  * nvram.h
  *
  * Copyright 2011 iDroid Project
@@ -19,20 +33,6 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
- */
-
-/**
- *	@file 
- *
- *  This file defines NVRAM interface.
- *
- *  The NVRAM (Non-volatile Random Access Memory) interface is designed to 
- *  represent the reading, writing and setup of the NVRAM.
- *
- *  This provides a way of retrieving the values of environment variables 
- *  stored in the NVRAM on the device.
- *
- *  @defgroup NVRAM
  */
 
 #ifndef NVRAM_H

@@ -1,4 +1,15 @@
 /**
+ *	@file 
+ *
+ *  Header file for OpeniBoot's NAND device implementation.
+ *
+ *	Header file for NAND, including reading, writing, setup and NAND specific 
+ *  functions.
+ *
+ *  @defgroup NAND
+ */
+
+/**
  * nand.h
  *
  * Copyright 2011 iDroid Project
@@ -21,13 +32,6 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-/**
- *	@file nand.h
- *
- *	@brief Header file for NAND, including reading, writing, setup, and NAND specific functions.
- *
- */
-
 #ifndef  NAND_H
 #define  NAND_H
 
@@ -43,6 +47,7 @@ enum
 /**
  *	NAND Device Prototypes
  *
+ *  @ingroup NAND
  */
 struct _nand_device;
 
@@ -63,6 +68,7 @@ typedef void (*nand_device_set_ftl_region_t)(uint32_t _lpn, uint32_t _a2, uint32
 /**
  *	NAND Device Struct
  *
+ *  @ingroup NAND
  */
 typedef struct _nand_device
 {
@@ -81,7 +87,8 @@ typedef struct _nand_device
 
 /**
  *	NAND Device Functions
- *
+ *  
+ *  @ingroup NAND
  */
 void nand_device_init(nand_device_t *_nand);
 void nand_device_cleanup(nand_device_t *_nand);

@@ -376,7 +376,7 @@ static error_t cmd_poweroff(int argc, char** argv)
 {
 	pmu_poweroff();
 
-	return 0;
+	return SUCCESS;
 }
 COMMAND("poweroff", "power off the device", cmd_poweroff);
 
@@ -384,7 +384,7 @@ static error_t cmd_pmu_voltage(int argc, char** argv)
 {
 	bufferPrintf("battery voltage: %d mV\r\n", pmu_get_battery_voltage());
 
-	return 0;
+	return SUCCESS;
 }
 COMMAND("pmu_voltage", "get the battery voltage", cmd_pmu_voltage);
 
@@ -423,7 +423,7 @@ static error_t cmd_pmu_powersupply(int argc, char** argv)
 	}
 	bufferPrintf("\r\n");
 
-	return 0;
+	return SUCCESS;
 }
 COMMAND("pmu_powersupply", "get the power supply type", cmd_pmu_powersupply);
 
@@ -442,6 +442,6 @@ static error_t cmd_pmu_nvram(int argc, char** argv)
 	pmu_get_gpmem_reg(PMU_IBOOTERRORSTAGE, &reg);
 	bufferPrintf("4: [iBootErrorStage] %02x\r\n", reg);
 
-	return 0;
+	return SUCCESS;
 }
 COMMAND("pmu_nvram", "list powernvram registers", cmd_pmu_nvram);

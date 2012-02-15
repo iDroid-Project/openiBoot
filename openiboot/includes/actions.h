@@ -1,4 +1,13 @@
 /**
+ *	@file 
+ *
+ *  Header file for the 'actions' OiB can perform.
+ *
+ *  This includes image loading, setting the boot entry, kernel loading, 
+ *  ramdisk loading and the chainloading of iBoot.
+ */
+
+/**
  * actions.h
  *
  * Copyright 2011 iDroid Project
@@ -21,10 +30,6 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-/**
- *	@file Header file for the 'actions' OiB can perform, this includes image loading, setting the boot entry, kernel loading, ramdisk loading and the chainloading of iBoot.
- *
- */
 #ifndef ACTIONS_H
 #define ACTIONS_H
 
