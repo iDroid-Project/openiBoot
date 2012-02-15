@@ -348,8 +348,12 @@ static error_t vfl_vsvfl_read_single_page(vfl_device_t *_vfl, uint32_t dwVpn, ui
 
 	if(!empty_ok && ret == ENOENT)
 		ret = EIO;
-	else if(empty_ok && ret == ENOENT)
+	else if(empty_ok && ret == ENOENT) {
+		if(spare)
+			memset(spare, 0xFF, vfl->geometry.bytes_per_spare);
+
 		return 1;
+	}
 
 	if(ret == EINVAL || ret == EIO)
 	{
