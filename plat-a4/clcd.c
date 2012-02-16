@@ -242,10 +242,6 @@ int displaypipe_init() {
 
 	clock_gate_switch(0xB, ON); // HPERF2
 
-	memset((void*)CLCD_FRAMEBUFFER, 0, 0x800000);
-
-	bufferPrintf("displaypipe_init: framebuffer address: 0x%08x\n", CLCD_FRAMEBUFFER);
-
 	if (!LCDTable)
 		LCDTable = &LCDInfoTable[DISPLAYID];
 
@@ -722,7 +718,7 @@ static Window* createWindow(int zero0, int zero2, int width, int height, ColorSp
 	newWindow->height = height;
 	newWindow->lineBytes = width * (bitsPerPixel / 8);
 
-	createFramebuffer(&newWindow->framebuffer, CLCD_FRAMEBUFFER, width, height, width, colorSpace);
+	createFramebuffer(&newWindow->framebuffer, (uint32_t)memalign(16, newWindow->lineBytes*height), width, height, width, colorSpace);
 
 	SET_REG(DISPLAY_PIPE + 0x4040, (reg_bit << 8) | 1);
 	SET_REG(DISPLAY_PIPE + 0x4044, (uint32_t)newWindow->framebuffer.buffer);
