@@ -1,4 +1,4 @@
-/*
+/**
  *  @file 
  *
  *  Header file for clocks in OiB
@@ -7,7 +7,7 @@
  *  structures.
  */
 
-/**
+/*
  * clock.h
  *
  * Copyright 2011 iDroid Project

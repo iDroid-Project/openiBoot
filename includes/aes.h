@@ -4,7 +4,7 @@
  *  Header file for the AES function OiB performs.
  */
 
-/**
+/*
  * aes.h
  *
  * Copyright 2011 iDroid Project

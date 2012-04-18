@@ -4,7 +4,7 @@
  *  Header file for Chip identification
  */
 
-/**
+/*
  * chipid.h
  *
  * Copyright 2011 iDroid Project

@@ -13,7 +13,7 @@
  * @defgroup Device
  */
 
-/**
+/*
  * device.h
  *
  * Copyright 2011 iDroid Project

@@ -7,7 +7,7 @@
  *  ramdisk loading and the chainloading of iBoot.
  */
 
-/**
+/*
  * actions.h
  *
  * Copyright 2011 iDroid Project

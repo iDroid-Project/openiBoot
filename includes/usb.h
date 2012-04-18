@@ -7,7 +7,7 @@
  *  actually understands it.. No one ever wants to fix it anyway.
  */
 
- /**
+ /*
  * usb.h
  *
  * Copyright 2011 iDroid Project

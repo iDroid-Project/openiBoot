@@ -7,7 +7,7 @@
  *  for MBR, GPT and LwVM (Light Weight Volume Manager (Apple TV and iOS 5+))
  */
 
-/**
+/*
  * bdev.h
  *
  * Copyright 2011 iDroid Project

@@ -15,7 +15,7 @@
  * please use the buttons above.
  */
 
-/**
+/*
  * openiboot.h
  *
  * Copyright 2011 iDroid Project

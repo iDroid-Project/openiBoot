@@ -1,4 +1,14 @@
 /**
+ *  @file
+ *
+ *  Header file for dealing with images such as IMG3s
+ *
+ *  This includes reading, writing, installing, uninstalling and verifying
+ *  images. These images are typically found on the NOR (devices before iPhone
+ *  4) and on the NAND (devices after and including iPhone 4)
+ */
+
+/*
  * images.h
  *
  * Copyright 2011 iDroid Project

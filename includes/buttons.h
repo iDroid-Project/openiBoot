@@ -3,10 +3,12 @@
  *
  *  Header file for OiB knowing if a button if being pushed.
  *
+ *  Yes that is all it does.. Expected more?
+ *
  *  @defgroup Buttons
  */
 
-/**
+/*
  * buttons.h
  *
  * Copyright 2011 iDroid Project

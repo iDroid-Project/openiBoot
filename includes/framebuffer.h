@@ -1,4 +1,14 @@
 /**
+ *  @file
+ *
+ *  Header file for using OpeniBoot's framebuffer.
+ *
+ *  This includes setting up framebuffer, turning text on and off, printing
+ *  text to the screen and clearing the screen. Yeah everyone loves scrolling
+ *  black and white text...
+ */
+
+/*
  * framebuffer.h
  *
  * Copyright 2011 iDroid Project
