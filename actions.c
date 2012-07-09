@@ -46,7 +46,11 @@
 #endif
 
 #ifndef INITRD_LOAD
+#ifdef CONFIG_S5L8720
+#define INITRD_LOAD (RAMStart + 0x07000000)
+#else
 #define INITRD_LOAD (RAMStart + 0x08000000)
+#endif
 #endif
 
 /* this code is adapted from http://www.simtec.co.uk/products/SWLINUX/files/booting_article.html, which is distributed under the BSD license */
