@@ -246,7 +246,7 @@ ClearCPUInstructionCache:
 	NOP
 	NOP
 	NOP
-	BLX	LR
+	BX	LR
 
 CleanDataCacheLineMVA:
 	MCR	p15, 0,	R0, c7, c10, 1
