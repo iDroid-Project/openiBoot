@@ -7,88 +7,98 @@
 #include <gelf.h>
 #else
 #include <linux/elf.h>
+#include <endian.h>
 #endif
 
-char createImage(char* inElf, size_t inElfSize, char** outImage, size_t* outImageSize) {
+int
+createImage(char* inElf, size_t inElfSize, char** outImage, size_t* outImageSize)
+{
 	Elf32_Ehdr* elf_hdr = (Elf32_Ehdr*) inElf;
-	size_t maxmem;
+	size_t maxmem = 0;
+	int i;
 
-	if(strncmp(elf_hdr->e_ident, ELFMAG, 4) != 0 ) {
+	if (strncmp(elf_hdr->e_ident, ELFMAG, 4) != 0 ) {
 		return 0;
 	}
 
-	Elf32_Phdr* phdrs = (Elf32_Phdr*) (inElf + elf_hdr->e_phoff);
-	int i;
-
-	maxmem = 0;
-	for(i = 0; i < elf_hdr->e_phnum; i++) {
-		int memExtent = phdrs[i].p_vaddr + phdrs[i].p_memsz - elf_hdr->e_entry;
-		if(maxmem < memExtent) {
+	Elf32_Phdr* phdrs = (Elf32_Phdr*) (inElf + le32toh(elf_hdr->e_phoff));
+	for (i = 0; i < le16toh(elf_hdr->e_phnum); i++) {
+		int memExtent = le32toh(phdrs[i].p_vaddr) +
+		    le32toh(phdrs[i].p_memsz) - le32toh(elf_hdr->e_entry);
+		if (maxmem < memExtent)
 			maxmem = memExtent;
-		}
 	}
+
+	if (!maxmem)
+		return 0;
 
 	*outImageSize = maxmem;
 	*outImage = (char*) malloc(*outImageSize);
+	if (*outImage == NULL)
+		return 0;
+
 	memset(*outImage, 0, *outImageSize);
-	for(i = 0; i < elf_hdr->e_phnum; i++) {
-		memcpy(*outImage + phdrs[i].p_vaddr - elf_hdr->e_entry, inElf + phdrs[i].p_offset, phdrs[i].p_filesz);
+	for (i = 0; i < le16toh(elf_hdr->e_phnum); i++) {
+		memcpy(*outImage + le32toh(phdrs[i].p_vaddr) -
+		    elf_hdr->e_entry, inElf + le32toh(phdrs[i].p_offset),
+		    le32toh(phdrs[i].p_filesz));
 	}
 
 	return 1;
 }
 
-int main(int argc, char* argv[]) {
+intmain(int argc, char* argv[])
+{
 	char* inElf;
 	size_t inElfSize;
 	char* outImage;
 	size_t outImageSize;
 	init_libxpwn();
 
-	if(argc < 3) {
+	if (argc < 3) {
 		printf("usage: %s <infile> <outfile> [template] [certificate]\n", argv[0]);
 		return 0;
 	}
 
 	AbstractFile* template = NULL;
-	if(argc >= 4) {
+	if (argc >= 4) {
 		template = createAbstractFileFromFile(fopen(argv[3], "rb"));
-		if(!template) {
+		if (!template) {
 			fprintf(stderr, "error: cannot open template\n");
 			return 1;
 		}
 	}
 
 	AbstractFile* certificate = NULL;
-	if(argc >= 5) {
+	if (argc >= 5) {
 		certificate = createAbstractFileFromFile(fopen(argv[4], "rb"));
-		if(!certificate) {
+		if (!certificate) {
 			fprintf(stderr, "error: cannot open certificate\n");
 			return 5;
 		}
 	}
 
 	AbstractFile* inFile = openAbstractFile(createAbstractFileFromFile(fopen(argv[1], "rb")));
-	if(!inFile) {
+	if (!inFile) {
 		fprintf(stderr, "error: cannot open infile\n");
 		return 2;
 	}
 
 	AbstractFile* outFile = createAbstractFileFromFile(fopen(argv[2], "wb"));
-	if(!outFile) {
+	if (!outFile) {
 		fprintf(stderr, "error: cannot open outfile\n");
 		return 3;
 	}
 
 	AbstractFile* newFile;
 
-	if(template) {
-		if(certificate != NULL) {
+	if (template) {
+		if (certificate != NULL) {
 			newFile = duplicateAbstractFile2(template, outFile, NULL, NULL, certificate);
 		} else {
 			newFile = duplicateAbstractFile(template, outFile);
 		}
-		if(!newFile) {
+		if (!newFile) {
 			fprintf(stderr, "error: cannot duplicate file from provided template\n");
 			return 4;
 		}
@@ -101,20 +111,19 @@ int main(int argc, char* argv[]) {
 	inFile->read(inFile, inElf, inElfSize);
 	inFile->close(inFile);
 
-	if(!createImage(inElf, inElfSize, &outImage, &outImageSize)) {
+	if (!createImage(inElf, inElfSize, &outImage, &outImageSize)) {
+		/* It's a blob, just use the contents. */
 		outImage = inElf;
 		outImageSize = inElfSize;
 	} else {
+		/* It's an Elf, so use actual image data. */
 		free(inElf);
 	}
 
 	newFile->write(newFile, outImage, outImageSize);
 	newFile->close(newFile);
 
-
-
 	free(outImage);
 
 	return 0;
 }
-
