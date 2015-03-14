@@ -47,7 +47,8 @@ createImage(char* inElf, size_t inElfSize, char** outImage, size_t* outImageSize
 	return 1;
 }
 
-intmain(int argc, char* argv[])
+int
+main(int argc, char* argv[])
 {
 	char* inElf;
 	size_t inElfSize;
