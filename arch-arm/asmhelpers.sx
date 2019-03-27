@@ -396,7 +396,7 @@ SwapTask:
 	@ Store current stuff
 	LDR R1, =CurrentRunning
 	LDR R1, [R1]
-	ADD R1, #TaskDescriptor.savedRegisters
+	ADD R1, R1, #TaskDescriptor.savedRegisters
 	STR R4, [R1, #TaskRegisterState.r4]
 	STR R5, [R1, #TaskRegisterState.r5]
 	STR R6, [R1, #TaskRegisterState.r6]
