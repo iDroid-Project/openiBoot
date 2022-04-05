@@ -17,7 +17,7 @@ iDroid Project openiBoot
 
 NOTE: Version 0.3 and above will not boot iDroid 2.6.32 series kernels without additional parameters being passed to the kernel.
 
-Warnung
+Warning
 ---------------------------------------------------
 IT IS STRONGLY ADVISED THAT YOU DO NOT ATTEMPT TO RUN NAND WRITE FUNCTIONS IN THE A4 VERSION AT THIS POINT IN TIME.
 
